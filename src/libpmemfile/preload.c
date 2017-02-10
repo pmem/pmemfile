@@ -47,6 +47,7 @@
 #include <fcntl.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <syscall.h>
 #include <stdlib.h>
 #include <inttypes.h>
@@ -54,6 +55,7 @@
 #include <errno.h>
 #include <setjmp.h>
 #include <pthread.h>
+#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <stdio.h>
@@ -431,6 +433,8 @@ static const char *parse_pool_path(struct pool_description *pool,
 					const char *conf);
 static void open_mount_point(struct pool_description *pool);
 
+static void open_new_pool(struct pool_description *);
+
 /*
  * establish_mount_points - parse the configuration, which is expected to be a
  * semicolon separated list of path-pairs:
@@ -443,6 +447,19 @@ static void open_mount_point(struct pool_description *pool);
 static void
 establish_mount_points(const char *config)
 {
+	char cwd[0x400];
+
+	if (getcwd(cwd, sizeof(cwd)) == NULL) {
+		perror("getcwd");
+		syscall_no_intercept(SYS_exit_group, 124);
+	}
+
+	struct stat kernel_cwd_stat;
+	if (stat(cwd, &kernel_cwd_stat) != 0) {
+		perror("fstat cwd");
+		syscall_no_intercept(SYS_exit_group, 124);
+	}
+
 	assert(pool_count == 0);
 
 	if (config == NULL || config[0] == 0) {
@@ -468,6 +485,15 @@ establish_mount_points(const char *config)
 		pool_desc->pool = NULL;
 
 		++pool_count;
+
+		if (pool_desc->stat.st_ino == kernel_cwd_stat.st_ino) {
+			open_new_pool(pool_desc);
+			if (pool_desc->pool == NULL) {
+				perror("opening pmemfile pool");
+				syscall_no_intercept(SYS_exit_group, 124);
+			}
+			cwd_pool = pool_desc;
+		}
 	} while (config != NULL);
 }
 

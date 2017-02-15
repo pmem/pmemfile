@@ -1,0 +1,3 @@
+total $(N)
+-rw-r--r-- 1 $(S) 391 file_a
+-rw-r--r-- 1 $(S) 4401 file_b

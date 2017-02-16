@@ -1,0 +1,5 @@
+pmemfile (0.1-1) UNRELEASED; urgency=medium
+
+  * Initial release.
+
+ -- Marcin Ślusarz <marcin.slusarz@intel.com>  Mon, 13 Feb 2017 15:08:12 +0100

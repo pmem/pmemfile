@@ -1,0 +1,34 @@
+Source: pmemfile
+Maintainer: Marcin Ślusarz <marcin.slusarz@intel.com>
+Section: misc
+Priority: optional
+Standards-version: 3.9.8
+Build-Depends: debhelper (>= 9), libsyscall-intercept-dev, libpmemobj-dev
+
+Package: libpmemfile-core0
+Architecture: any
+Depends: libpmemobj, ${shlibs:Depends}, ${misc:Depends}
+Description: File System in Persistent Memory
+ Persistent memory-backed, userspace implementation of POSIX-like API.
+
+Package: libpmemfile-core-dev
+Section: libdevel
+Architecture: any
+Depends: libpmemfile-core0 (=${binary:Version}), ${misc:Depends}
+Description: Development files for libpmemfile-core
+ Development files for libpmemfile-core library.
+
+Package: libpmemfile0
+Architecture: any
+Depends: libpmemfile-core0, libsyscall-intercept0, ${shlibs:Depends}, ${misc:Depends}
+Description: File System in Persistent Memory
+ Persistent memory-backed, transaparent (LD_PRELOAD) userspace implementation
+ of POSIX-like API.
+
+Package: pmemfile-tools
+Section: misc
+Architecture: any
+Priority: optional
+Depends: libpmemfile-core0, ${shlibs:Depends}, ${misc:Depends}
+Description: Tools for pmemfile
+ Utilities for pmemfile.

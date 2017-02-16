@@ -1,0 +1,5 @@
+# https://lintian.debian.org/tags/new-package-should-close-itp-bug.html
+new-package-should-close-itp-bug
+
+# libpmemfile.so does not really belong to dev package
+non-dev-pkg-with-shlib-symlink

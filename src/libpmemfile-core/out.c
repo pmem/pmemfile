@@ -49,10 +49,7 @@
 #include "valgrind_internal.h"
 #include "util.h"
 
-/* XXX - modify Linux makefiles to generate srcversion.h and remove #ifdef */
-#ifdef _WIN32
-#include "srcversion.h"
-#endif
+#define UTIL_MAX_ERR_MSG 128
 
 static char nvml_src_version[] = "SRCVERSION:" SRCVERSION;
 
@@ -60,8 +57,6 @@ static const char *Log_prefix;
 static int Log_level;
 static FILE *Out_fp;
 static unsigned Log_alignment;
-
-#ifndef NO_LIBPTHREAD
 
 #define MAXPRINT 8192	/* maximum expected log line */
 
@@ -113,38 +108,6 @@ Last_errormsg_get()
 	}
 	return errormsg;
 }
-#else
-
-/*
- * We don't want libpmem to depend on libpthread.  Instead of using pthread
- * API to dynamically allocate thread-specific error message buffer, we put
- * it into TLS.  However, keeping a pretty large static buffer (8K) in TLS
- * may lead to some issues, so the maximum message length is reduced.
- * Fortunately, it looks like the longest error message in libpmem should
- * not be longer than about 90 chars (in case of pmem_check_version()).
- */
-
-#define MAXPRINT 256	/* maximum expected log line for libpmem */
-
-static __thread char Last_errormsg[MAXPRINT];
-
-static inline void
-Last_errormsg_key_alloc()
-{
-}
-
-static inline void
-Last_errormsg_fini()
-{
-}
-
-static inline const char *
-Last_errormsg_get()
-{
-	return Last_errormsg;
-}
-
-#endif /* NO_LIBPTHREAD */
 
 #ifdef DEBUG
 /*

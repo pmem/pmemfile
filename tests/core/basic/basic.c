@@ -463,8 +463,6 @@ test_tmpfile(const char *path)
 int
 main(int argc, char *argv[])
 {
-	START(argc, argv, "file_core_basic");
-
 	if (argc < 2)
 		UT_FATAL("usage: %s file-name", argv[0]);
 
@@ -480,6 +478,4 @@ main(int argc, char *argv[])
 	test_unlink(path);
 
 	test_tmpfile(path);
-
-	DONE(NULL);
 }

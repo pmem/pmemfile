@@ -84,8 +84,6 @@ create_close_unlink_worker(void *arg)
 int
 main(int argc, char *argv[])
 {
-	START(argc, argv, "file_core_mt");
-
 	if (argc < 2)
 		UT_FATAL("usage: %s file-name [ops]", argv[0]);
 
@@ -120,6 +118,4 @@ main(int argc, char *argv[])
 	FREE(threads);
 
 	pmemfile_pool_close(pfp);
-
-	DONE(NULL);
 }

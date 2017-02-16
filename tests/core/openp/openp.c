@@ -155,8 +155,6 @@ test0(PMEMfilepool *pfp)
 int
 main(int argc, char *argv[])
 {
-	START(argc, argv, "file_core_openp");
-
 	if (argc < 2)
 		UT_FATAL("usage: %s file-name", argv[0]);
 
@@ -167,6 +165,4 @@ main(int argc, char *argv[])
 	test0(pfp);
 
 	pmemfile_pool_close(pfp);
-
-	DONE(NULL);
 }

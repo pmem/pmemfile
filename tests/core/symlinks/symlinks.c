@@ -569,8 +569,6 @@ test6(PMEMfilepool *pfp)
 int
 main(int argc, char *argv[])
 {
-	START(argc, argv, "file_core_symlinks");
-
 	if (argc < 2)
 		UT_FATAL("usage: %s file-name", argv[0]);
 
@@ -583,6 +581,4 @@ main(int argc, char *argv[])
 	test4(open_pool(path));
 	test5(open_pool(path));
 	test6(open_pool(path));
-
-	DONE(NULL);
 }

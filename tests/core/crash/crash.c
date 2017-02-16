@@ -60,8 +60,6 @@ open_pool(const char *path)
 int
 main(int argc, char *argv[])
 {
-	START(argc, argv, "file_core_crash %s", argc >= 3 ? argv[2] : "");
-
 	if (argc < 3)
 		UT_FATAL("usage: %s file-name op", argv[0]);
 
@@ -126,6 +124,4 @@ main(int argc, char *argv[])
 		pmemfile_pool_close(pfp);
 	} else
 		UT_ASSERT(0);
-
-	DONE(NULL);
 }

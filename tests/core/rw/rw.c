@@ -500,8 +500,6 @@ test_sparse_files(PMEMfilepool *pfp)
 int
 main(int argc, char *argv[])
 {
-	START(argc, argv, "file_core_rw");
-
 	if (argc < 2)
 		UT_FATAL("usage: %s file-name", argv[0]);
 
@@ -571,6 +569,4 @@ main(int argc, char *argv[])
 		.blocks = 0});
 
 	pmemfile_pool_close(pfp);
-
-	DONE(NULL);
 }

@@ -571,8 +571,6 @@ test6(PMEMfilepool *pfp)
 int
 main(int argc, char *argv[])
 {
-	START(argc, argv, "file_core_dirs");
-
 	if (argc < 2)
 		UT_FATAL("usage: %s file-name", argv[0]);
 
@@ -596,6 +594,4 @@ main(int argc, char *argv[])
 	list_files(pfp, "/", 2, 1, "after test6");
 
 	pmemfile_pool_close(pfp);
-
-	DONE(NULL);
 }

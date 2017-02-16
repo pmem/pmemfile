@@ -53,7 +53,15 @@
 #define OUT_FATAL_DISCARD_NORETURN
 #endif
 
+#ifndef OUT_ENABLED
 #ifdef DEBUG
+#define OUT_ENABLED 1
+#else
+#define OUT_ENABLED 0
+#endif
+#endif
+
+#if OUT_ENABLED == 1
 
 #define OUT_LOG out_log
 #define OUT_NONL out_nonl

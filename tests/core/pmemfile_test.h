@@ -35,9 +35,69 @@
 
 #include "libpmemfile-core.h"
 
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define UT_FATAL(...) abort();
+#define UT_ASSERT(cnd)			do { if (!(cnd)) abort(); } while (0)
+#define UT_ASSERTinfo(cnd, info)	do { if (!(cnd)) abort(); } while (0)
+#define UT_ASSERTeq(lhs, rhs)	do { if ((lhs) != (rhs)) abort(); } while (0)
+#define UT_ASSERTne(lhs, rhs)	do { if ((lhs) == (rhs)) abort(); } while (0)
+#define UT_OUT(...) fprintf(stderr, __VA_ARGS__)
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+static inline void *
+MALLOC(size_t size)
+{
+	void *m = malloc(size);
+	if (!m) abort();
+	return m;
+}
+#define FREE(ptr) free(ptr)
+
+static inline void
+PTHREAD_CREATE(pthread_t *__restrict thread,
+    const pthread_attr_t *__restrict attr,
+    void *(*start_routine)(void *), void *__restrict arg)
+{
+	int ret = pthread_create(thread, attr, start_routine, arg);
+	if (ret) {
+		errno = ret;
+		UT_FATAL("!pthread_create");
+	}
+}
+
+static inline void
+PTHREAD_JOIN(pthread_t thread, void **value_ptr)
+{
+	int ret = pthread_join(thread, value_ptr);
+	if (ret) {
+		errno = ret;
+		UT_FATAL("!pthread_join");
+	}
+}
+
+/*
+ * is_zeroed -- check if given memory range is all zero
+ */
+static inline int
+is_zeroed(const void *addr, size_t len)
+{
+	/* XXX optimize */
+	const char *a = addr;
+	while (len-- > 0)
+		if (*a++)
+			return 0;
+	return 1;
+}
 
 /* pmemfile stuff */
 PMEMfilepool *PMEMFILE_MKFS(const char *path);

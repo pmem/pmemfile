@@ -34,13 +34,12 @@
  * symlinks.c -- unit test for pmemfile_symlink and co
  */
 #define _GNU_SOURCE
-#include "unittest.h"
 #include "pmemfile_test.h"
 
 static PMEMfilepool *
 create_pool(const char *path)
 {
-	PMEMfilepool *pfp = pmemfile_mkfs(path, PMEMOBJ_MIN_POOL,
+	PMEMfilepool *pfp = pmemfile_mkfs(path, 8 * 1024 * 1024,
 			S_IWUSR | S_IRUSR);
 	if (!pfp)
 		UT_FATAL("!pmemfile_mkfs: %s", path);
@@ -106,7 +105,7 @@ test0(PMEMfilepool *pfp)
 	    {0120777, 1, 8, "sym4-not_exists-relative", "../file2"},
 	    {}});
 
-	int ret;
+	ssize_t ret;
 
 	ret = pmemfile_symlink(pfp, "whatever", "/not-exisiting-dir/xxx");
 	UT_ASSERTeq(ret, -1);

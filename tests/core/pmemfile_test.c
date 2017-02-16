@@ -34,8 +34,14 @@
  * pmemfile_test.c -- unit test utility functions for pmemfile
  */
 
+#include <stdarg.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <string.h>
+#include <limits.h>
+#include <dirent.h>
+
 #include "pmemfile_test.h"
-#include "unittest.h"
 
 void
 PMEMFILE_STATS(PMEMfilepool *pfp, const struct pmemfile_stats expected)

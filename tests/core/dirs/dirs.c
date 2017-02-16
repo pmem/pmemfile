@@ -34,8 +34,10 @@
  * dirs.c -- unit test for directories
  */
 
+#include <stdio.h>
+#include <time.h>
+#include <stdint.h>
 #include "pmemfile_test.h"
-#include "unittest.h"
 
 static const char *
 timespec_to_str(const struct timespec *t)
@@ -48,22 +50,22 @@ timespec_to_str(const struct timespec *t)
 static void
 dump_stat(struct stat *st, const char *path)
 {
-	UT_OUT("path:       %s", path);
-	UT_OUT("st_dev:     0x%lx", st->st_dev);
-	UT_OUT("st_ino:     %ld", st->st_ino);
-	UT_OUT("st_mode:    0%o", st->st_mode);
-	UT_OUT("st_nlink:   %lu", st->st_nlink);
-	UT_OUT("st_uid:     %u", st->st_uid);
-	UT_OUT("st_gid:     %u", st->st_gid);
-	UT_OUT("st_rdev:    0x%lx", st->st_rdev);
-	UT_OUT("st_size:    %ld", st->st_size);
-	UT_OUT("st_blksize: %ld", st->st_blksize);
-	UT_OUT("st_blocks:  %ld", st->st_blocks);
-	UT_OUT("st_atim:    %ld.%.9ld, %s", st->st_atim.tv_sec,
+	UT_OUT("path:       %s\n", path);
+	UT_OUT("st_dev:     0x%lx\n", st->st_dev);
+	UT_OUT("st_ino:     %ld\n", st->st_ino);
+	UT_OUT("st_mode:    0%o\n", st->st_mode);
+	UT_OUT("st_nlink:   %lu\n", st->st_nlink);
+	UT_OUT("st_uid:     %u\n", st->st_uid);
+	UT_OUT("st_gid:     %u\n", st->st_gid);
+	UT_OUT("st_rdev:    0x%lx\n", st->st_rdev);
+	UT_OUT("st_size:    %ld\n", st->st_size);
+	UT_OUT("st_blksize: %ld\n", st->st_blksize);
+	UT_OUT("st_blocks:  %ld\n", st->st_blocks);
+	UT_OUT("st_atim:    %ld.%.9ld, %s\n", st->st_atim.tv_sec,
 			st->st_atim.tv_nsec, timespec_to_str(&st->st_atim));
-	UT_OUT("st_mtim:    %ld.%.9ld, %s", st->st_mtim.tv_sec,
+	UT_OUT("st_mtim:    %ld.%.9ld, %s\n", st->st_mtim.tv_sec,
 			st->st_mtim.tv_nsec, timespec_to_str(&st->st_mtim));
-	UT_OUT("st_ctim:    %ld.%.9ld, %s", st->st_ctim.tv_sec,
+	UT_OUT("st_ctim:    %ld.%.9ld, %s\n", st->st_ctim.tv_sec,
 			st->st_ctim.tv_nsec, timespec_to_str(&st->st_ctim));
 	UT_OUT("---");
 }
@@ -77,23 +79,23 @@ struct linux_dirent64 {
 };
 
 static void
-list_files(PMEMfilepool *pfp, const char *dir, int expected_files,
+list_files(PMEMfilepool *pfp, const char *dir, size_t expected_files,
 		int just_count, const char *name)
 {
-	UT_OUT("\"%s\" start", name);
+	UT_OUT("\"%s\" start\n", name);
 	PMEMfile *f = PMEMFILE_OPEN(pfp, dir, O_DIRECTORY | O_RDONLY);
 
 	char buf[32 * 1024];
 	char path[PATH_MAX];
 	struct linux_dirent64 *d = (void *)buf;
 	int r = pmemfile_getdents64(pfp, f, (void *)buf, sizeof(buf));
-	int num_files = 0;
+	size_t num_files = 0;
 
 	while ((uintptr_t)d < (uintptr_t)&buf[r]) {
 		num_files++;
 		if (!just_count) {
 			UT_OUT("ino: 0x%lx, off: 0x%lx, len: %d, type: %d, "
-					"name: \"%s\"",
+					"name: \"%s\"\n",
 					d->d_ino, d->d_off, d->d_reclen,
 					d->d_type, d->d_name);
 			sprintf(path, "/%s/%s", dir, d->d_name);
@@ -107,7 +109,7 @@ list_files(PMEMfilepool *pfp, const char *dir, int expected_files,
 
 	PMEMFILE_CLOSE(pfp, f);
 
-	UT_OUT("\"%s\" end", name);
+	UT_OUT("\"%s\" end\n", name);
 	UT_ASSERTeq(num_files, expected_files);
 }
 
@@ -174,14 +176,14 @@ test1(PMEMfilepool *pfp)
 	    {040777, 2, 4008, ".."},
 	    {}});
 	memset(buf, 0xff, sizeof(buf));
-	UT_OUT("test1");
+	UT_OUT("test1\n");
 
-	for (int i = 0; i < 100; ++i) {
-		sprintf(buf, "/file%04d", i);
+	for (size_t i = 0; i < 100; ++i) {
+		sprintf(buf, "/file%04lu", i);
 
 		f = PMEMFILE_OPEN(pfp, buf, O_CREAT | O_EXCL | O_WRONLY, 0644);
 
-		PMEMFILE_WRITE(pfp, f, buf, i, i);
+		PMEMFILE_WRITE(pfp, f, buf, i, (ssize_t)i);
 
 		PMEMFILE_CLOSE(pfp, f);
 
@@ -203,10 +205,10 @@ test2(PMEMfilepool *pfp)
 	    {040777, 2, 32680, "."},
 	    {040777, 2, 32680, ".."},
 	    {}});
-	UT_OUT("test2");
+	UT_OUT("test2\n");
 
-	for (int i = 0; i < 100; ++i) {
-		sprintf(buf, "/dir%04d", i);
+	for (size_t i = 0; i < 100; ++i) {
+		sprintf(buf, "/dir%04lu", i);
 
 		PMEMFILE_MKDIR(pfp, buf, 0755);
 
@@ -289,7 +291,7 @@ test2(PMEMfilepool *pfp)
 static void
 test3(PMEMfilepool *pfp)
 {
-	UT_OUT("test3");
+	UT_OUT("test3\n");
 
 	PMEMFILE_MKDIR(pfp, "/dir1", 0755);
 	PMEMFILE_CREATE(pfp, "/dir1/file", O_EXCL, 0644);
@@ -314,7 +316,7 @@ test3(PMEMfilepool *pfp)
 static void
 test4(PMEMfilepool *pfp)
 {
-	UT_OUT("test4");
+	UT_OUT("test4\n");
 	char buf[PATH_MAX];
 
 	PMEMFILE_MKDIR(pfp, "/dir1", 0755);
@@ -423,7 +425,7 @@ test4(PMEMfilepool *pfp)
 	UT_ASSERTeq(t, NULL);
 	UT_ASSERTeq(errno, ERANGE);
 
-	for (int i = 1; i < strlen("/dir1") + 1; ++i) {
+	for (size_t i = 1; i < strlen("/dir1") + 1; ++i) {
 		errno = 0;
 		UT_ASSERTeq(pmemfile_getcwd(pfp, buf, i), NULL);
 		UT_ASSERTeq(errno, ERANGE);
@@ -436,7 +438,7 @@ test4(PMEMfilepool *pfp)
 static void
 test5(PMEMfilepool *pfp)
 {
-	UT_OUT("test5");
+	UT_OUT("test5\n");
 	struct stat stat;
 
 	PMEMFILE_MKDIR(pfp, "/dir1", 0755);
@@ -475,7 +477,7 @@ test5(PMEMfilepool *pfp)
 static void
 test6(PMEMfilepool *pfp)
 {
-	UT_OUT("test6");
+	UT_OUT("test6\n");
 	// struct stat stat;
 
 	PMEMFILE_MKDIR(pfp, "/dir1", 0755);

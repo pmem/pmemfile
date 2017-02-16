@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Intel Corporation
+ * Copyright 2016-2017, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,15 +33,17 @@
 /*
  * mt.c -- multithreaded test for pmemfile_*
  */
+#include <sched.h>
+#include <unistd.h>
 
-#include "unittest.h"
+#include "pmemfile_test.h"
 
 static int ops = 20;
 
 static PMEMfilepool *
 create_pool(const char *path)
 {
-	PMEMfilepool *pfp = pmemfile_mkfs(path, PMEMOBJ_MIN_POOL,
+	PMEMfilepool *pfp = pmemfile_mkfs(path, 8 * 1024 * 1024,
 			S_IWUSR | S_IRUSR);
 	if (!pfp)
 		UT_FATAL("!pmemfile_mkfs: %s", path);
@@ -95,7 +97,7 @@ main(int argc, char *argv[])
 
 	long ncpus = sysconf(_SC_NPROCESSORS_ONLN);
 	int i = 0;
-	pthread_t *threads = MALLOC(sizeof(threads[0]) * ncpus * 2);
+	pthread_t *threads = MALLOC(sizeof(threads[0]) * (size_t)ncpus * 2);
 	pfp = create_pool(path);
 
 	for (int j = 0; j < ncpus / 2; ++j) {

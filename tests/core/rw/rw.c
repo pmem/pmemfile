@@ -37,9 +37,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "unittest.h"
 #include "pmemfile_test.h"
-#include "util.h"
 
 static unsigned env_block_size;
 
@@ -65,11 +63,11 @@ test1(PMEMfilepool *pfp)
 	const char *data = "Marcin S";
 	char data2[4096];
 	char bufFF[4096], buf00[4096];
-	int len = strlen(data) + 1;
+	size_t len = strlen(data) + 1;
 	memset(bufFF, 0xff, sizeof(bufFF));
 	memset(buf00, 0x00, sizeof(buf00));
 
-	PMEMFILE_WRITE(pfp, f, data, len, len);
+	PMEMFILE_WRITE(pfp, f, data, len, (ssize_t)len);
 
 	PMEMFILE_LIST_FILES(pfp, "/", (const struct pmemfile_ls[]) {
 	    {040777, 2, 4008, "."},
@@ -92,7 +90,7 @@ test1(PMEMfilepool *pfp)
 
 	/* read only what we wrote and check nothing else was read */
 	memset(data2, 0xff, sizeof(data2));
-	PMEMFILE_READ(pfp, f, data2, len, len);
+	PMEMFILE_READ(pfp, f, data2, len, (ssize_t)len);
 	UT_ASSERTeq(memcmp(data, data2, len), 0);
 	UT_ASSERTeq(memcmp(data2 + len, bufFF, sizeof(data2) - len), 0);
 
@@ -116,7 +114,7 @@ test1(PMEMfilepool *pfp)
 
 	/* read as much as possible and check that we read only what we wrote */
 	memset(data2, 0xff, sizeof(data2));
-	PMEMFILE_READ(pfp, f, data2, sizeof(data2), len);
+	PMEMFILE_READ(pfp, f, data2, sizeof(data2), (ssize_t)len);
 	UT_ASSERTeq(memcmp(data, data2, len), 0);
 	UT_ASSERTeq(memcmp(data2 + len, bufFF, sizeof(data2) - len), 0);
 
@@ -317,21 +315,21 @@ static void
 test2(PMEMfilepool *pfp)
 {
 	/* write 800MB of random data and read it back */
-	char buf00[128], bufFF[128], bufd[4096 * 4], buftmp[4096 * 4];
+	unsigned char buf00[128], bufFF[128], bufd[4096 * 4], buftmp[4096 * 4];
 
 	memset(buf00, 0x00, sizeof(buf00));
 	memset(bufFF, 0xFF, sizeof(bufFF));
 
-	for (int i = 0; i < sizeof(bufd); ++i)
-		bufd[i] = rand() % 255;
+	for (size_t i = 0; i < sizeof(bufd); ++i)
+		bufd[i] = (unsigned char)(rand() % 255);
 
 	PMEMfile *f = PMEMFILE_OPEN(pfp, "/file1", O_CREAT | O_EXCL | O_WRONLY,
 			0644);
 
 #define LEN (sizeof(bufd) - 1000)
 #define LOOPS ((200 * 1024 * 1024) / LEN)
-	for (int i = 0; i < LOOPS; ++i)
-		PMEMFILE_WRITE(pfp, f, bufd, LEN, LEN);
+	for (size_t i = 0; i < LOOPS; ++i)
+		PMEMFILE_WRITE(pfp, f, bufd, LEN, (ssize_t)LEN);
 
 	PMEMFILE_CLOSE(pfp, f);
 
@@ -358,9 +356,9 @@ test2(PMEMfilepool *pfp)
 
 	f = PMEMFILE_OPEN(pfp, "/file1", O_RDONLY);
 
-	for (int i = 0; i < LOOPS; ++i) {
+	for (size_t i = 0; i < LOOPS; ++i) {
 		memset(buftmp, 0, sizeof(buftmp));
-		PMEMFILE_READ(pfp, f, buftmp, LEN, LEN);
+		PMEMFILE_READ(pfp, f, buftmp, LEN, (ssize_t)LEN);
 		if (memcmp(buftmp, bufd, LEN) != 0)
 			UT_ASSERT(0);
 	}
@@ -488,7 +486,7 @@ test_sparse_files(PMEMfilepool *pfp)
 	PMEMFILE_LSEEK(pfp, f, 0, SEEK_SET, 0);
 	memset(buf, 0xff, sizeof(buf));
 	PMEMFILE_READ(pfp, f, buf, 8192, 4096 + 5);
-	UT_ASSERTeq(util_is_zeroed(buf, 4096), 1);
+	UT_ASSERTeq(is_zeroed(buf, 4096), 1);
 	UT_ASSERTeq(memcmp(buf + 4096, "test", 5), 0);
 	UT_ASSERTeq(buf[4096 + 5], 0xff);
 

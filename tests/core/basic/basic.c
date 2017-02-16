@@ -34,13 +34,12 @@
  * basic.c -- unit test for pmemfile_*
  */
 #define _GNU_SOURCE
-#include "unittest.h"
 #include "pmemfile_test.h"
 
 static PMEMfilepool *
 create_pool(const char *path)
 {
-	PMEMfilepool *pfp = pmemfile_mkfs(path, PMEMOBJ_MIN_POOL,
+	PMEMfilepool *pfp = pmemfile_mkfs(path, 8 * 1024 * 1024,
 			S_IWUSR | S_IRUSR);
 	if (!pfp)
 		UT_FATAL("!pmemfile_mkfs: %s", path);

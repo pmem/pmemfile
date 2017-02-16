@@ -35,7 +35,6 @@
  */
 
 #include "pmemfile_test.h"
-#include "unittest.h"
 
 static const char *
 timespec_to_str(const struct timespec *t)

@@ -35,41 +35,40 @@
  */
 
 #include "pmemfile_test.h"
-#include "unittest.h"
 #include <ctype.h>
 
 static void
 dump_linux_dirents(void *dirp, unsigned length)
 {
 	char *buf = (void *)dirp;
-	for (int i = 0; i < length; ) {
+	for (unsigned i = 0; i < length; ) {
 		long ino = *(long *)&buf[i];
 		UT_OUT("d_ino.txt: 0x%016lx", ino);
-		UT_OUTF(OF_NONL, "d_ino.bin: ");
-		for (int j = 0; j < 8; ++j, ++i)
-			UT_OUTF(OF_NONL | OF_NOPREFIX, "0x%02hhx ", buf[i]);
-		UT_OUTF(OF_NOPREFIX, " ");
+		UT_OUT("d_ino.bin: ");
+		for (unsigned j = 0; j < 8; ++j, ++i)
+			UT_OUT("0x%02hhx ", buf[i]);
+		UT_OUT("\n");
 
 		long off = *(long *)&buf[i];
 		UT_OUT("d_off.txt: 0x%016lx", off);
-		UT_OUTF(OF_NONL, "d_off.bin: ");
-		for (int j = 0; j < 8; ++j, ++i)
-			UT_OUTF(OF_NONL | OF_NOPREFIX, "0x%02hhx ", buf[i]);
-		UT_OUTF(OF_NOPREFIX, " ");
+		UT_OUT("d_off.bin: ");
+		for (unsigned j = 0; j < 8; ++j, ++i)
+			UT_OUT("0x%02hhx ", buf[i]);
+		UT_OUT("\n");
 
 		short int reclen = *(short *)&buf[i];
 		UT_OUT("d_reclen.txt: %hd", reclen);
-		UT_OUTF(OF_NONL, "d_reclen.bin: ");
-		for (int j = 0; j < 2; ++j, ++i)
-			UT_OUTF(OF_NONL | OF_NOPREFIX, "0x%02hhx ", buf[i]);
-		UT_OUTF(OF_NOPREFIX, " ");
+		UT_OUT("d_reclen.bin: ");
+		for (unsigned j = 0; j < 2; ++j, ++i)
+			UT_OUT("0x%02hhx ", buf[i]);
+		UT_OUT("\n");
 
 		UT_OUT("d_name.txt: \"%s\"", buf + i);
-		UT_OUTF(OF_NONL, "d_name.bin: ");
+		UT_OUT("d_name.bin: ");
 		for (int j = 0; j < reclen - 8 - 8 - 2; ++j, ++i)
-			UT_OUTF(OF_NONL | OF_NOPREFIX, "0x%02hhx (%c) ",
+			UT_OUT("0x%02hhx (%c) ",
 					buf[i], isprint(buf[i]) ? buf[i] : '?');
-		UT_OUTF(OF_NOPREFIX, " ");
+		UT_OUT("\n");
 		UT_OUT("-");
 	}
 	UT_OUT("---");
@@ -79,41 +78,41 @@ static void
 dump_linux_dirents64(void *dirp, unsigned length)
 {
 	char *buf = (void *)dirp;
-	for (int i = 0; i < length; ) {
+	for (size_t i = 0; i < length; ) {
 		long ino = *(long *)&buf[i];
 		UT_OUT("d_ino.txt: 0x%016lx", ino);
-		UT_OUTF(OF_NONL, "d_ino.bin: ");
+		UT_OUT("d_ino.bin: ");
 		for (int j = 0; j < 8; ++j, ++i)
-			UT_OUTF(OF_NONL | OF_NOPREFIX, "0x%02hhx ", buf[i]);
-		UT_OUTF(OF_NOPREFIX, " ");
+			UT_OUT("0x%02hhx ", buf[i]);
+		UT_OUT("\n");
 
 		long off = *(long *)&buf[i];
 		UT_OUT("d_off.txt: 0x%016lx", off);
-		UT_OUTF(OF_NONL, "d_off.bin: ");
+		UT_OUT("d_off.bin: ");
 		for (int j = 0; j < 8; ++j, ++i)
-			UT_OUTF(OF_NONL | OF_NOPREFIX, "0x%02hhx ", buf[i]);
-		UT_OUTF(OF_NOPREFIX, " ");
+			UT_OUT("0x%02hhx ", buf[i]);
+		UT_OUT("\n");
 
 		short int reclen = *(short *)&buf[i];
 		UT_OUT("d_reclen.txt: %hd", reclen);
-		UT_OUTF(OF_NONL, "d_reclen.bin: ");
+		UT_OUT("d_reclen.bin: ");
 		for (int j = 0; j < 2; ++j, ++i)
-			UT_OUTF(OF_NONL | OF_NOPREFIX, "0x%02hhx ", buf[i]);
-		UT_OUTF(OF_NOPREFIX, " ");
+			UT_OUT("0x%02hhx ", buf[i]);
+		UT_OUT("\n");
 
 		char type = *(char *)&buf[i];
 		UT_OUT("d_type.txt: %hhd", type);
-		UT_OUTF(OF_NONL, "d_type.bin: ");
+		UT_OUT("d_type.bin: ");
 		for (int j = 0; j < 1; ++j, ++i)
-			UT_OUTF(OF_NONL | OF_NOPREFIX, "0x%02hhx ", buf[i]);
-		UT_OUTF(OF_NOPREFIX, " ");
+			UT_OUT("0x%02hhx ", buf[i]);
+		UT_OUT("\n");
 
 		UT_OUT("d_name.txt: \"%s\"", buf + i);
-		UT_OUTF(OF_NONL, "d_name.bin: ");
+		UT_OUT("d_name.bin: ");
 		for (int j = 0; j < reclen - 8 - 8 - 2 - 1; ++j, ++i)
-			UT_OUTF(OF_NONL | OF_NOPREFIX, "0x%02hhx (%c) ",
+			UT_OUT("0x%02hhx (%c) ",
 					buf[i], isprint(buf[i]) ? buf[i] : '?');
-		UT_OUTF(OF_NOPREFIX, " ");
+		UT_OUT("\n");
 		UT_OUT("-");
 	}
 
@@ -143,18 +142,18 @@ test1(PMEMfilepool *pfp)
 	int r = pmemfile_getdents(pfp, f, (void *)buf, sizeof(buf));
 	UT_ASSERT(r > 0);
 
-	dump_linux_dirents(buf, r);
+	dump_linux_dirents(buf, (unsigned)r);
 
 	r = pmemfile_getdents(pfp, f, (void *)buf, sizeof(buf));
 	UT_ASSERT(r == 0);
 
-	r = pmemfile_lseek(pfp, f, 0, SEEK_SET);
-	UT_ASSERT(r == 0);
+	off_t off = pmemfile_lseek(pfp, f, 0, SEEK_SET);
+	UT_ASSERT(off == 0);
 
 	r = pmemfile_getdents64(pfp, f, (void *)buf, sizeof(buf));
 	UT_ASSERT(r > 0);
 
-	dump_linux_dirents64(buf, r);
+	dump_linux_dirents64(buf, (unsigned)r);
 
 	r = pmemfile_getdents64(pfp, f, (void *)buf, sizeof(buf));
 	UT_ASSERT(r == 0);
@@ -173,7 +172,7 @@ test2(PMEMfilepool *pfp)
 
 	int r = pmemfile_getdents(pfp, f, (void *)buf, sizeof(buf));
 	UT_ASSERT(r > 0);
-	dump_linux_dirents(buf, r);
+	dump_linux_dirents(buf, (unsigned)r);
 
 	PMEMFILE_CREATE(pfp, "/dir1/file1", O_EXCL, 0644);
 
@@ -184,7 +183,7 @@ test2(PMEMfilepool *pfp)
 	PMEMFILE_LSEEK(pfp, f, 0, SEEK_SET, 0);
 	r = pmemfile_getdents64(pfp, f, (void *)buf, sizeof(buf));
 	UT_ASSERT(r > 0);
-	dump_linux_dirents64(buf, r);
+	dump_linux_dirents64(buf, (unsigned)r);
 
 	static const struct pmemfile_ls expected[] = {
 	    {040755, 2, 4008, "."},
@@ -196,7 +195,7 @@ test2(PMEMfilepool *pfp)
 
 	const struct pmemfile_ls *end;
 
-	end = PMEMFILE_PRINT_FILES64(pfp, f, buf, r, expected, 0);
+	end = PMEMFILE_PRINT_FILES64(pfp, f, buf, (unsigned)r, expected, 0);
 	UT_ASSERT(end->name == NULL);
 
 	PMEMFILE_CLOSE(pfp, f);

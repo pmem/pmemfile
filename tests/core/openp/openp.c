@@ -35,7 +35,6 @@
  */
 
 #include "pmemfile_test.h"
-#include "unittest.h"
 
 static void
 check_path(PMEMfilepool *pfp, int stop_at_root, const char *path,

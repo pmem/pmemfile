@@ -31,7 +31,7 @@
  */
 
 /*
- * file_core_basic.c -- unit test for pmemfile_*
+ * basic.c -- unit test for pmemfile_*
  */
 #define _GNU_SOURCE
 #include "unittest.h"

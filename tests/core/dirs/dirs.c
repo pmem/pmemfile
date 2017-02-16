@@ -31,7 +31,7 @@
  */
 
 /*
- * file_core_dirs.c -- unit test for directories
+ * dirs.c -- unit test for directories
  */
 
 #include "pmemfile_test.h"

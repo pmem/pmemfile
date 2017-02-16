@@ -31,7 +31,7 @@
  */
 
 /*
- * file_core_symlinks.c -- unit test for pmemfile_symlink and co
+ * symlinks.c -- unit test for pmemfile_symlink and co
  */
 #define _GNU_SOURCE
 #include "unittest.h"

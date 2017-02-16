@@ -31,7 +31,7 @@
  */
 
 /*
- * file_core_openp.c -- unit test for pmemfile_open_parent
+ * openp.c -- unit test for pmemfile_open_parent
  */
 
 #include "pmemfile_test.h"

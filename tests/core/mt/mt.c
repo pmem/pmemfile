@@ -31,7 +31,7 @@
  */
 
 /*
- * file_core_mt.c -- multithreaded test for pmemfile_*
+ * mt.c -- multithreaded test for pmemfile_*
  */
 
 #include "unittest.h"

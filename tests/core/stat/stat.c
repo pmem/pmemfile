@@ -31,7 +31,7 @@
  */
 
 /*
- * file_core_stat.c -- unit test for pmemfile_stat & pmemfile_fstat
+ * stat.c -- unit test for pmemfile_stat & pmemfile_fstat
  */
 
 #include "pmemfile_test.h"

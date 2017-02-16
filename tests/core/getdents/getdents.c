@@ -31,7 +31,7 @@
  */
 
 /*
- * file_core_getdents.c -- unit test for pmemfile_getdents & pmemfile_getdents64
+ * getdents.c -- unit test for pmemfile_getdents & pmemfile_getdents64
  */
 
 #include "pmemfile_test.h"

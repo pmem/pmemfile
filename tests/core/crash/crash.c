@@ -31,7 +31,7 @@
  */
 
 /*
- * file_core_crash.c -- unit test for pmemfile_*
+ * crash.c -- unit test for pmemfile_*
  */
 
 #include "unittest.h"

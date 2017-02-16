@@ -31,7 +31,7 @@
  */
 
 /*
- * file_core_rw.c -- unit test for pmemfile_read & pmemfile_write
+ * rw.c -- unit test for pmemfile_read & pmemfile_write
  */
 
 #include <stdlib.h>

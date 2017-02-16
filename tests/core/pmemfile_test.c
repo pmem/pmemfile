@@ -31,7 +31,7 @@
  */
 
 /*
- * ut_pmemfile.c -- unit test utility functions for pmemfile
+ * pmemfile_test.c -- unit test utility functions for pmemfile
  */
 
 #include "pmemfile_test.h"

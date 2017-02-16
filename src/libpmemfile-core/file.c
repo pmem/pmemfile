@@ -34,8 +34,11 @@
  * file.c -- basic file operations
  */
 
+#define _GNU_SOURCE
+
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <sys/stat.h>

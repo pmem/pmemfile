@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Intel Corporation
+ * Copyright 2016-2017, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,7 +37,6 @@
 #include "inode.h"
 #include "inode_array.h"
 #include "locks.h"
-#include "../libpmemobj/sync.h"
 
 /*
  * inode_array_add_single -- finds space for 1 inode in specified

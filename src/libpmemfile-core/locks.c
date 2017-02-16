@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Intel Corporation
+ * Copyright 2016-2017, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,7 +36,6 @@
 #include "locks.h"
 #include "out.h"
 #include "sys_util.h"
-#include "../libpmemobj/sync.h"
 
 static void
 file_util_rwlock_unlock(PMEMfilepool *pfp, pthread_rwlock_t *arg)

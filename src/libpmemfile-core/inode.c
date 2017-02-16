@@ -37,6 +37,7 @@
 #define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/stat.h>

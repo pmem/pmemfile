@@ -40,6 +40,7 @@
 #include "locks.h"
 #include "out.h"
 #include "util.h"
+#include "valgrind_internal.h"
 
 #define PMEMFILE_LOG_PREFIX "libpmemfile-core"
 #define PMEMFILE_LOG_LEVEL_VAR "PMEMFILECORE_LOG_LEVEL"
@@ -47,6 +48,11 @@
 
 size_t pmemfile_core_block_size = 0;
 bool pmemfile_overallocate_on_append = true;
+
+#ifdef ANY_VG_TOOL_ENABLED
+/* initialized to true if the process is running inside Valgrind */
+unsigned _On_valgrind;
+#endif
 
 /*
  * libpmemfile_core_init -- load-time initialization for libpmemfile-core
@@ -61,11 +67,14 @@ libpmemfile_core_init(void)
 	COMPILE_ERROR_ON(sizeof(struct pmemfile_inode_array) != 4096);
 	COMPILE_ERROR_ON(sizeof(struct pmemfile_inode) != 4096);
 
+#ifdef ANY_VG_TOOL_ENABLED
+	_On_valgrind = RUNNING_ON_VALGRIND;
+#endif
+
 	out_init(PMEMFILE_LOG_PREFIX, PMEMFILE_LOG_LEVEL_VAR,
 			PMEMFILE_LOG_FILE_VAR, PMEMFILE_MAJOR_VERSION,
 			PMEMFILE_MINOR_VERSION);
 	LOG(LDBG, NULL);
-	util_init();
 	cb_init();
 
 	char *tmp = getenv("PMEMFILECORE_BLOCK_SIZE");

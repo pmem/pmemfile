@@ -182,7 +182,7 @@ out_init(const char *log_prefix, const char *log_level_var,
 		}
 		if ((Out_fp = fopen(log_file, "w")) == NULL) {
 			char buff[UTIL_MAX_ERR_MSG];
-			util_strerror(errno, buff, UTIL_MAX_ERR_MSG);
+			strerror_r(errno, buff, UTIL_MAX_ERR_MSG);
 			fprintf(stderr, "Error (%s): %s=%s: %s\n",
 					log_prefix, log_file_var,
 					log_file, buff);
@@ -355,7 +355,7 @@ out_common(const char *file, int line, const char *func, int level,
 		if (*fmt == '!') {
 			fmt++;
 			sep = ": ";
-			util_strerror(errno, errstr, UTIL_MAX_ERR_MSG);
+			strerror_r(errno, errstr, UTIL_MAX_ERR_MSG);
 		}
 		ret = Vsnprintf(&buf[cc], MAXPRINT - cc, fmt, ap);
 		if (ret < 0) {
@@ -392,7 +392,7 @@ out_error(const char *file, int line, const char *func,
 		if (*fmt == '!') {
 			fmt++;
 			sep = ": ";
-			util_strerror(errno, errstr, UTIL_MAX_ERR_MSG);
+			strerror_r(errno, errstr, UTIL_MAX_ERR_MSG);
 		}
 		ret = Vsnprintf(&errormsg[cc], MAXPRINT, fmt, ap);
 		if (ret < 0) {

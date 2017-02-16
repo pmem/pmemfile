@@ -30,6 +30,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define _GNU_SOURCE
 #include <fcntl.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -47,7 +48,7 @@
 #include "sys_util.h"
 #include "util.h"
 #include "valgrind_internal.h"
-#include "../libpmemobj/ctree.h"
+#include "ctree.h"
 
 /*
  * block_cache_insert_block -- inserts block into the tree

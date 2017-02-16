@@ -123,9 +123,7 @@ else
 	GIT_COMMAND="diff --name-only $MERGE_BASE $CURRENT_COMMIT $SOURCE_ROOT"
 fi
 
-FILES=$(git $GIT_COMMAND | \
-	grep -v -E -e 'src/jemalloc/' -e 'src/windows/jemalloc_gen/' -e '/queue.h$' -e '/ListEntry.h$' \
-		   -e '/getopt.h$' -e '/getopt.c$' | \
+FILES=$(git $GIT_COMMAND | ${SOURCE_ROOT}/utils/check_license/file-exceptions.sh | \
 	grep    -E -e '*\.[chs]$' -e '*\.[ch]pp$' -e '*\.sh$' \
 		   -e '*\.py$' -e '*\.map$' -e 'Makefile*' -e 'TEST*' \
 		   -e '/common.inc$' -e '/match$' -e '/check_whitespace$' \
@@ -159,7 +157,7 @@ for file in $FILES ; do
 
 		# skip checking dates for non-Intel commits
 		AUTHOR_LAST=`echo $LAST | cut -d"@" -f2`
-		[ "AUTHOR_LAST" != "intel.com" ] && continue
+		[ "$AUTHOR_LAST" != "intel.com" ] && continue
 
 		COMMIT_FIRST=`echo $FIRST | cut -d"-" -f1`
 		COMMIT_LAST=` echo $LAST  | cut -d"-" -f1`

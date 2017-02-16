@@ -56,6 +56,8 @@
 #include <pthread.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <stdio.h>
+#include <limits.h>
 
 #include <asm-generic/errno.h>
 

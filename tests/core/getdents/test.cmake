@@ -1,6 +1,5 @@
-#!/bin/bash -e
 #
-# Copyright 2016, Intel Corporation
+# Copyright 2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,23 +28,11 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
 
-export UNITTEST_NAME=file_core_rw/TEST2
-export UNITTEST_NUM=2
+include(${SRC_DIR}/helpers.cmake)
 
-# standard unit test setup
-. ../unittest/unittest.sh
+setup()
 
-require_test_type medium
-require_fs_type any
-require_build_type debug nondebug
-configure_valgrind memcheck force-enable
+execute(file_getdents)
 
-setup
-
-export PMEM_IS_PMEM_FORCE=1
-
-expect_normal_exit ./file_core_rw$EXESUFFIX $DIR/testfile1
-
-pass
+cleanup()

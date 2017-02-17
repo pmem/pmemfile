@@ -1,6 +1,5 @@
-#!/bin/bash -e
 #
-# Copyright 2016, Intel Corporation
+# Copyright 2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,25 +28,11 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
 
-export UNITTEST_NAME=file_core_mt/TEST0
-export UNITTEST_NUM=0
+include(${SRC_DIR}/helpers.cmake)
 
-# standard unit test setup
-. ../unittest/unittest.sh
+setup()
 
-require_test_type medium
-require_fs_type any
+execute(file_mt ${ops})
 
-setup
-
-if [ "$REAL_FS" = "pmem" ]; then
-	ops=10000
-else
-	ops=10
-fi
-
-expect_normal_exit ./file_core_mt$EXESUFFIX $DIR/testfile1 $ops
-
-pass
+cleanup()

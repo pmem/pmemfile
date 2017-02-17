@@ -1,6 +1,5 @@
-#!/bin/bash -e
 #
-# Copyright 2016, Intel Corporation
+# Copyright 2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,21 +28,11 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
 
-export UNITTEST_NAME=file_core_mt/TEST4
-export UNITTEST_NUM=4
+include(${SRC_DIR}/helpers.cmake)
 
-# standard unit test setup
-. ../unittest/unittest.sh
+setup()
 
-require_test_type medium
+execute(file_stat)
 
-require_fs_type pmem
-configure_valgrind drd force-enable
-
-setup
-
-expect_normal_exit ./file_core_mt$EXESUFFIX $DIR/testfile1 20
-
-pass
+cleanup()

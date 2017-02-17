@@ -148,6 +148,13 @@ configure_file(
 add_custom_target(uninstall
         COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
 
+if(TEST_DIR)
+        enable_testing()
+else()
+        message(WARNING "TEST_DIR is empty - make test will not work")
+endif()
+
+
 add_subdirectory(src/libpmemfile-core)
 add_subdirectory(src/libpmemfile)
 add_subdirectory(src/tools)

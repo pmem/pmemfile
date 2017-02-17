@@ -1,4 +1,3 @@
-#!/bin/bash -e
 #
 # Copyright 2017, Intel Corporation
 #
@@ -29,21 +28,11 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
 
-export UNITTEST_NAME=file_core_openp/TEST1
-export UNITTEST_NUM=1
+include(${SRC_DIR}/helpers.cmake)
 
-# standard unit test setup
-. ../unittest/unittest.sh
+setup()
 
-require_test_type medium
-require_fs_type any
-require_build_type debug nondebug
-configure_valgrind memcheck force-enable
+execute(file_openp)
 
-setup
-
-expect_normal_exit ./file_core_openp$EXESUFFIX $DIR/testfile1
-
-pass
+cleanup()

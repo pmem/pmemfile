@@ -1,6 +1,5 @@
-#!/bin/bash -e
 #
-# Copyright 2016, Intel Corporation
+# Copyright 2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,21 +28,24 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
 
-export UNITTEST_NAME=file_core_basic/TEST3
-export UNITTEST_NUM=3
+set(TRACE ${TRACE0} ${TRACE1} ${TRACE2} ${TRACE3} ${TRACE4} ${TRACE5} ${TRACE6})
+set(DIR ${PARENT_DIR}/${TEST_NAME})
 
-# standard unit test setup
-. ../unittest/unittest.sh
+function(setup)
+        execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${PARENT_DIR}/${TEST_NAME})
+        execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${PARENT_DIR}/${TEST_NAME})
+endfunction()
 
-require_test_type medium
-require_fs_type any
+function(cleanup)
+        execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${PARENT_DIR}/${TEST_NAME})
+endfunction()
 
-configure_valgrind helgrind force-enable
+function(execute name)
+        execute_process(COMMAND ${TRACE} ./${name} ${DIR}/testfile1 ${ARGV1}
+                        RESULT_VARIABLE HAD_ERROR)
 
-setup
-
-expect_normal_exit ./file_core_basic$EXESUFFIX $DIR/testfile1
-
-pass
+        if(HAD_ERROR)
+                message(FATAL_ERROR "Test ${name} failed: ${HAD_ERROR}")
+        endif()
+endfunction()

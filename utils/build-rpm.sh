@@ -34,5 +34,6 @@
 export LC_ALL=C
 export VER=0.1
 
-git archive --prefix=pmemfile-$VER/ HEAD | gzip > pmemfile-$VER.tar.gz
-rpmbuild -ta pmemfile-$VER.tar.gz
+git archive --prefix=pmemfile-$VER/ HEAD | gzip > ~/rpmbuild/SOURCES/pmemfile-$VER.tar.gz
+rpmbuild -ba pmemfile-debug.spec
+rpmbuild -ba pmemfile.spec

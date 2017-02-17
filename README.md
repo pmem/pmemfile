@@ -43,9 +43,9 @@ Resulting packages will be in ~/rpmbuild/RPMS.
 Note: Before 1.0 pmemfile-core API and ABI is considered unstable.
 We reserve the right to change the on-media layout without warning.
 
-##### Description: #####
+# Description: #
 
-##### Example: #####
+# Example: #
 
 ```sh
 $ mkfs.pmemfile /mnt/pmem/pmemfile_pool 1G

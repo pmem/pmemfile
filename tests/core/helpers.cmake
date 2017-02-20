@@ -57,6 +57,9 @@ function(execute name)
                 message(FATAL_ERROR "Unknown tracer '${TRACER}'")
         endif()
 
+        string(REPLACE ";" " " TRACE_STR "${TRACE}")
+        message(STATUS "Executing: ${TRACE_STR} ./${name} ${DIR}/testfile1 ${ARGV1}")
+
         execute_process(COMMAND ${TRACE} ./${name} ${DIR}/testfile1 ${ARGV1}
                         RESULT_VARIABLE HAD_ERROR)
 

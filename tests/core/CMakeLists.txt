@@ -99,25 +99,25 @@ function(add_long_test_generic name tracer)
 endfunction()
 
 add_test_generic(basic none)
-add_test_generic(basic pmemcheck)
 add_test_generic(basic memcheck)
 add_test_generic(basic helgrind)
+add_test_generic(basic pmemcheck)
 
 add_test_generic(crash none)
 
 add_test_generic(dirs none)
-add_test_generic(dirs pmemcheck)
 add_test_generic(dirs memcheck)
+add_test_generic(dirs pmemcheck)
 
 add_test_generic(getdents none)
-add_test_generic(getdents pmemcheck)
 add_test_generic(getdents memcheck)
+add_test_generic(getdents pmemcheck)
 
 add_test_generic(mt none      -Dops=10000)
-add_test_generic(mt pmemcheck -Dops=50)
 add_test_generic(mt memcheck  -Dops=10)
 add_test_generic(mt helgrind  -Dops=20)
 add_test_generic(mt drd       -Dops=20)
+add_test_generic(mt pmemcheck -Dops=50)
 
 add_test_generic(openp none)
 add_test_generic(openp memcheck)

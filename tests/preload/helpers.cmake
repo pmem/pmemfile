@@ -29,14 +29,4 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-set(DIR ${PARENT_DIR}/${TEST_NAME})
-set(MATCH_SCRIPT ${SRC_DIR}/../match)
-
-function(setup)
-        execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${PARENT_DIR}/${TEST_NAME})
-        execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${PARENT_DIR}/${TEST_NAME})
-endfunction()
-
-function(cleanup)
-        execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${PARENT_DIR}/${TEST_NAME})
-endfunction()
+include(${SRC_DIR}/../helpers.cmake)

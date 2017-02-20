@@ -29,32 +29,14 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-include(${SRC_DIR}/../helpers.cmake)
+set(DIR ${PARENT_DIR}/${TEST_NAME})
+set(MATCH_SCRIPT ${SRC_DIR}/../match)
 
-function(execute name)
-        if(${TRACER} STREQUAL pmemcheck)
-                set(TRACE valgrind --error-exitcode=99 --tool=pmemcheck)
-        elseif(${TRACER} STREQUAL memcheck)
-                set(TRACE valgrind --error-exitcode=99 --tool=memcheck --leak-check=full --suppressions=${SRC_DIR}/../ld.supp)
-        elseif(${TRACER} STREQUAL helgrind)
-                set(TRACE valgrind --error-exitcode=99 --tool=helgrind)
-        elseif(${TRACER} STREQUAL drd)
-                set(TRACE valgrind --error-exitcode=99 --tool=drd)
-        elseif(${TRACER} STREQUAL kgdb)
-                set(TRACE konsole -e cgdb --args)
-        elseif(${TRACER} MATCHES "none.*")
-                # nothing
-        else()
-                message(FATAL_ERROR "Unknown tracer '${TRACER}'")
-        endif()
+function(setup)
+        execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${PARENT_DIR}/${TEST_NAME})
+        execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${PARENT_DIR}/${TEST_NAME})
+endfunction()
 
-        string(REPLACE ";" " " TRACE_STR "${TRACE}")
-        message(STATUS "Executing: ${TRACE_STR} ./${name} ${DIR}/testfile1 ${ARGV1}")
-
-        execute_process(COMMAND ${TRACE} ./${name} ${DIR}/testfile1 ${ARGV1}
-                        RESULT_VARIABLE HAD_ERROR)
-
-        if(HAD_ERROR)
-                message(FATAL_ERROR "Test ${name} failed: ${HAD_ERROR}")
-        endif()
+function(cleanup)
+        execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${PARENT_DIR}/${TEST_NAME})
 endfunction()

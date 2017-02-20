@@ -70,7 +70,7 @@ function(add_test_generic name tracer)
         endif()
 
         add_test(NAME ${name}_${tracer}
-                 COMMAND ${CMAKE_COMMAND} -DTEST_NAME=${name}_${tracer} -DPARENT_DIR=${TEST_DIR}/ -DSRC_DIR=${CMAKE_CURRENT_SOURCE_DIR} -DTRACER=${tracer} ${ARGV2} -P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/test.cmake)
+                 COMMAND ${CMAKE_COMMAND} ${GLOBAL_TEST_ARGS} -DTEST_NAME=${name}_${tracer} -DPARENT_DIR=${TEST_DIR}/ -DSRC_DIR=${CMAKE_CURRENT_SOURCE_DIR} -DBIN_DIR=${CMAKE_CURRENT_BINARY_DIR} -DTRACER=${tracer} ${ARGV2} -P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/test.cmake)
 
         set_tests_properties(${name}_${tracer} PROPERTIES
                 ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/src/libpmemfile-core;PATH=$ENV{PATH};${ARGV3}")

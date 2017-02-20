@@ -167,6 +167,10 @@ if(NOT LONG_TESTS)
         message(STATUS "Long tests are disabled. Define LONG_TESTS variable to enable.")
 endif()
 
+if(TRACE_TESTS)
+        set(GLOBAL_TEST_ARGS --trace-expand)
+endif()
+
 if(TEST_DIR)
         enable_testing()
 else()

@@ -118,6 +118,8 @@ ssize_t pmemfile_copy_file_range(PMEMfilepool *,
 
 /*
  * Other:
+ * 	fallocate
+ * 	futimesat
  *	sendfile
  *	tee
  *	splice

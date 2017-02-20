@@ -29,13 +29,13 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-include(${SRC_DIR}/../helpers.cmake)
+include(${SRC_DIR}/../../helpers.cmake)
 
 function(execute name)
         if(${TRACER} STREQUAL pmemcheck)
                 set(TRACE valgrind --error-exitcode=99 --tool=pmemcheck)
         elseif(${TRACER} STREQUAL memcheck)
-                set(TRACE valgrind --error-exitcode=99 --tool=memcheck --leak-check=full --suppressions=${SRC_DIR}/../ld.supp)
+                set(TRACE valgrind --error-exitcode=99 --tool=memcheck --leak-check=full --suppressions=${SRC_DIR}/../../ld.supp)
         elseif(${TRACER} STREQUAL helgrind)
                 set(TRACE valgrind --error-exitcode=99 --tool=helgrind)
         elseif(${TRACER} STREQUAL drd)

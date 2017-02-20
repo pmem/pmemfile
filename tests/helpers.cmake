@@ -30,7 +30,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 set(DIR ${PARENT_DIR}/${TEST_NAME})
-set(MATCH_SCRIPT ${SRC_DIR}/../match)
+set(MATCH_SCRIPT ${SRC_DIR}/../../match)
 
 function(setup)
         execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${PARENT_DIR}/${TEST_NAME})

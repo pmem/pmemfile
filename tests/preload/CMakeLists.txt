@@ -35,7 +35,7 @@ add_checker_targets("tests-preload" ${CMAKE_CURRENT_SOURCE_DIR}/preload/*.c)
 
 function(add_test_generic name)
         add_test(NAME ${name}
-                 COMMAND ${CMAKE_COMMAND} ${GLOBAL_TEST_ARGS} -DTEST_NAME=${name} -DPARENT_DIR=${TEST_DIR}/ -DSRC_DIR=${CMAKE_CURRENT_SOURCE_DIR} -DBIN_DIR=${CMAKE_CURRENT_BINARY_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/test.cmake)
+                 COMMAND ${CMAKE_COMMAND} ${GLOBAL_TEST_ARGS} -DTEST_NAME=${name} -DPARENT_DIR=${TEST_DIR}/ -DSRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/${name} -DBIN_DIR=${CMAKE_CURRENT_BINARY_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/test.cmake)
 
         set_tests_properties(${name} PROPERTIES
                 ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/src/libpmemfile:${CMAKE_BINARY_DIR}/src/libpmemfile-core;${ARGV2}")

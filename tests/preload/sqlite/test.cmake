@@ -29,7 +29,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-include(${SRC_DIR}/helpers.cmake)
+include(${SRC_DIR}/../helpers.cmake)
 
 setup()
 
@@ -50,7 +50,7 @@ set(ENV{INTERCEPT_LOG} intercept.log)
 set(ENV{PMEMFILE_EXIT_ON_NOT_SUPPORTED} 1)
 
 execute_process(COMMAND sqlite3 ${DIR}/mount_point/sqlitedb
-                INPUT_FILE ${SRC_DIR}/sqlite/ins0.sql
+                INPUT_FILE ${SRC_DIR}/ins0.sql
                 RESULT_VARIABLE sql_ins_res)
 if (sql_ins_res)
         if (sql_ins_res EQUAL 95)
@@ -61,7 +61,7 @@ if (sql_ins_res)
 endif()
 
 execute_process(COMMAND sqlite3 ${DIR}/mount_point/sqlitedb
-                INPUT_FILE ${SRC_DIR}/sqlite/sel0.sql
+                INPUT_FILE ${SRC_DIR}/sel0.sql
                 OUTPUT_FILE ${BIN_DIR}/sqlite-out0.log
                 RESULT_VARIABLE sql_sel_res)
 if (sql_sel_res)
@@ -73,7 +73,7 @@ if (sql_sel_res)
 endif()
 
 execute_process(COMMAND
-                ${MATCH_SCRIPT} -o ${BIN_DIR}/sqlite-out0.log ${SRC_DIR}/sqlite/out0.log.match
+                ${MATCH_SCRIPT} -o ${BIN_DIR}/sqlite-out0.log ${SRC_DIR}/out0.log.match
                 RESULT_VARIABLE MATCH_ERROR)
 
 if(MATCH_ERROR)

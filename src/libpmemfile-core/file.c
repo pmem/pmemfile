@@ -478,6 +478,12 @@ pmemfile_open(PMEMfilepool *pfp, const char *pathname, int flags, ...)
 	return pmemfile_openat(pfp, PMEMFILE_AT_CWD, pathname, flags, mode);
 }
 
+PMEMfile *
+pmemfile_create(PMEMfilepool *pfp, const char *pathname, mode_t mode)
+{
+	return pmemfile_open(pfp, pathname, O_CREAT | O_WRONLY | O_TRUNC, mode);
+}
+
 /*
  * pmemfile_open_parent -- open a parent directory and return filename
  *

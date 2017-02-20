@@ -41,6 +41,7 @@
 		pmemfile_chown;
 		pmemfile_close;
 		pmemfile_copy_file_range;
+		pmemfile_create;
 		pmemfile_dup;
 		pmemfile_dup2;
 		pmemfile_errormsg;

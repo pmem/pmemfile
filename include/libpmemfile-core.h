@@ -64,6 +64,7 @@ PMEMfile *pmemfile_open(PMEMfilepool *pfp, const char *pathname, int flags,
 		...);
 PMEMfile *pmemfile_openat(PMEMfilepool *pfp, PMEMfile *dir,
 		const char *pathname, int flags, ...);
+PMEMfile *pmemfile_create(PMEMfilepool *pfp, const char *pathname, mode_t mode);
 /* XXX Should we get rid of PMEMfilepool pointer? */
 void pmemfile_close(PMEMfilepool *pfp, PMEMfile *file);
 

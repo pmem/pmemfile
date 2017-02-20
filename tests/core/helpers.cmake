@@ -29,7 +29,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-set(TRACE ${TRACE0} ${TRACE1} ${TRACE2} ${TRACE3} ${TRACE4} ${TRACE5} ${TRACE6})
 set(DIR ${PARENT_DIR}/${TEST_NAME})
 
 function(setup)
@@ -42,6 +41,23 @@ function(cleanup)
 endfunction()
 
 function(execute name)
+        if(${TRACER} STREQUAL pmemcheck)
+                set(TRACE valgrind --error-exitcode=99 --tool=pmemcheck)
+        elseif(${TRACER} STREQUAL memcheck)
+                set(TRACE valgrind --error-exitcode=99 --tool=memcheck --leak-check=full --suppressions=${SRC_DIR}/../ld.supp)
+        elseif(${TRACER} STREQUAL helgrind)
+                set(TRACE valgrind --error-exitcode=99 --tool=helgrind)
+        elseif(${TRACER} STREQUAL drd)
+                set(TRACE valgrind --error-exitcode=99 --tool=drd)
+        elseif(${TRACER} STREQUAL kgdb)
+                set(TRACE konsole -e cgdb --args)
+        elseif(${TRACER} STREQUAL none)
+        elseif(${TRACER} STREQUAL none2)
+        elseif(${TRACER} STREQUAL none3)
+        else()
+                message(FATAL_ERROR "Unknown tracer '${TRACER}'")
+        endif()
+
         execute_process(COMMAND ${TRACE} ./${name} ${DIR}/testfile1 ${ARGV1}
                         RESULT_VARIABLE HAD_ERROR)
 

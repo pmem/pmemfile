@@ -54,6 +54,7 @@ add_checker_targets("tests-core")
 
 function(add_test_generic name tracer)
         set(vg_tracers memcheck helgrind drd pmemcheck)
+
         if ((NOT VALGRIND_FOUND) AND ${tracer} IN_LIST vg_tracers)
                 add_test(NAME ${name}_${tracer}_SKIPPED_BECAUSE_OF_MISSING_VALGRIND
                          COMMAND true)
@@ -66,24 +67,10 @@ function(add_test_generic name tracer)
                                  COMMAND true)
                         return()
                 endif()
-                set(ARGS -DTRACE0=valgrind -DTRACE1=--error-exitcode=99 -DTRACE2=--tool=pmemcheck)
-        elseif(${tracer} STREQUAL memcheck)
-                set(ARGS -DTRACE0=valgrind -DTRACE1=--error-exitcode=99 -DTRACE2=--tool=memcheck -DTRACE3=--leak-check=full -DTRACE4=--suppressions=${CMAKE_SOURCE_DIR}/tests/ld.supp)
-        elseif(${tracer} STREQUAL helgrind)
-                set(ARGS -DTRACE0=valgrind -DTRACE1=--error-exitcode=99 -DTRACE2=--tool=helgrind)
-        elseif(${tracer} STREQUAL drd)
-                set(ARGS -DTRACE0=valgrind -DTRACE1=--error-exitcode=99 -DTRACE2=--tool=drd)
-        elseif(${tracer} STREQUAL kgdb)
-                set(ARGS -DTRACE0=konsole -DTRACE1=-e -DTRACE2=cgdb -DTRACE3=--args)
-        elseif(${tracer} STREQUAL none)
-        elseif(${tracer} STREQUAL none2)
-        elseif(${tracer} STREQUAL none3)
-        else()
-                message(FATAL_ERROR "Unknown tracer '${tracer}'")
         endif()
 
         add_test(NAME ${name}_${tracer}
-                 COMMAND ${CMAKE_COMMAND} -DTEST_NAME=${name}_${tracer} -DPARENT_DIR=${TEST_DIR}/ -DSRC_DIR=${CMAKE_CURRENT_SOURCE_DIR} ${ARGS} ${ARGV2} -P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/test.cmake)
+                 COMMAND ${CMAKE_COMMAND} -DTEST_NAME=${name}_${tracer} -DPARENT_DIR=${TEST_DIR}/ -DSRC_DIR=${CMAKE_CURRENT_SOURCE_DIR} -DTRACER=${tracer} ${ARGV2} -P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/test.cmake)
 
         set_tests_properties(${name}_${tracer} PROPERTIES
                 ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/src/libpmemfile-core;PATH=$ENV{PATH};${ARGV3}")

@@ -43,35 +43,35 @@ dump_linux_dirents(void *dirp, unsigned length)
 	char *buf = (void *)dirp;
 	for (unsigned i = 0; i < length; ) {
 		long ino = *(long *)&buf[i];
-		UT_OUT("d_ino.txt: 0x%016lx", ino);
-		UT_OUT("d_ino.bin: ");
+		UT_OUT("d_ino.txt: 0x%016lx\n", ino);
+		UT_OUT("d_ino.bin:");
 		for (unsigned j = 0; j < 8; ++j, ++i)
-			UT_OUT("0x%02hhx ", buf[i]);
+			UT_OUT(" 0x%02hhx", buf[i]);
 		UT_OUT("\n");
 
 		long off = *(long *)&buf[i];
-		UT_OUT("d_off.txt: 0x%016lx", off);
-		UT_OUT("d_off.bin: ");
+		UT_OUT("d_off.txt: 0x%016lx\n", off);
+		UT_OUT("d_off.bin:");
 		for (unsigned j = 0; j < 8; ++j, ++i)
-			UT_OUT("0x%02hhx ", buf[i]);
+			UT_OUT(" 0x%02hhx", buf[i]);
 		UT_OUT("\n");
 
 		short int reclen = *(short *)&buf[i];
-		UT_OUT("d_reclen.txt: %hd", reclen);
-		UT_OUT("d_reclen.bin: ");
+		UT_OUT("d_reclen.txt: %hd\n", reclen);
+		UT_OUT("d_reclen.bin:");
 		for (unsigned j = 0; j < 2; ++j, ++i)
-			UT_OUT("0x%02hhx ", buf[i]);
+			UT_OUT(" 0x%02hhx", buf[i]);
 		UT_OUT("\n");
 
-		UT_OUT("d_name.txt: \"%s\"", buf + i);
-		UT_OUT("d_name.bin: ");
+		UT_OUT("d_name.txt: \"%s\"\n", buf + i);
+		UT_OUT("d_name.bin:");
 		for (int j = 0; j < reclen - 8 - 8 - 2; ++j, ++i)
-			UT_OUT("0x%02hhx (%c) ",
+			UT_OUT(" 0x%02hhx (%c)",
 					buf[i], isprint(buf[i]) ? buf[i] : '?');
 		UT_OUT("\n");
-		UT_OUT("-");
+		UT_OUT("-\n");
 	}
-	UT_OUT("---");
+	UT_OUT("---\n");
 }
 
 static void
@@ -80,43 +80,43 @@ dump_linux_dirents64(void *dirp, unsigned length)
 	char *buf = (void *)dirp;
 	for (size_t i = 0; i < length; ) {
 		long ino = *(long *)&buf[i];
-		UT_OUT("d_ino.txt: 0x%016lx", ino);
-		UT_OUT("d_ino.bin: ");
+		UT_OUT("d_ino.txt: 0x%016lx\n", ino);
+		UT_OUT("d_ino.bin:");
 		for (int j = 0; j < 8; ++j, ++i)
-			UT_OUT("0x%02hhx ", buf[i]);
+			UT_OUT(" 0x%02hhx", buf[i]);
 		UT_OUT("\n");
 
 		long off = *(long *)&buf[i];
-		UT_OUT("d_off.txt: 0x%016lx", off);
-		UT_OUT("d_off.bin: ");
+		UT_OUT("d_off.txt: 0x%016lx\n", off);
+		UT_OUT("d_off.bin:");
 		for (int j = 0; j < 8; ++j, ++i)
-			UT_OUT("0x%02hhx ", buf[i]);
+			UT_OUT(" 0x%02hhx", buf[i]);
 		UT_OUT("\n");
 
 		short int reclen = *(short *)&buf[i];
-		UT_OUT("d_reclen.txt: %hd", reclen);
-		UT_OUT("d_reclen.bin: ");
+		UT_OUT("d_reclen.txt: %hd\n", reclen);
+		UT_OUT("d_reclen.bin:");
 		for (int j = 0; j < 2; ++j, ++i)
-			UT_OUT("0x%02hhx ", buf[i]);
+			UT_OUT(" 0x%02hhx", buf[i]);
 		UT_OUT("\n");
 
 		char type = *(char *)&buf[i];
-		UT_OUT("d_type.txt: %hhd", type);
-		UT_OUT("d_type.bin: ");
+		UT_OUT("d_type.txt: %hhd\n", type);
+		UT_OUT("d_type.bin:");
 		for (int j = 0; j < 1; ++j, ++i)
-			UT_OUT("0x%02hhx ", buf[i]);
+			UT_OUT(" 0x%02hhx", buf[i]);
 		UT_OUT("\n");
 
-		UT_OUT("d_name.txt: \"%s\"", buf + i);
-		UT_OUT("d_name.bin: ");
+		UT_OUT("d_name.txt: \"%s\"\n", buf + i);
+		UT_OUT("d_name.bin:");
 		for (int j = 0; j < reclen - 8 - 8 - 2 - 1; ++j, ++i)
-			UT_OUT("0x%02hhx (%c) ",
+			UT_OUT(" 0x%02hhx (%c)",
 					buf[i], isprint(buf[i]) ? buf[i] : '?');
 		UT_OUT("\n");
-		UT_OUT("-");
+		UT_OUT("-\n");
 	}
 
-	UT_OUT("---");
+	UT_OUT("---\n");
 }
 
 static void

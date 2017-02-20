@@ -1,5 +1,3 @@
-file_core_stat/TEST0: START: file_core_stat
- ./file_core_stat $(nW)testfile1
 path:       /
 st_dev:     0x$(X)
 st_ino:     $(N)
@@ -90,4 +88,3 @@ st_atim:    $(*)
 st_mtim:    $(*)
 st_ctim:    $(*)
 ---
-file_core_stat/TEST0: Done

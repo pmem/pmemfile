@@ -47,24 +47,24 @@ timespec_to_str(const struct timespec *t)
 static void
 dump_stat(struct stat *st, const char *path)
 {
-	UT_OUT("path:       %s", path);
-	UT_OUT("st_dev:     0x%lx", st->st_dev);
-	UT_OUT("st_ino:     %ld", st->st_ino);
-	UT_OUT("st_mode:    0%o", st->st_mode);
-	UT_OUT("st_nlink:   %lu", st->st_nlink);
-	UT_OUT("st_uid:     %u", st->st_uid);
-	UT_OUT("st_gid:     %u", st->st_gid);
-	UT_OUT("st_rdev:    0x%lx", st->st_rdev);
-	UT_OUT("st_size:    %ld", st->st_size);
-	UT_OUT("st_blksize: %ld", st->st_blksize);
-	UT_OUT("st_blocks:  %ld", st->st_blocks);
-	UT_OUT("st_atim:    %ld.%.9ld, %s", st->st_atim.tv_sec,
+	UT_OUT("path:       %s\n", path);
+	UT_OUT("st_dev:     0x%lx\n", st->st_dev);
+	UT_OUT("st_ino:     %ld\n", st->st_ino);
+	UT_OUT("st_mode:    0%o\n", st->st_mode);
+	UT_OUT("st_nlink:   %lu\n", st->st_nlink);
+	UT_OUT("st_uid:     %u\n", st->st_uid);
+	UT_OUT("st_gid:     %u\n", st->st_gid);
+	UT_OUT("st_rdev:    0x%lx\n", st->st_rdev);
+	UT_OUT("st_size:    %ld\n", st->st_size);
+	UT_OUT("st_blksize: %ld\n", st->st_blksize);
+	UT_OUT("st_blocks:  %ld\n", st->st_blocks);
+	UT_OUT("st_atim:    %ld.%.9ld, %s\n", st->st_atim.tv_sec,
 			st->st_atim.tv_nsec, timespec_to_str(&st->st_atim));
-	UT_OUT("st_mtim:    %ld.%.9ld, %s", st->st_mtim.tv_sec,
+	UT_OUT("st_mtim:    %ld.%.9ld, %s\n", st->st_mtim.tv_sec,
 			st->st_mtim.tv_nsec, timespec_to_str(&st->st_mtim));
-	UT_OUT("st_ctim:    %ld.%.9ld, %s", st->st_ctim.tv_sec,
+	UT_OUT("st_ctim:    %ld.%.9ld, %s\n", st->st_ctim.tv_sec,
 			st->st_ctim.tv_nsec, timespec_to_str(&st->st_ctim));
-	UT_OUT("---");
+	UT_OUT("---\n");
 }
 
 static int

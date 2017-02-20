@@ -48,7 +48,7 @@
 #define UT_ASSERTinfo(cnd, info)	do { if (!(cnd)) abort(); } while (0)
 #define UT_ASSERTeq(lhs, rhs)	do { if ((lhs) != (rhs)) abort(); } while (0)
 #define UT_ASSERTne(lhs, rhs)	do { if ((lhs) == (rhs)) abort(); } while (0)
-#define UT_OUT(...) fprintf(stderr, __VA_ARGS__)
+#define UT_OUT(...) fprintf(stdout, __VA_ARGS__)
 
 #ifdef __cplusplus
 extern "C" {

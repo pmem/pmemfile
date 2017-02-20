@@ -52,9 +52,20 @@ function(execute name)
         message(STATUS "Executing: ${TRACE_STR} ./${name} ${DIR}/testfile1 ${ARGV1}")
 
         execute_process(COMMAND ${TRACE} ./${name} ${DIR}/testfile1 ${ARGV1}
-                        RESULT_VARIABLE HAD_ERROR)
+                        RESULT_VARIABLE HAD_ERROR
+                        OUTPUT_FILE ${BIN_DIR}/${TRACER}.out)
 
         if(HAD_ERROR)
                 message(FATAL_ERROR "Test ${name} failed: ${HAD_ERROR}")
+        endif()
+
+        if(EXISTS ${SRC_DIR}/${TRACER}.out.match)
+                execute_process(COMMAND
+                ${MATCH_SCRIPT} -o ${BIN_DIR}/${TRACER}.out ${SRC_DIR}/${TRACER}.out.match
+                RESULT_VARIABLE MATCH_ERROR)
+
+                if(MATCH_ERROR)
+                        message(FATAL_ERROR "Log does not match: ${MATCH_ERROR}")
+                endif()
         endif()
 endfunction()

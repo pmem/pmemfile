@@ -33,7 +33,7 @@ include(${SRC_DIR}/../helpers.cmake)
 
 setup()
 
-execute_process(COMMAND ${BIN_DIR}/../../src/tools/mkfs.pmemfile ${DIR}/fs 100m
+execute_process(COMMAND ${BIN_DIR}/../../../src/tools/mkfs.pmemfile ${DIR}/fs 100m
                 RESULT_VARIABLE HAD_ERROR)
 
 if(HAD_ERROR)
@@ -62,7 +62,7 @@ endif()
 
 execute_process(COMMAND sqlite3 ${DIR}/mount_point/sqlitedb
                 INPUT_FILE ${SRC_DIR}/sel0.sql
-                OUTPUT_FILE ${BIN_DIR}/sqlite-out0.log
+                OUTPUT_FILE ${BIN_DIR}/out0.log
                 RESULT_VARIABLE sql_sel_res)
 if (sql_sel_res)
         if (sql_sel_res EQUAL 95)
@@ -73,7 +73,7 @@ if (sql_sel_res)
 endif()
 
 execute_process(COMMAND
-                ${MATCH_SCRIPT} -o ${BIN_DIR}/sqlite-out0.log ${SRC_DIR}/out0.log.match
+                ${MATCH_SCRIPT} -o ${BIN_DIR}/out0.log ${SRC_DIR}/out0.log.match
                 RESULT_VARIABLE MATCH_ERROR)
 
 if(MATCH_ERROR)

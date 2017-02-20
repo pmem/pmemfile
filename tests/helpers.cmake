@@ -35,6 +35,8 @@ set(MATCH_SCRIPT ${SRC_DIR}/../../match)
 function(setup)
         execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${PARENT_DIR}/${TEST_NAME})
         execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${PARENT_DIR}/${TEST_NAME})
+        execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${BIN_DIR})
+        execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${BIN_DIR})
 endfunction()
 
 function(cleanup)

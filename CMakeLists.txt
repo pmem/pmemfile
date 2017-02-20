@@ -148,12 +148,30 @@ configure_file(
 add_custom_target(uninstall
         COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
 
+pkg_check_modules(VALGRIND QUIET valgrind)
+
+if(VALGRIND_FOUND)
+        set(ENV{PATH} ${VALGRIND_PREFIX}/bin:$ENV{PATH})
+        execute_process(COMMAND valgrind --tool=pmemcheck --help
+                        RESULT_VARIABLE VALGRIND_PMEMCHECK_NOT_FOUND
+                        OUTPUT_QUIET
+                        ERROR_QUIET)
+        if(VALGRIND_PMEMCHECK_NOT_FOUND)
+                message(WARNING "Valgrind pmemcheck NOT found. Pmemcheck tests will not be performed.")
+        endif()
+else()
+        message(WARNING "Valgrind not found. Valgrind tests will not be performed.")
+endif()
+
+if(NOT LONG_TESTS)
+        message(STATUS "Long tests are disabled. Define LONG_TESTS variable to enable.")
+endif()
+
 if(TEST_DIR)
         enable_testing()
 else()
-        message(WARNING "TEST_DIR is empty - make test will not work")
+        message(WARNING "TEST_DIR is empty - 'make test' will not work")
 endif()
-
 
 add_subdirectory(src/libpmemfile-core)
 add_subdirectory(src/libpmemfile)

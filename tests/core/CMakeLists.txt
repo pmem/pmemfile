@@ -53,7 +53,19 @@ build_test(file_symlinks symlinks/symlinks.c)
 add_checker_targets("tests-core")
 
 function(add_test_generic name tracer)
+        set(vg_tracers memcheck helgrind drd pmemcheck)
+        if ((NOT VALGRIND_FOUND) AND ${tracer} IN_LIST vg_tracers)
+                add_test(NAME ${name}_${tracer}_SKIPPED_BECAUSE_OF_MISSING_VALGRIND
+                         COMMAND true)
+                return()
+        endif()
+
         if(${tracer} STREQUAL pmemcheck)
+                if (VALGRIND_PMEMCHECK_NOT_FOUND)
+                        add_test(NAME ${name}_${tracer}_SKIPPED_BECAUSE_OF_MISSING_PMEMCHECK
+                                 COMMAND true)
+                        return()
+                endif()
                 set(ARGS -DTRACE0=valgrind -DTRACE1=--tool=pmemcheck)
         elseif(${tracer} STREQUAL memcheck)
                 set(ARGS -DTRACE0=valgrind -DTRACE1=--tool=memcheck)
@@ -74,7 +86,16 @@ function(add_test_generic name tracer)
                  COMMAND ${CMAKE_COMMAND} -DTEST_NAME=${name}_${tracer} -DPARENT_DIR=${TEST_DIR}/ -DSRC_DIR=${CMAKE_CURRENT_SOURCE_DIR} ${ARGS} ${ARGV2} -P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/test.cmake)
 
         set_tests_properties(${name}_${tracer} PROPERTIES
-                ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/src/libpmemfile-core;${ARGV3}")
+                ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/src/libpmemfile-core;PATH=$ENV{PATH};${ARGV3}")
+endfunction()
+
+function(add_long_test_generic name tracer)
+        if (LONG_TESTS)
+                add_test_generic(${name} ${tracer} ${ARGN})
+        else()
+                add_test(NAME ${name}_${tracer}_SKIPPED_BECAUSE_LONG_TEST_ARE_DISABLED
+                         COMMAND true)
+        endif()
 endfunction()
 
 add_test_generic(basic none)
@@ -104,7 +125,7 @@ add_test_generic(openp memcheck)
 add_test_generic(rw none)
 add_test_generic(rw none2 '' PMEMFILECORE_BLOCK_SIZE=4096)
 add_test_generic(rw memcheck)
-add_test_generic(rw pmemcheck)
+add_long_test_generic(rw pmemcheck)
 
 add_test_generic(stat none)
 add_test_generic(stat memcheck)

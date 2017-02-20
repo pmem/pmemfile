@@ -52,7 +52,6 @@
 		pmemfile_fchown;
 		pmemfile_fchownat;
 		pmemfile_fcntl;
-		pmemfile_fdatasync;
 		pmemfile_flock;
 		pmemfile_fstat;
 		pmemfile_fstatat;
@@ -94,7 +93,6 @@
 		pmemfile_stat;
 		pmemfile_symlink;
 		pmemfile_symlinkat;
-		pmemfile_sync;
 		pmemfile_truncate;
 		pmemfile_umask;
 		pmemfile_unlink;

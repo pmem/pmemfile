@@ -102,24 +102,6 @@ pmemfile_faccessat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 }
 
 int
-pmemfile_sync(PMEMfilepool *pfp)
-{
-	check_pfp(pfp);
-
-	errno = ENOTSUP;
-	return -1;
-}
-
-int
-pmemfile_fdatasync(PMEMfilepool *pfp, PMEMfile *file)
-{
-	check_pfp_file(pfp, file);
-
-	errno = ENOTSUP;
-	return -1;
-}
-
-int
 pmemfile_flock(PMEMfilepool *pfp, PMEMfile *file, int operation)
 {
 	check_pfp_file(pfp, file);

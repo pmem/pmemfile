@@ -1,6 +1,5 @@
-#!/bin/bash -e
 #
-# Copyright 2016-2017, Intel Corporation
+# Copyright 2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,48 +28,15 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
 
-export UNITTEST_NAME=file_sqlite/TEST0
-export UNITTEST_NUM=0
+set(DIR ${PARENT_DIR}/${TEST_NAME})
+set(MATCH_SCRIPT ${SRC_DIR}/../match)
 
-# standard unit test setup
-. ../unittest/unittest.sh
+function(setup)
+        execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${PARENT_DIR}/${TEST_NAME})
+        execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${PARENT_DIR}/${TEST_NAME})
+endfunction()
 
-require_test_type short
-require_build_type debug nondebug
-require_fs_type any
-
-# XXX uncomment after rebase to master
-#require_command sqlite3
-
-setup
-
-expect_normal_exit ../../tools/mkfs.pmemfile/mkfs.pmemfile $DIR/fs 100m
-
-mkdir -p $DIR/mount_point
-
-export TEST_LD_PRELOAD=libpmemfile.so
-export PMEMFILE_POOLS=$DIR/mount_point:$DIR/fs
-export PMEMFILE_PRELOAD_LOG=pmemfile_preload.log
-export LIBC_HOOK_CMDLINE_FILTER=sqlite3
-export INTERCEPT_LOG=intercept.log
-export LIST_DIR_ON_ERROR=1
-export DUMP_FILES_ON_ERROR="${INTERCEPT_LOG} ${PMEMFILE_PRELOAD_LOG}"
-export PMEMFILE_EXIT_ON_NOT_SUPPORTED=1
-
-expect_normal_exit sqlite3 $DIR/mount_point/sqlitedb < ins0.sql
-if [ "${EXIT_BECAUSE_OF_UNSUPPORTED_FEATURE}" = "1" ]; then
-	pass
-	exit 0
-fi
-
-expect_normal_exit sqlite3 $DIR/mount_point/sqlitedb < sel0.sql > out0.log
-if [ "${EXIT_BECAUSE_OF_UNSUPPORTED_FEATURE}" = "1" ]; then
-	pass
-	exit 0
-fi
-
-check
-
-pass
+function(cleanup)
+        execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${PARENT_DIR}/${TEST_NAME})
+endfunction()

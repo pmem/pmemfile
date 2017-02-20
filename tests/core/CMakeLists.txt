@@ -110,7 +110,7 @@ add_test_generic(openp none)
 add_test_generic(openp memcheck)
 
 add_test_generic(rw none)
-add_test_generic(rw none2 '' PMEMFILECORE_BLOCK_SIZE=4096)
+add_test_generic(rw none_blk4096 '' PMEMFILECORE_BLOCK_SIZE=4096)
 add_test_generic(rw memcheck)
 add_long_test_generic(rw pmemcheck)
 

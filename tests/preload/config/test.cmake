@@ -1,6 +1,5 @@
-#!/bin/bash -e
 #
-# Copyright 2016, Intel Corporation
+# Copyright 2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,29 +28,22 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
 
-export UNITTEST_NAME=file_preload/TEST1
-export UNITTEST_NUM=1
+include(${SRC_DIR}/../helpers.cmake)
 
-# standard unit test setup
-. ../unittest/unittest.sh
+setup()
 
-require_test_type short
-require_build_type debug nondebug
+mkfs(${DIR}/fs 16m)
 
-setup
+execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${DIR}/mount_point)
+execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${DIR}/some_dir)
+execute_process(COMMAND ln -s ../mount_point ${DIR}/some_dir/some_link)
 
-expect_normal_exit ../../tools/mkfs.pmemfile/mkfs.pmemfile $DIR/dummy_fs 16m
+set(ENV{LD_PRELOAD} libpmemfile.so)
+set(ENV{PMEMFILE_POOLS} ${DIR}/mount_point:${DIR}/fs)
+set(ENV{PMEMFILE_PRELOAD_LOG} ${BIN_DIR}/pmemfile_preload.log)
+set(ENV{INTERCEPT_LOG} ${BIN_DIR}/intercept.log)
 
-mkdir -p $DIR/dummy_mount_point
+execute_expect_failure(preload_config ${DIR}/some_dir/some_link/a)
 
-export TEST_LD_PRELOAD=libpmemfile_preload.so
-export PMEMFILE_POOLS=$DIR/dummy_mount_point:$DIR/dummy_fs
-
-expect_normal_exit cp TEST1 $DIR/dummy_mount_point/file_a
-expect_normal_exit cp $DIR/dummy_mount_point/file_a file_a_expected
-
-cmp file_a_expected TEST1
-
-pass
+cleanup()

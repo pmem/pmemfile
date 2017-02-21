@@ -1,6 +1,5 @@
-#!/bin/bash -e
 #
-# Copyright 2016-2017, Intel Corporation
+# Copyright 2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,51 +28,34 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
 
-export UNITTEST_NAME=file_preload/TEST3
-export UNITTEST_NUM=3
+include(${SRC_DIR}/../helpers.cmake)
 
-# standard unit test setup
-. ../unittest/unittest.sh
+setup()
 
-require_test_type medium
-require_build_type debug nondebug
-require_fs_type any
+mkfs(${DIR}/fs 16m)
 
-setup
+execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${DIR}/mount_point)
+execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${DIR}/some_dir)
+execute_process(COMMAND ln -s ../mount_point ${DIR}/some_dir/some_link)
 
-expect_normal_exit ../../tools/mkfs.pmemfile/mkfs.pmemfile $DIR/dummy_fs 16m
+set(ENV{LD_PRELOAD} libpmemfile.so)
+set(ENV{PMEMFILE_POOLS} ${DIR}/mount_point:${DIR}/fs)
+set(ENV{PMEMFILE_PRELOAD_LOG} ${BIN_DIR}/pmemfile_preload.log)
+set(ENV{INTERCEPT_LOG} ${BIN_DIR}/intercept.log)
+set(ENV{PMEMFILE_EXIT_ON_NOT_SUPPORTED} 1)
 
-mkdir -p $DIR/dummy_mount_point
+execute_process(COMMAND ./preload_basic ${DIR}/some_dir/some_link/a ${DIR} mount_point/b mount_point b
+                OUTPUT_FILE ${DIR}/root_dir.log
+                RESULT_VARIABLE res)
+if(res)
+        message(FATAL_ERROR "Test1 command failed: ${res}")
+endif()
 
-export TEST_LD_PRELOAD=libpmemfile.so
-export PMEMFILE_POOLS=$DIR/dummy_mount_point:$DIR/dummy_fs
+pf_cat(${DIR}/fs /a ${DIR}/a.dump)
 
-export PMEMFILE_PRELOAD_LOG=pmemfile_preload.log
-export INTERCEPT_LOG=intercept.log
+cmp(${DIR}/a.dump ${SRC_DIR}/a.expected_dump)
 
-cp repo_dummy_file_a $DIR/dummy_file_a
-chmod 644 $DIR/dummy_file_a
-cp repo_dummy_file_b $DIR/dummy_file_b
-chmod 644 $DIR/dummy_file_b
+cmp(${DIR}/root_dir.log ${SRC_DIR}/root_dir.expected_log)
 
-expect_normal_exit cp $DIR/dummy_file_a $DIR/dummy_mount_point/.file_a
-expect_normal_exit cp $DIR/dummy_file_b $DIR/dummy_mount_point/.#file_b
-expect_normal_exit cp $DIR/dummy_mount_point/.file_a $DIR/file_a.log
-expect_normal_exit cp $DIR/dummy_mount_point/.#file_b $DIR/file_b.log
-
-cmp $DIR/file_a.log $DIR/dummy_file_a
-cmp $DIR/file_b.log $DIR/dummy_file_b
-
-LD_LIBRARY_PATH=../../debug ../tools/pmemfile-cat/pmemfile-cat $DIR/dummy_fs /.file_a > $DIR/a.dump
-LD_LIBRARY_PATH=../../debug ../tools/pmemfile-cat/pmemfile-cat $DIR/dummy_fs /.#file_b > $DIR/b.dump
-
-cmp $DIR/a.dump $DIR/dummy_file_a
-cmp $DIR/b.dump $DIR/dummy_file_b
-
-expect_normal_exit cat $DIR/dummy_mount_point/.file_a > $DIR/file_a_cat.log
-
-cmp $DIR/file_a_cat.log $DIR/dummy_file_a
-
-pass
+cleanup()

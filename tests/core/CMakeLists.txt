@@ -35,6 +35,7 @@ include_directories(.)
 add_library(pmemfile_test STATIC pmemfile_test.c)
 
 function(build_test name srcs)
+        add_checker_targets("tests-core-${name}" ${CMAKE_CURRENT_SOURCE_DIR}/${srcs})
         add_executable(${name} ${srcs})
         target_link_libraries(${name} -L${CMAKE_BINARY_DIR}/src/libpmemfile-core pmemfile-core pmemfile_test)
         add_dependencies(${name} pmemfile-core_shared)
@@ -49,8 +50,6 @@ build_test(file_openp openp/openp.c)
 build_test(file_rw rw/rw.c)
 build_test(file_stat stat/stat.c)
 build_test(file_symlinks symlinks/symlinks.c)
-
-add_checker_targets("tests-core")
 
 function(add_test_generic name tracer)
         set(vg_tracers memcheck helgrind drd pmemcheck)

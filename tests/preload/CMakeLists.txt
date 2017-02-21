@@ -29,15 +29,17 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-add_executable(preload_dummy_prog preload/dummy_prog.c)
+add_executable(preload_basic basic/basic.c)
+add_executable(preload_config config/config.c)
 
-add_checker_targets("tests-preload" ${CMAKE_CURRENT_SOURCE_DIR}/preload/*.c)
+add_checker_targets("tests-preload-basic" ${CMAKE_CURRENT_SOURCE_DIR}/basic/basic.c)
+add_checker_targets("tests-preload-config" ${CMAKE_CURRENT_SOURCE_DIR}/config/config.c)
 
 function(add_test_generic name)
-        add_test(NAME ${name}
+        add_test(NAME preload_${name}
                  COMMAND ${CMAKE_COMMAND} ${GLOBAL_TEST_ARGS} -DTEST_NAME=${name} -DPARENT_DIR=${TEST_DIR}/ -DSRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/${name} -DBIN_DIR=${CMAKE_CURRENT_BINARY_DIR}/${name} -P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/test.cmake)
 
-        set_tests_properties(${name} PROPERTIES
+        set_tests_properties(preload_${name} PROPERTIES
                 ENVIRONMENT "LC_ALL=C;LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/src/libpmemfile:${CMAKE_BINARY_DIR}/src/libpmemfile-core;${ARGV2}")
 endfunction()
 
@@ -47,3 +49,8 @@ if (SQLITE3)
 else()
         add_test(NAME sqlite_SKIPPED_BECAUSE_OF_MISSING_SQLITE3 COMMAND true)
 endif()
+
+add_test_generic(basic)
+add_test_generic(basic_commands)
+add_test_generic(nested_dirs)
+add_test_generic(config)

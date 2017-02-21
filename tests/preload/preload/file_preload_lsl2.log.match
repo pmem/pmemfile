@@ -1,4 +1,0 @@
-total $(N)
-drwxrwxrwx 3 $(S) $(N) a
--rw-r--r-- 1 $(S) 391 file_a
-drwxrwxrwx 2 $(S) $(N) test_subdir

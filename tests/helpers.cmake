@@ -60,3 +60,76 @@ function(match log_file match_file)
                 message(FATAL_ERROR "Log does not match: ${MATCH_ERROR}")
         endif()
 endfunction()
+
+function(pf_cat pool file out)
+        execute_process(COMMAND ${BIN_DIR}/../../../src/tools/pmemfile-cat ${pool} ${file}
+                OUTPUT_FILE ${out}
+                RESULT_VARIABLE res)
+        if(res)
+                message(FATAL_ERROR "pmemfile-cat(${pool}, ${file}) failed: ${res}")
+        endif()
+endfunction()
+
+function(execute cmd)
+        execute_process(COMMAND ${cmd} ${ARGN}
+                        RESULT_VARIABLE res)
+        if(res)
+                message(FATAL_ERROR "${cmd} ${ARGN} failed: ${res}")
+        endif()
+endfunction()
+
+function(execute_with_output out cmd)
+        execute_process(COMMAND ${cmd} ${ARGN}
+                        OUTPUT_FILE ${out}
+                        RESULT_VARIABLE res)
+        if(res)
+                message(FATAL_ERROR "${cmd} ${ARGN} > ${out} failed: ${res}")
+        endif()
+endfunction()
+
+function(execute_expect_failure cmd)
+        execute_process(COMMAND ${cmd} ${ARGN}
+                        RESULT_VARIABLE res)
+        if(NOT res)
+                message(FATAL_ERROR "${cmd} ${ARGN} unexpectedly succeeded")
+        endif()
+endfunction()
+
+function(cmp file1 file2)
+        execute(cmp ${file1} ${file2})
+endfunction()
+
+function(cat in out)
+        execute_with_output(${out} cat ${in})
+endfunction()
+
+function(list_files out dir)
+        execute_process(COMMAND ls -a -l -G -g --time-style=+ ${dir}
+                        COMMAND sed "s/\\s\\+/ /g"
+                        OUTPUT_FILE ${BIN_DIR}/${out}
+                        RESULT_VARIABLE res)
+        if(res)
+                message(FATAL_ERROR "ls ${dir} > ${out} failed: ${res}")
+        endif()
+        if(EXISTS ${SRC_DIR}/${out}.match)
+                execute_process(COMMAND
+                ${MATCH_SCRIPT} -o ${BIN_DIR}/${out} ${SRC_DIR}/${out}.match
+                RESULT_VARIABLE MATCH_ERROR)
+
+                if(MATCH_ERROR)
+                        message(FATAL_ERROR "Log does not match: ${MATCH_ERROR}")
+                endif()
+        endif()
+endfunction()
+
+function(mkdir dir)
+        execute(mkdir ${dir})
+endfunction()
+
+function(mkdir_expect_failure dir)
+        execute_expect_failure(mkdir ${dir})
+endfunction()
+
+function(rmdir dir)
+        execute(rmdir ${dir})
+endfunction()

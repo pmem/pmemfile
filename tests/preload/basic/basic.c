@@ -31,7 +31,7 @@
  */
 
 /*
- * dummy_prog.c - a dummy prog using pmemfile, checking each return value
+ * basic.c - a dummy prog using pmemfile, checking each return value
  */
 
 #include <err.h>
@@ -51,18 +51,6 @@ main(int argc, char **argv)
 	DIR  *dir_to_list;
 	char buf0[] = "Hello #0 World!\n";
 	char buf1[] = "Hello #1 World!\n";
-
-	if (argc < 3)
-		return 1;
-
-	if (strcmp(argv[1], "wrong_pool") == 0) {
-		errno = 0;
-		open(argv[2], O_CREAT | O_RDWR, 0666);
-		if (errno != EIO)
-			return 1;
-
-		return 0;
-	}
 
 	if (argc < 6)
 		return 1;

@@ -75,14 +75,14 @@ cmp(${DIR}/file_a_cat.log ${DIR}/dummy_file_a)
 execute_with_output(${DIR}/pmemfile_ls_root.log ls ${DIR}/mount_point)
 cmp(${DIR}/pmemfile_ls_root.log ${SRC_DIR}/ls_root_expected_log)
 
-list_files(file_preload_lsl1.log ${DIR}/mount_point)
+list_files(ls.log ${DIR}/mount_point)
 
 mkdir_expect_failure(${DIR}/mount_point/nonexistent/dummy_dir_a)
 
 mkdir(${DIR}/mount_point/dummy_dir_a)
-list_files(file_preload_lsl_with_dir1.log ${DIR}/mount_point)
+list_files(ls_with_dir.log ${DIR}/mount_point)
 rmdir(${DIR}/mount_point/dummy_dir_a)
-list_files(file_preload_lsl_with_nodir1.log ${DIR}/mount_point)
+list_files(ls_without_dir.log ${DIR}/mount_point)
 
 # todo: when rm works...
 #  only faccessat seems to be missing for rm to work

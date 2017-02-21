@@ -50,3 +50,13 @@ function(mkfs path size)
                 message(FATAL_ERROR "mkfs(${path}, ${size}) failed: ${HAD_ERROR}")
         endif()
 endfunction()
+
+function(match log_file match_file)
+        execute_process(COMMAND
+                        ${MATCH_SCRIPT} -o ${log_file} ${match_file}
+                        RESULT_VARIABLE MATCH_ERROR)
+
+        if(MATCH_ERROR)
+                message(FATAL_ERROR "Log does not match: ${MATCH_ERROR}")
+        endif()
+endfunction()

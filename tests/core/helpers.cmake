@@ -60,12 +60,6 @@ function(execute name)
         endif()
 
         if(EXISTS ${SRC_DIR}/${TRACER}.out.match)
-                execute_process(COMMAND
-                ${MATCH_SCRIPT} -o ${BIN_DIR}/${TRACER}.out ${SRC_DIR}/${TRACER}.out.match
-                RESULT_VARIABLE MATCH_ERROR)
-
-                if(MATCH_ERROR)
-                        message(FATAL_ERROR "Log does not match: ${MATCH_ERROR}")
-                endif()
+                match(${BIN_DIR}/${TRACER}.out ${SRC_DIR}/${TRACER}.out.match)
         endif()
 endfunction()

@@ -67,12 +67,6 @@ if (sql_sel_res)
         endif()
 endif()
 
-execute_process(COMMAND
-                ${MATCH_SCRIPT} -o ${BIN_DIR}/out0.log ${SRC_DIR}/out0.log.match
-                RESULT_VARIABLE MATCH_ERROR)
-
-if(MATCH_ERROR)
-        message(FATAL_ERROR "Log does not match: ${MATCH_ERROR}")
-endif()
+match(${BIN_DIR}/out0.log ${SRC_DIR}/out0.log.match)
 
 cleanup()

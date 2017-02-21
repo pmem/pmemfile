@@ -37,6 +37,11 @@ set(VERSION_MINOR 1)
 set(VERSION_PATCH 0)
 set(VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
 
+# XXX rename libpmemfile, since the whole repo is also just
+# called pmemfile!
+option(BUILD_LIBPMEMFILE
+	"build libpmemfile (requires libsyscall_intercept)" 1)
+
 if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE "Release")
 endif (NOT CMAKE_BUILD_TYPE)
@@ -178,8 +183,12 @@ else()
 endif()
 
 add_subdirectory(src/libpmemfile-core)
+if(BUILD_LIBPMEMFILE)
 add_subdirectory(src/libpmemfile)
+endif()
 add_subdirectory(src/tools)
 add_subdirectory(tests/core)
+if(BUILD_LIBPMEMFILE)
 add_subdirectory(tests/preload)
+endif()
 add_subdirectory(doc)

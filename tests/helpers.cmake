@@ -42,3 +42,11 @@ endfunction()
 function(cleanup)
         execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${PARENT_DIR}/${TEST_NAME})
 endfunction()
+
+function(mkfs path size)
+        execute_process(COMMAND ${BIN_DIR}/../../../src/tools/mkfs.pmemfile ${path} ${size}
+                        RESULT_VARIABLE HAD_ERROR)
+        if(HAD_ERROR)
+                message(FATAL_ERROR "mkfs(${path}, ${size}) failed: ${HAD_ERROR}")
+        endif()
+endfunction()

@@ -33,12 +33,7 @@ include(${SRC_DIR}/../helpers.cmake)
 
 setup()
 
-execute_process(COMMAND ${BIN_DIR}/../../../src/tools/mkfs.pmemfile ${DIR}/fs 100m
-                RESULT_VARIABLE HAD_ERROR)
-
-if(HAD_ERROR)
-        message(FATAL_ERROR "Test ${name} failed: ${HAD_ERROR}")
-endif()
+mkfs(${DIR}/fs 100m)
 
 execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${DIR}/mount_point)
 

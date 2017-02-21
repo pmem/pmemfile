@@ -23,7 +23,7 @@ $ make install
 
 When developing:
 ```sh
-$ cmake .. -DCMAKE_BUILD_TYPE=Debug -DDEVELOPER_MODE=1
+$ cmake .. -DCMAKE_BUILD_TYPE=Debug -DDEVELOPER_MODE=1 -DTEST_DIR=/mnt/pmem/pmemfile-tests
 ```
 
 Note that in Debug mode "make install" installs only debug libraries.

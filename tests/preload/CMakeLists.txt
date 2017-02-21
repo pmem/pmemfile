@@ -38,7 +38,7 @@ function(add_test_generic name)
                  COMMAND ${CMAKE_COMMAND} ${GLOBAL_TEST_ARGS} -DTEST_NAME=${name} -DPARENT_DIR=${TEST_DIR}/ -DSRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/${name} -DBIN_DIR=${CMAKE_CURRENT_BINARY_DIR}/${name} -P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/test.cmake)
 
         set_tests_properties(${name} PROPERTIES
-                ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/src/libpmemfile:${CMAKE_BINARY_DIR}/src/libpmemfile-core;${ARGV2}")
+                ENVIRONMENT "LC_ALL=C;LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/src/libpmemfile:${CMAKE_BINARY_DIR}/src/libpmemfile-core;${ARGV2}")
 endfunction()
 
 find_program(SQLITE3 sqlite3)

@@ -37,7 +37,13 @@ set(SOURCES
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wmissing-field-initializers")
 
-pkg_check_modules(SYSCALL_INTERCEPT REQUIRED libsyscall_intercept)
+pkg_check_modules(SYSCALL_INTERCEPT libsyscall_intercept)
+
+if(NOT SYSCALL_INTERCEPT_FOUND)
+	message(FATAL_ERROR
+		"libsyscall_intercept not found - needed by libpmemfile
+		to skip building libpmemfile, set the BUILD_LIBPMEMFILE option to OFF")
+endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_library(pmemfile_o OBJECT ${SOURCES})

@@ -44,9 +44,9 @@ execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${DIR}/mount_point)
 
 set(ENV{LD_PRELOAD} libpmemfile.so)
 set(ENV{PMEMFILE_POOLS} ${DIR}/mount_point:${DIR}/fs)
-set(ENV{PMEMFILE_PRELOAD_LOG} pmemfile_preload.log)
+set(ENV{PMEMFILE_PRELOAD_LOG} ${BIN_DIR}/pmemfile_preload.log)
 set(ENV{LIBC_HOOK_CMDLINE_FILTER} sqlite3)
-set(ENV{INTERCEPT_LOG} intercept.log)
+set(ENV{INTERCEPT_LOG} ${BIN_DIR}/intercept.log)
 set(ENV{PMEMFILE_EXIT_ON_NOT_SUPPORTED} 1)
 
 execute_process(COMMAND sqlite3 ${DIR}/mount_point/sqlitedb

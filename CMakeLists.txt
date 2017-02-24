@@ -151,6 +151,8 @@ add_custom_target(check-whitespace-main
                           ${CMAKE_SOURCE_DIR}/doc/*.md)
 add_dependencies(check-whitespace check-whitespace-main)
 
+add_custom_target(tests)
+
 if(DEVELOPER_MODE)
         add_dependencies(checkers cstyle)
         add_dependencies(checkers check-whitespace)
@@ -186,6 +188,11 @@ endif()
 
 if(TRACE_TESTS)
         set(GLOBAL_TEST_ARGS --trace-expand)
+endif()
+
+pkg_check_modules(LIBUNWIND QUIET libunwind)
+if(NOT LIBUNWIND_FOUND)
+        message(WARNING "libunwind not found. Any stack traces from tests will not be reliable")
 endif()
 
 if(TEST_DIR)

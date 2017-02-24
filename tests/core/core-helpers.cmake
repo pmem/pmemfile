@@ -56,6 +56,9 @@ function(execute name)
                         OUTPUT_FILE ${BIN_DIR}/${TRACER}.out)
 
         if(HAD_ERROR)
+                message(STATUS "Test ${name} failed: ${HAD_ERROR}")
+                file(READ ${BIN_DIR}/${TRACER}.out OUT)
+                message(STATUS "Log: ${OUT}")
                 message(FATAL_ERROR "Test ${name} failed: ${HAD_ERROR}")
         endif()
 

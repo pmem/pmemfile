@@ -32,13 +32,22 @@
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-strict-aliasing")
 
 include_directories(.)
+if(LIBUNWIND_FOUND)
+        add_definitions(-DUSE_LIBUNWIND)
+endif()
+
 add_library(pmemfile_test STATIC pmemfile_test.c)
+add_library(test_backtrace STATIC ../test_backtrace.c)
 
 function(build_test name srcs)
         add_checker_targets("tests-core-${name}" ${CMAKE_CURRENT_SOURCE_DIR}/${srcs})
         add_executable(${name} ${srcs})
-        target_link_libraries(${name} -L${CMAKE_BINARY_DIR}/src/libpmemfile-core pmemfile-core pmemfile_test)
+        target_link_libraries(${name} -L${CMAKE_BINARY_DIR}/src/libpmemfile-core pmemfile-core pmemfile_test test_backtrace)
         add_dependencies(${name} pmemfile-core_shared)
+        if(LIBUNWIND_FOUND)
+                target_link_libraries(${name} ${LIBUNWIND_LIBRARIES} -ldl)
+        endif()
+        add_dependencies(tests ${name})
 endfunction()
 
 build_test(file_basic basic/basic.c)

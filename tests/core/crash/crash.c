@@ -59,6 +59,7 @@ open_pool(const char *path)
 int
 main(int argc, char *argv[])
 {
+	START();
 	if (argc < 3)
 		UT_FATAL("usage: %s file-name op", argv[0]);
 

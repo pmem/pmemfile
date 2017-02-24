@@ -86,6 +86,8 @@ create_close_unlink_worker(void *arg)
 int
 main(int argc, char *argv[])
 {
+	START();
+
 	if (argc < 2)
 		UT_FATAL("usage: %s file-name [ops]", argv[0]);
 

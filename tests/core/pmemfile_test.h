@@ -34,6 +34,7 @@
 #define PMEMFILE_TEST_H
 
 #include "libpmemfile-core.h"
+#include "../test_backtrace.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -43,12 +44,46 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define UT_FATAL(...) abort();
-#define UT_ASSERT(cnd)			do { if (!(cnd)) abort(); } while (0)
-#define UT_ASSERTinfo(cnd, info)	do { if (!(cnd)) abort(); } while (0)
-#define UT_ASSERTeq(lhs, rhs)	do { if ((lhs) != (rhs)) abort(); } while (0)
-#define UT_ASSERTne(lhs, rhs)	do { if ((lhs) == (rhs)) abort(); } while (0)
-#define UT_OUT(...) fprintf(stdout, __VA_ARGS__)
+#define UT_FATAL(...) \
+	do { \
+		printf("%s:%d(%s) %s\n", __FILE__, __LINE__, __func__, strerror(errno)); \
+		printf( __VA_ARGS__); \
+		abort(); \
+	} while (0)
+
+#define UT_ASSERT(cnd) \
+	do { \
+		if (!(cnd)) { \
+			printf("%s:%d(%s) assertion failure: %s\n", \
+				__FILE__, __LINE__, __func__, #cnd); \
+			abort(); \
+		} \
+	} while (0)
+
+#define UT_ASSERTeq(lhs, rhs) \
+	do { \
+		if ((lhs) != (rhs)) { \
+			printf("%s:%d(%s) assertion failure: %s (0x%llx) == %s (0x%llx)\n", \
+				__FILE__, __LINE__, __func__, \
+				#lhs, (unsigned long long)(lhs), \
+				#rhs, (unsigned long long)(rhs)); \
+			abort(); \
+		} \
+	} while (0)
+
+#define UT_ASSERTne(lhs, rhs) \
+	do { \
+		if ((lhs) == (rhs)) { \
+			printf("%s:%d(%s) assertion failure: %s (0x%llx) != %s (0x%llx)\n", \
+				__FILE__, __LINE__, __func__, \
+				#lhs, (unsigned long long)(lhs), \
+				#rhs, (unsigned long long)(rhs)); \
+			abort(); \
+		} \
+	} while (0)
+
+#define UT_OUT(...) printf(__VA_ARGS__)
+#define START() do { test_register_sighandlers(); } while (0)
 
 #ifdef __cplusplus
 extern "C" {

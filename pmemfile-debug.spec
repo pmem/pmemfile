@@ -48,13 +48,16 @@ XXX
 %setup -q -n %{name}-%{version}
 
 %build
-%cmake . -DCMAKE_BUILD_TYPE=Debug
+mkdir dbg_build && cd dbg_build
+%cmake .. -DCMAKE_BUILD_TYPE=Debug
 make %{?_smp_mflags}
 
 %install
+cd dbg_build
 make install DESTDIR=%{buildroot}
 
 %check
+cd dbg_build
 PMEM_IS_PMEM_FORCE=1 ctest -V %{?_smp_mflags}
 
 %changelog

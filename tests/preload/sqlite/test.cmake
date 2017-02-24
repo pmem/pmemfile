@@ -37,7 +37,7 @@ mkfs(${DIR}/fs 100m)
 
 execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${DIR}/mount_point)
 
-set(ENV{LD_PRELOAD} libpmemfile.so)
+set(ENV{LD_PRELOAD} ${PRELOAD_LIB})
 set(ENV{PMEMFILE_POOLS} ${DIR}/mount_point:${DIR}/fs)
 set(ENV{PMEMFILE_PRELOAD_LOG} ${BIN_DIR}/pmemfile_preload.log)
 set(ENV{LIBC_HOOK_CMDLINE_FILTER} sqlite3)

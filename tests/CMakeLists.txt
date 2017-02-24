@@ -29,35 +29,14 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-add_executable(preload_basic basic/basic.c)
-add_executable(preload_config config/config.c)
+set(GLOBAL_TEST_ARGS
+	-DMATCH_SCRIPT=${PROJECT_SOURCE_DIR}/tests/match
+	-DMKFS_EXECUTABLE=$<TARGET_FILE:mkfs.pmemfile>
+	-DCAT_EXECUTABLE=$<TARGET_FILE:pmemfile-cat>
+	-DPARENT_DIR=${TEST_DIR}/)
 
-add_checker_targets("tests-preload-basic" ${CMAKE_CURRENT_SOURCE_DIR}/basic/basic.c)
-add_checker_targets("tests-preload-config" ${CMAKE_CURRENT_SOURCE_DIR}/config/config.c)
+add_subdirectory(core)
 
-function(add_test_generic name main_executable)
-        add_test(NAME preload_${name}
-                 COMMAND ${CMAKE_COMMAND}
-			${GLOBAL_TEST_ARGS}
-			-DTEST_NAME=${name}
-			-DSRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/${name}
-			-DBIN_DIR=${CMAKE_CURRENT_BINARY_DIR}/${name}
-			-DPRELOAD_LIB=$<TARGET_FILE:pmemfile_shared>
-			-DMAIN_EXECUTABLE=${main_executable}
-			-P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/test.cmake)
-
-        set_tests_properties(preload_${name} PROPERTIES
-                ENVIRONMENT "LC_ALL=C;${ARGV3}")
-endfunction()
-
-find_program(SQLITE3 sqlite3)
-if (SQLITE3)
-        add_test_generic(sqlite none)
-else()
-        add_test(NAME sqlite_SKIPPED_BECAUSE_OF_MISSING_SQLITE3 COMMAND true)
+if(BUILD_LIBPMEMFILE)
+add_subdirectory(preload)
 endif()
-
-add_test_generic(basic $<TARGET_FILE:preload_basic>)
-add_test_generic(basic_commands none)
-add_test_generic(nested_dirs none)
-add_test_generic(config $<TARGET_FILE:preload_config>)

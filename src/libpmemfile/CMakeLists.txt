@@ -46,6 +46,8 @@ if(NOT SYSCALL_INTERCEPT_FOUND)
 endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+# XXX OBJECT library type is not supported on some old cmake versions
 add_library(pmemfile_o OBJECT ${SOURCES})
 
 include_directories(${SYSCALL_INTERCEPT_INCLUDE_DIRS} ..)
@@ -55,10 +57,8 @@ add_library(pmemfile_shared SHARED $<TARGET_OBJECTS:pmemfile_o>)
 add_library(pmemfile_static_unscoped STATIC $<TARGET_OBJECTS:pmemfile_o>)
 
 target_link_libraries(pmemfile_shared ${SYSCALL_INTERCEPT_LIBRARIES})
-target_link_libraries(pmemfile_shared -L${CMAKE_BINARY_DIR}/src/libpmemfile-core pmemfile-core)
+target_link_libraries(pmemfile_shared pmemfile-core_shared)
 target_link_libraries(pmemfile_shared -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/libpmemfile.map)
-
-add_dependencies(pmemfile_shared pmemfile-core_shared)
 
 set_target_properties(pmemfile_static_unscoped PROPERTIES OUTPUT_NAME pmemfile_unscoped)
 set_target_properties(pmemfile_shared PROPERTIES OUTPUT_NAME pmemfile)

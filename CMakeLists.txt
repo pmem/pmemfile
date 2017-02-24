@@ -138,6 +138,18 @@ add_custom_target(check-license
                 ${CMAKE_SOURCE_DIR}/LICENSE
                 -a)
 add_dependencies(check-license check_license)
+add_checker_targets(check_license ${CMAKE_SOURCE_DIR}/utils/check_license/*.c)
+
+add_custom_target(check-whitespace-main
+                  COMMAND ${CMAKE_SOURCE_DIR}/utils/check_whitespace
+                          ${CMAKE_SOURCE_DIR}/utils/check_license/*.sh
+                          ${CMAKE_SOURCE_DIR}/utils/*.sh
+                          ${CMAKE_SOURCE_DIR}/README.md
+                          ${CMAKE_SOURCE_DIR}/*.spec
+                          ${CMAKE_SOURCE_DIR}/debian/*
+                          ${CMAKE_SOURCE_DIR}/debian/*/*
+                          ${CMAKE_SOURCE_DIR}/doc/*.md)
+add_dependencies(check-whitespace check-whitespace-main)
 
 if(DEVELOPER_MODE)
         add_dependencies(checkers cstyle)

@@ -79,7 +79,7 @@ function(add_long_test_generic name tracer)
         if (LONG_TESTS)
                 add_test_generic(${name} ${tracer} ${ARGN})
         else()
-                add_test(NAME ${name}_${tracer}_SKIPPED_BECAUSE_LONG_TEST_ARE_DISABLED
+                add_test(NAME ${name}_${tracer}_SKIPPED_BECAUSE_LONG_TESTS_ARE_DISABLED
                          COMMAND true)
         endif()
 endfunction()

@@ -1,6 +1,6 @@
-#!/bin/sh -ex
+#!/bin/bash -ex
 #
-# Copyright 2017, Intel Corporation
+# Copyright 2016-2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,12 +29,13 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#
+# prepare-environment.sh - installs Docker on the host environment and
+#                          pulls a Docker image for building NVML project.
 #
 
-export LC_ALL=C
-export VER=0.1
-
-mkdir -p ~/rpmbuild/SOURCES
-git archive --prefix=pmemfile-$VER/ HEAD | gzip > ~/rpmbuild/SOURCES/pmemfile-$VER.tar.gz
-rpmbuild -ba pmemfile-debug.spec
-rpmbuild -ba pmemfile.spec
+# Install the newest Docker engine
+sudo sh -c "echo deb https://apt.dockerproject.org/repo ubuntu-precise main >> /etc/apt/sources.list.d/docker.list"
+sudo apt-get update
+sudo apt-get install --force-yes docker-engine apt-transport-https ca-certificates

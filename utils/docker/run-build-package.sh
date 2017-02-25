@@ -1,6 +1,6 @@
-#!/bin/sh -ex
+#!/bin/bash -ex
 #
-# Copyright 2017, Intel Corporation
+# Copyright 2016-2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,12 +29,12 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#
+# run-build-package.sh - is called inside a Docker container;
+#                		 starts a build of PMEMFILE project.
 #
 
-export LC_ALL=C
-export VER=0.1
-
-mkdir -p ~/rpmbuild/SOURCES
-git archive --prefix=pmemfile-$VER/ HEAD | gzip > ~/rpmbuild/SOURCES/pmemfile-$VER.tar.gz
-rpmbuild -ba pmemfile-debug.spec
-rpmbuild -ba pmemfile.spec
+# Build all and run tests
+cd $WORKDIR
+./utils/build-${PACKAGE_MANAGER}.sh

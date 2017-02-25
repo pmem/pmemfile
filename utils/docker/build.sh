@@ -1,6 +1,6 @@
-#!/bin/sh -ex
+#!/bin/bash -ex
 #
-# Copyright 2017, Intel Corporation
+# Copyright 2016-2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,12 +29,50 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#
+# build.sh - runs a Docker container from a Docker image with environment
+#            prepared for building this project.
 #
 
-export LC_ALL=C
-export VER=0.1
+export DOCKER_USER=marcinslusarz
+export PROJECT=pmemfile
 
-mkdir -p ~/rpmbuild/SOURCES
-git archive --prefix=pmemfile-$VER/ HEAD | gzip > ~/rpmbuild/SOURCES/pmemfile-$VER.tar.gz
-rpmbuild -ba pmemfile-debug.spec
-rpmbuild -ba pmemfile.spec
+if [[ -z "$OS" || -z "$OS_VER" ]]; then
+	echo "ERROR: The variables OS and OS_VER have to be set properly " \
+		"(eg. OS=ubuntu, OS_VER=16.04)."
+	exit 1
+fi
+
+if [[ -z "$HOST_WORKDIR" ]]; then
+	echo "ERROR: The variable HOST_WORKDIR has to contain a path to " \
+		"the root of this project on the host machine"
+	exit 1
+fi
+
+imageName=${DOCKER_USER}/${PROJECT}_${OS}:${OS_VER}
+containerName=${DOCKER_USER}-${PROJECT}-${OS}-${OS_VER}
+
+if [[ $MAKE_PKG -eq 0 ]] ; then command="./run-build.sh"; fi
+if [[ $MAKE_PKG -eq 1 ]] ; then command="./run-build-package.sh"; fi
+
+WORKDIR=/${PROJECT}
+
+# Run a container with
+#  - environment variables set (--env)
+#  - host directory containing nvml source mounted (-v)
+#  - working directory set (-w)
+sudo docker run --rm --privileged=true --name=$containerName -ti \
+	--env http_proxy=$http_proxy \
+	--env https_proxy=$https_proxy \
+	--env COMPILER=$COMPILER \
+	--env WORKDIR=$WORKDIR \
+	--env TRAVIS=$TRAVIS \
+	--env TRAVIS_COMMIT_RANGE=$TRAVIS_COMMIT_RANGE \
+	--env TRAVIS_COMMIT=$TRAVIS_COMMIT \
+	--env TRAVIS_REPO_SLUG=$TRAVIS_REPO_SLUG \
+	--env TRAVIS_BRANCH=$TRAVIS_BRANCH \
+	--env TRAVIS_EVENT_TYPE=$TRAVIS_EVENT_TYPE \
+	-v $HOST_WORKDIR:$WORKDIR \
+	-w $WORKDIR/utils/docker \
+	$imageName $command

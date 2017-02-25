@@ -1,6 +1,6 @@
-#!/bin/sh -ex
+#!/bin/bash -ex
 #
-# Copyright 2017, Intel Corporation
+# Copyright 2016-2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,12 +29,32 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#
+# install-valgrind.sh - installs valgrind for persistent memory
 #
 
-export LC_ALL=C
-export VER=0.1
+git clone --recursive --depth 1 https://github.com/pmem/valgrind.git
+cd valgrind
+./autogen.sh
+./configure --prefix=/usr
+make
+make install
+cd ..
+rm -rf valgrind
 
-mkdir -p ~/rpmbuild/SOURCES
-git archive --prefix=pmemfile-$VER/ HEAD | gzip > ~/rpmbuild/SOURCES/pmemfile-$VER.tar.gz
-rpmbuild -ba pmemfile-debug.spec
-rpmbuild -ba pmemfile.spec
+rm -f /usr/lib*/valgrind/cachegrind-*
+rm -f /usr/lib*/valgrind/callgrind-*
+rm -f /usr/lib*/valgrind/exp-bbv-*
+rm -f /usr/lib*/valgrind/exp-dhat-*
+rm -f /usr/lib*/valgrind/exp-sgcheck-*
+rm -f /usr/lib*/valgrind/getoff-*
+rm -f /usr/lib*/valgrind/lackey-*
+rm -f /usr/lib*/valgrind/massif-*
+rm -f /usr/lib*/valgrind/none-*
+
+rm -f /usr/lib*/valgrind/vgpreload_exp-dhat-*
+rm -f /usr/lib*/valgrind/vgpreload_exp-sgcheck-*
+rm -f /usr/lib*/valgrind/vgpreload_massif-*
+
+rm -f /usr/lib*/valgrind/*.a

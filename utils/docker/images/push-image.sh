@@ -1,6 +1,6 @@
-#!/bin/sh -ex
+#!/bin/bash -e
 #
-# Copyright 2017, Intel Corporation
+# Copyright 2016-2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,12 +29,43 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#
+# push-image.sh <OS:VER> - pushes the Docker image tagged with ${PROJECT}_$OS:$OS_VER
+#                          to the Docker Hub
+#
+# The script utilizes $DOCKER_PASSWORD variable to log in to the Docker Hub.
+# It can be set in the Travis project's configuration for automated builds.
+# If it is not set, the user will be asked to provide the password.
 #
 
-export LC_ALL=C
-export VER=0.1
+export DOCKER_USER=marcinslusarz
+export PROJECT=pmemfile
 
-mkdir -p ~/rpmbuild/SOURCES
-git archive --prefix=pmemfile-$VER/ HEAD | gzip > ~/rpmbuild/SOURCES/pmemfile-$VER.tar.gz
-rpmbuild -ba pmemfile-debug.spec
-rpmbuild -ba pmemfile.spec
+function usage {
+	echo "Usage:"
+	echo "    push-image.sh <OS:VER>"
+	echo "where <OS:VER>, for example, can be 'ubuntu:16.04', provided " \
+	"a Docker image tagged with ${DOCKER_USER}/${PROJECT}_ubuntu:16.04 exists locally."
+}
+
+# Check if the first argument is nonempty
+if [[ -z "$1" ]]; then
+	usage
+	exit 1
+fi
+
+# Check if the image tagged with ${DOCKER_USER}/${PROJECT}_OS:VER exists locally
+if [[ ! $(sudo docker images -a | awk -v pattern="^${DOCKER_USER}/${PROJECT}_$1\$" \
+	'$1":"$2 ~ pattern') ]]
+then
+	echo "ERROR: wrong argument."
+	usage
+	exit 1
+fi
+
+# Log in to the Docker Hub
+sudo docker login -u="${DOCKER_USER}" -p="$DOCKER_PASSWORD"
+
+# Push the image to the repository
+sudo docker push ${DOCKER_USER}/${PROJECT}_$1

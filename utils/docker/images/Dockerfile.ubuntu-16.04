@@ -1,6 +1,5 @@
-#!/bin/sh -ex
 #
-# Copyright 2017, Intel Corporation
+# Copyright 2016-2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,12 +28,66 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#
+# Dockerfile - a 'recipe' for Docker to build an image of ubuntu-based
+#              environment for building the PMEMFILE project.
 #
 
-export LC_ALL=C
-export VER=0.1
+# Pull base image
+FROM ubuntu:16.04
+MAINTAINER marcin.slusarz@intel.com
 
-mkdir -p ~/rpmbuild/SOURCES
-git archive --prefix=pmemfile-$VER/ HEAD | gzip > ~/rpmbuild/SOURCES/pmemfile-$VER.tar.gz
-rpmbuild -ba pmemfile-debug.spec
-rpmbuild -ba pmemfile.spec
+# Update the Apt cache and install basic tools
+RUN apt-get update
+RUN apt-get install -y \
+	autoconf \
+	automake \
+	clang \
+	cmake \
+	debhelper \
+	devscripts \
+	doxygen \
+	git \
+	libcapstone-dev \
+	libc6-dbg \
+	libunwind-dev \
+	pandoc \
+	pkg-config \
+	sqlite3 \
+	sudo \
+	whois
+
+# Install valgrind
+COPY install-valgrind.sh install-valgrind.sh
+RUN ./install-valgrind.sh
+
+# Install nvml
+COPY install-nvml.sh install-nvml.sh
+COPY 0001-common-let-user-build-debs-with-Valgrind-enabled.patch 0001-common-let-user-build-debs-with-Valgrind-enabled.patch
+RUN ./install-nvml.sh dpkg
+
+# Install syscall_intercept
+COPY install-syscall_intercept.sh install-syscall_intercept.sh
+RUN ./install-syscall_intercept.sh deb
+
+# Add user
+ENV USER user
+ENV USERPASS pass
+RUN useradd -m $USER -g sudo -p `mkpasswd $USERPASS`
+
+RUN apt-get remove -y \
+	autoconf \
+	automake \
+	doxygen \
+	whois
+
+RUN apt-get autoremove -y
+
+USER $USER
+
+# Set required environment variables
+ENV OS ubuntu
+ENV OS_VER 16.04
+ENV PACKAGE_MANAGER deb
+ENV NOTTY 1

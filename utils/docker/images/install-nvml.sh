@@ -1,4 +1,4 @@
-#!/bin/sh -ex
+#!/bin/bash -ex
 #
 # Copyright 2017, Intel Corporation
 #
@@ -29,12 +29,22 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#
+# install-nvml.sh - installs libpmem & libpmemobj
 #
 
-export LC_ALL=C
-export VER=0.1
-
-mkdir -p ~/rpmbuild/SOURCES
-git archive --prefix=pmemfile-$VER/ HEAD | gzip > ~/rpmbuild/SOURCES/pmemfile-$VER.tar.gz
-rpmbuild -ba pmemfile-debug.spec
-rpmbuild -ba pmemfile.spec
+git clone https://github.com/pmem/nvml.git
+cd nvml
+git checkout 22c923a3bc5e926e7641b40bd7c6aab85b3bdc4a
+git config user.email "you@example.com"
+git config user.name "Your Name"
+git am ../0001-common-let-user-build-debs-with-Valgrind-enabled.patch
+BUILD_PACKAGE_CHECK=n make $1 EXTRA_CFLAGS="-DUSE_VALGRIND"
+if [ "$1" = "dpkg" ]; then
+	sudo dpkg -i dpkg/libpmem_*.deb dpkg/libpmem-dev_*.deb dpkg/libpmemobj_*.deb dpkg/libpmemobj-dev_*.deb
+elif [ "$1" = "rpm" ]; then
+	sudo rpm -i rpm/*/libpmem-*.rpm rpm/*/libpmemobj-*.rpm
+fi
+cd ..
+rm -rf nvml

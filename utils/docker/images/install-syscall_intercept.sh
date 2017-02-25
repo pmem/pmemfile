@@ -1,4 +1,4 @@
-#!/bin/sh -ex
+#!/bin/bash -ex
 #
 # Copyright 2017, Intel Corporation
 #
@@ -29,12 +29,20 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#
+# install-syscall_intercept.sh - installs libsyscall_intercept
 #
 
-export LC_ALL=C
-export VER=0.1
+git clone https://github.com/GBuella/syscall_intercept
+cd syscall_intercept
+git checkout dc88a993d557a969ea97a51b1687186305660372
+./utils/build-$1.sh
+if [ "$1" = "deb" ]; then
+	sudo dpkg -i build-deb/libsyscall-*.deb
+elif [ "$1" = "rpm" ]; then
+	sudo rpm -i ~/rpmbuild/RPMS/*/*syscall_intercept*.rpm
+fi
 
-mkdir -p ~/rpmbuild/SOURCES
-git archive --prefix=pmemfile-$VER/ HEAD | gzip > ~/rpmbuild/SOURCES/pmemfile-$VER.tar.gz
-rpmbuild -ba pmemfile-debug.spec
-rpmbuild -ba pmemfile.spec
+cd ..
+rm -rf syscall_intercept

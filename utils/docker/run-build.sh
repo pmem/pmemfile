@@ -1,6 +1,6 @@
-#!/bin/sh -ex
+#!/bin/bash -ex
 #
-# Copyright 2017, Intel Corporation
+# Copyright 2016-2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,12 +29,44 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#
+# run-build.sh - is called inside a Docker container;
+#		starts a build of PMEMFILE project
 #
 
-export LC_ALL=C
-export VER=0.1
+# Build all and run tests
+cd $WORKDIR
+mkdir /tmp/pmemfile-tests
+if [ -n "$COMPILER" ]; then
+	export CC=$COMPILER
+fi
 
-mkdir -p ~/rpmbuild/SOURCES
-git archive --prefix=pmemfile-$VER/ HEAD | gzip > ~/rpmbuild/SOURCES/pmemfile-$VER.tar.gz
-rpmbuild -ba pmemfile-debug.spec
-rpmbuild -ba pmemfile.spec
+
+mkdir build
+cd build
+cmake .. -DDEVELOPER_MODE=1 \
+		-DCMAKE_INSTALL_PREFIX=/tmp/pmemfile \
+		-DCMAKE_BUILD_TYPE=Debug \
+		-DTEST_DIR=/tmp/pmemfile-tests \
+		-DTRACE_TESTS=1
+
+make
+PMEM_IS_PMEM_FORCE=1 ctest --output-on-failure
+make install
+cd ..
+rm -r build
+
+
+mkdir build
+cd build
+cmake .. -DCMAKE_INSTALL_PREFIX=/tmp/pmemfile \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DTEST_DIR=/tmp/pmemfile-tests \
+		-DTRACE_TESTS=1
+
+make
+PMEM_IS_PMEM_FORCE=1 ctest --output-on-failure
+make install
+cd ..
+rm -r build

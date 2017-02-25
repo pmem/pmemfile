@@ -1059,7 +1059,7 @@ hook_lseek(long fd, long offset, int whence)
 	log_write("pmemfile_lseek(%p, %p, %lu, %d) = %ld",
 	    (void *)file->pool->pool, (void *)file->file, offset, whence, r);
 
-	if (r != 0)
+	if (r < 0)
 		r = -errno;
 
 	return check_errno(r);

@@ -86,7 +86,7 @@ make %{?_smp_mflags}
 make install DESTDIR=%{buildroot}
 
 %check
-ctest -V %{?_smp_mflags}
+PMEM_IS_PMEM_FORCE=1 ctest -V %{?_smp_mflags}
 
 %post   -n libpmemfile-core -p /sbin/ldconfig
 %postun -n libpmemfile-core -p /sbin/ldconfig

@@ -55,7 +55,7 @@ make %{?_smp_mflags}
 make install DESTDIR=%{buildroot}
 
 %check
-ctest -V %{?_smp_mflags}
+PMEM_IS_PMEM_FORCE=1 ctest -V %{?_smp_mflags}
 
 %changelog
 * Tue Feb 14 2017 Marcin Ślusarz <marcin.slusarz@intel.com> - 0.1-1

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Intel Corporation
+ * Copyright 2016-2017, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,6 +32,8 @@
 #ifndef PMEMFILE_INTERNAL_H
 #define PMEMFILE_INTERNAL_H
 
+#include "layout.h"
+
 #define LSUP 1  /* unsupported feature */
 #define LUSR 2  /* user error */
 #define LINF 3  /* information */
@@ -43,6 +45,31 @@ pmemfile_tx_abort(int err)
 {
 	pmemobj_tx_abort(err);
 	__builtin_unreachable();
+}
+
+/*
+ * The size of data allocated for each block is a positive integer multiple
+ * of FILE_PAGE_SIZE.
+ *
+ * XXX: The current code can read from / write to blocks with any positive size,
+ * any offset alignment, so this information doesn't necessarily have to be
+ * part of the on-media layout.
+ * But later the code might (probably will) depend on this.
+ */
+#define FILE_PAGE_SIZE ((size_t)0x1000)
+
+#define MAX_BLOCK_SIZE (UINT32_MAX - (UINT32_MAX % FILE_PAGE_SIZE))
+
+static inline size_t
+page_rounddown(size_t n)
+{
+	return n & ~(FILE_PAGE_SIZE - 1);
+}
+
+static inline size_t
+page_roundup(size_t n)
+{
+	return page_rounddown(n + FILE_PAGE_SIZE - 1);
 }
 
 #endif

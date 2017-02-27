@@ -642,7 +642,7 @@ vinode_stat(struct pmemfile_vinode *vinode, struct stat *buf)
 		const struct pmemfile_dir *arr = &inode->file_data.dir;
 		size_t sz = 0;
 		while (arr) {
-			sz += pmemobj_alloc_usable_size(arr->next.oid);
+			sz += pmemfile_dir_size(arr->next);
 			arr = D_RO(arr->next);
 		}
 

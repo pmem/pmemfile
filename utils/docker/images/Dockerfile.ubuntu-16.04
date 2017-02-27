@@ -64,7 +64,6 @@ RUN ./install-valgrind.sh
 
 # Install nvml
 COPY install-nvml.sh install-nvml.sh
-COPY 0001-common-let-user-build-debs-with-Valgrind-enabled.patch 0001-common-let-user-build-debs-with-Valgrind-enabled.patch
 RUN ./install-nvml.sh dpkg
 
 # Install syscall_intercept

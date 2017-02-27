@@ -36,10 +36,7 @@
 
 git clone https://github.com/pmem/nvml.git
 cd nvml
-git checkout 22c923a3bc5e926e7641b40bd7c6aab85b3bdc4a
-git config user.email "you@example.com"
-git config user.name "Your Name"
-git am ../0001-common-let-user-build-debs-with-Valgrind-enabled.patch
+git checkout 5e11b46dd16059be03408b9d0da1053bba55ffdf
 BUILD_PACKAGE_CHECK=n make $1 EXTRA_CFLAGS="-DUSE_VALGRIND"
 if [ "$1" = "dpkg" ]; then
 	sudo dpkg -i dpkg/libpmem_*.deb dpkg/libpmem-dev_*.deb dpkg/libpmemobj_*.deb dpkg/libpmemobj-dev_*.deb

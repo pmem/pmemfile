@@ -33,6 +33,7 @@
 #define PMEMFILE_DIR_H
 
 #include "inode.h"
+#include "internal.h"
 
 struct pmemfile_path_info {
 	/*
@@ -96,5 +97,11 @@ struct pmemfile_vinode *pool_get_dir_for_path(PMEMfilepool *pfp, PMEMfile *dir,
 
 int _pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		const char *path);
+
+static inline size_t
+pmemfile_dir_size(TOID(struct pmemfile_dir) dir)
+{
+	return page_rounddown(pmemobj_alloc_usable_size(dir.oid));
+}
 
 #endif

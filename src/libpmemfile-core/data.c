@@ -196,7 +196,7 @@ file_allocate_block_data(PMEMfilepool *pfp,
 		if (usable > MAX_BLOCK_SIZE)
 			size = MAX_BLOCK_SIZE;
 		else
-			size = (uint32_t)(usable & ~(FILE_PAGE_SIZE - 1));
+			size = (uint32_t)page_rounddown(usable);
 	}
 
 #ifdef DEBUG
@@ -238,9 +238,9 @@ get_free_block(struct pmemfile_vinode *vinode)
 	}
 
 	TOID(struct pmemfile_block_array) next =
-			TX_ZALLOC(struct pmemfile_block_array, 4096);
+			TX_ZALLOC(struct pmemfile_block_array, FILE_PAGE_SIZE);
 	D_RW(next)->length = (uint32_t)
-			((pmemobj_alloc_usable_size(next.oid) -
+			((page_rounddown(pmemobj_alloc_usable_size(next.oid)) -
 			sizeof(struct pmemfile_block_array)) /
 			sizeof(struct pmemfile_block));
 	ASSERT(prev != NULL);

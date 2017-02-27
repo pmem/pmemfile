@@ -226,9 +226,9 @@ vinode_add_dirent(PMEMfilepool *pfp,
 
 		if (!found && TOID_IS_NULL(dir->next)) {
 			TX_SET_DIRECT(dir, next,
-					TX_ZALLOC(struct pmemfile_dir, 4096));
+				TX_ZALLOC(struct pmemfile_dir, FILE_PAGE_SIZE));
 
-			size_t sz = pmemobj_alloc_usable_size(dir->next.oid);
+			size_t sz = pmemfile_dir_size(dir->next);
 
 			TX_ADD_DIRECT(&parent->size);
 			parent->size += sz;

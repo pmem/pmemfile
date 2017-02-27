@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Intel Corporation
+ * Copyright 2016-2017, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -61,9 +61,15 @@ pmemfile_tx_abort(int err)
 #define MAX_BLOCK_SIZE (UINT32_MAX - (UINT32_MAX % FILE_PAGE_SIZE))
 
 static inline size_t
+page_rounddown(size_t n)
+{
+	return n & ~(FILE_PAGE_SIZE - 1);
+}
+
+static inline size_t
 page_roundup(size_t n)
 {
-	return ((n + FILE_PAGE_SIZE - 1) / FILE_PAGE_SIZE) * FILE_PAGE_SIZE;
+	return page_rounddown(n + FILE_PAGE_SIZE - 1);
 }
 
 #endif

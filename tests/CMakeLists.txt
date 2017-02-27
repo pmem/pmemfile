@@ -35,6 +35,10 @@ set(GLOBAL_TEST_ARGS
 	-DCAT_EXECUTABLE=$<TARGET_FILE:pmemfile-cat>
 	-DPARENT_DIR=${TEST_DIR}/)
 
+if(TRACE_TESTS)
+        set(GLOBAL_TEST_ARGS ${GLOBAL_TEST_ARGS} --trace-expand)
+endif()
+
 add_subdirectory(core)
 
 if(BUILD_LIBPMEMFILE)

@@ -43,7 +43,10 @@ set(VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
 # XXX rename libpmemfile, since the whole repo is also just
 # called pmemfile!
 option(BUILD_LIBPMEMFILE
-	"build libpmemfile (requires libsyscall_intercept)" 1)
+	"build libpmemfile (requires libsyscall_intercept)" ON)
+
+option(TRACE_TESTS
+	"more verbose test outputs" OFF)
 
 set(TEST_DIR ${CMAKE_CURRENT_BINARY_DIR}/test
 	CACHE STRING "working directory for tests")
@@ -190,10 +193,6 @@ endif()
 
 if(NOT LONG_TESTS)
         message(STATUS "Long tests are disabled. Define LONG_TESTS variable to enable.")
-endif()
-
-if(TRACE_TESTS)
-        set(GLOBAL_TEST_ARGS --trace-expand)
 endif()
 
 pkg_check_modules(LIBUNWIND QUIET libunwind)

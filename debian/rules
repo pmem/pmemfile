@@ -2,3 +2,6 @@
 #export DH_VERBOSE=1
 %:
 	dh $@ --buildsystem=cmake
+
+override_dh_auto_test:
+	PMEM_IS_PMEM_FORCE=1 dh_auto_test

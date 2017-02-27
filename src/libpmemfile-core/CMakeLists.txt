@@ -73,8 +73,8 @@ link_directories(${PMEMOBJ_LIBRARY_DIRS})
 add_library(pmemfile-core_shared SHARED $<TARGET_OBJECTS:pmemfile-core_o>)
 add_library(pmemfile-core_static_unscoped STATIC $<TARGET_OBJECTS:pmemfile-core_o>)
 
-target_link_libraries(pmemfile-core_shared ${PMEMOBJ_LIBRARIES})
-target_link_libraries(pmemfile-core_shared -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/libpmemfile-core.map)
+target_link_libraries(pmemfile-core_shared PRIVATE ${PMEMOBJ_LIBRARIES})
+target_link_libraries(pmemfile-core_shared PRIVATE -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/libpmemfile-core.map)
 
 set_target_properties(pmemfile-core_static_unscoped PROPERTIES OUTPUT_NAME pmemfile-core_unscoped)
 set_target_properties(pmemfile-core_shared PROPERTIES OUTPUT_NAME pmemfile-core)

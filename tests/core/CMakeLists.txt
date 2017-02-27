@@ -42,10 +42,9 @@ add_library(test_backtrace STATIC ../test_backtrace.c)
 function(build_test name srcs)
         add_checker_targets("tests-core-${name}" ${CMAKE_CURRENT_SOURCE_DIR}/${srcs})
         add_executable(${name} ${srcs})
-        target_link_libraries(${name} -L${CMAKE_BINARY_DIR}/src/libpmemfile-core pmemfile-core pmemfile_test test_backtrace)
-        add_dependencies(${name} pmemfile-core_shared)
+        target_link_libraries(${name} pmemfile-core_shared pmemfile_test test_backtrace)
         if(LIBUNWIND_FOUND)
-                target_link_libraries(${name} ${LIBUNWIND_LIBRARIES} -ldl)
+                target_link_libraries(${name} ${LIBUNWIND_LIBRARIES} ${CMAKE_DL_LIBS})
         endif()
         add_dependencies(tests ${name})
 endfunction()
@@ -78,10 +77,17 @@ function(add_test_generic name tracer)
         endif()
 
         add_test(NAME ${name}_${tracer}
-                 COMMAND ${CMAKE_COMMAND} ${GLOBAL_TEST_ARGS} -DTEST_NAME=${name}_${tracer} -DPARENT_DIR=${TEST_DIR}/ -DSRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/${name} -DBIN_DIR=${CMAKE_CURRENT_BINARY_DIR}/${name}_${tracer} -DTRACER=${tracer} ${ARGV2} -P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/test.cmake)
+                 COMMAND ${CMAKE_COMMAND}
+			${GLOBAL_TEST_ARGS}
+			-DTEST_NAME=${name}_${tracer}
+			-DSRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/${name}
+			-DBIN_DIR=${CMAKE_CURRENT_BINARY_DIR}/${name}_${tracer}
+			-DTRACER=${tracer}
+			${ARGV2}
+			-P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/test.cmake)
 
         set_tests_properties(${name}_${tracer} PROPERTIES
-                ENVIRONMENT "LC_ALL=C;LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/src/libpmemfile-core;PATH=$ENV{PATH};${ARGV3}")
+                ENVIRONMENT "LC_ALL=C;PATH=$ENV{PATH};${ARGV3}")
 endfunction()
 
 function(add_long_test_generic name tracer)

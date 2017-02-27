@@ -32,6 +32,9 @@
 cmake_minimum_required(VERSION 3.3)
 project(pmemfile C)
 
+set(CMAKE_DISABLE_SOURCE_CHANGES ON)
+set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
+
 set(VERSION_MAJOR 0)
 set(VERSION_MINOR 1)
 set(VERSION_PATCH 0)
@@ -40,7 +43,13 @@ set(VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
 # XXX rename libpmemfile, since the whole repo is also just
 # called pmemfile!
 option(BUILD_LIBPMEMFILE
-	"build libpmemfile (requires libsyscall_intercept)" 1)
+	"build libpmemfile (requires libsyscall_intercept)" ON)
+
+option(TRACE_TESTS
+	"more verbose test outputs" OFF)
+
+set(TEST_DIR ${CMAKE_CURRENT_BINARY_DIR}/test
+	CACHE STRING "working directory for tests")
 
 if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE "Release")
@@ -98,8 +107,8 @@ endif()
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread -fno-common")
 set(CMAKE_LD_FLAGS ${CMAKE_LD_FLAGS} -Wl,-z,relro -Wl,--warn-common)
 
-set(CMAKE_C_FLAGS_DEBUG   "-O0 -ggdb -DDEBUG")
-set(CMAKE_C_FLAGS_RELEASE "-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2")
+set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} -O0 -ggdb -DDEBUG")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2")
 
 if(DEVELOPER_MODE)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror")
@@ -186,10 +195,6 @@ if(NOT LONG_TESTS)
         message(STATUS "Long tests are disabled. Define LONG_TESTS variable to enable.")
 endif()
 
-if(TRACE_TESTS)
-        set(GLOBAL_TEST_ARGS --trace-expand)
-endif()
-
 pkg_check_modules(LIBUNWIND QUIET libunwind)
 if(NOT LIBUNWIND_FOUND)
         message(WARNING "libunwind not found. Any stack traces from tests will not be reliable")
@@ -206,8 +211,5 @@ if(BUILD_LIBPMEMFILE)
 add_subdirectory(src/libpmemfile)
 endif()
 add_subdirectory(src/tools)
-add_subdirectory(tests/core)
-if(BUILD_LIBPMEMFILE)
-add_subdirectory(tests/preload)
-endif()
+add_subdirectory(tests)
 add_subdirectory(doc)

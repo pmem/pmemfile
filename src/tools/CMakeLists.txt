@@ -30,14 +30,12 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 add_executable(mkfs.pmemfile mkfs.pmemfile.c)
-target_link_libraries(mkfs.pmemfile -L${CMAKE_BINARY_DIR}/src/libpmemfile-core pmemfile-core)
-add_dependencies(mkfs.pmemfile pmemfile-core_shared)
+target_link_libraries(mkfs.pmemfile pmemfile-core_shared)
 
 add_executable(pmemfile-cat pmemfile-cat.c)
-target_link_libraries(pmemfile-cat -L${CMAKE_BINARY_DIR}/src/libpmemfile-core pmemfile-core)
-add_dependencies(pmemfile-cat pmemfile-core_shared)
+target_link_libraries(pmemfile-cat pmemfile-core_shared)
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/mkfs.pmemfile
+install(TARGETS mkfs.pmemfile
         CONFIGURATIONS Release None
         DESTINATION ${CMAKE_INSTALL_BINDIR}
         PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)

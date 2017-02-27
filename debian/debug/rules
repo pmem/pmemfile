@@ -8,3 +8,6 @@ override_dh_auto_configure:
 
 override_dh_shlibdeps:
 	dh_shlibdeps  -O--buildsystem=cmake -l /usr/lib/x86_64-linux-gnu/pmemfile_debug
+
+override_dh_auto_test:
+	PMEM_IS_PMEM_FORCE=1 dh_auto_test

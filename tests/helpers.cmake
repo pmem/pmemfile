@@ -30,7 +30,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 set(DIR ${PARENT_DIR}/${TEST_NAME})
-set(MATCH_SCRIPT ${SRC_DIR}/../../match)
 
 function(setup)
         execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${PARENT_DIR}/${TEST_NAME})
@@ -44,7 +43,7 @@ function(cleanup)
 endfunction()
 
 function(mkfs path size)
-        execute_process(COMMAND ${BIN_DIR}/../../../src/tools/mkfs.pmemfile ${path} ${size}
+        execute_process(COMMAND ${MKFS_EXECUTABLE} ${path} ${size}
                         RESULT_VARIABLE HAD_ERROR)
         if(HAD_ERROR)
                 message(FATAL_ERROR "mkfs(${path}, ${size}) failed: ${HAD_ERROR}")
@@ -62,7 +61,7 @@ function(match log_file match_file)
 endfunction()
 
 function(pf_cat pool file out)
-        execute_process(COMMAND ${BIN_DIR}/../../../src/tools/pmemfile-cat ${pool} ${file}
+        execute_process(COMMAND ${CAT_EXECUTABLE} ${pool} ${file}
                 OUTPUT_FILE ${out}
                 RESULT_VARIABLE res)
         if(res)

@@ -79,14 +79,17 @@ XXX
 %setup -q -n %{name}-%{version}
 
 %build
-%cmake . -DCMAKE_BUILD_TYPE=Release
+mkdir build && cd build
+%cmake .. -DCMAKE_BUILD_TYPE=Release
 make %{?_smp_mflags}
 
 %install
+cd build
 make install DESTDIR=%{buildroot}
 
 %check
-ctest -V %{?_smp_mflags}
+cd build
+PMEM_IS_PMEM_FORCE=1 ctest -V %{?_smp_mflags}
 
 %post   -n libpmemfile-core -p /sbin/ldconfig
 %postun -n libpmemfile-core -p /sbin/ldconfig

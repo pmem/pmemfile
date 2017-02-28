@@ -82,6 +82,7 @@ function(add_test_generic name tracer)
 			-DTEST_NAME=${name}_${tracer}
 			-DSRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/${name}
 			-DBIN_DIR=${CMAKE_CURRENT_BINARY_DIR}/${name}_${tracer}
+			-DTEST_EXECUTABLE=$<TARGET_FILE:file_${name}>
 			-DTRACER=${tracer}
 			${ARGV2}
 			-P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/test.cmake)

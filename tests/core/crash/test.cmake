@@ -34,7 +34,7 @@ include(${SRC_DIR}/../core-helpers.cmake)
 setup()
 
 function(exec_stage name)
-        execute(file_crash ${name})
+        execute(${TEST_EXECUTABLE} ${name})
 endfunction()
 
 exec_stage(prep)

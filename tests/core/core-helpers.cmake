@@ -49,9 +49,9 @@ function(execute name)
         endif()
 
         string(REPLACE ";" " " TRACE_STR "${TRACE}")
-        message(STATUS "Executing: ${TRACE_STR} ./${name} ${DIR}/testfile1 ${ARGV1}")
+        message(STATUS "Executing: ${TRACE_STR} ${name} ${DIR}/testfile1 ${ARGV1}")
 
-        execute_process(COMMAND ${TRACE} ./${name} ${DIR}/testfile1 ${ARGV1}
+        execute_process(COMMAND ${TRACE} ${name} ${DIR}/testfile1 ${ARGV1}
                         RESULT_VARIABLE HAD_ERROR
                         OUTPUT_FILE ${BIN_DIR}/${TRACER}.out)
 

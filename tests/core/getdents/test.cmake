@@ -33,6 +33,6 @@ include(${SRC_DIR}/../core-helpers.cmake)
 
 setup()
 
-execute(file_getdents)
+execute(${TEST_EXECUTABLE})
 
 cleanup()

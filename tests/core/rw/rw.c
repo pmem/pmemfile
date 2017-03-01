@@ -343,14 +343,14 @@ test2(PMEMfilepool *pfp)
 		PMEMFILE_STATS(pfp, (const struct pmemfile_stats) {
 			.inodes = 2,
 			.dirs = 0,
-			.block_arrays = 0x32c,
+			.block_arrays = 609,
 			.inode_arrays = 1,
 			.blocks = 51200});
 	else
 		PMEMFILE_STATS(pfp, (const struct pmemfile_stats) {
 			.inodes = 2,
 			.dirs = 0,
-			.block_arrays = 10,
+			.block_arrays = 7,
 			.inode_arrays = 1,
 			.blocks = 633});
 

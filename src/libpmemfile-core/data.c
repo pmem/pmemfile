@@ -50,12 +50,6 @@
 #include "valgrind_internal.h"
 #include "ctree.h"
 
-static TOID(struct pmemfile_block)
-blockp_as_oid(struct pmemfile_block *block)
-{
-	return (TOID(struct pmemfile_block))pmemobj_oid(block);
-}
-
 /*
  * block_cache_insert_block -- inserts block into the tree
  */
@@ -86,7 +80,7 @@ vinode_rebuild_block_tree(struct pmemfile_vinode *vinode)
 	struct pmemfile_block_array *block_array = &inode->file_data.blocks;
 	struct pmemfile_block *first = NULL;
 #ifdef DEBUG
-	TOID(struct pmemfile_block) prev = TOID_NULL(struct pmemfile_block);
+	struct pmemfile_block *prev = NULL;
 #endif
 
 	while (block_array != NULL) {
@@ -97,8 +91,8 @@ vinode_rebuild_block_tree(struct pmemfile_vinode *vinode)
 				break;
 
 #ifdef DEBUG
-			ASSERT(memcmp(&block->prev, &prev, sizeof(prev)) == 0);
-			prev = blockp_as_oid(block);
+			ASSERT(block_follow(&block->prev) == prev);
+			prev = block;
 #endif
 
 			block_cache_insert_block(c, block);
@@ -201,8 +195,8 @@ file_allocate_block_data(PMEMfilepool *pfp,
 
 	/* XXX, snapshot separated to let pmemobj use small object cache  */
 	pmemobj_tx_add_range_direct(block, 32);
-	pmemobj_tx_add_range_direct((char *)block + 32, 32);
-	COMPILE_ERROR_ON(sizeof(*block) != 64);
+	pmemobj_tx_add_range_direct((char *)block + 32, 16);
+	COMPILE_ERROR_ON(sizeof(*block) != 48);
 
 	block->data = TX_XALLOC(char, size, POBJ_XALLOC_NO_FLUSH);
 	if (use_usable_size) {
@@ -350,8 +344,8 @@ file_allocate_range(PMEMfilepool *pfp, PMEMfile *file,
 			block = allocate_block(pfp, file, inode, size, over);
 
 			block->offset = offset;
-			block->prev = TOID_NULL(struct pmemfile_block);
-			block->next = TOID_NULL(struct pmemfile_block);
+			set_blocko_null(&block->prev);
+			set_blocko_null(&block->next);
 
 			file->vinode->first_block = block;
 
@@ -370,14 +364,14 @@ file_allocate_range(PMEMfilepool *pfp, PMEMfile *file,
 
 			block->offset = offset;
 
-			block->next = blockp_as_oid(file->vinode->first_block);
-			block->prev = TOID_NULL(struct pmemfile_block);
-			file->vinode->first_block->prev = blockp_as_oid(block);
+			set_blocko(&block->next, file->vinode->first_block);
+			set_blocko_null(&block->prev);
+			set_blocko(&file->vinode->first_block->prev, block);
 
 			file->vinode->first_block = block;
 
 			block_cache_insert_block(file->vinode->blocks, block);
-		} else if (TOID_IS_NULL(block->next)) {
+		} else if (is_blocko_null(block->next)) {
 			/* After the last allocated block */
 
 			struct pmemfile_block *next_block =
@@ -385,20 +379,21 @@ file_allocate_range(PMEMfilepool *pfp, PMEMfile *file,
 			next_block->offset = offset;
 
 			TX_ADD_FIELD_DIRECT(block, next);
-			block->next = blockp_as_oid(next_block);
+			set_blocko(&block->next, next_block);
 
 			block_cache_insert_block(file->vinode->blocks,
 			    next_block);
 
-			next_block->prev = blockp_as_oid(block);
-			next_block->next = TOID_NULL(struct pmemfile_block);
+			set_blocko(&next_block->prev, block);
+			set_blocko_null(&next_block->next);
 
 			block = next_block;
 		} else {
 			/* In a hole between two allocated blocks */
 
 			struct pmemfile_block *previous = block;
-			struct pmemfile_block *next = D_RW(block->next);
+			struct pmemfile_block *next =
+				block_follow(&block->next);
 
 			/* How many bytes in this hole can be used? */
 			uint64_t hole_count = next->offset - offset;
@@ -418,12 +413,12 @@ file_allocate_range(PMEMfilepool *pfp, PMEMfile *file,
 			/* link the new block into the linked list */
 
 			TX_ADD_FIELD_DIRECT(previous, next);
-			previous->next = blockp_as_oid(block);
 
-			block->prev = blockp_as_oid(previous);
-			block->next = blockp_as_oid(next);
 
-			next->prev = blockp_as_oid(block);
+			set_blocko(&previous->next, block);
+			set_blocko(&block->prev, previous);
+			set_blocko(&block->next, next);
+			set_blocko(&next->prev, block);
 
 			block_cache_insert_block(file->vinode->blocks, block);
 		}
@@ -431,11 +426,10 @@ file_allocate_range(PMEMfilepool *pfp, PMEMfile *file,
 }
 
 static struct pmemfile_block *
-find_following_block(PMEMfile * file,
-	struct pmemfile_block *block)
+find_following_block(PMEMfile * file, struct pmemfile_block *block)
 {
 	if (block != NULL)
-		return D_RW(block->next);
+		return block_follow(&block->next);
 	else
 		return file->vinode->first_block;
 }
@@ -608,7 +602,7 @@ iterate_on_file_range(PMEMfilepool *pfp, PMEMfile *file,
 		offset += in_block_len;
 		len -= in_block_len;
 		buf += in_block_len;
-		block = D_RW(block->next);
+		block = block_follow(&block->next);
 	}
 }
 

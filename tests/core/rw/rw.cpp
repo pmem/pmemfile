@@ -334,10 +334,10 @@ TEST_F(rw, 2)
 	    {}}));
 
 	if (env_block_size == 4096)
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 609, 0,
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0x32c, 0,
 				51200));
 	else
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 7, 0, 633));
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 10, 0, 633));
 
 	f = pmemfile_open(pfp, "/file1", O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);

@@ -78,6 +78,9 @@ vinode_rebuild_block_tree(struct pmemfile_vinode *vinode)
 	struct pmemfile_inode *inode = D_RW(vinode->inode);
 	struct pmemfile_block_array *block_array = &inode->file_data.blocks;
 	struct pmemfile_block *first = NULL;
+#ifdef DEBUG
+	TOID(struct pmemfile_block) prev = TOID_NULL(struct pmemfile_block);
+#endif
 
 	while (block_array != NULL) {
 		for (unsigned i = 0; i < block_array->length; ++i) {
@@ -85,6 +88,12 @@ vinode_rebuild_block_tree(struct pmemfile_vinode *vinode)
 
 			if (block->size == 0)
 				break;
+
+#ifdef DEBUG
+			ASSERT(memcmp(&block->prev, &prev, sizeof(prev)) == 0);
+			prev = (TOID(struct pmemfile_block))pmemobj_oid(block);
+#endif
+
 			block_cache_insert_block(c, block);
 			if (first == NULL || block->offset < first->offset)
 				first = block;
@@ -196,8 +205,8 @@ file_allocate_block_data(PMEMfilepool *pfp,
 
 	/* XXX, snapshot separated to let pmemobj use small object cache  */
 	pmemobj_tx_add_range_direct(block, 32);
-	pmemobj_tx_add_range_direct((char *)block + 32, 16);
-	COMPILE_ERROR_ON(sizeof(*block) != 48);
+	pmemobj_tx_add_range_direct((char *)block + 32, 32);
+	COMPILE_ERROR_ON(sizeof(*block) != 64);
 
 	block->data = TX_XALLOC(char, size, POBJ_XALLOC_NO_FLUSH);
 	if (use_usable_size) {
@@ -346,6 +355,7 @@ file_allocate_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			block = allocate_block(pfp, vinode, inode, size, over);
 
 			block->offset = offset;
+			block->prev = TOID_NULL(struct pmemfile_block);
 			block->next = TOID_NULL(struct pmemfile_block);
 
 			vinode->first_block = block;
@@ -368,6 +378,9 @@ file_allocate_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			block->next =
 			    (TOID(struct pmemfile_block))
 			    pmemobj_oid(vinode->first_block);
+			block->prev = TOID_NULL(struct pmemfile_block);
+			vinode->first_block->prev =
+			    (TOID(struct pmemfile_block))pmemobj_oid(block);
 
 			vinode->first_block = block;
 
@@ -385,6 +398,10 @@ file_allocate_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			    pmemobj_oid(next_block);
 
 			block_cache_insert_block(vinode->blocks, next_block);
+
+			next_block->prev =
+			    (TOID(struct pmemfile_block))pmemobj_oid(block);
+			next_block->next = TOID_NULL(struct pmemfile_block);
 
 			block = next_block;
 		} else {
@@ -415,8 +432,13 @@ file_allocate_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			previous->next =
 			    (TOID(struct pmemfile_block))pmemobj_oid(block);
 
+			block->prev =
+			    (TOID(struct pmemfile_block))pmemobj_oid(previous);
 			block->next =
 			    (TOID(struct pmemfile_block))pmemobj_oid(next);
+
+			next->prev =
+			    (TOID(struct pmemfile_block))pmemobj_oid(block);
 
 			block_cache_insert_block(vinode->blocks, block);
 		}

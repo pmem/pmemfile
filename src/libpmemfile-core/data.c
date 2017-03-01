@@ -50,6 +50,12 @@
 #include "valgrind_internal.h"
 #include "ctree.h"
 
+static TOID(struct pmemfile_block)
+blockp_as_oid(struct pmemfile_block *block)
+{
+	return (TOID(struct pmemfile_block))pmemobj_oid(block);
+}
+
 /*
  * block_cache_insert_block -- inserts block into the tree
  */
@@ -91,7 +97,7 @@ vinode_rebuild_block_tree(struct pmemfile_vinode *vinode)
 
 #ifdef DEBUG
 			ASSERT(memcmp(&block->prev, &prev, sizeof(prev)) == 0);
-			prev = (TOID(struct pmemfile_block))pmemobj_oid(block);
+			prev = blockp_as_oid(block);
 #endif
 
 			block_cache_insert_block(c, block);
@@ -375,12 +381,9 @@ file_allocate_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 
 			block->offset = offset;
 
-			block->next =
-			    (TOID(struct pmemfile_block))
-			    pmemobj_oid(vinode->first_block);
+			block->next = blockp_as_oid(vinode->first_block);
 			block->prev = TOID_NULL(struct pmemfile_block);
-			vinode->first_block->prev =
-			    (TOID(struct pmemfile_block))pmemobj_oid(block);
+			vinode->first_block->prev = blockp_as_oid(block);
 
 			vinode->first_block = block;
 
@@ -393,14 +396,11 @@ file_allocate_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			next_block->offset = offset;
 
 			TX_ADD_FIELD_DIRECT(block, next);
-			block->next =
-			    (TOID(struct pmemfile_block))
-			    pmemobj_oid(next_block);
+			block->next = blockp_as_oid(next_block);
 
 			block_cache_insert_block(vinode->blocks, next_block);
 
-			next_block->prev =
-			    (TOID(struct pmemfile_block))pmemobj_oid(block);
+			next_block->prev = blockp_as_oid(block);
 			next_block->next = TOID_NULL(struct pmemfile_block);
 
 			block = next_block;
@@ -408,7 +408,7 @@ file_allocate_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			/* In a hole between two allocated blocks */
 
 			struct pmemfile_block *previous = block;
-			const struct pmemfile_block *next = D_RO(block->next);
+			struct pmemfile_block *next = D_RW(block->next);
 
 			/* How many bytes in this hole can be used? */
 			uint64_t hole_count = next->offset - offset;
@@ -429,16 +429,12 @@ file_allocate_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			/* link the new block into the linked list */
 
 			TX_ADD_FIELD_DIRECT(previous, next);
-			previous->next =
-			    (TOID(struct pmemfile_block))pmemobj_oid(block);
+			previous->next = blockp_as_oid(block);
 
-			block->prev =
-			    (TOID(struct pmemfile_block))pmemobj_oid(previous);
-			block->next =
-			    (TOID(struct pmemfile_block))pmemobj_oid(next);
+			block->prev = blockp_as_oid(previous);
+			block->next = blockp_as_oid(next);
 
-			next->prev =
-			    (TOID(struct pmemfile_block))pmemobj_oid(block);
+			next->prev = blockp_as_oid(block);
 
 			block_cache_insert_block(vinode->blocks, block);
 		}

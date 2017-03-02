@@ -31,33 +31,54 @@
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-strict-aliasing")
 
+include(ExternalProject)
+ExternalProject_Add(
+    gtest
+    URL https://github.com/google/googletest/archive/release-1.8.0.zip
+    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/gtest
+    INSTALL_COMMAND ""
+)
+ExternalProject_Get_Property(gtest source_dir binary_dir)
+add_library(libgtest IMPORTED STATIC GLOBAL)
+add_dependencies(libgtest gtest)
+set_target_properties(libgtest PROPERTIES
+    "IMPORTED_LOCATION" "${binary_dir}/googlemock/gtest/libgtest.a"
+    "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
+)
+include_directories("${source_dir}/googletest/include")
+
 include_directories(.)
 if(LIBUNWIND_FOUND)
         add_definitions(-DUSE_LIBUNWIND)
 endif()
 
-add_library(pmemfile_test STATIC pmemfile_test.c)
+add_library(pmemfile_test STATIC pmemfile_test.cpp)
 add_library(test_backtrace STATIC ../test_backtrace.c)
+
+add_dependencies(pmemfile_test libgtest)
+
+#add_checker_targets("tests-core-test" ${CMAKE_CURRENT_SOURCE_DIR}/pmemfile_test.c)
+add_checker_targets("tests-core-test_bt" ${CMAKE_CURRENT_SOURCE_DIR}/../test_backtrace.c)
 
 function(build_test name srcs)
         add_checker_targets("tests-core-${name}" ${CMAKE_CURRENT_SOURCE_DIR}/${srcs})
         add_executable(${name} ${srcs})
-        target_link_libraries(${name} pmemfile-core_shared pmemfile_test test_backtrace)
+        target_link_libraries(${name} pmemfile-core_shared pmemfile_test test_backtrace libgtest)
         if(LIBUNWIND_FOUND)
                 target_link_libraries(${name} ${LIBUNWIND_LIBRARIES} ${CMAKE_DL_LIBS})
         endif()
         add_dependencies(tests ${name})
 endfunction()
 
-build_test(file_basic basic/basic.c)
-build_test(file_crash crash/crash.c)
-build_test(file_dirs dirs/dirs.c)
-build_test(file_getdents getdents/getdents.c)
-build_test(file_mt mt/mt.c)
-build_test(file_openp openp/openp.c)
-build_test(file_rw rw/rw.c)
-build_test(file_stat stat/stat.c)
-build_test(file_symlinks symlinks/symlinks.c)
+build_test(file_basic basic/basic.cpp)
+build_test(file_crash crash/crash.cpp)
+build_test(file_dirs dirs/dirs.cpp)
+build_test(file_getdents getdents/getdents.cpp)
+build_test(file_mt mt/mt.cpp)
+build_test(file_openp openp/openp.cpp)
+build_test(file_rw rw/rw.cpp)
+build_test(file_stat stat/stat.cpp)
+build_test(file_symlinks symlinks/symlinks.cpp)
 
 function(add_test_generic name tracer)
         set(vg_tracers memcheck helgrind drd pmemcheck)

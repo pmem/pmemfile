@@ -31,70 +31,43 @@
  */
 
 /*
- * basic.c -- unit test for pmemfile_*
+ * basic.cpp -- unit test for pmemfile_*
  */
-#define _GNU_SOURCE
-#include "pmemfile_test.h"
+#include "pmemfile_test.hpp"
 
-static PMEMfilepool *
-create_pool(const char *path)
+class basic : public pmemfile_test
 {
-	PMEMfilepool *pfp = pmemfile_mkfs(path, 8 * 1024 * 1024,
-			S_IWUSR | S_IRUSR);
-	if (!pfp)
-		UT_FATAL("!pmemfile_mkfs: %s", path);
-	return pfp;
-}
+public:
+	basic() : pmemfile_test() {}
+};
 
-static PMEMfilepool *
-open_pool(const char *path)
-{
-	PMEMfilepool *pfp = pmemfile_pool_open(path);
-	if (!pfp)
-		UT_FATAL("!pmemfile_pool_open %s", path);
-	return pfp;
-}
-
-static void
-test_open_create_close(PMEMfilepool *pfp)
+TEST_F(basic, open_create_close)
 {
 	PMEMfile *f1, *f2;
-
-	PMEMFILE_LIST_FILES(pfp, "/", (const struct pmemfile_ls[]) {
-	    {040777, 2, 4008, "."},
-	    {040777, 2, 4008, ".."},
-	    {}});
-
-	PMEMFILE_STATS(pfp, (const struct pmemfile_stats) {
-		.inodes = 1,
-		.dirs = 0,
-		.block_arrays = 0,
-		.inode_arrays = 0,
-		.blocks = 0});
 
 	/* NULL file name */
 	errno = 0;
 	f1 = pmemfile_open(pfp, NULL, O_CREAT, 0777);
-	UT_ASSERTeq(f1, NULL);
-	UT_ASSERTeq(errno, ENOENT);
+	ASSERT_EQ(f1, nullptr);
+	EXPECT_EQ(errno, ENOENT);
 
 	/* file does not exist */
 	errno = 0;
 	f1 = pmemfile_open(pfp, "/aaa", 0);
-	UT_ASSERTeq(f1, NULL);
-	UT_ASSERTeq(errno, ENOENT);
+	ASSERT_EQ(f1, nullptr);
+	EXPECT_EQ(errno, ENOENT);
 
 	/* successful create */
 	f1 = pmemfile_open(pfp, "/aaa", O_CREAT | O_EXCL, 0777);
-	UT_ASSERTne(f1, NULL);
+	ASSERT_NE(f1, nullptr);
 
 	pmemfile_close(pfp, f1);
 
 	/* file already exists */
 	errno = 0;
 	f1 = pmemfile_open(pfp, "/aaa", O_CREAT | O_EXCL, 0777);
-	UT_ASSERTeq(f1, NULL);
-	UT_ASSERTeq(errno, EEXIST);
+	ASSERT_EQ(f1, nullptr);
+	EXPECT_EQ(errno, EEXIST);
 
 	/* too long name */
 	errno = 0;
@@ -105,146 +78,125 @@ test_open_create_close(PMEMfilepool *pfp)
 		"12345678901234567890123456789012345678901234567890"
 		"12345678901234567890123456789012345678901234567890"
 		"123456", O_CREAT | O_EXCL, 0777);
-	UT_ASSERTeq(f1, NULL);
-	UT_ASSERTeq(errno, ENAMETOOLONG);
+	ASSERT_EQ(f1, nullptr);
+	EXPECT_EQ(errno, ENAMETOOLONG);
 
 	/* file does not exist */
 	errno = 0;
 	f2 = pmemfile_open(pfp, "/bbb", 0);
-	UT_ASSERTeq(f2, NULL);
-	UT_ASSERTeq(errno, ENOENT);
+	ASSERT_EQ(f2, nullptr);
+	EXPECT_EQ(errno, ENOENT);
 
 	/* successful create */
 	f2 = pmemfile_open(pfp, "/bbb", O_CREAT | O_EXCL, 0777);
-	UT_ASSERTne(f2, NULL);
+	ASSERT_NE(f2, nullptr);
 
 
 
 	/* successful open */
 	f1 = pmemfile_open(pfp, "/aaa", 0);
-	UT_ASSERTne(f1, NULL);
+	ASSERT_NE(f1, nullptr);
 
 	pmemfile_close(pfp, f2);
 
 	pmemfile_close(pfp, f1);
 
-	PMEMFILE_LIST_FILES(pfp, "/", (const struct pmemfile_ls[]) {
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
 	    {040777, 2, 4008, "."},
 	    {040777, 2, 4008, ".."},
 	    {0100777, 1, 0, "aaa"},
 	    {0100777, 1, 0, "bbb"},
-	    {}});
+	    {}}));
 
-	PMEMFILE_STATS(pfp, (const struct pmemfile_stats) {
-		.inodes = 3,
-		.dirs = 0,
-		.block_arrays = 0,
-		.inode_arrays = 0,
-		.blocks = 0});
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 0, 0));
 
 	pmemfile_pool_close(pfp);
-}
 
-/*
- * At this point (after test_open_create_close) these files should exist in
- * root:
- * - .
- * - ..
- * - aaa
- * - bbb
- */
+	pfp = pmemfile_pool_open(path.c_str());
+	ASSERT_NE(pfp, nullptr) << strerror(errno);
 
-static void
-test_open_close(const char *path)
-{
-	PMEMfilepool *pfp = open_pool(path);
-
-	PMEMFILE_LIST_FILES(pfp, "/", (const struct pmemfile_ls[]) {
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
 	    {040777, 2, 4008, "."},
 	    {040777, 2, 4008, ".."},
 	    {0100777, 1, 0, "aaa"},
 	    {0100777, 1, 0, "bbb"},
-	    {}});
+	    {}}));
 
-	PMEMFILE_STATS(pfp, (const struct pmemfile_stats) {
-		.inodes = 3,
-		.dirs = 0,
-		.block_arrays = 0,
-		.inode_arrays = 0,
-		.blocks = 0});
-
-	pmemfile_pool_close(pfp);
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 0, 0));
 }
 
-static void
-test_link(const char *path)
+TEST_F(basic, link)
 {
-	PMEMfilepool *pfp = open_pool(path);
-
 	int ret;
 
-	PMEMFILE_LIST_FILES(pfp, "/", (const struct pmemfile_ls[]) {
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/aaa", O_EXCL, 0777));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/bbb", O_EXCL, 0777));
+
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
 	    {040777, 2, 4008, "."},
 	    {040777, 2, 4008, ".."},
 	    {0100777, 1, 0, "aaa"},
 	    {0100777, 1, 0, "bbb"},
-	    {}});
+	    {}}));
 
 	/* successful link */
-	PMEMFILE_LINK(pfp, "/aaa", "/aaa.link");
+	ret = pmemfile_link(pfp, "/aaa", "/aaa.link");
+	ASSERT_EQ(ret, 0) << strerror(errno);
 
-	PMEMFILE_LIST_FILES(pfp, "/", (const struct pmemfile_ls[]) {
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
 	    {040777, 2, 4008, "."},
 	    {040777, 2, 4008, ".."},
 	    {0100777, 2, 0, "aaa"},
 	    {0100777, 1, 0, "bbb"},
 	    {0100777, 2, 0, "aaa.link"},
-	    {}});
+	    {}}));
 
 	/* destination already exists */
 	errno = 0;
 	ret = pmemfile_link(pfp, "/aaa", "/aaa.link");
-	UT_ASSERTeq(ret, -1);
-	UT_ASSERTeq(errno, EEXIST);
+	ASSERT_EQ(ret, -1);
+	EXPECT_EQ(errno, EEXIST);
 
-	PMEMFILE_LIST_FILES(pfp, "/", (const struct pmemfile_ls[]) {
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
 	    {040777, 2, 4008, "."},
 	    {040777, 2, 4008, ".."},
 	    {0100777, 2, 0, "aaa"},
 	    {0100777, 1, 0, "bbb"},
 	    {0100777, 2, 0, "aaa.link"},
-	    {}});
+	    {}}));
 
 	/* source does not exist */
 	errno = 0;
 	ret = pmemfile_link(pfp, "/aaaaaaaaaaaa", "/aaa.linkXXX");
-	UT_ASSERTeq(ret, -1);
-	UT_ASSERTeq(errno, ENOENT);
+	ASSERT_EQ(ret, -1);
+	EXPECT_EQ(errno, ENOENT);
 
-	PMEMFILE_LIST_FILES(pfp, "/", (const struct pmemfile_ls[]) {
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
 	    {040777, 2, 4008, "."},
 	    {040777, 2, 4008, ".."},
 	    {0100777, 2, 0, "aaa"},
 	    {0100777, 1, 0, "bbb"},
 	    {0100777, 2, 0, "aaa.link"},
-	    {}});
+	    {}}));
 
 	/* successful link from link */
-	PMEMFILE_LINK(pfp, "/aaa.link", "/aaa2.link");
+	ret = pmemfile_link(pfp, "/aaa.link", "/aaa2.link");
+	ASSERT_EQ(ret, 0) << strerror(errno);
 
-	PMEMFILE_LIST_FILES(pfp, "/", (const struct pmemfile_ls[]) {
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
 	    {040777, 2, 4008, "."},
 	    {040777, 2, 4008, ".."},
 	    {0100777, 3, 0, "aaa"},
 	    {0100777, 1, 0, "bbb"},
 	    {0100777, 3, 0, "aaa.link"},
 	    {0100777, 3, 0, "aaa2.link"},
-	    {}});
+	    {}}));
 
 	/* another successful link */
-	PMEMFILE_LINK(pfp, "/bbb", "/bbb2.link");
+	ret = pmemfile_link(pfp, "/bbb", "/bbb2.link");
+	ASSERT_EQ(ret, 0) << strerror(errno);
 
-	PMEMFILE_LIST_FILES(pfp, "/", (const struct pmemfile_ls[]) {
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
 	    {040777, 2, 4008, "."},
 	    {040777, 2, 4008, ".."},
 	    {0100777, 3, 0, "aaa"},
@@ -252,39 +204,41 @@ test_link(const char *path)
 	    {0100777, 3, 0, "aaa.link"},
 	    {0100777, 3, 0, "aaa2.link"},
 	    {0100777, 2, 0, "bbb2.link"},
-	    {}});
+	    {}}));
 
-	PMEMFILE_MKDIR(pfp, "/dir", 0777);
+	ret = pmemfile_mkdir(pfp, "/dir", 0777);
+	ASSERT_EQ(ret, 0) << strerror(errno);
+
 	/* destination already exists as directory */
 	errno = 0;
 	ret = pmemfile_link(pfp, "/aaa", "/dir");
-	UT_ASSERTeq(ret, -1);
-	UT_ASSERTeq(errno, EEXIST);
+	ASSERT_EQ(ret, -1);
+	EXPECT_EQ(errno, EEXIST);
 
 	errno = 0;
 	ret = pmemfile_link(pfp, "/dir", "/dir2");
-	UT_ASSERTeq(ret, -1);
-	UT_ASSERTeq(errno, EPERM);
+	ASSERT_EQ(ret, -1);
+	EXPECT_EQ(errno, EPERM);
 
 	errno = 0;
 	ret = pmemfile_link(pfp, "/aaa/bbb", "/file");
-	UT_ASSERTeq(ret, -1);
-	UT_ASSERTeq(errno, ENOTDIR);
+	ASSERT_EQ(ret, -1);
+	EXPECT_EQ(errno, ENOTDIR);
 
 	errno = 0;
 	ret = pmemfile_link(pfp, "/bbb", "/aaa/ccc");
-	UT_ASSERTeq(ret, -1);
-	UT_ASSERTeq(errno, ENOTDIR);
+	ASSERT_EQ(ret, -1);
+	EXPECT_EQ(errno, ENOTDIR);
 
 	errno = 0;
 	ret = pmemfile_link(pfp, "/dir/aaaa", "/bbbb");
-	UT_ASSERTeq(ret, -1);
-	UT_ASSERTeq(errno, ENOENT);
+	ASSERT_EQ(ret, -1);
+	EXPECT_EQ(errno, ENOENT);
 
 	errno = 0;
 	ret = pmemfile_link(pfp, "/aaa/", "/bbbb");
-	UT_ASSERTeq(ret, -1);
-	UT_ASSERTeq(errno, ENOTDIR);
+	ASSERT_EQ(ret, -1);
+	EXPECT_EQ(errno, ENOTDIR);
 
 	errno = 0;
 	ret = pmemfile_link(pfp, "/aaa", "/"
@@ -294,12 +248,13 @@ test_link(const char *path)
 		"12345678901234567890123456789012345678901234567890"
 		"12345678901234567890123456789012345678901234567890"
 		"123456");
-	UT_ASSERTeq(ret, -1);
-	UT_ASSERTeq(errno, ENAMETOOLONG);
+	ASSERT_EQ(ret, -1);
+	EXPECT_EQ(errno, ENAMETOOLONG);
 
-	PMEMFILE_RMDIR(pfp, "/dir");
+	ret = pmemfile_rmdir(pfp, "/dir");
+	ASSERT_EQ(ret, 0) << strerror(errno);
 
-	PMEMFILE_LIST_FILES(pfp, "/", (const struct pmemfile_ls[]) {
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
 	    {040777, 2, 4008, "."},
 	    {040777, 2, 4008, ".."},
 	    {0100777, 3, 0, "aaa"},
@@ -307,176 +262,134 @@ test_link(const char *path)
 	    {0100777, 3, 0, "aaa.link"},
 	    {0100777, 3, 0, "aaa2.link"},
 	    {0100777, 2, 0, "bbb2.link"},
-	    {}});
+	    {}}));
 
-	PMEMFILE_STATS(pfp, (const struct pmemfile_stats) {
-		.inodes = 3,
-		.dirs = 0,
-		.block_arrays = 0,
-		.inode_arrays = 1,
-		.blocks = 0});
-
-	pmemfile_pool_close(pfp);
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 1, 0));
 }
 
-/*
- * At this point (after test_link) these files should exist in root:
- * - .
- * - ..
- * - aaa
- * - bbb
- * - aaa.link (hardlink to aaa)
- * - aaa2.link (hardlink to aaa)
- * - bbb2.link (hardlink to bbb)
- */
-
-static void
-test_unlink(const char *path)
+TEST_F(basic, unlink)
 {
-	PMEMfilepool *pfp = open_pool(path);
-
 	int ret;
+
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/aaa", O_EXCL, 0777));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/bbb", O_EXCL, 0777));
+
+	ret = pmemfile_link(pfp, "/aaa", "/aaa.link");
+	ASSERT_EQ(ret, 0) << strerror(errno);
+
+	ret = pmemfile_link(pfp, "/aaa", "/aaa2.link");
+	ASSERT_EQ(ret, 0) << strerror(errno);
+
+	ret = pmemfile_link(pfp, "/bbb", "/bbb2.link");
+	ASSERT_EQ(ret, 0) << strerror(errno);
+
 	PMEMfile *f1;
 
-	f1 = PMEMFILE_OPEN(pfp, "/bbb2.link", 0);
-	PMEMFILE_CLOSE(pfp, f1);
+	f1 = pmemfile_open(pfp, "/bbb2.link", 0);
+	ASSERT_NE(f1, nullptr) << strerror(errno);
+	pmemfile_close(pfp, f1);
 
 	errno = 0;
 	ret = pmemfile_unlink(pfp, "/bbb2.link/");
-	UT_ASSERTeq(ret, -1);
-	UT_ASSERTeq(errno, ENOTDIR);
+	ASSERT_EQ(ret, -1);
+	EXPECT_EQ(errno, ENOTDIR);
 
-	PMEMFILE_UNLINK(pfp, "/bbb2.link");
+	ret = pmemfile_unlink(pfp, "/bbb2.link");
+	ASSERT_EQ(ret, 0) << strerror(errno);
 
 	errno = 0;
 	ret = pmemfile_unlink(pfp, "/bbb2.link");
-	UT_ASSERTeq(ret, -1);
-	UT_ASSERTeq(errno, ENOENT);
+	ASSERT_EQ(ret, -1);
+	EXPECT_EQ(errno, ENOENT);
 
 	errno = 0;
 	f1 = pmemfile_open(pfp, "/bbb2.link", 0);
-	UT_ASSERTeq(f1, NULL);
-	UT_ASSERTeq(errno, ENOENT);
+	ASSERT_EQ(f1, nullptr);
+	EXPECT_EQ(errno, ENOENT);
 
 	errno = 0;
 	ret = pmemfile_unlink(pfp, "/bbb.notexists");
-	UT_ASSERTeq(ret, -1);
-	UT_ASSERTeq(errno, ENOENT);
+	ASSERT_EQ(ret, -1);
+	EXPECT_EQ(errno, ENOENT);
 
 
-	f1 = PMEMFILE_OPEN(pfp, "/bbb", 0);
-	PMEMFILE_UNLINK(pfp, "/bbb");
-	PMEMFILE_CLOSE(pfp, f1);
+	f1 = pmemfile_open(pfp, "/bbb", 0);
+	ASSERT_NE(f1, nullptr) << strerror(errno);
+
+	ret = pmemfile_unlink(pfp, "/bbb");
+	ASSERT_EQ(ret, 0) << strerror(errno);
+
+	pmemfile_close(pfp, f1);
 
 	errno = 0;
 	f1 = pmemfile_open(pfp, "/bbb", 0);
-	UT_ASSERTeq(f1, NULL);
-	UT_ASSERTeq(errno, ENOENT);
+	ASSERT_EQ(f1, nullptr);
+	EXPECT_EQ(errno, ENOENT);
 
 	errno = 0;
 	ret = pmemfile_unlink(pfp, "/..");
-	UT_ASSERTeq(ret, -1);
-	UT_ASSERTeq(errno, EISDIR);
+	ASSERT_EQ(ret, -1);
+	EXPECT_EQ(errno, EISDIR);
 
 	errno = 0;
 	ret = pmemfile_unlink(pfp, "/.");
-	UT_ASSERTeq(ret, -1);
-	UT_ASSERTeq(errno, EISDIR);
+	ASSERT_EQ(ret, -1);
+	EXPECT_EQ(errno, EISDIR);
 
-	PMEMFILE_LIST_FILES(pfp, "/", (const struct pmemfile_ls[]) {
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
 	    {040777, 2, 4008, "."},
 	    {040777, 2, 4008, ".."},
 	    {0100777, 3, 0, "aaa"},
 	    {0100777, 3, 0, "aaa.link"},
 	    {0100777, 3, 0, "aaa2.link"},
-	    {}});
+	    {}}));
 
-	PMEMFILE_STATS(pfp, (const struct pmemfile_stats) {
-		.inodes = 2,
-		.dirs = 0,
-		.block_arrays = 0,
-		.inode_arrays = 1,
-		.blocks = 0});
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 1, 0));
 
-	PMEMFILE_UNLINK(pfp, "/aaa");
-	PMEMFILE_UNLINK(pfp, "/aaa.link");
-	PMEMFILE_UNLINK(pfp, "/aaa2.link");
+	ret = pmemfile_unlink(pfp, "/aaa");
+	ASSERT_EQ(ret, 0) << strerror(errno);
 
-	pmemfile_pool_close(pfp);
+	ret = pmemfile_unlink(pfp, "/aaa.link");
+	ASSERT_EQ(ret, 0) << strerror(errno);
+
+	ret = pmemfile_unlink(pfp, "/aaa2.link");
+	ASSERT_EQ(ret, 0) << strerror(errno);
 }
 
-static void
-test_tmpfile(const char *path)
+TEST_F(basic, tmpfile)
 {
-	PMEMfilepool *pfp = open_pool(path);
-
-	PMEMFILE_STATS(pfp, (const struct pmemfile_stats) {
-		.inodes = 1,
-		.dirs = 0,
-		.block_arrays = 0,
-		.inode_arrays = 1,
-		.blocks = 0});
-
-	PMEMFILE_ASSERT_EMPTY_DIR(pfp, "/");
-
 #ifdef O_TMPFILE
-	PMEMfile *f = PMEMFILE_OPEN(pfp, "/", O_TMPFILE | O_WRONLY, 0644);
-	PMEMFILE_WRITE(pfp, f, "qwerty", 6, 6);
+	ssize_t written;
 
-	PMEMFILE_ASSERT_EMPTY_DIR(pfp, "/");
-	PMEMFILE_STATS(pfp, (const struct pmemfile_stats) {
-		.inodes = 2,
-		.dirs = 0,
-		.block_arrays = 0,
-		.inode_arrays = 1,
-		.blocks = 1});
+	PMEMfile *f = pmemfile_open(pfp, "/", O_TMPFILE | O_WRONLY, 0644);
+	ASSERT_NE(f, nullptr) << strerror(errno);
 
-	PMEMFILE_CLOSE(pfp, f);
+	written = pmemfile_write(pfp, f, "qwerty", 6);
+	ASSERT_EQ(written, 6) << COND_ERROR(written);
 
-	PMEMFILE_ASSERT_EMPTY_DIR(pfp, "/");
+	ASSERT_TRUE(test_empty_dir(pfp, "/"));
+
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 1, 1));
+
+	pmemfile_close(pfp, f);
+
+	ASSERT_TRUE(test_empty_dir(pfp, "/"));
 #endif
-	PMEMFILE_STATS(pfp, (const struct pmemfile_stats) {
-		.inodes = 1,
-		.dirs = 0,
-		.block_arrays = 0,
-		.inode_arrays = 1,
-		.blocks = 0});
-
-
-	pmemfile_pool_close(pfp);
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 0, 0, 1, 0));
 }
-
-/*
- * At this point (after test_unlink) these files should exist in root:
- * - .
- * - ..
- * - aaa
- * - aaa.link
- * - aaa2.link
- *
- * And these files should not exist:
- * - bbb
- * - bbb2.link
- */
 
 int
 main(int argc, char *argv[])
 {
 	START();
 
-	if (argc < 2)
-		UT_FATAL("usage: %s file-name", argv[0]);
+	if (argc < 2) {
+		fprintf(stderr, "usage: %s global_path", argv[0]);
+		exit(1);
+	}
 
-	const char *path = argv[1];
+	global_path = argv[1];
 
-	test_open_create_close(create_pool(path));
-
-	/* open and close pool to test there are no inode leaks */
-	test_open_close(path);
-
-	test_link(path);
-
-	test_unlink(path);
-
-	test_tmpfile(path);
+	::testing::InitGoogleTest(&argc, argv);
+	return RUN_ALL_TESTS();
 }

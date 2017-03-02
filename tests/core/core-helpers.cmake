@@ -51,9 +51,10 @@ function(execute name)
         string(REPLACE ";" " " TRACE_STR "${TRACE}")
         message(STATUS "Executing: ${TRACE_STR} ${name} ${DIR}/testfile1 ${ARGV1}")
 
-        execute_process(COMMAND ${TRACE} ${name} ${DIR}/testfile1 ${ARGV1}
+        execute_process(COMMAND ${TRACE} ${name} ${DIR} ${ARGV1}
                         RESULT_VARIABLE HAD_ERROR
-                        OUTPUT_FILE ${BIN_DIR}/${TRACER}.out)
+                        OUTPUT_FILE ${BIN_DIR}/${TRACER}.out
+                        ERROR_FILE ${BIN_DIR}/${TRACER}.err)
 
         if(HAD_ERROR)
                 message(STATUS "Test ${name} failed: ${HAD_ERROR}")
@@ -62,7 +63,7 @@ function(execute name)
                 message(FATAL_ERROR "Test ${name} failed: ${HAD_ERROR}")
         endif()
 
-        if(EXISTS ${SRC_DIR}/${TRACER}.out.match)
-                match(${BIN_DIR}/${TRACER}.out ${SRC_DIR}/${TRACER}.out.match)
+        if(EXISTS ${SRC_DIR}/${TRACER}.err.match)
+                match(${BIN_DIR}/${TRACER}.err ${SRC_DIR}/${TRACER}.err.match)
         endif()
 endfunction()

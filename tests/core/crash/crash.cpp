@@ -31,97 +31,103 @@
  */
 
 /*
- * crash.c -- unit test for pmemfile_*
+ * crash.cpp -- unit test for pmemfile_*
  */
 
-#include "pmemfile_test.h"
+#include "pmemfile_test.hpp"
+#include <climits>
 
 static PMEMfilepool *
 create_pool(const char *path)
 {
-	PMEMfilepool *pfp = pmemfile_mkfs(path, 8 * 1024 * 1024,
-			S_IWUSR | S_IRUSR);
-	if (!pfp)
-		UT_FATAL("!pmemfile_mkfs: %s", path);
-	return pfp;
+	char tmp[PATH_MAX];
+	sprintf(tmp, "%s/pool", path);
+	return pmemfile_mkfs(tmp, 8 * 1024 * 1024, S_IWUSR | S_IRUSR);
 }
 
 static PMEMfilepool *
 open_pool(const char *path)
 {
-	PMEMfilepool *pfp = pmemfile_pool_open(path);
-	if (!pfp)
-		UT_FATAL("!pmemfile_pool_open %s", path);
+	char tmp[PATH_MAX];
+	sprintf(tmp, "%s/pool", path);
+	return pmemfile_pool_open(tmp);
+}
 
-	return pfp;
+const char *path;
+const char *op;
+
+TEST(crash, 0)
+{
+	if (strcmp(op, "prep") == 0) {
+		PMEMfilepool *pfp = create_pool(path);
+		ASSERT_NE(pfp, nullptr) << strerror(errno);
+
+		ASSERT_TRUE(test_pmemfile_create(pfp, "/aaa", O_EXCL, 0644));
+		ASSERT_TRUE(test_pmemfile_create(pfp, "/bbb", O_EXCL, 0644));
+
+		pmemfile_pool_close(pfp);
+	} else if (strcmp(op, "crash1") == 0) {
+		PMEMfilepool *pfp = open_pool(path);
+		ASSERT_NE(pfp, nullptr) << strerror(errno);
+
+		ASSERT_NE(pmemfile_open(pfp, "/aaa", 0), nullptr);
+
+		exit(0);
+	} else if (strcmp(op, "crash2") == 0) {
+		PMEMfilepool *pfp = open_pool(path);
+		ASSERT_NE(pfp, nullptr) << strerror(errno);
+
+		ASSERT_NE(pmemfile_open(pfp, "/aaa", 0), nullptr);
+		ASSERT_EQ(pmemfile_unlink(pfp, "/aaa"), 0);
+
+		exit(0);
+	} else if (strcmp(op, "openclose1") == 0 ||
+	    strcmp(op, "openclose2") == 0) {
+		PMEMfilepool *pfp = open_pool(path);
+		ASSERT_NE(pfp, nullptr) << strerror(errno);
+
+		EXPECT_TRUE(test_compare_dirs(pfp, "/",
+				(const struct pmemfile_ls[]) {
+		    {040777, 2, 4008, "."},
+		    {040777, 2, 4008, ".."},
+		    {0100644, 1, 0, "aaa"},
+		    {0100644, 1, 0, "bbb"},
+		    {}}));
+
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 0, 0));
+
+		pmemfile_pool_close(pfp);
+	} else if (strcmp(op, "openclose3") == 0) {
+		PMEMfilepool *pfp = open_pool(path);
+		ASSERT_NE(pfp, nullptr) << strerror(errno);
+
+		EXPECT_TRUE(test_compare_dirs(pfp, "/",
+				(const struct pmemfile_ls[]) {
+		    {040777, 2, 4008, "."},
+		    {040777, 2, 4008, ".."},
+		    {0100644, 1, 0, "bbb"},
+		    {}}));
+
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 1, 0));
+
+		pmemfile_pool_close(pfp);
+	} else
+		ASSERT_TRUE(0);
 }
 
 int
 main(int argc, char *argv[])
 {
 	START();
-	if (argc < 3)
-		UT_FATAL("usage: %s file-name op", argv[0]);
 
-	const char *path = argv[1];
-	PMEMfilepool *pfp;
+	if (argc < 3) {
+		fprintf(stderr, "usage: %s path op", argv[0]);
+		exit(1);
+	}
 
-	if (strcmp(argv[2], "prep") == 0) {
-		pfp = create_pool(path);
+	path = argv[1];
+	op = argv[2];
 
-		PMEMFILE_CREATE(pfp, "/aaa", O_CREAT | O_EXCL, 0644);
-		PMEMFILE_CREATE(pfp, "/bbb", O_CREAT | O_EXCL, 0644);
-
-		pmemfile_pool_close(pfp);
-	} else if (strcmp(argv[2], "crash1") == 0) {
-		pfp = open_pool(path);
-
-		PMEMFILE_OPEN(pfp, "/aaa", 0);
-
-		exit(0);
-	} else if (strcmp(argv[2], "crash2") == 0) {
-		pfp = open_pool(path);
-
-		PMEMFILE_OPEN(pfp, "/aaa", 0);
-		PMEMFILE_UNLINK(pfp, "/aaa");
-
-		exit(0);
-	} else if (strcmp(argv[2], "openclose1") == 0 ||
-	    strcmp(argv[2], "openclose2") == 0) {
-		pfp = open_pool(path);
-
-		PMEMFILE_LIST_FILES(pfp, "/", (const struct pmemfile_ls[]) {
-		    {040777, 2, 4008, "."},
-		    {040777, 2, 4008, ".."},
-		    {0100644, 1, 0, "aaa"},
-		    {0100644, 1, 0, "bbb"},
-		    {}});
-
-		PMEMFILE_STATS(pfp, (const struct pmemfile_stats) {
-			.inodes = 3,
-			.dirs = 0,
-			.block_arrays = 0,
-			.inode_arrays = 0,
-			.blocks = 0});
-
-		pmemfile_pool_close(pfp);
-	} else if (strcmp(argv[2], "openclose3") == 0) {
-		pfp = open_pool(path);
-
-		PMEMFILE_LIST_FILES(pfp, "/", (const struct pmemfile_ls[]) {
-		    {040777, 2, 4008, "."},
-		    {040777, 2, 4008, ".."},
-		    {0100644, 1, 0, "bbb"},
-		    {}});
-
-		PMEMFILE_STATS(pfp, (const struct pmemfile_stats) {
-			.inodes = 2,
-			.dirs = 0,
-			.block_arrays = 0,
-			.inode_arrays = 1,
-			.blocks = 0});
-
-		pmemfile_pool_close(pfp);
-	} else
-		UT_ASSERT(0);
+	::testing::InitGoogleTest(&argc, argv);
+	return RUN_ALL_TESTS();
 }

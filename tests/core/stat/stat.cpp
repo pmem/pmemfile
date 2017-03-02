@@ -31,10 +31,16 @@
  */
 
 /*
- * stat.c -- unit test for pmemfile_stat & pmemfile_fstat
+ * stat.cpp -- unit test for pmemfile_stat & pmemfile_fstat
  */
 
-#include "pmemfile_test.h"
+#include "pmemfile_test.hpp"
+
+class stat_test : public pmemfile_test
+{
+public:
+	stat_test() : pmemfile_test() {}
+};
 
 static const char *
 timespec_to_str(const struct timespec *t)
@@ -47,24 +53,24 @@ timespec_to_str(const struct timespec *t)
 static void
 dump_stat(struct stat *st, const char *path)
 {
-	UT_OUT("path:       %s\n", path);
-	UT_OUT("st_dev:     0x%lx\n", st->st_dev);
-	UT_OUT("st_ino:     %ld\n", st->st_ino);
-	UT_OUT("st_mode:    0%o\n", st->st_mode);
-	UT_OUT("st_nlink:   %lu\n", st->st_nlink);
-	UT_OUT("st_uid:     %u\n", st->st_uid);
-	UT_OUT("st_gid:     %u\n", st->st_gid);
-	UT_OUT("st_rdev:    0x%lx\n", st->st_rdev);
-	UT_OUT("st_size:    %ld\n", st->st_size);
-	UT_OUT("st_blksize: %ld\n", st->st_blksize);
-	UT_OUT("st_blocks:  %ld\n", st->st_blocks);
-	UT_OUT("st_atim:    %ld.%.9ld, %s\n", st->st_atim.tv_sec,
+	T_OUT("path:       %s\n", path);
+	T_OUT("st_dev:     0x%lx\n", st->st_dev);
+	T_OUT("st_ino:     %ld\n", st->st_ino);
+	T_OUT("st_mode:    0%o\n", st->st_mode);
+	T_OUT("st_nlink:   %lu\n", st->st_nlink);
+	T_OUT("st_uid:     %u\n", st->st_uid);
+	T_OUT("st_gid:     %u\n", st->st_gid);
+	T_OUT("st_rdev:    0x%lx\n", st->st_rdev);
+	T_OUT("st_size:    %ld\n", st->st_size);
+	T_OUT("st_blksize: %ld\n", st->st_blksize);
+	T_OUT("st_blocks:  %ld\n", st->st_blocks);
+	T_OUT("st_atim:    %ld.%.9ld, %s\n", st->st_atim.tv_sec,
 			st->st_atim.tv_nsec, timespec_to_str(&st->st_atim));
-	UT_OUT("st_mtim:    %ld.%.9ld, %s\n", st->st_mtim.tv_sec,
+	T_OUT("st_mtim:    %ld.%.9ld, %s\n", st->st_mtim.tv_sec,
 			st->st_mtim.tv_nsec, timespec_to_str(&st->st_mtim));
-	UT_OUT("st_ctim:    %ld.%.9ld, %s\n", st->st_ctim.tv_sec,
+	T_OUT("st_ctim:    %ld.%.9ld, %s\n", st->st_ctim.tv_sec,
 			st->st_ctim.tv_nsec, timespec_to_str(&st->st_ctim));
-	UT_OUT("---\n");
+	T_OUT("---\n");
 }
 
 static int
@@ -92,51 +98,61 @@ fstat_and_dump(PMEMfilepool *pfp, PMEMfile *f)
 	return 0;
 }
 
-static void
-test1(PMEMfilepool *pfp)
+TEST_F(stat_test, 0)
 {
-	PMEMfile *f = PMEMFILE_OPEN(pfp, "/file1", O_CREAT | O_EXCL | O_WRONLY,
-			0644);
+	ASSERT_EQ(stat_and_dump(pfp, "/"), 0);
 
-	UT_ASSERTeq(stat_and_dump(pfp, "/file1"), 0);
+	errno = 0;
+	ASSERT_EQ(stat_and_dump(pfp, "/file1"), -1);
+	EXPECT_EQ(errno, ENOENT);
+}
+
+TEST_F(stat_test, 1)
+{
+	PMEMfile *f = pmemfile_open(pfp, "/file1", O_CREAT | O_EXCL | O_WRONLY,
+			0644);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+
+	ASSERT_EQ(stat_and_dump(pfp, "/file1"), 0);
 
 	char buf[1024];
 	memset(buf, 0xdd, 1024);
 
-	for (int i = 0; i < 100; ++i)
-		PMEMFILE_WRITE(pfp, f, buf, 1024, 1024);
+	for (int i = 0; i < 100; ++i) {
+		ssize_t written = pmemfile_write(pfp, f, buf, 1024);
+		ASSERT_EQ(written, 1024) << COND_ERROR(written);
+	}
 
-	UT_ASSERTeq(stat_and_dump(pfp, "/file1"), 0);
-
-	errno = 0;
-	UT_ASSERTeq(stat_and_dump(pfp, "/file1/"), -1);
-	UT_ASSERTeq(errno, ENOTDIR);
-
-	PMEMFILE_UNLINK(pfp, "/file1");
+	ASSERT_EQ(stat_and_dump(pfp, "/file1"), 0);
 
 	errno = 0;
-	UT_ASSERTeq(stat_and_dump(pfp, "/file1"), -1);
-	UT_ASSERTeq(errno, ENOENT);
+	ASSERT_EQ(stat_and_dump(pfp, "/file1/"), -1);
+	EXPECT_EQ(errno, ENOTDIR);
 
-	UT_ASSERTeq(fstat_and_dump(pfp, f), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
 
-	PMEMFILE_CLOSE(pfp, f);
+	errno = 0;
+	ASSERT_EQ(stat_and_dump(pfp, "/file1"), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	ASSERT_EQ(fstat_and_dump(pfp, f), 0);
+
+	pmemfile_close(pfp, f);
 }
 
-static void
-test2(PMEMfilepool *pfp)
+TEST_F(stat_test, 2)
 {
-	PMEMFILE_MKDIR(pfp, "/dir", 0755);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", 0755), 0);
 
-	UT_ASSERTeq(stat_and_dump(pfp, "/dir"), 0);
+	ASSERT_EQ(stat_and_dump(pfp, "/dir"), 0);
 
-	PMEMFILE_CREATE(pfp, "/dir/file1", O_EXCL, 0644);
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir/file1", O_EXCL, 0644));
 
-	UT_ASSERTeq(stat_and_dump(pfp, "/dir/file1"), 0);
+	ASSERT_EQ(stat_and_dump(pfp, "/dir/file1"), 0);
 
-	PMEMFILE_UNLINK(pfp, "/dir/file1");
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/file1"), 0);
 
-	PMEMFILE_RMDIR(pfp, "/dir");
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
 }
 
 int
@@ -144,21 +160,13 @@ main(int argc, char *argv[])
 {
 	START();
 
-	if (argc < 2)
-		UT_FATAL("usage: %s file-name", argv[0]);
+	if (argc < 2) {
+		fprintf(stderr, "usage: %s global_path", argv[0]);
+		exit(1);
+	}
 
-	const char *path = argv[1];
+	global_path = argv[1];
 
-	PMEMfilepool *pfp = PMEMFILE_MKFS(path);
-
-	UT_ASSERTeq(stat_and_dump(pfp, "/"), 0);
-
-	errno = 0;
-	UT_ASSERTeq(stat_and_dump(pfp, "/file1"), -1);
-	UT_ASSERTeq(errno, ENOENT);
-
-	test1(pfp);
-	test2(pfp);
-
-	pmemfile_pool_close(pfp);
+	::testing::InitGoogleTest(&argc, argv);
+	return RUN_ALL_TESTS();
 }

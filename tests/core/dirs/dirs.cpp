@@ -35,7 +35,6 @@
  */
 
 #include "pmemfile_test.hpp"
-#include <climits>
 
 class dirs : public pmemfile_test
 {
@@ -97,14 +96,15 @@ list_files(PMEMfilepool *pfp, const char *dir, size_t expected_files,
 		int just_count, const char *name)
 {
 	T_OUT("\"%s\" start\n", name);
-	PMEMfile *f = pmemfile_open(pfp, dir, O_DIRECTORY | O_RDONLY);
+	PMEMfile *f = pmemfile_open(pfp, dir, PMEMFILE_O_DIRECTORY |
+			PMEMFILE_O_RDONLY);
 	if (!f) {
 		EXPECT_NE(f, nullptr);
 		return false;
 	}
 
 	char buf[32 * 1024];
-	char path[PATH_MAX];
+	char path[PMEMFILE_PATH_MAX];
 	struct linux_dirent64 *d = (struct linux_dirent64 *)buf;
 	int r = pmemfile_getdents64(pfp, f, d, sizeof(buf));
 	size_t num_files = 0;
@@ -138,7 +138,7 @@ TEST_F(dirs, 0)
 {
 	PMEMfile *f;
 
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/file", O_EXCL, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/file", PMEMFILE_O_EXCL, 0644));
 
 	f = pmemfile_open(pfp, "//file", 0);
 	ASSERT_NE(f, nullptr) << strerror(errno);
@@ -159,8 +159,8 @@ TEST_F(dirs, 0)
 	ASSERT_TRUE(list_files(pfp, "/", 3, 0, ". .. dir"));
 	ASSERT_TRUE(list_files(pfp, "/dir", 2, 0, ". .."));
 
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir//../dir/.//file", O_EXCL,
-			0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir//../dir/.//file",
+			PMEMFILE_O_EXCL, 0644));
 
 	ASSERT_TRUE(list_files(pfp, "/dir", 3, 0, ". .. file"));
 
@@ -172,21 +172,23 @@ TEST_F(dirs, 0)
 	ASSERT_NE(f, nullptr) << strerror(errno);
 	pmemfile_close(pfp, f);
 
-	f = pmemfile_open(pfp, "/dir/file/file", O_RDONLY);
+	f = pmemfile_open(pfp, "/dir/file/file", PMEMFILE_O_RDONLY);
 	ASSERT_EQ(f, nullptr);
 	EXPECT_EQ(errno, ENOTDIR);
 
-	f = pmemfile_open(pfp, "/dir/file/file", O_RDONLY | O_CREAT);
+	f = pmemfile_open(pfp, "/dir/file/file", PMEMFILE_O_RDONLY |
+			PMEMFILE_O_CREAT);
 	ASSERT_EQ(f, nullptr);
 	EXPECT_EQ(errno, ENOTDIR);
 
-	f = pmemfile_open(pfp, "/dir/file/file", O_RDONLY | O_CREAT | O_EXCL);
+	f = pmemfile_open(pfp, "/dir/file/file", PMEMFILE_O_RDONLY |
+			PMEMFILE_O_CREAT | PMEMFILE_O_EXCL);
 	ASSERT_EQ(f, nullptr);
 	EXPECT_EQ(errno, ENOTDIR);
 
 	/* file is not a directory */
 	errno = 0;
-	f = pmemfile_open(pfp, "/dir/file/", O_RDONLY);
+	f = pmemfile_open(pfp, "/dir/file/", PMEMFILE_O_RDONLY);
 	ASSERT_EQ(f, nullptr);
 	EXPECT_EQ(errno, ENOTDIR);
 
@@ -208,7 +210,8 @@ TEST_F(dirs, 1)
 	for (size_t i = 0; i < 100; ++i) {
 		sprintf(buf, "/file%04lu", i);
 
-		f = pmemfile_open(pfp, buf, O_CREAT | O_EXCL | O_WRONLY, 0644);
+		f = pmemfile_open(pfp, buf, PMEMFILE_O_CREAT | PMEMFILE_O_EXCL |
+				PMEMFILE_O_WRONLY, 0644);
 		ASSERT_NE(f, nullptr) << strerror(errno);
 
 		written = pmemfile_write(pfp, f, buf, i);
@@ -263,7 +266,7 @@ TEST_F(dirs, 2)
 
 	ASSERT_TRUE(list_files(pfp, "/", 100 + 2, 1, "test2: after2"));
 
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/file", O_EXCL, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/file", PMEMFILE_O_EXCL, 0644));
 
 	errno = 0;
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/file/aaaa", 0755), -1);
@@ -283,7 +286,7 @@ TEST_F(dirs, 2)
 	EXPECT_EQ(errno, ENOENT);
 
 
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/file", O_EXCL, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/file", PMEMFILE_O_EXCL, 0644));
 
 	errno = 0;
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/file"), -1);
@@ -322,7 +325,8 @@ TEST_F(dirs, 2)
 TEST_F(dirs, 3)
 {
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/file", O_EXCL, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/file", PMEMFILE_O_EXCL,
+			0644));
 
 	errno = 0;
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), -1);
@@ -343,7 +347,7 @@ TEST_F(dirs, 3)
 
 TEST_F(dirs, 4)
 {
-	char buf[PATH_MAX];
+	char buf[PMEMFILE_PATH_MAX];
 
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1/dir2", 0755), 0);
@@ -447,7 +451,7 @@ TEST_F(dirs, 4)
 
 
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
-	PMEMfile *f = pmemfile_open(pfp, "dir1", O_DIRECTORY);
+	PMEMfile *f = pmemfile_open(pfp, "dir1", PMEMFILE_O_DIRECTORY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 	ASSERT_EQ(pmemfile_fchdir(pfp, f), 0);
 	pmemfile_close(pfp, f);

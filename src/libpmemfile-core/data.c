@@ -31,12 +31,8 @@
  */
 
 #define _GNU_SOURCE
-#include <fcntl.h>
+
 #include <limits.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 #include "callbacks.h"
 #include "data.h"
@@ -845,7 +841,7 @@ pmemfile_lseek64_locked(PMEMfilepool *pfp, PMEMfile *file, off64_t offset,
 	LOG(LDBG, "file %p offset %lu whence %d", file, offset, whence);
 
 	if (vinode_is_dir(file->vinode)) {
-		if (whence == SEEK_END) {
+		if (whence == PMEMFILE_SEEK_END) {
 			errno = EINVAL;
 			return -1;
 		}
@@ -862,18 +858,18 @@ pmemfile_lseek64_locked(PMEMfilepool *pfp, PMEMfile *file, off64_t offset,
 	int new_errno = EINVAL;
 
 	switch (whence) {
-		case SEEK_SET:
+		case PMEMFILE_SEEK_SET:
 			ret = offset;
 			break;
-		case SEEK_CUR:
+		case PMEMFILE_SEEK_CUR:
 			ret = (off64_t)file->offset + offset;
 			break;
-		case SEEK_END:
+		case PMEMFILE_SEEK_END:
 			util_rwlock_rdlock(&vinode->rwlock);
 			ret = (off64_t)inode->size + offset;
 			util_rwlock_unlock(&vinode->rwlock);
 			break;
-		case SEEK_DATA:
+		case PMEMFILE_SEEK_DATA:
 			util_rwlock_rdlock(&vinode->rwlock);
 			if (offset < 0) {
 				ret = 0;
@@ -885,7 +881,7 @@ pmemfile_lseek64_locked(PMEMfilepool *pfp, PMEMfile *file, off64_t offset,
 			}
 			util_rwlock_unlock(&vinode->rwlock);
 			break;
-		case SEEK_HOLE:
+		case PMEMFILE_SEEK_HOLE:
 			util_rwlock_rdlock(&vinode->rwlock);
 			if ((uint64_t)offset > inode->size) {
 				ret = -1;
@@ -947,7 +943,8 @@ pmemfile_pread(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count,
 
 	size_t cur_off = file->offset;
 
-	if (pmemfile_lseek64_locked(pfp, file, offset, SEEK_SET) != offset) {
+	if (pmemfile_lseek64_locked(pfp, file, offset, PMEMFILE_SEEK_SET) !=
+			offset) {
 		ret = -1;
 		goto end;
 	}
@@ -972,7 +969,8 @@ pmemfile_pwrite(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 
 	size_t cur_off = file->offset;
 
-	if (pmemfile_lseek64_locked(pfp, file, offset, SEEK_SET) != offset) {
+	if (pmemfile_lseek64_locked(pfp, file, offset, PMEMFILE_SEEK_SET) !=
+			offset) {
 		ret = -1;
 		goto end;
 	}

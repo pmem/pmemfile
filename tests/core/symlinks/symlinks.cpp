@@ -34,7 +34,6 @@
  * symlinks.cpp -- unit test for pmemfile_symlink and co
  */
 #include "pmemfile_test.hpp"
-#include <climits>
 
 class symlinks : public pmemfile_test
 {
@@ -46,7 +45,7 @@ static bool
 test_pmemfile_readlink(PMEMfilepool *pfp, const char *pathname,
 		const char *expected)
 {
-	static char readlink_buf[PATH_MAX];
+	static char readlink_buf[PMEMFILE_PATH_MAX];
 
 	ssize_t ret = pmemfile_readlink(pfp, pathname, readlink_buf,
 			sizeof(readlink_buf) - 1);
@@ -72,8 +71,8 @@ static bool
 test_pmemfile_readlinkat(PMEMfilepool *pfp, const char *dirpath,
 		const char *pathname, const char *expected)
 {
-	static char readlink_buf[PATH_MAX];
-	PMEMfile *dir = pmemfile_open(pfp, dirpath, O_DIRECTORY);
+	static char readlink_buf[PMEMFILE_PATH_MAX];
+	PMEMfile *dir = pmemfile_open(pfp, dirpath, PMEMFILE_O_DIRECTORY);
 	if (!dir) {
 		ADD_FAILURE() << pathname << " " << strerror(errno);
 		return false;
@@ -173,7 +172,8 @@ TEST_F(symlinks, 0)
 	EXPECT_EQ(errno, ENAMETOOLONG);
 
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/deleted-dir", 0755), 0);
-	PMEMfile *deleted_dir = pmemfile_open(pfp, "/deleted-dir", O_DIRECTORY);
+	PMEMfile *deleted_dir = pmemfile_open(pfp, "/deleted-dir",
+			PMEMFILE_O_DIRECTORY);
 	ASSERT_NE(deleted_dir, nullptr) << strerror(errno);
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/deleted-dir"), 0);
 
@@ -182,32 +182,34 @@ TEST_F(symlinks, 0)
 	EXPECT_EQ(errno, ENOENT);
 	pmemfile_close(pfp, deleted_dir);
 
-	PMEMfile *f = pmemfile_open(pfp, "/file1", O_RDONLY);
+	PMEMfile *f = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 	ret = pmemfile_symlinkat(pfp, "whatever", f, "lalala");
 	ASSERT_EQ(ret, -1);
 	EXPECT_EQ(errno, ENOTDIR);
 
 
-	char buf[PATH_MAX];
+	char buf[PMEMFILE_PATH_MAX];
 
-	ret = pmemfile_readlink(pfp, "/not-existing-dir/xxx", buf, PATH_MAX);
+	ret = pmemfile_readlink(pfp, "/not-existing-dir/xxx", buf,
+			PMEMFILE_PATH_MAX);
 	ASSERT_EQ(ret, -1);
 	EXPECT_EQ(errno, ENOENT);
 
-	ret = pmemfile_readlink(pfp, "/file1/xxx", buf, PATH_MAX);
+	ret = pmemfile_readlink(pfp, "/file1/xxx", buf, PMEMFILE_PATH_MAX);
 	ASSERT_EQ(ret, -1);
 	EXPECT_EQ(errno, ENOTDIR);
 
-	ret = pmemfile_readlink(pfp, "/file1", buf, PATH_MAX);
+	ret = pmemfile_readlink(pfp, "/file1", buf, PMEMFILE_PATH_MAX);
 	ASSERT_EQ(ret, -1);
 	EXPECT_EQ(errno, EINVAL);
 
-	ret = pmemfile_readlinkat(pfp, f, "lalala", buf, PATH_MAX);
+	ret = pmemfile_readlinkat(pfp, f, "lalala", buf, PMEMFILE_PATH_MAX);
 	ASSERT_EQ(ret, -1);
 	EXPECT_EQ(errno, ENOTDIR);
 
-	ret = pmemfile_readlink(pfp, "/dir/sym1-exists/", buf, PATH_MAX);
+	ret = pmemfile_readlink(pfp, "/dir/sym1-exists/", buf,
+			PMEMFILE_PATH_MAX);
 	ASSERT_EQ(ret, -1);
 	EXPECT_EQ(errno, ENOTDIR);
 
@@ -227,7 +229,7 @@ test_symlink_valid(PMEMfilepool *pfp, const char *path)
 	char buf[4096];
 
 	memset(buf, 0, sizeof(buf));
-	PMEMfile *file = pmemfile_open(pfp, path, O_RDONLY);
+	PMEMfile *file = pmemfile_open(pfp, path, PMEMFILE_O_RDONLY);
 	EXPECT_NE(file, nullptr) << strerror(errno);
 	if (!file)
 		return false;
@@ -251,13 +253,14 @@ test_symlink_valid(PMEMfilepool *pfp, const char *path)
 static bool
 test_symlink_to_dir_valid(PMEMfilepool *pfp, const char *path)
 {
-	PMEMfile *file = pmemfile_open(pfp, path, O_RDONLY);
+	PMEMfile *file = pmemfile_open(pfp, path, PMEMFILE_O_RDONLY);
 	EXPECT_NE(file, nullptr) << strerror(errno);
 	if (!file)
 		return false;
 	pmemfile_close(pfp, file);
 
-	file = pmemfile_open(pfp, path, O_RDONLY | O_NOFOLLOW);
+	file = pmemfile_open(pfp, path,
+			PMEMFILE_O_RDONLY | PMEMFILE_O_NOFOLLOW);
 	EXPECT_EQ(file, nullptr);
 	if (file)
 		return false;
@@ -268,7 +271,8 @@ test_symlink_to_dir_valid(PMEMfilepool *pfp, const char *path)
 
 #if 0
 	char buf[1];
-	file = pmemfile_open(pfp, path, O_RDONLY | O_NOFOLLOW | O_PATH);
+	file = pmemfile_open(pfp, path, PMEMFILE_O_RDONLY |
+			PMEMFILE_O_NOFOLLOW | PMEMFILE_O_PATH);
 	EXPECT_NE(file, nullptr) << strerror(errno);
 	if (!file)
 		return false;
@@ -286,7 +290,7 @@ test_symlink_to_dir_valid(PMEMfilepool *pfp, const char *path)
 static bool
 test_symlink_invalid(PMEMfilepool *pfp, const char *path)
 {
-	PMEMfile *file = pmemfile_open(pfp, path, O_RDONLY);
+	PMEMfile *file = pmemfile_open(pfp, path, PMEMFILE_O_RDONLY);
 	EXPECT_EQ(file, nullptr);
 	EXPECT_EQ(errno, ENOENT);
 
@@ -296,7 +300,7 @@ test_symlink_invalid(PMEMfilepool *pfp, const char *path)
 static bool
 test_symlink_loop(PMEMfilepool *pfp, const char *path)
 {
-	PMEMfile *file = pmemfile_open(pfp, path, O_RDONLY);
+	PMEMfile *file = pmemfile_open(pfp, path, PMEMFILE_O_RDONLY);
 	EXPECT_EQ(file, nullptr);
 	EXPECT_EQ(errno, ELOOP);
 
@@ -331,7 +335,7 @@ TEST_F(symlinks, 1)
 	ASSERT_EQ(pmemfile_symlink(pfp, "/loop1", "/dir1/loop"), 0);
 
 	PMEMfile *file = pmemfile_open(pfp, "/dir1/internal_dir/file",
-			O_CREAT | O_WRONLY, 0644);
+			PMEMFILE_O_CREAT | PMEMFILE_O_WRONLY, 0644);
 	ASSERT_NE(file, nullptr) << strerror(errno);
 	ssize_t written = pmemfile_write(pfp, file, "qwerty\n", 7);
 	ASSERT_EQ(written, 7) << COND_ERROR(written);
@@ -367,7 +371,8 @@ TEST_F(symlinks, 1)
 
 TEST_F(symlinks, 2)
 {
-	PMEMfile *file = pmemfile_open(pfp, "/file1", O_CREAT | O_WRONLY, 0644);
+	PMEMfile *file = pmemfile_open(pfp, "/file1",
+			PMEMFILE_O_CREAT | PMEMFILE_O_WRONLY, 0644);
 	ASSERT_NE(file, nullptr) << strerror(errno);
 
 	ssize_t written = pmemfile_write(pfp, file, "qwerty\n", 7);
@@ -386,7 +391,7 @@ TEST_F(symlinks, 2)
 	char buf[4096];
 
 	memset(buf, 0, sizeof(buf));
-	file = pmemfile_open(pfp, "/file1", O_RDONLY);
+	file = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDONLY);
 	ASSERT_NE(file, nullptr) << strerror(errno);
 
 	ssize_t r = pmemfile_read(pfp, file, buf, sizeof(buf));
@@ -412,7 +417,8 @@ TEST_F(symlinks, 3)
 {
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", 0777), 0);
 
-	PMEMfile *file = pmemfile_open(pfp, "/file", O_CREAT | O_WRONLY, 0644);
+	PMEMfile *file = pmemfile_open(pfp, "/file",
+			PMEMFILE_O_CREAT | PMEMFILE_O_WRONLY, 0644);
 	ASSERT_NE(file, nullptr) << strerror(errno);
 
 	ssize_t written = pmemfile_write(pfp, file, "qwerty\n", 7);
@@ -428,7 +434,7 @@ TEST_F(symlinks, 3)
 	ASSERT_EQ(pmemfile_linkat(pfp,
 			NULL, "/dir/symlink",
 			NULL, "/link_to_underlying_file",
-			AT_SYMLINK_FOLLOW), 0);
+			PMEMFILE_AT_SYMLINK_FOLLOW), 0);
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir",
 			(const struct pmemfile_ls[]) {
@@ -459,19 +465,20 @@ static bool
 check_path(PMEMfilepool *pfp, int follow_symlink, const char *path,
 		const char *parent, const char *child)
 {
-	char tmp_path[PATH_MAX], dir_path[PATH_MAX];
+	char tmp_path[PMEMFILE_PATH_MAX], dir_path[PMEMFILE_PATH_MAX];
 
-	strncpy(tmp_path, path, PATH_MAX);
-	tmp_path[PATH_MAX - 1] = 0;
+	strncpy(tmp_path, path, PMEMFILE_PATH_MAX);
+	tmp_path[PMEMFILE_PATH_MAX - 1] = 0;
 
 	PMEMfile *f = pmemfile_open_parent(pfp, PMEMFILE_AT_CWD, tmp_path,
-		PATH_MAX,
+			PMEMFILE_PATH_MAX,
 		follow_symlink ? PMEMFILE_OPEN_PARENT_SYMLINK_FOLLOW : 0);
 	EXPECT_NE(f, nullptr) << strerror(errno);
 	if (!f)
 		return false;
 
-	char *dir_path2 = pmemfile_get_dir_path(pfp, f, dir_path, PATH_MAX);
+	char *dir_path2 = pmemfile_get_dir_path(pfp, f, dir_path,
+			PMEMFILE_PATH_MAX);
 	EXPECT_EQ(dir_path2, dir_path);
 
 	if (strcmp(dir_path, parent) != 0) {
@@ -513,7 +520,7 @@ TEST_F(symlinks, 5)
 
 	ASSERT_EQ(pmemfile_symlink(pfp, "/dir2", "/dir1/symlink"), 0);
 
-	char buf[PATH_MAX];
+	char buf[PMEMFILE_PATH_MAX];
 	ASSERT_EQ(pmemfile_chdir(pfp, "/dir1/symlink"), 0);
 	ASSERT_NE(pmemfile_getcwd(pfp, buf, sizeof(buf)), nullptr);
 	ASSERT_STREQ(buf, "/dir2");
@@ -542,7 +549,7 @@ TEST_F(symlinks, 6)
 	ASSERT_EQ(S_ISLNK(buf.st_mode), 0);
 
 	ASSERT_EQ(pmemfile_fstatat(pfp, NULL, "/dir1/symlink", &buf,
-			AT_SYMLINK_NOFOLLOW), 0);
+			PMEMFILE_AT_SYMLINK_NOFOLLOW), 0);
 	ASSERT_EQ(S_ISLNK(buf.st_mode), 1);
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/dir1/symlink"), 0);

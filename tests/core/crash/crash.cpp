@@ -35,12 +35,11 @@
  */
 
 #include "pmemfile_test.hpp"
-#include <climits>
 
 static PMEMfilepool *
 create_pool(const char *path)
 {
-	char tmp[PATH_MAX];
+	char tmp[PMEMFILE_PATH_MAX];
 	sprintf(tmp, "%s/pool", path);
 	return pmemfile_mkfs(tmp, 8 * 1024 * 1024, S_IWUSR | S_IRUSR);
 }
@@ -48,7 +47,7 @@ create_pool(const char *path)
 static PMEMfilepool *
 open_pool(const char *path)
 {
-	char tmp[PATH_MAX];
+	char tmp[PMEMFILE_PATH_MAX];
 	sprintf(tmp, "%s/pool", path);
 	return pmemfile_pool_open(tmp);
 }
@@ -62,8 +61,10 @@ TEST(crash, 0)
 		PMEMfilepool *pfp = create_pool(path);
 		ASSERT_NE(pfp, nullptr) << strerror(errno);
 
-		ASSERT_TRUE(test_pmemfile_create(pfp, "/aaa", O_EXCL, 0644));
-		ASSERT_TRUE(test_pmemfile_create(pfp, "/bbb", O_EXCL, 0644));
+		ASSERT_TRUE(test_pmemfile_create(pfp, "/aaa", PMEMFILE_O_EXCL,
+				0644));
+		ASSERT_TRUE(test_pmemfile_create(pfp, "/bbb", PMEMFILE_O_EXCL,
+				0644));
 
 		pmemfile_pool_close(pfp);
 	} else if (strcmp(op, "crash1") == 0) {

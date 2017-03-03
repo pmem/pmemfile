@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Intel Corporation
+ * Copyright 2016-2017, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,8 +38,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 
 #include "libpmemfile-core.h"
 
@@ -63,7 +61,7 @@ dump_file(PMEMfilepool *pool, const char *path)
 
 	errno = 0;
 
-	PMEMfile *file = pmemfile_open(pool, path, O_RDONLY, 0);
+	PMEMfile *file = pmemfile_open(pool, path, PMEMFILE_O_RDONLY, 0);
 
 	if (file == NULL) {
 		perror(path);

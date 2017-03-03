@@ -40,8 +40,6 @@
 #include <stddef.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <syscall.h>
-#include <sys/mman.h>
 
 #include "libpmemfile-core.h"
 
@@ -188,7 +186,7 @@ pmemfile_mmap(PMEMfilepool *pfp, void *addr, size_t len,
 	(void) off;
 
 	errno = ENOTSUP;
-	return MAP_FAILED;
+	return PMEMFILE_MAP_FAILED;
 }
 
 int
@@ -216,7 +214,7 @@ pmemfile_mremap(PMEMfilepool *pfp, void *old_addr, size_t old_size,
 	(void) flags;
 
 	errno = ENOTSUP;
-	return MAP_FAILED;
+	return PMEMFILE_MAP_FAILED;
 }
 
 int

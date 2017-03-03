@@ -42,6 +42,7 @@ set(SOURCES
 	stubs.c
 	out.c
 	ctree.c
+	consts.c
 )
 
 set(HEADERS

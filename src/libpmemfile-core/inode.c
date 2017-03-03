@@ -34,14 +34,8 @@
  * inode.c -- inode operations
  */
 
-#define _GNU_SOURCE
 #include <errno.h>
-#include <fcntl.h>
-#include <limits.h>
-#include <stdlib.h>
 #include <unistd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 
 #include "callbacks.h"
 #include "data.h"
@@ -676,13 +670,14 @@ _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		return -1;
 	}
 
-	if (path[0] == 0 && (flags & AT_EMPTY_PATH)) {
+	if (path[0] == 0 && (flags & PMEMFILE_AT_EMPTY_PATH)) {
 		LOG(LSUP, "AT_EMPTY_PATH not supported yet");
 		errno = EINVAL;
 		return -1;
 	}
 
-	if (flags & ~(AT_NO_AUTOMOUNT|AT_SYMLINK_NOFOLLOW|AT_EMPTY_PATH)) {
+	if (flags & ~(PMEMFILE_AT_NO_AUTOMOUNT | PMEMFILE_AT_SYMLINK_NOFOLLOW |
+			PMEMFILE_AT_EMPTY_PATH)) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -723,7 +718,8 @@ _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 			vinode = vinode_lookup_dirent(pfp, info.vinode,
 					info.remaining, namelen, 0);
 			if (vinode && vinode_is_symlink(vinode) &&
-					!(flags & AT_SYMLINK_NOFOLLOW)) {
+					!(flags &
+						PMEMFILE_AT_SYMLINK_NOFOLLOW)) {
 				resolve_symlink(pfp, vinode, &info);
 				path_info_changed = true;
 			}
@@ -839,5 +835,5 @@ int
 pmemfile_lstat(PMEMfilepool *pfp, const char *path, struct stat *buf)
 {
 	return pmemfile_fstatat(pfp, PMEMFILE_AT_CWD, path, buf,
-			AT_SYMLINK_NOFOLLOW);
+			PMEMFILE_AT_SYMLINK_NOFOLLOW);
 }

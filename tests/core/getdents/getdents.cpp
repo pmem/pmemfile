@@ -35,7 +35,6 @@
  */
 
 #include "pmemfile_test.hpp"
-#include <ctype.h>
 
 class getdents : public pmemfile_test
 {
@@ -127,10 +126,10 @@ dump_linux_dirents64(void *dirp, unsigned length)
 
 TEST_F(getdents, 1)
 {
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/file1", O_EXCL, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/file1", PMEMFILE_O_EXCL, 0644));
 
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/file2with_long_name", O_EXCL,
-			0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/file2with_long_name",
+			PMEMFILE_O_EXCL, 0644));
 
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/file3with_very_long_name"
 			"_1234567890_1234567890_1234567890_1234567890"
@@ -138,11 +137,12 @@ TEST_F(getdents, 1)
 			"_1234567890_1234567890_1234567890_1234567890"
 			"_1234567890_1234567890_1234567890_1234567890"
 			"_1234567890_1234567890_1234567890_1234567890"
-			"_qwertyuiop", O_EXCL, 0644));
+			"_qwertyuiop", PMEMFILE_O_EXCL, 0644));
 
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/file4", O_EXCL, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/file4", PMEMFILE_O_EXCL, 0644));
 
-	PMEMfile *f = pmemfile_open(pfp, "/", O_DIRECTORY | O_RDONLY);
+	PMEMfile *f = pmemfile_open(pfp, "/", PMEMFILE_O_DIRECTORY |
+			PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	char buf[32758];
@@ -157,7 +157,7 @@ TEST_F(getdents, 1)
 	r = pmemfile_getdents(pfp, f, dirents, sizeof(buf));
 	ASSERT_EQ(r, 0);
 
-	off_t off = pmemfile_lseek(pfp, f, 0, SEEK_SET);
+	off_t off = pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_SET);
 	ASSERT_EQ(off, 0);
 
 	r = pmemfile_getdents64(pfp, f, dirents64, sizeof(buf));
@@ -175,7 +175,8 @@ TEST_F(getdents, 2)
 {
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
 
-	PMEMfile *f = pmemfile_open(pfp, "/dir1", O_DIRECTORY | O_RDONLY);
+	PMEMfile *f = pmemfile_open(pfp, "/dir1", PMEMFILE_O_DIRECTORY |
+			PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	char buf[32758];
@@ -186,11 +187,14 @@ TEST_F(getdents, 2)
 	ASSERT_GT(r, 0);
 	dump_linux_dirents(buf, (unsigned)r);
 
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/file1", O_EXCL, 0644));
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/file2", O_EXCL, 0644));
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/file3", O_EXCL, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/file1", PMEMFILE_O_EXCL,
+			0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/file2", PMEMFILE_O_EXCL,
+			0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/file3", PMEMFILE_O_EXCL,
+			0644));
 
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, SEEK_SET), 0);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_SET), 0);
 	r = pmemfile_getdents64(pfp, f, dirents64, sizeof(buf));
 	ASSERT_GT(r, 0);
 	dump_linux_dirents64(buf, (unsigned)r);

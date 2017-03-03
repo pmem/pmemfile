@@ -34,7 +34,6 @@
  * dir.c -- directory operations
  */
 
-#include <dirent.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
@@ -624,11 +623,11 @@ file_getdents(PMEMfile *file, struct linux_dirent *dirp,
 
 		const struct pmemfile_inode *inode = D_RO(dirent->inode);
 		if (inode_is_regular_file(inode))
-			*data = DT_REG;
+			*data = PMEMFILE_DT_REG;
 		else if (inode_is_symlink(inode))
-			*data = DT_LNK;
+			*data = PMEMFILE_DT_LNK;
 		else if (inode_is_dir(inode))
-			*data = DT_DIR;
+			*data = PMEMFILE_DT_DIR;
 		else
 			ASSERT(0);
 		data++;
@@ -733,11 +732,11 @@ file_getdents64(PMEMfile *file, struct linux_dirent64 *dirp,
 
 		const struct pmemfile_inode *inode = D_RO(dirent->inode);
 		if (inode_is_regular_file(inode))
-			*data = DT_REG;
+			*data = PMEMFILE_DT_REG;
 		else if (inode_is_symlink(inode))
-			*data = DT_LNK;
+			*data = PMEMFILE_DT_LNK;
 		else if (inode_is_dir(inode))
-			*data = DT_DIR;
+			*data = PMEMFILE_DT_DIR;
 		else
 			ASSERT(0);
 		data++;
@@ -881,7 +880,7 @@ void
 resolve_symlink(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		struct pmemfile_path_info *info)
 {
-	char symlink_target[PATH_MAX];
+	char symlink_target[PMEMFILE_PATH_MAX];
 	COMPILE_ERROR_ON(sizeof(symlink_target) < PMEMFILE_IN_INODE_STORAGE);
 
 	util_rwlock_rdlock(&vinode->rwlock);
@@ -1374,7 +1373,7 @@ _pmemfile_get_dir_path(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	util_rwlock_unlock(&child->rwlock);
 
 	if (size == 0)
-		size = PATH_MAX;
+		size = PMEMFILE_PATH_MAX;
 
 	bool allocated = false;
 	if (!buf) {

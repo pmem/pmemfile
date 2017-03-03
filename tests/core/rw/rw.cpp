@@ -34,9 +34,6 @@
  * rw.cpp -- unit test for pmemfile_read & pmemfile_write
  */
 
-#include <stdlib.h>
-#include <string.h>
-
 #include "pmemfile_test.hpp"
 
 static unsigned env_block_size;
@@ -49,8 +46,8 @@ public:
 
 TEST_F(rw, 1)
 {
-	PMEMfile *f = pmemfile_open(pfp, "/file1", O_CREAT | O_EXCL | O_WRONLY,
-			0644);
+	PMEMfile *f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT |
+			PMEMFILE_O_EXCL | PMEMFILE_O_WRONLY, 0644);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
@@ -85,7 +82,7 @@ TEST_F(rw, 1)
 	EXPECT_EQ(errno, EBADF);
 	pmemfile_close(pfp, f);
 
-	f = pmemfile_open(pfp, "/file1", O_RDONLY);
+	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	/* read only what we wrote and check nothing else was read */
@@ -109,7 +106,7 @@ TEST_F(rw, 1)
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 1));
 
 
-	f = pmemfile_open(pfp, "/file1", O_RDONLY);
+	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	/* read as much as possible and check that we read only what we wrote */
@@ -122,7 +119,7 @@ TEST_F(rw, 1)
 	pmemfile_close(pfp, f);
 
 
-	f = pmemfile_open(pfp, "/file1", O_RDONLY);
+	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	/* partial read */
@@ -142,7 +139,7 @@ TEST_F(rw, 1)
 	pmemfile_close(pfp, f);
 
 
-	f = pmemfile_open(pfp, "/file1", O_RDWR);
+	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDWR);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	written = pmemfile_write(pfp, f, "pmem", 4);
@@ -166,7 +163,7 @@ TEST_F(rw, 1)
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 1));
 
-	f = pmemfile_open(pfp, "/file1", O_RDWR);
+	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDWR);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	/* check that what we wrote previously is still there */
@@ -180,10 +177,10 @@ TEST_F(rw, 1)
 	pmemfile_close(pfp, f);
 
 	/* validate SEEK_CUR */
-	f = pmemfile_open(pfp, "/file1", O_RDWR);
+	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDWR);
 	ASSERT_NE(f, nullptr) << strerror(errno);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, SEEK_CUR), 0);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 3, SEEK_CUR), 3);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_CUR), 0);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 3, PMEMFILE_SEEK_CUR), 3);
 
 	/* check that after "seek" "read" reads correct data */
 	memset(data2, 0xff, sizeof(data2));
@@ -192,8 +189,8 @@ TEST_F(rw, 1)
 	ASSERT_EQ(memcmp("min S\0", data2, 6), 0);
 	ASSERT_EQ(memcmp(data2 + 6, bufFF, sizeof(data2) - 6), 0);
 
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, SEEK_CUR), 9);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, -7, SEEK_CUR), 2);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_CUR), 9);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, -7, PMEMFILE_SEEK_CUR), 2);
 
 	/* check that seeking backward works */
 	memset(data2, 0xff, sizeof(data2));
@@ -202,10 +199,10 @@ TEST_F(rw, 1)
 	ASSERT_EQ(memcmp("emin S\0", data2, 7), 0);
 	ASSERT_EQ(memcmp(data2 + 7, bufFF, sizeof(data2) - 7), 0);
 
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, SEEK_CUR), 9);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_CUR), 9);
 
 
-	ASSERT_EQ(pmemfile_lseek(pfp, f, -3, SEEK_END), 6);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, -3, PMEMFILE_SEEK_END), 6);
 
 	/* again, seeking backward works */
 	memset(data2, 0xff, sizeof(data2));
@@ -215,11 +212,11 @@ TEST_F(rw, 1)
 	ASSERT_EQ(memcmp(data2 + 3, bufFF, sizeof(data2) - 3), 0);
 
 	/* check that writing past the end of file works */
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, SEEK_CUR), 9);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 100, SEEK_END), 9 + 100);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_CUR), 9);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 100, PMEMFILE_SEEK_END), 9 + 100);
 	ASSERT_EQ(pmemfile_write(pfp, f, "XYZ\0", 4), 4);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, SEEK_CUR), 9 + 100 + 4);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, SEEK_SET), 0);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_CUR), 9 + 100 + 4);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_SET), 0);
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 1));
 
@@ -234,10 +231,12 @@ TEST_F(rw, 1)
 			sizeof(data2) - 9 - 100 - 4), 0);
 
 	/* write 4k past the end of file and check the hole is empty */
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, SEEK_CUR), 9 + 100 + 4);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 4096, SEEK_END), 9 + 100 + 4 + 4096);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_CUR), 9 + 100 + 4);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4096, PMEMFILE_SEEK_END),
+			9 + 100 + 4 + 4096);
 	ASSERT_EQ(pmemfile_write(pfp, f, "NEXT BLOCK\0", 11), 11);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 9 + 100 + 4, SEEK_SET), 9 + 100 + 4);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 9 + 100 + 4, PMEMFILE_SEEK_SET),
+			9 + 100 + 4);
 	memset(data2, 0xff, sizeof(data2));
 	r = pmemfile_read(pfp, f, data2, 4096);
 	ASSERT_EQ(r, 4096) << COND_ERROR(r);
@@ -248,10 +247,10 @@ TEST_F(rw, 1)
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0,
 			(env_block_size == 4096) ? 2 : 1));
 
-	f = pmemfile_open(pfp, "/file1", O_RDONLY);
+	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 	/* check read after EOF returns 0 */
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 8192, SEEK_SET), 8192);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 8192, PMEMFILE_SEEK_SET), 8192);
 	r = pmemfile_read(pfp, f, data2, 4096);
 	ASSERT_EQ(r, 0) << COND_ERROR(r);
 
@@ -271,7 +270,8 @@ TEST_F(rw, 1)
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 0, 0, 1, 0));
 
-	f = pmemfile_open(pfp, "/file1", O_CREAT | O_EXCL | O_RDWR, 0644);
+	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT | PMEMFILE_O_EXCL |
+			PMEMFILE_O_RDWR, 0644);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	/* check that writing slightly bigger files and seeking in them works */
@@ -281,8 +281,8 @@ TEST_F(rw, 1)
 	ASSERT_EQ(pmemfile_write(pfp, f, bufFF, 4096), 4096);
 	ASSERT_EQ(test_pmemfile_file_size(pfp, f), 8192);
 
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, SEEK_CUR), 8192);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 4096, SEEK_SET), 4096);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_CUR), 8192);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4096, PMEMFILE_SEEK_SET), 4096);
 	ASSERT_EQ(test_pmemfile_file_size(pfp, f), 8192);
 
 	r = pmemfile_read(pfp, f, data2, 4096);
@@ -314,7 +314,8 @@ TEST_F(rw, 2)
 	for (size_t i = 0; i < sizeof(bufd); ++i)
 		bufd[i] = (unsigned char)(rand() % 255);
 
-	PMEMfile *f = pmemfile_open(pfp, "/file1", O_CREAT | O_EXCL | O_WRONLY,
+	PMEMfile *f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT |
+			PMEMFILE_O_EXCL | PMEMFILE_O_WRONLY,
 			0644);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
@@ -339,7 +340,7 @@ TEST_F(rw, 2)
 	else
 		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 10, 0, 633));
 
-	f = pmemfile_open(pfp, "/file1", O_RDONLY);
+	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 	ssize_t r;
 
@@ -366,10 +367,10 @@ TEST_F(rw, trunc)
 	memset(bufFF, 0xFF, sizeof(bufFF));
 	memset(bufDD, 0xDD, sizeof(bufDD));
 
-	PMEMfile *f1 = pmemfile_open(pfp, "/file1", O_CREAT | O_EXCL | O_WRONLY,
-			0644);
-	PMEMfile *f2 = pmemfile_open(pfp, "/file2", O_CREAT | O_EXCL | O_WRONLY,
-			0644);
+	PMEMfile *f1 = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT |
+			PMEMFILE_O_EXCL | PMEMFILE_O_WRONLY, 0644);
+	PMEMfile *f2 = pmemfile_open(pfp, "/file2", PMEMFILE_O_CREAT |
+			PMEMFILE_O_EXCL | PMEMFILE_O_WRONLY, 0644);
 	ASSERT_NE(f1, nullptr) << strerror(errno);
 	ASSERT_NE(f2, nullptr) << strerror(errno);
 
@@ -394,10 +395,12 @@ TEST_F(rw, trunc)
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 0,
 			(env_block_size == 4096) ? 14 : 4));
 
-	f1 = pmemfile_open(pfp, "/file1", O_RDWR | O_TRUNC, 0);
+	f1 = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDWR | PMEMFILE_O_TRUNC,
+			0);
 	ASSERT_NE(f1, nullptr) << strerror(errno);
 
-	f2 = pmemfile_open(pfp, "/file2", O_RDWR | O_TRUNC, 0);
+	f2 = pmemfile_open(pfp, "/file2", PMEMFILE_O_RDWR | PMEMFILE_O_TRUNC,
+			0);
 	ASSERT_NE(f2, nullptr) << strerror(errno);
 
 	ssize_t r = pmemfile_read(pfp, f1, buftmp, 128);
@@ -431,8 +434,8 @@ TEST_F(rw, o_append)
 	memset(bufFF, 0xFF, sizeof(bufFF));
 	memset(bufDD, 0xDD, sizeof(bufDD));
 
-	f = pmemfile_open(pfp, "/file1", O_CREAT | O_EXCL | O_WRONLY | O_APPEND,
-			0644);
+	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT | PMEMFILE_O_EXCL |
+			PMEMFILE_O_WRONLY | PMEMFILE_O_APPEND, 0644);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	ASSERT_EQ(pmemfile_write(pfp, f, bufFF, 128), 128);
@@ -440,7 +443,7 @@ TEST_F(rw, o_append)
 
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 128);
 
-	f = pmemfile_open(pfp, "/file1", O_WRONLY);
+	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_WRONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	ASSERT_EQ(pmemfile_write(pfp, f, bufFF, 128), 128);
@@ -448,7 +451,7 @@ TEST_F(rw, o_append)
 
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 128);
 
-	f = pmemfile_open(pfp, "/file1", O_WRONLY | O_APPEND);
+	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_WRONLY | PMEMFILE_O_APPEND);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	ASSERT_EQ(pmemfile_write(pfp, f, bufDD, 128), 128);
@@ -462,16 +465,16 @@ TEST_F(rw, o_append)
 TEST_F(rw, sparse_files)
 {
 	unsigned char buf[8192];
-	PMEMfile *f = pmemfile_open(pfp, "/file1", O_CREAT | O_EXCL | O_RDWR,
-			0644);
+	PMEMfile *f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT |
+			PMEMFILE_O_EXCL | PMEMFILE_O_RDWR, 0644);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 4096, SEEK_SET), 4096);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4096, PMEMFILE_SEEK_SET), 4096);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 0);
 	ASSERT_EQ(pmemfile_write(pfp, f, "test", 5), 5);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 4096 + 5);
 
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, SEEK_SET), 0);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_SET), 0);
 	memset(buf, 0xff, sizeof(buf));
 	ssize_t r = pmemfile_read(pfp, f, buf, 8192);
 	ASSERT_EQ(r, 4096 + 5) << COND_ERROR(r);

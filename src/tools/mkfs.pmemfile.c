@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Intel Corporation
+ * Copyright 2016-2017, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,12 +39,11 @@
 
 #include <ctype.h>
 #include <errno.h>
-#include <limits.h>
 #include <getopt.h>
-#include <stdlib.h>
+#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
+#include <stdlib.h>
 
 #include "libpmemfile-core.h"
 

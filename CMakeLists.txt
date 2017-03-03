@@ -48,6 +48,8 @@ option(BUILD_LIBPMEMFILE
 option(TRACE_TESTS
 	"more verbose test outputs" OFF)
 
+option(LONG_TESTS "build long running tests as well" OFF)
+
 set(TEST_DIR ${CMAKE_CURRENT_BINARY_DIR}/test
 	CACHE STRING "working directory for tests")
 
@@ -189,10 +191,6 @@ if(VALGRIND_FOUND)
         endif()
 else()
         message(WARNING "Valgrind not found. Valgrind tests will not be performed.")
-endif()
-
-if(NOT LONG_TESTS)
-        message(STATUS "Long tests are disabled. Define LONG_TESTS variable to enable.")
 endif()
 
 pkg_check_modules(LIBUNWIND QUIET libunwind)

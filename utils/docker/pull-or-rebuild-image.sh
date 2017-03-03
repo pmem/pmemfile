@@ -62,7 +62,7 @@ if [[ -z "$HOST_WORKDIR" ]]; then
 	exit 1
 fi
 
-#TRAVIS_COMMIT_RANGE=
+TRAVIS_COMMIT_RANGE=
 # Find all the commits for the current build
 if [[ -n "$TRAVIS_COMMIT_RANGE" ]]; then
 	commits=$(git rev-list $TRAVIS_COMMIT_RANGE)

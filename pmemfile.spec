@@ -80,7 +80,7 @@ XXX
 
 %build
 mkdir build && cd build
-%cmake .. -DCMAKE_BUILD_TYPE=Release
+%cmake .. -DCMAKE_BUILD_TYPE=Release -DTESTS_USE_FORCED_PMEM=1
 make %{?_smp_mflags}
 
 %install
@@ -89,7 +89,7 @@ make install DESTDIR=%{buildroot}
 
 %check
 cd build
-PMEM_IS_PMEM_FORCE=1 ctest -V %{?_smp_mflags}
+ctest -V %{?_smp_mflags}
 
 %post   -n libpmemfile-core -p /sbin/ldconfig
 %postun -n libpmemfile-core -p /sbin/ldconfig

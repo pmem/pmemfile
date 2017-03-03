@@ -3,5 +3,5 @@
 %:
 	dh $@ --buildsystem=cmake
 
-override_dh_auto_test:
-	PMEM_IS_PMEM_FORCE=1 dh_auto_test
+override_dh_auto_configure:
+	dh_auto_configure -- -DTESTS_USE_FORCED_PMEM=1

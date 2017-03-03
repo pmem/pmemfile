@@ -49,7 +49,7 @@ XXX
 
 %build
 mkdir dbg_build && cd dbg_build
-%cmake .. -DCMAKE_BUILD_TYPE=Debug
+%cmake .. -DCMAKE_BUILD_TYPE=Debug -DTESTS_USE_FORCED_PMEM=1
 make %{?_smp_mflags}
 
 %install
@@ -58,7 +58,7 @@ make install DESTDIR=%{buildroot}
 
 %check
 cd dbg_build
-PMEM_IS_PMEM_FORCE=1 ctest -V %{?_smp_mflags}
+ctest -V %{?_smp_mflags}
 
 %changelog
 * Tue Feb 14 2017 Marcin Ślusarz <marcin.slusarz@intel.com> - 0.1-1

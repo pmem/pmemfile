@@ -31,14 +31,14 @@
 
 set(DIR ${PARENT_DIR}/${TEST_NAME})
 
-function(setup)
+function(common_setup)
         execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${PARENT_DIR}/${TEST_NAME})
         execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${PARENT_DIR}/${TEST_NAME})
         execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${BIN_DIR})
         execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${BIN_DIR})
 endfunction()
 
-function(cleanup)
+function(common_cleanup)
         execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${PARENT_DIR}/${TEST_NAME})
 endfunction()
 

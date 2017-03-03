@@ -30,3 +30,19 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 include(${SRC_DIR}/../../helpers.cmake)
+
+function(setup)
+        common_setup()
+
+        if(${TESTS_USE_FORCED_PMEM})
+                set(ENV{PMEM_IS_PMEM_FORCE} 1)
+        endif()
+endfunction()
+
+function(cleanup)
+        if(${TESTS_USE_FORCED_PMEM})
+                unset(ENV{PMEM_IS_PMEM_FORCE})
+        endif()
+
+        common_cleanup()
+endfunction()

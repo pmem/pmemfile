@@ -49,10 +49,11 @@ cmake .. -DDEVELOPER_MODE=1 \
 		-DCMAKE_INSTALL_PREFIX=/tmp/pmemfile \
 		-DCMAKE_BUILD_TYPE=Debug \
 		-DTEST_DIR=/tmp/pmemfile-tests \
-		-DTRACE_TESTS=1
+		-DTRACE_TESTS=1 \
+		-DTESTS_USE_FORCED_PMEM=1
 
 make
-PMEM_IS_PMEM_FORCE=1 ctest --output-on-failure
+ctest --output-on-failure
 make install
 cd ..
 rm -r build
@@ -63,10 +64,11 @@ cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=/tmp/pmemfile \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DTEST_DIR=/tmp/pmemfile-tests \
-		-DTRACE_TESTS=1
+		-DTRACE_TESTS=1 \
+		-DTESTS_USE_FORCED_PMEM=1
 
 make
-PMEM_IS_PMEM_FORCE=1 ctest --output-on-failure
+ctest --output-on-failure
 make install
 cd ..
 rm -r build

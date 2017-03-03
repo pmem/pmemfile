@@ -38,6 +38,7 @@ Pmemfile-specific cmake variables:
 * LONG_TESTS=1 - enables tests which take much more time
 * TEST_DIR=/mnt/pmem/test_dir - provides directory where tests will create its pools
 * TRACE_TESTS=1 - dumps more info when test fails (requires cmake >= 3.4)
+* TESTS_USE_FORCED_PMEM=1 - allows tests to force enable or force disable use of optimized flush in libpmemobj (to speed them up)
 ```
 
 # Package for Debian-based distros

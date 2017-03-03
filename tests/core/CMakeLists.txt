@@ -32,9 +32,18 @@
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-strict-aliasing")
 
 include(ExternalProject)
+set(GTEST_VERSION 1.8.0)
+
+if(EXISTS ${CMAKE_SOURCE_DIR}/googletest-${GTEST_VERSION}.zip)
+set(GTEST_URL ${CMAKE_SOURCE_DIR}/googletest-${GTEST_VERSION}.zip)
+else()
+set(GTEST_URL https://github.com/google/googletest/archive/release-${GTEST_VERSION}.zip)
+endif()
 ExternalProject_Add(
     gtest
-    URL https://github.com/google/googletest/archive/release-1.8.0.zip
+    URL ${GTEST_URL}
+    DOWNLOAD_NAME googletest-${GTEST_VERSION}.zip
+    DOWNLOAD_DIR ${CMAKE_SOURCE_DIR}
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/gtest
     INSTALL_COMMAND ""
 )

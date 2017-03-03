@@ -37,4 +37,4 @@
 
 # Build all and run tests
 cd $WORKDIR
-./utils/build-${PACKAGE_MANAGER}.sh
+./utils/build-${PACKAGE_MANAGER}.sh /googletest-1.8.0.zip

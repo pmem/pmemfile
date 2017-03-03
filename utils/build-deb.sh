@@ -44,11 +44,18 @@ cd debug/pmemfile
 tar xf ../pmemfile_0.1.orig.tar.gz
 rm debian/libpmemfile* debian/pmemfile*
 cp debian/debug/control debian/debug/*.install debian/debug/*.lintian-overrides debian/debug/rules debian/
+if [ -n "$1" ]; then
+	cp $1 .
+fi
 echo XXX | dpkg-source --commit
 debuild -us -uc
 cd ../..
 
 cd release/pmemfile
 tar xf ../pmemfile_0.1.orig.tar.gz
+if [ -n "$1" ]; then
+	cp $1 .
+fi
+echo XXX | dpkg-source --commit
 debuild -us -uc
 cd ../..

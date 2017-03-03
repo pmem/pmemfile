@@ -41,7 +41,7 @@ mkdir /tmp/pmemfile-tests
 if [ -n "$COMPILER" ]; then
 	export CC=$COMPILER
 fi
-
+cp /googletest-1.8.0.zip .
 
 mkdir build
 cd build

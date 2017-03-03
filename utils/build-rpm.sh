@@ -35,6 +35,12 @@ export LC_ALL=C
 export VER=0.1
 
 mkdir -p ~/rpmbuild/SOURCES
-git archive --prefix=pmemfile-$VER/ HEAD | gzip > ~/rpmbuild/SOURCES/pmemfile-$VER.tar.gz
+git archive --prefix=pmemfile-$VER/ HEAD > pmemfile-$VER.tar
+if [ -n "$1" ]; then
+	file=`basename "$1"`
+	tar -r --transform "s/.*/pmemfile-$VER\/$file/" -f pmemfile-$VER.tar $1
+fi
+gzip pmemfile-$VER.tar
+mv pmemfile-$VER.tar.gz ~/rpmbuild/SOURCES/
 rpmbuild -ba pmemfile-debug.spec
 rpmbuild -ba pmemfile.spec

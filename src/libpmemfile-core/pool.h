@@ -36,9 +36,9 @@
  * Runtime pool state.
  */
 
-#include <pthread.h>
 #include "inode.h"
 #include "layout.h"
+#include "os_locks.h"
 
 struct pmemfile_inode_map;
 
@@ -48,10 +48,10 @@ struct pmemfilepool {
 	struct pmemfile_vinode *root;
 
 	struct pmemfile_vinode *cwd;
-	pthread_rwlock_t cwd_rwlock;
+	os_rwlock_t cwd_rwlock;
 
 	TOID(struct pmemfile_super) super;
-	pthread_rwlock_t rwlock;
+	os_rwlock_t rwlock;
 
 	struct pmemfile_inode_map *inode_map;
 };

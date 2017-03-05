@@ -40,13 +40,14 @@
 #include "data.h"
 #include "dir.h"
 #include "file.h"
+
+#include "os_locks.h"
 #include "inode.h"
 #include "inode_array.h"
 #include "internal.h"
 #include "locks.h"
 #include "out.h"
 #include "pool.h"
-#include "sys_util.h"
 #include "util.h"
 
 static bool
@@ -400,7 +401,7 @@ end:
 	}
 
 	ASSERT(file != NULL);
-	util_mutex_init(&file->mutex, NULL);
+	util_mutex_init(&file->mutex);
 
 	LOG(LDBG, "pathname %s opened inode 0x%lx", orig_pathname,
 			file->vinode->inode.oid.off);
@@ -535,7 +536,7 @@ pmemfile_open_parent(PMEMfilepool *pfp, PMEMfile *dir, char *path,
 
 	ret->vinode = vinode_ref(pfp, vparent);
 	ret->flags = PFILE_READ | PFILE_NOATIME;
-	util_mutex_init(&ret->mutex, NULL);
+	util_mutex_init(&ret->mutex);
 	size_t len = strlen(info.remaining);
 	if (len >= path_size)
 		len = path_size - 1;

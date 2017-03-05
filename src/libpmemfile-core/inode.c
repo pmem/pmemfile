@@ -41,11 +41,12 @@
 #include "data.h"
 #include "dir.h"
 #include "inode.h"
+
+#include "os_locks.h"
 #include "inode_array.h"
 #include "internal.h"
 #include "locks.h"
 #include "out.h"
-#include "sys_util.h"
 
 /*
  * pmfi_path -- returns one of the full paths inode can be reached on
@@ -91,7 +92,7 @@ struct inode_map_bucket {
 
 /* First impl */
 struct pmemfile_inode_map {
-	pthread_rwlock_t rwlock;
+	os_rwlock_t rwlock;
 	uint32_t hash_fun_a; /* fun */
 	uint32_t hash_fun_b; /* even more fun */
 	uint64_t hash_fun_p; /* party! */

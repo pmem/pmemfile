@@ -36,10 +36,10 @@
 
 #include "callbacks.h"
 #include "internal.h"
+#include "os_tls.h"
 #include "out.h"
 #include "util.h"
 
-#include <pthread.h>
 #include <errno.h>
 
 struct tx_callback {
@@ -62,7 +62,7 @@ struct all_callbacks {
 	struct tx_callback_array backward;
 };
 
-static pthread_key_t callbacks_key;
+static os_tls_key_t callbacks_key;
 
 /*
  * cb_get -- returns current per-thread callback configuration
@@ -70,13 +70,13 @@ static pthread_key_t callbacks_key;
 static struct all_callbacks *
 cb_get(void)
 {
-	struct all_callbacks *c = pthread_getspecific(callbacks_key);
+	struct all_callbacks *c = os_tls_get(callbacks_key);
 	if (!c) {
 		c = calloc(1, sizeof(struct all_callbacks) * MAX_TX_STAGE);
-		int ret = pthread_setspecific(callbacks_key, c);
+		int ret = os_tls_set(callbacks_key, c);
 		if (ret) {
 			errno = ret;
-			FATAL("!pthread_setspecific");
+			FATAL("!os_tls_set");
 		}
 	}
 
@@ -174,10 +174,10 @@ cb_free(void *arg)
 
 	free(callbacks);
 
-	int ret = pthread_setspecific(callbacks_key, NULL);
+	int ret = os_tls_set(callbacks_key, NULL);
 	if (ret) {
 		errno = ret;
-		FATAL("!pthread_setspecific");
+		FATAL("!os_tls_set");
 	}
 }
 
@@ -187,9 +187,9 @@ cb_free(void *arg)
 void
 cb_init(void)
 {
-	int ret = pthread_key_create(&callbacks_key, cb_free);
+	int ret = os_tls_key_create(&callbacks_key, cb_free);
 	if (ret)
-		FATAL("!pthread_key_create");
+		FATAL("!os_tls_key_create");
 }
 
 /*
@@ -198,7 +198,7 @@ cb_init(void)
 void
 cb_fini(void)
 {
-	struct all_callbacks *c = pthread_getspecific(callbacks_key);
+	struct all_callbacks *c = os_tls_get(callbacks_key);
 	if (c)
 		cb_free(c);
 }

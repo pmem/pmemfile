@@ -45,6 +45,7 @@
 #include <errno.h>
 #include <pthread.h>
 
+#include "os_tls.h"
 #include "out.h"
 #include "valgrind_internal.h"
 #include "util.h"
@@ -61,14 +62,14 @@ static unsigned Log_alignment;
 #define MAXPRINT 8192	/* maximum expected log line */
 
 static pthread_once_t Last_errormsg_key_once = PTHREAD_ONCE_INIT;
-static pthread_key_t Last_errormsg_key;
+static os_tls_key_t Last_errormsg_key;
 
 static void
 _Last_errormsg_key_alloc(void)
 {
-	int pth_ret = pthread_key_create(&Last_errormsg_key, free);
+	int pth_ret = os_tls_key_create(&Last_errormsg_key, free);
 	if (pth_ret)
-		FATAL("!pthread_key_create");
+		FATAL("!os_tls_key_create");
 
 	VALGRIND_ANNOTATE_HAPPENS_BEFORE(&Last_errormsg_key_once);
 }
@@ -87,10 +88,10 @@ Last_errormsg_key_alloc(void)
 static inline void
 Last_errormsg_fini()
 {
-	void *p = pthread_getspecific(Last_errormsg_key);
+	void *p = os_tls_get(Last_errormsg_key);
 	if (p) {
 		free(p);
-		(void) pthread_setspecific(Last_errormsg_key, NULL);
+		(void) os_tls_set(Last_errormsg_key, NULL);
 	}
 }
 
@@ -99,12 +100,12 @@ Last_errormsg_get()
 {
 	Last_errormsg_key_alloc();
 
-	char *errormsg = pthread_getspecific(Last_errormsg_key);
+	char *errormsg = os_tls_get(Last_errormsg_key);
 	if (errormsg == NULL) {
 		errormsg = malloc(MAXPRINT);
-		int ret = pthread_setspecific(Last_errormsg_key, errormsg);
+		int ret = os_tls_set(Last_errormsg_key, errormsg);
 		if (ret)
-			FATAL("!pthread_setspecific");
+			FATAL("!os_tls_set");
 	}
 	return errormsg;
 }

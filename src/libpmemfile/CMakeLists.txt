@@ -37,7 +37,11 @@ set(SOURCES
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wmissing-field-initializers")
 
-pkg_check_modules(SYSCALL_INTERCEPT libsyscall_intercept)
+if(PKG_CONFIG_FOUND)
+	pkg_check_modules(SYSCALL_INTERCEPT libsyscall_intercept)
+else()
+	find_package(SYSCALL_INTERCEPT QUIET)
+endif()
 
 if(NOT SYSCALL_INTERCEPT_FOUND)
 	message(FATAL_ERROR

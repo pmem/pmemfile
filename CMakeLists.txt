@@ -81,7 +81,7 @@ add_definitions(-DUSE_VALGRIND)
 include(CheckCCompilerFlag)
 include(CheckCXXCompilerFlag)
 include(GNUInstallDirs)
-find_package(PkgConfig REQUIRED)
+find_package(PkgConfig QUIET)
 
 include_directories(include)
 
@@ -205,7 +205,11 @@ configure_file(
 add_custom_target(uninstall
         COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
 
-pkg_check_modules(VALGRIND QUIET valgrind)
+if(PKG_CONFIG_FOUND)
+	pkg_check_modules(VALGRIND QUIET valgrind)
+else()
+	find_package(VALGRIND QUIET)
+endif()
 
 if(VALGRIND_FOUND)
         set(ENV{PATH} ${VALGRIND_PREFIX}/bin:$ENV{PATH})
@@ -220,7 +224,11 @@ else()
         message(WARNING "Valgrind not found. Valgrind tests will not be performed.")
 endif()
 
-pkg_check_modules(LIBUNWIND QUIET libunwind)
+if(PKG_CONFIG_FOUND)
+	pkg_check_modules(LIBUNWIND QUIET libunwind)
+else()
+	find_package(LIBUNWIND QUIET)
+endif()
 if(NOT LIBUNWIND_FOUND)
         message(WARNING "libunwind not found. Any stack traces from tests will not be reliable")
 endif()

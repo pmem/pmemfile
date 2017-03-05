@@ -47,7 +47,7 @@
 
 #include "ctree.h"
 
-#include "os_locks.h"
+#include "os_thread.h"
 #include "out.h"
 
 #define BIT_IS_SET(n, i) (!!((n) & (1ULL << (i))))

@@ -41,7 +41,7 @@
 #include "locks.h"
 #include "out.h"
 #include "pool.h"
-#include "os_locks.h"
+#include "os_thread.h"
 #include "util.h"
 #include "valgrind_internal.h"
 #include "ctree.h"

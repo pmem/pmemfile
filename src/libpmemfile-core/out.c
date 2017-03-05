@@ -45,7 +45,7 @@
 #include <errno.h>
 #include <pthread.h>
 
-#include "os_tls.h"
+#include "os_thread.h"
 #include "out.h"
 #include "valgrind_internal.h"
 #include "util.h"

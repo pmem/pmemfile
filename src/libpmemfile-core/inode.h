@@ -38,7 +38,7 @@
 
 #include "libpmemfile-core.h"
 #include "layout.h"
-#include "os_locks.h"
+#include "os_thread.h"
 
 /* Inode */
 struct pmemfile_vinode {

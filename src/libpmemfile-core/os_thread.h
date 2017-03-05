@@ -110,4 +110,11 @@ void os_rwlock_unlock(os_rwlock_t *m);
  */
 void os_rwlock_destroy(os_rwlock_t *m);
 
+typedef unsigned os_tls_key_t;
+
+int os_tls_key_create(os_tls_key_t *key, void (*destr_function)(void *));
+
+void *os_tls_get(os_tls_key_t key);
+int os_tls_set(os_tls_key_t key, const void *ptr);
+
 #endif

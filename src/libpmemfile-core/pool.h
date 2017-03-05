@@ -38,7 +38,7 @@
 
 #include "inode.h"
 #include "layout.h"
-#include "os_locks.h"
+#include "os_thread.h"
 
 struct pmemfile_inode_map;
 

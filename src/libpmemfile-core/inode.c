@@ -42,10 +42,10 @@
 #include "dir.h"
 #include "inode.h"
 
-#include "os_locks.h"
 #include "inode_array.h"
 #include "internal.h"
 #include "locks.h"
+#include "os_thread.h"
 #include "out.h"
 
 /*

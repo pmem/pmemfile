@@ -152,3 +152,13 @@ os_tls_set(os_tls_key_t key, const void *ptr)
 {
 	return pthread_setspecific((pthread_key_t)key, ptr);
 }
+
+void
+os_once(os_once_t *once, void (*init_routine)(void))
+{
+	int tmp = pthread_once(once, init_routine);
+	if (tmp) {
+		errno = tmp;
+			FATAL("!pthread_once");
+	}
+}

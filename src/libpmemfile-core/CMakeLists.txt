@@ -64,7 +64,11 @@ set(HEADERS
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wmissing-field-initializers")
 
-pkg_check_modules(PMEMOBJ REQUIRED libpmemobj)
+if(PKG_CONFIG_FOUND)
+	pkg_check_modules(PMEMOBJ REQUIRED libpmemobj)
+else()
+	find_package(PMEMOBJ REQUIRED)
+endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_library(pmemfile-core_o OBJECT ${SOURCES})

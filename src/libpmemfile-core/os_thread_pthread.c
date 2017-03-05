@@ -38,7 +38,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 
-#include "os_locks.h"
+#include "os_thread.h"
 #include "out.h"
 
 void
@@ -131,4 +131,24 @@ os_rwlock_destroy(os_rwlock_t *m)
 		errno = tmp;
 		FATAL("!pthread_rwlock_destroy");
 	}
+}
+
+int
+os_tls_key_create(os_tls_key_t *key, void (*destr_function)(void *))
+{
+	COMPILE_ERROR_ON(sizeof(os_tls_key_t) < sizeof(pthread_key_t));
+
+	return pthread_key_create((pthread_key_t *)key, destr_function);
+}
+
+void *
+os_tls_get(os_tls_key_t key)
+{
+	return pthread_getspecific((pthread_key_t)key);
+}
+
+int
+os_tls_set(os_tls_key_t key, const void *ptr)
+{
+	return pthread_setspecific((pthread_key_t)key, ptr);
 }

@@ -39,7 +39,7 @@
 #include <stddef.h>
 #include "inode.h"
 #include "layout.h"
-#include "os_locks.h"
+#include "os_thread.h"
 
 struct ctree;
 

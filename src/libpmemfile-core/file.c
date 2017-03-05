@@ -41,11 +41,11 @@
 #include "dir.h"
 #include "file.h"
 
-#include "os_locks.h"
 #include "inode.h"
 #include "inode_array.h"
 #include "internal.h"
 #include "locks.h"
+#include "os_thread.h"
 #include "out.h"
 #include "pool.h"
 #include "util.h"

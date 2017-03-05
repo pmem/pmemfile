@@ -35,7 +35,7 @@
 #include "internal.h"
 #include "locks.h"
 
-#include "os_locks.h"
+#include "os_thread.h"
 #include "out.h"
 
 static void

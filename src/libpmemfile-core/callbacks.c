@@ -36,7 +36,7 @@
 
 #include "callbacks.h"
 #include "internal.h"
-#include "os_tls.h"
+#include "os_thread.h"
 #include "out.h"
 #include "util.h"
 

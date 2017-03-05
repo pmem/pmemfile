@@ -36,7 +36,7 @@
 
 #include "out.h"
 #include "pool.h"
-#include "os_locks.h"
+#include "os_thread.h"
 
 void rwlock_tx_wlock(os_rwlock_t *l);
 void rwlock_tx_unlock_on_commit(os_rwlock_t *l);

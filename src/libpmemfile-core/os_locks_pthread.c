@@ -41,13 +41,8 @@
 #include "os_locks.h"
 #include "out.h"
 
-/*
- * util_mutex_init -- pthread_mutex_init variant that never fails from
- * caller perspective. If pthread_mutex_init failed, this function aborts
- * the program.
- */
 void
-util_mutex_init(os_mutex_t *m)
+os_mutex_init(os_mutex_t *m)
 {
 	COMPILE_ERROR_ON(sizeof(os_mutex_t) < sizeof(pthread_mutex_t));
 	int tmp = pthread_mutex_init((pthread_mutex_t *)m, NULL);
@@ -57,13 +52,8 @@ util_mutex_init(os_mutex_t *m)
 	}
 }
 
-/*
- * util_mutex_destroy -- pthread_mutex_destroy variant that never fails from
- * caller perspective. If pthread_mutex_destroy failed, this function aborts
- * the program.
- */
 void
-util_mutex_destroy(os_mutex_t *m)
+os_mutex_destroy(os_mutex_t *m)
 {
 	int tmp = pthread_mutex_destroy((pthread_mutex_t *)m);
 	if (tmp) {
@@ -72,13 +62,8 @@ util_mutex_destroy(os_mutex_t *m)
 	}
 }
 
-/*
- * util_mutex_lock -- pthread_mutex_lock variant that never fails from
- * caller perspective. If pthread_mutex_lock failed, this function aborts
- * the program.
- */
 void
-util_mutex_lock(os_mutex_t *m)
+os_mutex_lock(os_mutex_t *m)
 {
 	int tmp = pthread_mutex_lock((pthread_mutex_t *)m);
 	if (tmp) {
@@ -87,13 +72,8 @@ util_mutex_lock(os_mutex_t *m)
 	}
 }
 
-/*
- * util_mutex_unlock -- pthread_mutex_unlock variant that never fails from
- * caller perspective. If pthread_mutex_unlock failed, this function aborts
- * the program.
- */
 void
-util_mutex_unlock(os_mutex_t *m)
+os_mutex_unlock(os_mutex_t *m)
 {
 	int tmp = pthread_mutex_unlock((pthread_mutex_t *)m);
 	if (tmp) {
@@ -102,13 +82,8 @@ util_mutex_unlock(os_mutex_t *m)
 	}
 }
 
-/*
- * util_rwlock_init -- pthread_rwlock_init variant that never fails from
- * caller perspective. If pthread_rwlock_init failed, this function aborts
- * the program.
- */
 void
-util_rwlock_init(os_rwlock_t *m)
+os_rwlock_init(os_rwlock_t *m)
 {
 	COMPILE_ERROR_ON(sizeof(os_rwlock_t) < sizeof(pthread_rwlock_t));
 	int tmp = pthread_rwlock_init((pthread_rwlock_t *)m, NULL);
@@ -118,13 +93,8 @@ util_rwlock_init(os_rwlock_t *m)
 	}
 }
 
-/*
- * util_rwlock_rdlock -- pthread_rwlock_rdlock variant that never fails from
- * caller perspective. If pthread_rwlock_rdlock failed, this function aborts
- * the program.
- */
 void
-util_rwlock_rdlock(os_rwlock_t *m)
+os_rwlock_rdlock(os_rwlock_t *m)
 {
 	int tmp = pthread_rwlock_rdlock((pthread_rwlock_t *)m);
 	if (tmp) {
@@ -133,13 +103,8 @@ util_rwlock_rdlock(os_rwlock_t *m)
 	}
 }
 
-/*
- * util_rwlock_wrlock -- pthread_rwlock_wrlock variant that never fails from
- * caller perspective. If pthread_rwlock_wrlock failed, this function aborts
- * the program.
- */
 void
-util_rwlock_wrlock(os_rwlock_t *m)
+os_rwlock_wrlock(os_rwlock_t *m)
 {
 	int tmp = pthread_rwlock_wrlock((pthread_rwlock_t *)m);
 	if (tmp) {
@@ -148,13 +113,8 @@ util_rwlock_wrlock(os_rwlock_t *m)
 	}
 }
 
-/*
- * util_rwlock_unlock -- pthread_rwlock_unlock variant that never fails from
- * caller perspective. If pthread_rwlock_unlock failed, this function aborts
- * the program.
- */
 void
-util_rwlock_unlock(os_rwlock_t *m)
+os_rwlock_unlock(os_rwlock_t *m)
 {
 	int tmp = pthread_rwlock_unlock((pthread_rwlock_t *)m);
 	if (tmp) {
@@ -163,13 +123,8 @@ util_rwlock_unlock(os_rwlock_t *m)
 	}
 }
 
-/*
- * util_rwlock_destroy -- pthread_rwlock_destroy variant that never fails from
- * caller perspective. If pthread_rwlock_destroy failed, this function aborts
- * the program.
- */
 void
-util_rwlock_destroy(os_rwlock_t *m)
+os_rwlock_destroy(os_rwlock_t *m)
 {
 	int tmp = pthread_rwlock_destroy((pthread_rwlock_t *)m);
 	if (tmp) {

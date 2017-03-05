@@ -401,7 +401,7 @@ end:
 	}
 
 	ASSERT(file != NULL);
-	util_mutex_init(&file->mutex);
+	os_mutex_init(&file->mutex);
 
 	LOG(LDBG, "pathname %s opened inode 0x%lx", orig_pathname,
 			file->vinode->inode.oid.off);
@@ -536,7 +536,7 @@ pmemfile_open_parent(PMEMfilepool *pfp, PMEMfile *dir, char *path,
 
 	ret->vinode = vinode_ref(pfp, vparent);
 	ret->flags = PFILE_READ | PFILE_NOATIME;
-	util_mutex_init(&ret->mutex);
+	os_mutex_init(&ret->mutex);
 	size_t len = strlen(info.remaining);
 	if (len >= path_size)
 		len = path_size - 1;
@@ -568,7 +568,7 @@ pmemfile_close(PMEMfilepool *pfp, PMEMfile *file)
 
 	vinode_unref_tx(pfp, file->vinode);
 
-	util_mutex_destroy(&file->mutex);
+	os_mutex_destroy(&file->mutex);
 
 	free(file);
 }
@@ -665,7 +665,7 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 
 	size_t dst_namelen = component_length(dst.remaining);
 
-	util_rwlock_wrlock(&dst.vinode->rwlock);
+	os_rwlock_wrlock(&dst.vinode->rwlock);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		struct pmemfile_time t;
@@ -676,7 +676,7 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 		error = errno;
 	} TX_END
 
-	util_rwlock_unlock(&dst.vinode->rwlock);
+	os_rwlock_unlock(&dst.vinode->rwlock);
 
 	if (error == 0) {
 		vinode_clear_debug_path(pfp, src_vinode);
@@ -806,7 +806,7 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto end;
 	}
 
-	util_rwlock_wrlock(&vparent->rwlock);
+	os_rwlock_wrlock(&vparent->rwlock);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		vinode_unlink_dirent(pfp, vparent, info.remaining, namelen,
@@ -815,7 +815,7 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		error = errno;
 	} TX_END
 
-	util_rwlock_unlock(&vparent->rwlock);
+	os_rwlock_unlock(&vparent->rwlock);
 
 end:
 	path_info_cleanup(pfp, &info);
@@ -963,13 +963,13 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	}
 
 	if (src_parent == dst_parent)
-		util_rwlock_wrlock(&dst_parent->rwlock);
+		os_rwlock_wrlock(&dst_parent->rwlock);
 	else if (src_parent < dst_parent) {
-		util_rwlock_wrlock(&src_parent->rwlock);
-		util_rwlock_wrlock(&dst_parent->rwlock);
+		os_rwlock_wrlock(&src_parent->rwlock);
+		os_rwlock_wrlock(&dst_parent->rwlock);
 	} else {
-		util_rwlock_wrlock(&dst_parent->rwlock);
-		util_rwlock_wrlock(&src_parent->rwlock);
+		os_rwlock_wrlock(&dst_parent->rwlock);
+		os_rwlock_wrlock(&src_parent->rwlock);
 	}
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
@@ -998,10 +998,10 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	} TX_END
 
 	if (src_parent == dst_parent)
-		util_rwlock_unlock(&dst_parent->rwlock);
+		os_rwlock_unlock(&dst_parent->rwlock);
 	else {
-		util_rwlock_unlock(&src_parent->rwlock);
-		util_rwlock_unlock(&dst_parent->rwlock);
+		os_rwlock_unlock(&src_parent->rwlock);
+		os_rwlock_unlock(&dst_parent->rwlock);
 	}
 
 	if (dst_parent_refed)
@@ -1163,7 +1163,7 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 		goto end;
 	}
 
-	util_rwlock_wrlock(&vparent->rwlock);
+	os_rwlock_wrlock(&vparent->rwlock);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		struct pmemfile_time t;
@@ -1182,7 +1182,7 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 		vinode = NULL;
 	} TX_END
 
-	util_rwlock_unlock(&vparent->rwlock);
+	os_rwlock_unlock(&vparent->rwlock);
 
 end:
 	path_info_cleanup(pfp, &info);
@@ -1278,7 +1278,7 @@ _pmemfile_readlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto end;
 	}
 
-	util_rwlock_rdlock(&vinode->rwlock);
+	os_rwlock_rdlock(&vinode->rwlock);
 
 	const struct pmemfile_inode *inode = D_RO(vinode->inode);
 	size_t len = strlen(inode->file_data.data);
@@ -1287,7 +1287,7 @@ _pmemfile_readlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	memcpy(buf, inode->file_data.data, len);
 	ret = (ssize_t)len;
 
-	util_rwlock_unlock(&vinode->rwlock);
+	os_rwlock_unlock(&vinode->rwlock);
 
 end:
 	path_info_cleanup(pfp, &info);

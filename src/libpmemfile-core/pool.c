@@ -65,8 +65,8 @@ initialize_super_block(PMEMfilepool *pfp)
 		return -1;
 	}
 
-	util_rwlock_init(&pfp->rwlock);
-	util_rwlock_init(&pfp->cwd_rwlock);
+	os_rwlock_init(&pfp->rwlock);
+	os_rwlock_init(&pfp->cwd_rwlock);
 
 	pfp->inode_map = inode_map_alloc();
 	if (!pfp->inode_map) {
@@ -106,8 +106,8 @@ initialize_super_block(PMEMfilepool *pfp)
 tx_err:
 	inode_map_free(pfp->inode_map);
 inode_map_alloc_fail:
-	util_rwlock_destroy(&pfp->rwlock);
-	util_rwlock_destroy(&pfp->cwd_rwlock);
+	os_rwlock_destroy(&pfp->rwlock);
+	os_rwlock_destroy(&pfp->cwd_rwlock);
 	errno = error;
 	return -1;
 }
@@ -282,8 +282,8 @@ pmemfile_pool_close(PMEMfilepool *pfp)
 	vinode_unref_tx(pfp, pfp->cwd);
 	vinode_unref_tx(pfp, pfp->root);
 	inode_map_free(pfp->inode_map);
-	util_rwlock_destroy(&pfp->rwlock);
-	util_rwlock_destroy(&pfp->cwd_rwlock);
+	os_rwlock_destroy(&pfp->rwlock);
+	os_rwlock_destroy(&pfp->cwd_rwlock);
 
 	pmemobj_close(pfp->pop);
 	pfp->pop = NULL;

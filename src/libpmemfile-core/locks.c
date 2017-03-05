@@ -41,7 +41,7 @@
 static void
 file_util_rwlock_unlock(PMEMfilepool *pfp, os_rwlock_t *arg)
 {
-	util_rwlock_unlock(arg);
+	os_rwlock_unlock(arg);
 }
 
 /*
@@ -55,7 +55,7 @@ rwlock_tx_wlock(os_rwlock_t *l)
 	cb_push_front(TX_STAGE_ONABORT,
 			(cb_basic)file_util_rwlock_unlock, l);
 
-	util_rwlock_wrlock(l);
+	os_rwlock_wrlock(l);
 }
 
 /*

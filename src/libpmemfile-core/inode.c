@@ -127,7 +127,7 @@ inode_map_alloc()
 	inode_map_rand_params(c);
 	c->hash_fun_p = 32212254719ULL;
 
-	util_rwlock_init(&c->rwlock);
+	os_rwlock_init(&c->rwlock);
 
 	return c;
 }
@@ -146,7 +146,7 @@ inode_map_free(struct pmemfile_inode_map *c)
 				FATAL("memory leak");
 	}
 
-	util_rwlock_destroy(&c->rwlock);
+	os_rwlock_destroy(&c->rwlock);
 	free(c->buckets);
 	free(c);
 }
@@ -231,7 +231,7 @@ vinode_unregister_locked(PMEMfilepool *pfp,
 	/* "path" field is defined only in DEBUG builds */
 	free(vinode->path);
 #endif
-	util_rwlock_destroy(&vinode->rwlock);
+	os_rwlock_destroy(&vinode->rwlock);
 	free(vinode);
 }
 
@@ -258,7 +258,7 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 		}
 	}
 
-	util_rwlock_rdlock(&c->rwlock);
+	os_rwlock_rdlock(&c->rwlock);
 	size_t idx = inode_hash(c, inode) % c->sz;
 
 	struct inode_map_bucket *b = &c->buckets[idx];
@@ -269,13 +269,13 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 			goto end;
 		}
 	}
-	util_rwlock_unlock(&c->rwlock);
+	os_rwlock_unlock(&c->rwlock);
 
 	if (is_new) {
 		rwlock_tx_wlock(&c->rwlock);
 		tx = 1;
 	} else
-		util_rwlock_wrlock(&c->rwlock);
+		os_rwlock_wrlock(&c->rwlock);
 
 	/* recalculate slot, someone could rebuild the hashmap */
 	idx = inode_hash(c, inode) % c->sz;
@@ -321,7 +321,7 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 	if (!vinode)
 		goto end;
 
-	util_rwlock_init(&vinode->rwlock);
+	os_rwlock_init(&vinode->rwlock);
 	vinode->inode = inode;
 	if (inode_is_dir(D_RO(inode)) && parent) {
 		vinode->parent = vinode_ref(pfp, parent);
@@ -348,7 +348,7 @@ end:
 	if (is_new && tx)
 		rwlock_tx_unlock_on_commit(&c->rwlock);
 	else
-		util_rwlock_unlock(&c->rwlock);
+		os_rwlock_unlock(&c->rwlock);
 
 	return vinode;
 }
@@ -720,10 +720,10 @@ _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 				COMPILE_ERROR_ON(sizeof(symlink_target) <
 						PMEMFILE_IN_INODE_STORAGE);
 
-				util_rwlock_rdlock(&vinode->rwlock);
+				os_rwlock_rdlock(&vinode->rwlock);
 				strcpy(symlink_target,
 					D_RO(vinode->inode)->file_data.data);
-				util_rwlock_unlock(&vinode->rwlock);
+				os_rwlock_unlock(&vinode->rwlock);
 
 				vinode_unref_tx(pfp, vinode);
 

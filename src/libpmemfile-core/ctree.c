@@ -98,7 +98,7 @@ ctree_new(void)
 	if (t == NULL)
 		return NULL;
 
-	util_mutex_init(&t->lock);
+	os_mutex_init(&t->lock);
 
 	t->root = NULL;
 
@@ -130,7 +130,7 @@ ctree_delete(struct ctree *t)
 {
 	ctree_clear_unlocked(t);
 
-	util_mutex_destroy(&t->lock);
+	os_mutex_destroy(&t->lock);
 
 	free(t);
 }
@@ -157,9 +157,9 @@ ctree_clear_unlocked(struct ctree *t)
 void
 ctree_clear(struct ctree *t)
 {
-	util_mutex_lock(&t->lock);
+	os_mutex_lock(&t->lock);
 	ctree_clear_unlocked(t);
-	util_mutex_unlock(&t->lock);
+	os_mutex_unlock(&t->lock);
 }
 
 /*
@@ -171,7 +171,7 @@ ctree_delete_cb(struct ctree *t, ctree_destroy_cb cb, void *ctx)
 	if (t->root)
 		ctree_free_internal_recursive(t->root, cb, ctx);
 
-	util_mutex_destroy(&t->lock);
+	os_mutex_destroy(&t->lock);
 
 	free(t);
 }
@@ -253,9 +253,9 @@ error_internal_malloc:
 int
 ctree_insert(struct ctree *t, uint64_t key, uint64_t value)
 {
-	util_mutex_lock(&t->lock);
+	os_mutex_lock(&t->lock);
 	int ret = ctree_insert_unlocked(t, key, value);
-	util_mutex_unlock(&t->lock);
+	os_mutex_unlock(&t->lock);
 	return ret;
 }
 
@@ -285,9 +285,9 @@ ctree_find_unlocked(struct ctree *t, uint64_t key)
 uint64_t
 ctree_find(struct ctree *t, uint64_t key)
 {
-	util_mutex_lock(&t->lock);
+	os_mutex_lock(&t->lock);
 	uint64_t ret = ctree_find_unlocked(t, key);
-	util_mutex_unlock(&t->lock);
+	os_mutex_unlock(&t->lock);
 	return ret;
 }
 
@@ -348,9 +348,9 @@ out:
 uint64_t
 ctree_find_le(struct ctree *t, uint64_t *key)
 {
-	util_mutex_lock(&t->lock);
+	os_mutex_lock(&t->lock);
 	uint64_t ret = ctree_find_le_unlocked(t, key);
-	util_mutex_unlock(&t->lock);
+	os_mutex_unlock(&t->lock);
 	return ret;
 }
 
@@ -410,9 +410,9 @@ ctree_remove_max_unlocked(struct ctree *t, uint64_t *key, uint64_t *value)
 int
 ctree_remove_max(struct ctree *t, uint64_t *key, uint64_t *value)
 {
-	util_mutex_lock(&t->lock);
+	os_mutex_lock(&t->lock);
 	int ret = ctree_remove_max_unlocked(t, key, value);
-	util_mutex_unlock(&t->lock);
+	os_mutex_unlock(&t->lock);
 	return ret;
 }
 
@@ -520,9 +520,9 @@ out:
 uint64_t
 ctree_remove(struct ctree *t, uint64_t key, int eq)
 {
-	util_mutex_lock(&t->lock);
+	os_mutex_lock(&t->lock);
 	uint64_t ret = ctree_remove_unlocked(t, key, eq);
-	util_mutex_unlock(&t->lock);
+	os_mutex_unlock(&t->lock);
 	return ret;
 }
 
@@ -541,11 +541,11 @@ ctree_is_empty_unlocked(struct ctree *t)
 int
 ctree_is_empty(struct ctree *t)
 {
-	util_mutex_lock(&t->lock);
+	os_mutex_lock(&t->lock);
 
 	int ret = ctree_is_empty_unlocked(t);
 
-	util_mutex_unlock(&t->lock);
+	os_mutex_unlock(&t->lock);
 
 	return ret;
 }

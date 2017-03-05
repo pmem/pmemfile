@@ -48,66 +48,66 @@ typedef union {
 } os_rwlock_t;
 
 /*
- * util_mutex_init -- pthread_mutex_init variant that never fails from
- * caller perspective. If pthread_mutex_init failed, this function aborts
+ * os_mutex_init -- system mutex init wrapper that never fails from
+ * caller perspective. If underlying function failed, this function aborts
  * the program.
  */
-void util_mutex_init(os_mutex_t *m);
+void os_mutex_init(os_mutex_t *m);
 
 /*
- * util_mutex_destroy -- pthread_mutex_destroy variant that never fails from
- * caller perspective. If pthread_mutex_destroy failed, this function aborts
+ * os_mutex_destroy -- system mutex destroy wrapper that never fails from
+ * caller perspective. If underlying function failed, this function aborts
  * the program.
  */
-void util_mutex_destroy(os_mutex_t *m);
+void os_mutex_destroy(os_mutex_t *m);
 
 /*
- * util_mutex_lock -- pthread_mutex_lock variant that never fails from
- * caller perspective. If pthread_mutex_lock failed, this function aborts
+ * os_mutex_lock -- system mutex lock wrapper that never fails from
+ * caller perspective. If underlying function failed, this function aborts
  * the program.
  */
-void util_mutex_lock(os_mutex_t *m);
+void os_mutex_lock(os_mutex_t *m);
 
 /*
- * util_mutex_unlock -- pthread_mutex_unlock variant that never fails from
- * caller perspective. If pthread_mutex_unlock failed, this function aborts
+ * os_mutex_unlock -- system mutex unlock wrapper that never fails from
+ * caller perspective. If underlying function failed, this function aborts
  * the program.
  */
-void util_mutex_unlock(os_mutex_t *m);
+void os_mutex_unlock(os_mutex_t *m);
 
 /*
- * util_rwlock_init -- pthread_rwlock_init variant that never fails from
- * caller perspective. If pthread_rwlock_init failed, this function aborts
+ * os_rwlock_init -- system rwlock init wrapper that never fails from
+ * caller perspective. If underlying function failed, this function aborts
  * the program.
  */
-void util_rwlock_init(os_rwlock_t *m);
+void os_rwlock_init(os_rwlock_t *m);
 
 /*
- * util_rwlock_rdlock -- pthread_rwlock_rdlock variant that never fails from
- * caller perspective. If pthread_rwlock_rdlock failed, this function aborts
+ * os_rwlock_rdlock -- system rwlock rdlock wrapper that never fails from
+ * caller perspective. If underlying function failed, this function aborts
  * the program.
  */
-void util_rwlock_rdlock(os_rwlock_t *m);
+void os_rwlock_rdlock(os_rwlock_t *m);
 
 /*
- * util_rwlock_wrlock -- pthread_rwlock_wrlock variant that never fails from
- * caller perspective. If pthread_rwlock_wrlock failed, this function aborts
+ * os_rwlock_wrlock -- system rwlock wrlock wrapper that never fails from
+ * caller perspective. If underlying function failed, this function aborts
  * the program.
  */
-void util_rwlock_wrlock(os_rwlock_t *m);
+void os_rwlock_wrlock(os_rwlock_t *m);
 
 /*
- * util_rwlock_unlock -- pthread_rwlock_unlock variant that never fails from
- * caller perspective. If pthread_rwlock_unlock failed, this function aborts
+ * os_rwlock_unlock -- system rwlock unlock wrapper that never fails from
+ * caller perspective. If underlying function failed, this function aborts
  * the program.
  */
-void util_rwlock_unlock(os_rwlock_t *m);
+void os_rwlock_unlock(os_rwlock_t *m);
 
 /*
- * util_rwlock_destroy -- pthread_rwlock_destroy variant that never fails from
- * caller perspective. If pthread_rwlock_destroy failed, this function aborts
+ * os_rwlock_destroy -- system rwlock destroy wrapper that never fails from
+ * caller perspective. If underlying function failed, this function aborts
  * the program.
  */
-void util_rwlock_destroy(os_rwlock_t *m);
+void os_rwlock_destroy(os_rwlock_t *m);
 
 #endif

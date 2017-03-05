@@ -192,8 +192,8 @@ pmemfile_mkfs(const char *pathname, size_t poolsize, mode_t mode)
 		ERR("cannot initialize super block");
 		goto no_super;
 	}
-	util_rwlock_init(&pfp->rwlock);
-	util_rwlock_init(&pfp->cwd_rwlock);
+	os_rwlock_init(&pfp->rwlock);
+	os_rwlock_init(&pfp->cwd_rwlock);
 	pfp->inode_map = inode_map_alloc();
 	if (!pfp->inode_map) {
 		error = errno;
@@ -214,8 +214,8 @@ init_failed:
 		vinode_unref_tx(pfp, pfp->root);
 	inode_map_free(pfp->inode_map);
 inode_map_fail:
-	util_rwlock_destroy(&pfp->rwlock);
-	util_rwlock_destroy(&pfp->cwd_rwlock);
+	os_rwlock_destroy(&pfp->rwlock);
+	os_rwlock_destroy(&pfp->cwd_rwlock);
 no_super:
 	pmemobj_close(pfp->pop);
 pool_create:
@@ -250,8 +250,8 @@ pmemfile_pool_open(const char *pathname)
 		ERR("pool in file %s is not initialized", pathname);
 		goto no_super;
 	}
-	util_rwlock_init(&pfp->rwlock);
-	util_rwlock_init(&pfp->cwd_rwlock);
+	os_rwlock_init(&pfp->rwlock);
+	os_rwlock_init(&pfp->cwd_rwlock);
 	pfp->inode_map = inode_map_alloc();
 	if (!pfp->inode_map) {
 		error = errno;
@@ -274,8 +274,8 @@ init_failed:
 		vinode_unref_tx(pfp, pfp->root);
 	inode_map_free(pfp->inode_map);
 inode_map_fail:
-	util_rwlock_destroy(&pfp->rwlock);
-	util_rwlock_destroy(&pfp->cwd_rwlock);
+	os_rwlock_destroy(&pfp->rwlock);
+	os_rwlock_destroy(&pfp->cwd_rwlock);
 no_super:
 	pmemobj_close(pfp->pop);
 pool_open:
@@ -295,8 +295,8 @@ pmemfile_pool_close(PMEMfilepool *pfp)
 	vinode_unref_tx(pfp, pfp->cwd);
 	vinode_unref_tx(pfp, pfp->root);
 	inode_map_free(pfp->inode_map);
-	util_rwlock_destroy(&pfp->rwlock);
-	util_rwlock_destroy(&pfp->cwd_rwlock);
+	os_rwlock_destroy(&pfp->rwlock);
+	os_rwlock_destroy(&pfp->cwd_rwlock);
 
 	pmemobj_close(pfp->pop);
 	pfp->pop = NULL;

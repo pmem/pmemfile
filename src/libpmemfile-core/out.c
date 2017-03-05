@@ -43,7 +43,6 @@
 #include <limits.h>
 #include <string.h>
 #include <errno.h>
-#include <pthread.h>
 
 #include "os_thread.h"
 #include "out.h"
@@ -61,7 +60,7 @@ static unsigned Log_alignment;
 
 #define MAXPRINT 8192	/* maximum expected log line */
 
-static pthread_once_t Last_errormsg_key_once = PTHREAD_ONCE_INIT;
+static os_once_t Last_errormsg_key_once;
 static os_tls_key_t Last_errormsg_key;
 
 static void
@@ -77,7 +76,7 @@ _Last_errormsg_key_alloc(void)
 static void
 Last_errormsg_key_alloc(void)
 {
-	pthread_once(&Last_errormsg_key_once, _Last_errormsg_key_alloc);
+	os_once(&Last_errormsg_key_once, _Last_errormsg_key_alloc);
 	/*
 	 * Workaround Helgrind's bug:
 	 * https://bugs.kde.org/show_bug.cgi?id=337735

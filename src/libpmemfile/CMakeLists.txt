@@ -35,7 +35,7 @@ set(SOURCES
         preload.c
 )
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wmissing-field-initializers")
+add_c_flag(-Wmissing-field-initializers)
 
 if(PKG_CONFIG_FOUND)
 	pkg_check_modules(SYSCALL_INTERCEPT libsyscall_intercept)

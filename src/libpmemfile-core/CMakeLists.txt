@@ -62,7 +62,7 @@ set(HEADERS
         valgrind_internal.h
 )
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wmissing-field-initializers")
+add_c_flag(-Wmissing-field-initializers)
 
 if(PKG_CONFIG_FOUND)
 	pkg_check_modules(PMEMOBJ REQUIRED libpmemobj)

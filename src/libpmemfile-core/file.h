@@ -36,10 +36,10 @@
  * Runtime state structures.
  */
 
-#include <pthread.h>
 #include <stddef.h>
 #include "inode.h"
 #include "layout.h"
+#include "os_locks.h"
 
 struct ctree;
 
@@ -57,7 +57,7 @@ struct pmemfile_file {
 	 * Protects against changes to offset / position cache from multiple
 	 * threads.
 	 */
-	pthread_mutex_t mutex;
+	os_mutex_t mutex;
 
 	/* Flags */
 	uint64_t flags;

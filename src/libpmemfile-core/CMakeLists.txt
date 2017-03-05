@@ -43,6 +43,7 @@ set(SOURCES
 	out.c
 	ctree.c
 	consts.c
+	os_locks_pthread.c
 )
 
 set(HEADERS

@@ -40,13 +40,14 @@
 
 #include "callbacks.h"
 #include "dir.h"
+
+#include "os_locks.h"
 #include "file.h"
 #include "inode.h"
 #include "inode_array.h"
 #include "internal.h"
 #include "locks.h"
 #include "out.h"
-#include "sys_util.h"
 #include "util.h"
 
 /*

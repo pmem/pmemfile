@@ -43,12 +43,12 @@
  */
 #include <stdint.h>
 #include <stdlib.h>
-#include <pthread.h>
 #include <errno.h>
 
 #include "ctree.h"
+
+#include "os_locks.h"
 #include "out.h"
-#include "sys_util.h"
 
 #define BIT_IS_SET(n, i) (!!((n) & (1ULL << (i))))
 
@@ -73,7 +73,7 @@ struct node_leaf {
 
 struct ctree {
 	void *root;
-	pthread_mutex_t lock;
+	os_mutex_t lock;
 };
 
 /*
@@ -98,7 +98,7 @@ ctree_new(void)
 	if (t == NULL)
 		return NULL;
 
-	util_mutex_init(&t->lock, NULL);
+	util_mutex_init(&t->lock);
 
 	t->root = NULL;
 

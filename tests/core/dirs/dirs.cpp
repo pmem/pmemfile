@@ -176,11 +176,12 @@ TEST_F(dirs, 0)
 	ASSERT_EQ(f, nullptr);
 	EXPECT_EQ(errno, ENOTDIR);
 
-	f = pmemfile_open(pfp, "/dir/file/file", O_RDONLY | O_CREAT);
+	f = pmemfile_open(pfp, "/dir/file/file", O_RDONLY | O_CREAT, 0644);
 	ASSERT_EQ(f, nullptr);
 	EXPECT_EQ(errno, ENOTDIR);
 
-	f = pmemfile_open(pfp, "/dir/file/file", O_RDONLY | O_CREAT | O_EXCL);
+	f = pmemfile_open(pfp, "/dir/file/file", O_RDONLY | O_CREAT | O_EXCL,
+			0644);
 	ASSERT_EQ(f, nullptr);
 	EXPECT_EQ(errno, ENOTDIR);
 

@@ -334,10 +334,10 @@ TEST_F(rw, 2)
 	    {}}));
 
 	if (env_block_size == 4096)
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 609, 0,
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0x32c, 0,
 				51200));
 	else
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 7, 0, 633));
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 10, 0, 633));
 
 	f = pmemfile_open(pfp, "/file1", O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
@@ -479,6 +479,18 @@ TEST_F(rw, sparse_files)
 	ASSERT_EQ(is_zeroed(buf, 4096), 1);
 	ASSERT_EQ(memcmp(buf + 4096, "test", 5), 0);
 	ASSERT_EQ(buf[4096 + 5], 0xff);
+
+	/* Partially fill the whole */
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, SEEK_SET), 1);
+	ASSERT_EQ(pmemfile_write(pfp, f, "test", 5), 5);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, SEEK_SET), 0);
+	memset(buf, 0xff, sizeof(buf));
+	r = pmemfile_read(pfp, f, buf, 8192);
+	ASSERT_EQ(r, 4096 + 5) << COND_ERROR(r);
+	ASSERT_EQ(buf[0], 0);
+	ASSERT_EQ(memcmp(buf + 1, "test", 5), 0);
+	ASSERT_EQ(is_zeroed(buf + 6, 4096 - 6), 1);
+	ASSERT_EQ(memcmp(buf + 4096, "test", 5), 0);
 
 	pmemfile_close(pfp, f);
 

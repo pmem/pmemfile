@@ -58,6 +58,7 @@ struct pmemfile_block {
 	uint32_t flags;
 	uint64_t offset;
 	TOID(struct pmemfile_block) next;
+	TOID(struct pmemfile_block) prev;
 };
 
 #define BLOCK_INITIALIZED 1

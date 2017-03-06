@@ -480,6 +480,18 @@ TEST_F(rw, sparse_files)
 	ASSERT_EQ(memcmp(buf + 4096, "test", 5), 0);
 	ASSERT_EQ(buf[4096 + 5], 0xff);
 
+	/* Partially fill the whole */
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, SEEK_SET), 1);
+	ASSERT_EQ(pmemfile_write(pfp, f, "test", 5), 5);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, SEEK_SET), 0);
+	memset(buf, 0xff, sizeof(buf));
+	r = pmemfile_read(pfp, f, buf, 8192);
+	ASSERT_EQ(r, 4096 + 5) << COND_ERROR(r);
+	ASSERT_EQ(buf[0], 0);
+	ASSERT_EQ(memcmp(buf + 1, "test", 5), 0);
+	ASSERT_EQ(is_zeroed(buf + 6, 4096 - 6), 1);
+	ASSERT_EQ(memcmp(buf + 4096, "test", 5), 0);
+
 	pmemfile_close(pfp, f);
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);

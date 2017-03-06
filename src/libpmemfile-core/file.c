@@ -304,8 +304,20 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 				goto end;
 			}
 
+			/*
+			 * From open manpage: "When these two flags (O_CREAT &
+			 * O_EXCL) are specified, symbolic links are not
+			 * followed: if pathname is a symbolic link, then open()
+			 * fails regardless of where the symbolic link points
+			 * to."
+			 *
+			 * When only O_CREAT is specified, symlinks *are*
+			 * followed.
+			 */
+			if ((flags & (O_CREAT|O_EXCL)) == (O_CREAT|O_EXCL))
+				break;
+
 			resolve_symlink(pfp, vinode, &info);
-			flags &= ~(O_CREAT|O_EXCL);
 			path_info_changed = true;
 		}
 	} while (path_info_changed);

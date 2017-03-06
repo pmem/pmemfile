@@ -53,8 +53,8 @@ open_pool(const char *path)
 	return pmemfile_pool_open(tmp);
 }
 
-const char *path;
-const char *op;
+static const char *path;
+static const char *op;
 
 TEST(crash, 0)
 {

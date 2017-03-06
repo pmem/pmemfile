@@ -79,6 +79,9 @@ vinode_rebuild_block_tree(struct pmemfile_vinode *vinode)
 	struct pmemfile_inode *inode = D_RW(vinode->inode);
 	struct pmemfile_block_array *block_array = &inode->file_data.blocks;
 	struct pmemfile_block *first = NULL;
+#ifdef DEBUG
+	struct pmemfile_block *prev = NULL;
+#endif
 
 	while (block_array != NULL) {
 		for (unsigned i = 0; i < block_array->length; ++i) {
@@ -86,6 +89,12 @@ vinode_rebuild_block_tree(struct pmemfile_vinode *vinode)
 
 			if (block->size == 0)
 				break;
+
+#ifdef DEBUG
+			ASSERT(block_follow(&block->prev) == prev);
+			prev = block;
+#endif
+
 			block_cache_insert_block(c, block);
 			if (first == NULL || block->offset < first->offset)
 				first = block;
@@ -335,7 +344,8 @@ file_allocate_range(PMEMfilepool *pfp, PMEMfile *file,
 			block = allocate_block(pfp, file, inode, size, over);
 
 			block->offset = offset;
-			block->next = TOID_NULL(struct pmemfile_block);
+			set_blocko_null(&block->prev);
+			set_blocko_null(&block->next);
 
 			file->vinode->first_block = block;
 
@@ -354,14 +364,14 @@ file_allocate_range(PMEMfilepool *pfp, PMEMfile *file,
 
 			block->offset = offset;
 
-			block->next =
-			    (TOID(struct pmemfile_block))
-			    pmemobj_oid(file->vinode->first_block);
+			set_blocko(&block->next, file->vinode->first_block);
+			set_blocko_null(&block->prev);
+			set_blocko(&file->vinode->first_block->prev, block);
 
 			file->vinode->first_block = block;
 
 			block_cache_insert_block(file->vinode->blocks, block);
-		} else if (TOID_IS_NULL(block->next)) {
+		} else if (is_blocko_null(block->next)) {
 			/* After the last allocated block */
 
 			struct pmemfile_block *next_block =
@@ -369,19 +379,21 @@ file_allocate_range(PMEMfilepool *pfp, PMEMfile *file,
 			next_block->offset = offset;
 
 			TX_ADD_FIELD_DIRECT(block, next);
-			block->next =
-			    (TOID(struct pmemfile_block))
-			    pmemobj_oid(next_block);
+			set_blocko(&block->next, next_block);
 
 			block_cache_insert_block(file->vinode->blocks,
 			    next_block);
+
+			set_blocko(&next_block->prev, block);
+			set_blocko_null(&next_block->next);
 
 			block = next_block;
 		} else {
 			/* In a hole between two allocated blocks */
 
 			struct pmemfile_block *previous = block;
-			const struct pmemfile_block *next = D_RO(block->next);
+			struct pmemfile_block *next =
+				block_follow(&block->next);
 
 			/* How many bytes in this hole can be used? */
 			uint64_t hole_count = next->offset - offset;
@@ -401,11 +413,12 @@ file_allocate_range(PMEMfilepool *pfp, PMEMfile *file,
 			/* link the new block into the linked list */
 
 			TX_ADD_FIELD_DIRECT(previous, next);
-			previous->next =
-			    (TOID(struct pmemfile_block))pmemobj_oid(block);
 
-			block->next =
-			    (TOID(struct pmemfile_block))pmemobj_oid(next);
+
+			set_blocko(&previous->next, block);
+			set_blocko(&block->prev, previous);
+			set_blocko(&block->next, next);
+			set_blocko(&next->prev, block);
 
 			block_cache_insert_block(file->vinode->blocks, block);
 		}
@@ -413,11 +426,10 @@ file_allocate_range(PMEMfilepool *pfp, PMEMfile *file,
 }
 
 static struct pmemfile_block *
-find_following_block(PMEMfile * file,
-	struct pmemfile_block *block)
+find_following_block(PMEMfile * file, struct pmemfile_block *block)
 {
 	if (block != NULL)
-		return D_RW(block->next);
+		return block_follow(&block->next);
 	else
 		return file->vinode->first_block;
 }
@@ -590,7 +602,7 @@ iterate_on_file_range(PMEMfilepool *pfp, PMEMfile *file,
 		offset += in_block_len;
 		len -= in_block_len;
 		buf += in_block_len;
-		block = D_RW(block->next);
+		block = block_follow(&block->next);
 	}
 }
 

@@ -52,12 +52,84 @@ POBJ_LAYOUT_TOID(pmemfile, struct pmemfile_inode_array);
 POBJ_LAYOUT_TOID(pmemfile, char);
 POBJ_LAYOUT_END(pmemfile);
 
+struct block_offset_ {
+	ptrdiff_t offset;
+};
+typedef struct block_offset_ block_offset[1];
+struct const_block_offset_ {
+	ptrdiff_t offset;
+};
+typedef struct const_block_offset_ const_block_offset[1];
+
+static inline struct pmemfile_block *
+block_follow(const block_offset *offset)
+{
+	if (offset[0][0].offset == 0)
+		return NULL;
+	else
+		return (struct pmemfile_block *)
+		    (((char *)offset) + offset[0][0].offset);
+}
+
+static inline const struct pmemfile_block *
+cblock_follow(const const_block_offset *offset)
+{
+	if (offset[0][0].offset == 0)
+		return NULL;
+	else
+	    return (const struct pmemfile_block *)
+		(((const char *)offset) + offset[0][0].offset);
+}
+
+static inline bool
+is_blocko_null(const block_offset offset)
+{
+	return offset->offset == 0;
+}
+
+static inline bool
+is_cblocko_null(const const_block_offset offset)
+{
+	return offset->offset == 0;
+}
+
+static inline void
+set_blocko_null(block_offset *offset)
+{
+	offset[0][0].offset = 0;
+}
+
+static inline void
+set_cblocko_null(const_block_offset *offset)
+{
+	offset[0][0].offset = 0;
+}
+
+static inline void
+set_blocko(block_offset *offset, struct pmemfile_block *block)
+{
+	if (block == NULL)
+		offset[0][0].offset = 0;
+	else
+		offset[0][0].offset = (char *)block - (char *)offset;
+}
+
+static inline void
+set_cblocko(block_offset *offset, const struct pmemfile_block *block)
+{
+	if (block == NULL)
+		offset[0][0].offset = 0;
+	else
+		offset[0][0].offset = (const char *)block - (char *)offset;
+}
+
 struct pmemfile_block {
 	TOID(char) data;
 	uint32_t size;
 	uint32_t flags;
 	uint64_t offset;
-	TOID(struct pmemfile_block) next;
+	block_offset next;
+	block_offset prev;
 };
 
 #define BLOCK_INITIALIZED 1

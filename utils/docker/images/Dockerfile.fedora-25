@@ -51,6 +51,7 @@ RUN dnf install -y \
 	libunwind-devel \
 	make \
 	pandoc \
+	perl-Text-Diff \
 	passwd \
 	rpm-build \
 	sqlite \

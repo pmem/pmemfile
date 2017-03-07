@@ -116,7 +116,10 @@ vinode_set_debug_path_locked(PMEMfilepool *pfp,
 		const char *name,
 		size_t namelen)
 {
+	(void) pfp;
+
 #ifdef DEBUG
+
 	if (child_vinode->path)
 		return;
 
@@ -134,6 +137,14 @@ vinode_set_debug_path_locked(PMEMfilepool *pfp,
 	char *p = malloc(strlen(parent_vinode->path) + 1 + namelen + 1);
 	sprintf(p, "%s/%.*s", parent_vinode->path, (int)namelen, name);
 	child_vinode->path = p;
+
+#else
+
+	(void) parent_vinode;
+	(void) child_vinode;
+	(void) name;
+	(void) namelen;
+
 #endif
 }
 
@@ -162,6 +173,8 @@ vinode_set_debug_path(PMEMfilepool *pfp,
 void
 vinode_clear_debug_path(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
+	(void) pfp;
+
 	util_rwlock_wrlock(&vinode->rwlock);
 #ifdef DEBUG
 	free(vinode->path);
@@ -184,6 +197,8 @@ vinode_add_dirent(PMEMfilepool *pfp,
 		struct pmemfile_vinode *child_vinode,
 		const struct pmemfile_time *tm)
 {
+	(void) pfp;
+
 	LOG(LDBG, "parent 0x%lx ppath %s name %.*s child_inode 0x%lx",
 		parent_vinode->inode.oid.off, pmfi_path(parent_vinode),
 		(int)namelen, name, child_vinode->inode.oid.off);
@@ -318,6 +333,8 @@ vinode_lookup_dirent_by_name_locked(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent, const char *name,
 		size_t namelen)
 {
+	(void) pfp;
+
 	LOG(LDBG, "parent 0x%lx ppath %s name %.*s", parent->inode.oid.off,
 			pmfi_path(parent), (int)namelen, name);
 
@@ -357,6 +374,8 @@ static struct pmemfile_dirent *
 vinode_lookup_dirent_by_vinode_locked(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent,	struct pmemfile_vinode *child)
 {
+	(void) pfp;
+
 	LOG(LDBG, "parent 0x%lx ppath %s", parent->inode.oid.off,
 			pmfi_path(parent));
 
@@ -549,7 +568,7 @@ file_seek_dir(PMEMfile *file, struct pmemfile_dir **dir, unsigned *dirent)
 }
 
 static int
-file_getdents(PMEMfilepool *pfp, PMEMfile *file, struct linux_dirent *dirp,
+file_getdents(PMEMfile *file, struct linux_dirent *dirp,
 		unsigned count)
 {
 	struct pmemfile_dir *dir;
@@ -627,6 +646,8 @@ int
 pmemfile_getdents(PMEMfilepool *pfp, PMEMfile *file,
 			struct linux_dirent *dirp, unsigned count)
 {
+	(void) pfp;
+
 	struct pmemfile_vinode *vinode = file->vinode;
 
 	ASSERT(vinode != NULL);
@@ -648,7 +669,7 @@ pmemfile_getdents(PMEMfilepool *pfp, PMEMfile *file,
 	util_mutex_lock(&file->mutex);
 	util_rwlock_rdlock(&vinode->rwlock);
 
-	bytes_read = file_getdents(pfp, file, dirp, count);
+	bytes_read = file_getdents(file, dirp, count);
 	ASSERT(bytes_read >= 0);
 
 	util_rwlock_unlock(&vinode->rwlock);
@@ -659,7 +680,7 @@ pmemfile_getdents(PMEMfilepool *pfp, PMEMfile *file,
 }
 
 static int
-file_getdents64(PMEMfilepool *pfp, PMEMfile *file, struct linux_dirent64 *dirp,
+file_getdents64(PMEMfile *file, struct linux_dirent64 *dirp,
 		unsigned count)
 {
 	struct pmemfile_dir *dir;
@@ -737,6 +758,8 @@ int
 pmemfile_getdents64(PMEMfilepool *pfp, PMEMfile *file,
 			struct linux_dirent64 *dirp, unsigned count)
 {
+	(void) pfp;
+
 	struct pmemfile_vinode *vinode = file->vinode;
 
 	if (!vinode_is_dir(vinode)) {
@@ -757,7 +780,7 @@ pmemfile_getdents64(PMEMfilepool *pfp, PMEMfile *file,
 	util_mutex_lock(&file->mutex);
 	util_rwlock_rdlock(&vinode->rwlock);
 
-	bytes_read = file_getdents64(pfp, file, dirp, count);
+	bytes_read = file_getdents64(file, dirp, count);
 	ASSERT(bytes_read >= 0);
 
 	util_rwlock_unlock(&vinode->rwlock);

@@ -43,8 +43,7 @@
  * array, inserts it there and returns success status
  */
 static bool
-inode_array_add_single(PMEMfilepool *pfp,
-		struct pmemfile_inode_array *cur,
+inode_array_add_single(struct pmemfile_inode_array *cur,
 		struct pmemfile_vinode *vinode,
 		struct pmemfile_inode_array **ins,
 		unsigned *ins_idx)
@@ -93,7 +92,7 @@ inode_array_add(PMEMfilepool *pfp,
 		pmemobj_mutex_lock_nofail(pfp->pop, &cur->mtx);
 
 		if (cur->used < NUMINODES_PER_ENTRY)
-			found = inode_array_add_single(pfp, cur,
+			found = inode_array_add_single(cur,
 					vinode, ins, ins_idx);
 
 		bool modified = false;

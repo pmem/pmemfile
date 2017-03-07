@@ -80,6 +80,8 @@ pmfi_path(struct pmemfile_vinode *vinode)
 struct pmemfile_vinode *
 vinode_ref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
+	(void) pfp; /* XXX: could this ever be needed? */
+
 	__sync_fetch_and_add(&vinode->ref, 1);
 	return vinode;
 }
@@ -550,6 +552,8 @@ dir_assert_no_dirents(struct pmemfile_dir *dir)
 void
 inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 {
+	(void) pfp; /* XXX: could this ever be needed? */
+
 	LOG(LDBG, "inode 0x%lx", tinode.oid.off);
 
 	struct pmemfile_inode *inode = D_RW(tinode);

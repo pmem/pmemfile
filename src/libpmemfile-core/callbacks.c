@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Intel Corporation
+ * Copyright 2016-2017, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -210,6 +210,8 @@ cb_fini(void)
 void
 cb_queue(PMEMobjpool *pop, enum pobj_tx_stage stage, void *arg)
 {
+	(void) pop;
+
 	LOG(15, NULL);
 
 	struct tx_callback_array *cb;

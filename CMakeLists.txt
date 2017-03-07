@@ -194,6 +194,45 @@ function(add_cstyle name)
         add_dependencies(cstyle cstyle-${name})
 endfunction()
 
+function(add_cppstyle name)
+	if(NOT CLANG_FORMAT)
+		return()
+	endif()
+
+        if(${ARGC} EQUAL 1)
+                add_custom_target(cppstyle-${name}
+                        COMMAND ${CMAKE_SOURCE_DIR}/utils/cppstyle
+				${CLANG_FORMAT}
+				check
+				${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
+				${CMAKE_CURRENT_SOURCE_DIR}/*.hpp
+                        )
+                add_custom_target(cppformat-${name}
+                        COMMAND ${CMAKE_SOURCE_DIR}/utils/cppstyle
+				${CLANG_FORMAT}
+				format
+				${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
+				${CMAKE_CURRENT_SOURCE_DIR}/*.hpp
+                        )
+        else()
+                add_custom_target(cppstyle-${name}
+                        COMMAND ${CMAKE_SOURCE_DIR}/utils/cppstyle
+				${CLANG_FORMAT}
+				check
+				${ARGN}
+                        )
+                add_custom_target(cppformat-${name}
+                        COMMAND ${CMAKE_SOURCE_DIR}/utils/cppstyle
+				${CLANG_FORMAT}
+				format
+				${ARGN}
+                        )
+        endif()
+
+        add_dependencies(cppstyle cppstyle-${name})
+        add_dependencies(cppformat cppformat-${name})
+endfunction()
+
 function(add_check_whitespace name)
         if(${ARGC} EQUAL 1)
                 add_custom_target(check-whitespace-${name}
@@ -207,6 +246,8 @@ endfunction()
 
 add_custom_target(checkers ALL)
 add_custom_target(cstyle)
+add_custom_target(cppstyle)
+add_custom_target(cppformat)
 add_custom_target(check-whitespace)
 add_custom_target(check-license
         COMMAND ${CMAKE_SOURCE_DIR}/utils/check_license/check-headers.sh
@@ -232,7 +273,13 @@ add_dependencies(check-whitespace check-whitespace-main)
 add_custom_target(tests)
 
 if(DEVELOPER_MODE)
+	find_program(CLANG_FORMAT NAMES clang-format-3.9 clang-format-3.8 clang-format)
+	if (NOT CLANG_FORMAT)
+		message(WARNING "clang-format not found - C++ sources will not be checked")
+	endif()
+
         add_dependencies(checkers cstyle)
+        add_dependencies(checkers cppstyle)
         add_dependencies(checkers check-whitespace)
         add_dependencies(checkers check-license)
 endif(DEVELOPER_MODE)

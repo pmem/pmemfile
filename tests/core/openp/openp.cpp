@@ -96,42 +96,42 @@ TEST_F(openp, 0)
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/dir3/dir4/file4",
 			PMEMFILE_O_EXCL, 0644));
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
 	    {040777, 4, 4008, "."},
 	    {040777, 4, 4008, ".."},
 	    {040777, 3, 4008, "dir1"},
 	    {040777, 2, 4008, "dir2"},
 	    {0100644, 1, 0, "file1"},
-	    {}}));
+	}));
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1",
-			(const struct pmemfile_ls[]) {
+			std::vector<pmemfile_ls> {
 	    {040777, 3, 4008, "."},
 	    {040777, 4, 4008, ".."},
 	    {040777, 3, 4008, "dir3"},
-	    {}}));
+	}));
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1/dir3",
-			(const struct pmemfile_ls[]) {
+			std::vector<pmemfile_ls> {
 	    {040777, 3, 4008, "."},
 	    {040777, 3, 4008, ".."},
 	    {040777, 2, 4008, "dir4"},
 	    {0100644, 1, 0, "file3"},
-	    {}}));
+	}));
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1/dir3/dir4",
-	    (const struct pmemfile_ls[]) {
+	    std::vector<pmemfile_ls> {
 	    {040777, 2, 4008, "."},
 	    {040777, 3, 4008, ".."},
 	    {0100644, 1, 0, "file4"},
-	    {}}));
+	}));
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir2",
-			(const struct pmemfile_ls[]) {
+			std::vector<pmemfile_ls> {
 	    {040777, 2, 4008, "."},
 	    {040777, 4, 4008, ".."},
 	    {0100644, 1, 0, "file2"},
-	    {}}));
+	}));
 
 	EXPECT_TRUE(check_path(pfp, 0, "dir1", "/", "dir1"));
 	EXPECT_TRUE(check_path(pfp, 0, "dir1/", "/", "dir1/"));

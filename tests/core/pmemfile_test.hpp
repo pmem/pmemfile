@@ -36,6 +36,7 @@
 #include <errno.h>
 #include <string>
 #include <map>
+#include <vector>
 
 #include "libpmemfile-core.h"
 #include "../test_backtrace.h"
@@ -64,7 +65,8 @@ bool test_pmemfile_create(PMEMfilepool *pfp, const char *path, int flags,
 		mode_t mode);
 /* utilities */
 
-struct pmemfile_ls {
+class pmemfile_ls {
+public:
 	mode_t mode;
 	nlink_t nlink;
 	off_t size;
@@ -121,9 +123,9 @@ std::map<std::string, file_attrs> test_list_files(PMEMfilepool *pfp,
 		const char *path);
 
 bool test_compare_dirs(const std::map<std::string, file_attrs> &files,
-		const struct pmemfile_ls expected[], bool check_attrs = false);
+		const std::vector<pmemfile_ls> &expected, bool check_attrs = false);
 bool test_compare_dirs(PMEMfilepool *pfp, const char *path,
-		const struct pmemfile_ls expected[], bool check_attrs = false);
+		const std::vector<pmemfile_ls> &expected, bool check_attrs = false);
 bool test_empty_dir(PMEMfilepool *pfp, const char *path);
 
 extern std::string global_path;

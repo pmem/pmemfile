@@ -50,11 +50,11 @@ TEST_F(rw, 1)
 			PMEMFILE_O_EXCL | PMEMFILE_O_WRONLY, 0644);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
 	    {040777, 2, 4008, "."},
 	    {040777, 2, 4008, ".."},
 	    {0100644, 1, 0, "file1"},
-	    {}}));
+	}));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 0));
 
@@ -68,11 +68,11 @@ TEST_F(rw, 1)
 	ssize_t written = pmemfile_write(pfp, f, data, len);
 	ASSERT_EQ(written, (ssize_t)len) << COND_ERROR(written);
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
 	    {040777, 2, 4008, "."},
 	    {040777, 2, 4008, ".."},
 	    {0100644, 1, 9, "file1"},
-	    {}}));
+	}));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 1));
 
@@ -155,11 +155,11 @@ TEST_F(rw, 1)
 	pmemfile_close(pfp, f);
 
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
 	    {040777, 2, 4008, "."},
 	    {040777, 2, 4008, ".."},
 	    {0100644, 1, 9, "file1"},
-	    {}}));
+	}));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 1));
 
@@ -257,11 +257,11 @@ TEST_F(rw, 1)
 	pmemfile_close(pfp, f);
 
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
 	    {040777, 2, 4008, "."},
 	    {040777, 2, 4008, ".."},
 	    {0100644, 1, 4220, "file1"},
-	    {}}));
+	}));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0,
 			(env_block_size == 4096) ? 2 : 1));
@@ -291,11 +291,11 @@ TEST_F(rw, 1)
 
 	pmemfile_close(pfp, f);
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
 	    {040777, 2, 4008, "."},
 	    {040777, 2, 4008, ".."},
 	    {0100644, 1, 8192, "file1"},
-	    {}}));
+	}));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 1,
 			(env_block_size == 4096) ? 2 : 1));
@@ -328,11 +328,11 @@ TEST_F(rw, 2)
 
 	pmemfile_close(pfp, f);
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
 	    {040777, 2, 4008, "."},
 	    {040777, 2, 4008, ".."},
 	    {0100644, 1, 209714688, "file1"},
-	    {}}));
+	}));
 
 	if (env_block_size == 4096)
 		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0x32c, 0,
@@ -385,12 +385,12 @@ TEST_F(rw, trunc)
 	pmemfile_close(pfp, f1);
 	pmemfile_close(pfp, f2);
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
 	    {040777, 2, 4008, "."},
 	    {040777, 2, 4008, ".."},
 	    {0100644, 1, 25600, "file1"},
 	    {0100644, 1, 25600, "file2"},
-	    {}}));
+	}));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 0,
 			(env_block_size == 4096) ? 14 : 4));
@@ -411,12 +411,12 @@ TEST_F(rw, trunc)
 	pmemfile_close(pfp, f1);
 	pmemfile_close(pfp, f2);
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
 	    {040777, 2, 4008, "."},
 	    {040777, 2, 4008, ".."},
 	    {0100644, 1, 0, "file1"},
 	    {0100644, 1, 128, "file2"},
-	    {}}));
+	}));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 0, 1));
 

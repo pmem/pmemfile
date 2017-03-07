@@ -230,37 +230,35 @@ test_list_files(PMEMfilepool *pfp, const char *path)
 
 bool
 test_compare_dirs(const std::map<std::string, file_attrs> &files,
-		const struct pmemfile_ls expected[], bool check_attrs)
+		const std::vector<pmemfile_ls> &expected, bool check_attrs)
 {
 	bool anyerr = false;
 	bool tmp;
 
-	while (expected[0].name) {
-		auto attrs_iter = files.find(expected[0].name);
+	for (auto c : expected) {
+		auto attrs_iter = files.find(c.name);
 		if (attrs_iter == files.end()) {
-			ADD_FAILURE() << expected[0].name << " not found";
+			ADD_FAILURE() << c.name << " not found";
 			return false;
 		}
 		const file_attrs &attrs = (*attrs_iter).second;
 
-		VAL_EXPECT_EQ(expected->mode, attrs.stat.st_mode);
-		VAL_EXPECT_EQ(expected->nlink, attrs.stat.st_nlink);
-		VAL_EXPECT_EQ(expected->size, attrs.stat.st_size);
+		VAL_EXPECT_EQ(c.mode, attrs.stat.st_mode);
+		VAL_EXPECT_EQ(c.nlink, attrs.stat.st_nlink);
+		VAL_EXPECT_EQ(c.size, attrs.stat.st_size);
 
-		if (expected->link == NULL) {
+		if (c.link == NULL) {
 			MODE_EXPECT(PMEMFILE_S_ISLNK, attrs.stat.st_mode, 0);
 		} else {
 			MODE_EXPECT(PMEMFILE_S_ISLNK, attrs.stat.st_mode, 1);
 
-			STR_EXPECT_EQ(expected->link, attrs.link.c_str());
+			STR_EXPECT_EQ(c.link, attrs.link.c_str());
 		}
 
 		if (check_attrs) {
-			VAL_EXPECT_EQ(expected->uid, attrs.stat.st_uid);
-			VAL_EXPECT_EQ(expected->gid, attrs.stat.st_gid);
+			VAL_EXPECT_EQ(c.uid, attrs.stat.st_uid);
+			VAL_EXPECT_EQ(c.gid, attrs.stat.st_gid);
 		}
-
-		expected++;
 	}
 
 	if (anyerr)
@@ -271,7 +269,7 @@ test_compare_dirs(const std::map<std::string, file_attrs> &files,
 
 bool
 test_compare_dirs(PMEMfilepool *pfp, const char *path,
-		const struct pmemfile_ls expected[], bool check_attrs)
+		const std::vector<pmemfile_ls> &expected, bool check_attrs)
 {
 	std::map<std::string, file_attrs> files = test_list_files(pfp, path);
 	if (files.empty())
@@ -284,8 +282,8 @@ test_empty_dir(PMEMfilepool *pfp, const char *path)
 {
 	std::map<std::string, file_attrs> files = test_list_files(pfp, path);
 
-	return test_compare_dirs(files, (const struct pmemfile_ls[]) {
+	return test_compare_dirs(files, std::vector<pmemfile_ls> {
 	    {040777, 2, 4008, "."},
 	    {040777, 2, 4008, ".."},
-	    {}});
+	});
 }

@@ -77,8 +77,8 @@ vinode_rebuild_block_tree(struct pmemfile_vinode *vinode)
 	struct ctree *c = ctree_new();
 	if (!c)
 		return;
-	struct pmemfile_inode *inode = D_RW(vinode->inode);
-	struct pmemfile_block_array *block_array = &inode->file_data.blocks;
+	struct pmemfile_block_array *block_array =
+			&vinode->inode->file_data.blocks;
 	struct pmemfile_block *first = NULL;
 #ifdef DEBUG
 	TOID(struct pmemfile_block) prev = TOID_NULL(struct pmemfile_block);
@@ -236,12 +236,11 @@ file_allocate_block_data(PMEMfilepool *pfp,
 static struct pmemfile_block *
 get_free_block(struct pmemfile_vinode *vinode)
 {
-	struct pmemfile_inode *inode = D_RW(vinode->inode);
 	struct block_info *binfo = &vinode->first_free_block;
 	struct pmemfile_block_array *prev = NULL;
 
 	if (!binfo->arr) {
-		binfo->arr = &inode->file_data.blocks;
+		binfo->arr = &vinode->inode->file_data.blocks;
 		binfo->idx = 0;
 	}
 
@@ -321,7 +320,7 @@ file_allocate_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	ASSERT(size > 0);
 	ASSERT(offset + size > offset);
 
-	struct pmemfile_inode *inode = D_RW(vinode->inode);
+	struct pmemfile_inode *inode = vinode->inode;
 
 	bool over = pmemfile_overallocate_on_append &&
 	    is_append(vinode, inode, offset, size);
@@ -682,7 +681,7 @@ pmemfile_write_locked(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 	int error = 0;
 
 	struct pmemfile_vinode *vinode = file->vinode;
-	struct pmemfile_inode *inode = D_RW(vinode->inode);
+	struct pmemfile_inode *inode = vinode->inode;
 
 	os_rwlock_wrlock(&vinode->rwlock);
 
@@ -691,14 +690,14 @@ pmemfile_write_locked(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 			vinode_rebuild_block_tree(vinode);
 
 		if (file->flags & PFILE_APPEND)
-			file->offset = D_RO(vinode->inode)->size;
+			file->offset = inode->size;
 
 		file_write(pfp, file, inode, buf, count);
 
 		if (count > 0) {
 			struct pmemfile_time tm;
 			file_get_time(&tm);
-			TX_SET(vinode->inode, mtime, tm);
+			TX_SET_DIRECT(inode, mtime, tm);
 		}
 	} TX_ONABORT {
 		error = errno;
@@ -794,7 +793,7 @@ pmemfile_read_locked(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count)
 	size_t bytes_read = 0;
 
 	struct pmemfile_vinode *vinode = file->vinode;
-	struct pmemfile_inode *inode = D_RW(vinode->inode);
+	struct pmemfile_inode *inode = vinode->inode;
 
 	os_rwlock_rdlock(&vinode->rwlock);
 	while (!vinode->blocks) {
@@ -829,7 +828,7 @@ pmemfile_read_locked(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count)
 		os_rwlock_wrlock(&vinode->rwlock);
 
 		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-			TX_SET(vinode->inode, atime, tm);
+			TX_SET_DIRECT(inode, atime, tm);
 		} TX_ONABORT {
 			LOG(LINF, "can not update inode atime");
 		} TX_END
@@ -883,7 +882,7 @@ pmemfile_lseek64_locked(PMEMfilepool *pfp, PMEMfile *file, off64_t offset,
 	}
 
 	struct pmemfile_vinode *vinode = file->vinode;
-	struct pmemfile_inode *inode = D_RW(vinode->inode);
+	struct pmemfile_inode *inode = vinode->inode;
 	off64_t ret;
 	int new_errno = EINVAL;
 
@@ -1021,8 +1020,8 @@ end:
 void
 vinode_truncate(struct pmemfile_vinode *vinode)
 {
-	struct pmemfile_block_array *arr =
-			&D_RW(vinode->inode)->file_data.blocks;
+	struct pmemfile_inode *inode = vinode->inode;
+	struct pmemfile_block_array *arr = &inode->file_data.blocks;
 	TOID(struct pmemfile_block_array) tarr = arr->next;
 
 	TX_MEMSET(&arr->next, 0, sizeof(arr->next));
@@ -1047,14 +1046,12 @@ vinode_truncate(struct pmemfile_vinode *vinode)
 		arr = D_RW(tarr);
 	}
 
-	struct pmemfile_inode *inode = D_RW(vinode->inode);
-
 	TX_ADD_DIRECT(&inode->size);
 	inode->size = 0;
 
 	struct pmemfile_time tm;
 	file_get_time(&tm);
-	TX_SET(vinode->inode, mtime, tm);
+	TX_SET_DIRECT(inode, mtime, tm);
 
 	// we don't have to rollback destroy of data state on abort, because
 	// it will be rebuilded when it's needed

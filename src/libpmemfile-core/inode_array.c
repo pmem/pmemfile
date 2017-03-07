@@ -55,7 +55,7 @@ inode_array_add_single(struct pmemfile_inode_array *cur,
 		mutex_tx_unlock_on_abort(&cur->mtx);
 
 		TX_ADD_DIRECT(&cur->inodes[i]);
-		cur->inodes[i] = vinode->inode;
+		cur->inodes[i] = vinode->tinode;
 
 		TX_ADD_DIRECT(&cur->used);
 		cur->used++;

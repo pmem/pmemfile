@@ -404,7 +404,7 @@ end:
 	os_mutex_init(&file->mutex);
 
 	LOG(LDBG, "pathname %s opened inode 0x%lx", orig_pathname,
-			file->vinode->inode.oid.off);
+			file->vinode->tinode.oid.off);
 	return file;
 }
 
@@ -563,7 +563,7 @@ end:
 void
 pmemfile_close(PMEMfilepool *pfp, PMEMfile *file)
 {
-	LOG(LDBG, "inode 0x%lx path %s", file->vinode->inode.oid.off,
+	LOG(LDBG, "inode 0x%lx path %s", file->vinode->tinode.oid.off,
 			pmfi_path(file->vinode));
 
 	vinode_unref_tx(pfp, file->vinode);
@@ -1156,7 +1156,6 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 	}
 
 	size_t len = strlen(target);
-	struct pmemfile_inode *inode;
 
 	if (len >= PMEMFILE_IN_INODE_STORAGE) {
 		error = ENAMETOOLONG;
@@ -1170,7 +1169,7 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 
 		vinode = inode_alloc(pfp, PMEMFILE_S_IFLNK | 0777, &t, vparent,
 				NULL, info.remaining, namelen);
-		inode = D_RW(vinode->inode);
+		struct pmemfile_inode *inode = vinode->inode;
 		pmemobj_memcpy_persist(pfp->pop, inode->file_data.data, target,
 				len);
 		inode->size = len;
@@ -1280,11 +1279,11 @@ _pmemfile_readlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	os_rwlock_rdlock(&vinode->rwlock);
 
-	const struct pmemfile_inode *inode = D_RO(vinode->inode);
-	size_t len = strlen(inode->file_data.data);
+	const char *data = vinode->inode->file_data.data;
+	size_t len = strlen(data);
 	if (len > bufsiz)
 		len = bufsiz;
-	memcpy(buf, inode->file_data.data, len);
+	memcpy(buf, data, len);
 	ret = (ssize_t)len;
 
 	os_rwlock_unlock(&vinode->rwlock);

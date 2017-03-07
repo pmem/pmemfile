@@ -85,7 +85,7 @@ initialize_super_block(PMEMfilepool *pfp)
 
 			TX_ADD(pfp->super);
 			super->version = PMEMFILE_SUPER_VERSION(0, 1);
-			super->root_inode = pfp->root->inode;
+			super->root_inode = pfp->root->tinode;
 		}
 		pfp->root->parent = pfp->root;
 #ifdef DEBUG

@@ -609,7 +609,7 @@ vinode_stat(struct pmemfile_vinode *vinode, struct stat *buf)
 	memset(buf, 0, sizeof(*buf));
 	buf->st_dev = vinode->tinode.oid.pool_uuid_lo;
 	buf->st_ino = vinode->tinode.oid.off;
-	buf->st_mode = inode->flags & (S_IFMT | S_IRWXU | S_IRWXG | S_IRWXO);
+	buf->st_mode = inode->flags & (PMEMFILE_S_IFMT | PMEMFILE_ALLPERMS);
 	buf->st_nlink = inode->nlink;
 	buf->st_uid = inode->uid;
 	buf->st_gid = inode->gid;

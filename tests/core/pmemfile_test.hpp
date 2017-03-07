@@ -146,7 +146,8 @@ public:
 	{
 		std::remove(path.c_str());
 
-		pfp = pmemfile_mkfs(path.c_str(), poolsize, S_IWUSR | S_IRUSR);
+		pfp = pmemfile_mkfs(path.c_str(), poolsize,
+				PMEMFILE_S_IWUSR | PMEMFILE_S_IRUSR);
 		EXPECT_NE(pfp, nullptr) << strerror(errno);
 		/*
 		 * Lower-case asserts are here on purpose. ASSERTs return

@@ -150,11 +150,11 @@ test_list_files(PMEMfilepool *pfp, PMEMfile *dir, const char *dirp,
 		bool anyerr = false;
 		symlinkbuf[0] = 0;
 		if (type == PMEMFILE_DT_REG) {
-			MODE_EXPECT(S_ISREG, statbuf.st_mode, 1);
+			MODE_EXPECT(PMEMFILE_S_ISREG, statbuf.st_mode, 1);
 		} else if (type == PMEMFILE_DT_DIR) {
-			MODE_EXPECT(S_ISDIR, statbuf.st_mode, 1);
+			MODE_EXPECT(PMEMFILE_S_ISDIR, statbuf.st_mode, 1);
 		} else if (type == PMEMFILE_DT_LNK) {
-			MODE_EXPECT(S_ISLNK, statbuf.st_mode, 1);
+			MODE_EXPECT(PMEMFILE_S_ISLNK, statbuf.st_mode, 1);
 
 			ssize_t ret = pmemfile_readlinkat(pfp, dir, dirp + i,
 					symlinkbuf, PMEMFILE_PATH_MAX);
@@ -248,9 +248,9 @@ test_compare_dirs(const std::map<std::string, file_attrs> &files,
 		VAL_EXPECT_EQ(expected->size, attrs.stat.st_size);
 
 		if (expected->link == NULL) {
-			MODE_EXPECT(S_ISLNK, attrs.stat.st_mode, 0);
+			MODE_EXPECT(PMEMFILE_S_ISLNK, attrs.stat.st_mode, 0);
 		} else {
-			MODE_EXPECT(S_ISLNK, attrs.stat.st_mode, 1);
+			MODE_EXPECT(PMEMFILE_S_ISLNK, attrs.stat.st_mode, 1);
 
 			STR_EXPECT_EQ(expected->link, attrs.link.c_str());
 		}

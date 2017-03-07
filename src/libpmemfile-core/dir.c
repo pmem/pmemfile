@@ -298,15 +298,15 @@ vinode_new_dir(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 
-	if (mode & ~(mode_t)0777) {
+	if (mode & ~(mode_t)PMEMFILE_ACCESSPERMS) {
 		/* XXX: what the kernel does in this case? */
 		ERR("invalid mode flags 0%o", mode);
 		pmemfile_tx_abort(EINVAL);
 	}
 
 	struct pmemfile_time t;
-	struct pmemfile_vinode *child = inode_alloc(pfp, S_IFDIR | mode, &t,
-			parent, parent_refed, name, namelen);
+	struct pmemfile_vinode *child = inode_alloc(pfp, PMEMFILE_S_IFDIR |
+			mode, &t, parent, parent_refed, name, namelen);
 
 	/* add . and .. to new directory */
 	vinode_add_dirent(pfp, child, ".", 1, child, &t);

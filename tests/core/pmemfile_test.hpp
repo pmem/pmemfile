@@ -34,15 +34,18 @@
 #define PMEMFILE_TEST_HPP
 
 #include <errno.h>
-#include <string>
 #include <map>
+#include <string>
 #include <vector>
 
-#include "libpmemfile-core.h"
 #include "../test_backtrace.h"
+#include "libpmemfile-core.h"
 #include "gtest/gtest.h"
 
-#define START() do { test_register_sighandlers(); } while (0)
+#define START()                                                                \
+	do {                                                                   \
+		test_register_sighandlers();                                   \
+	} while (0)
 #define T_OUT(...) fprintf(stderr, __VA_ARGS__)
 #define COND_ERROR(ret) (ret < 0 ? strerror(errno) : "")
 
@@ -62,7 +65,7 @@ is_zeroed(const void *addr, size_t len)
 
 /* pmemfile stuff */
 bool test_pmemfile_create(PMEMfilepool *pfp, const char *path, int flags,
-		mode_t mode);
+			  mode_t mode);
 /* utilities */
 
 class pmemfile_ls {
@@ -78,8 +81,8 @@ public:
 };
 
 bool test_pmemfile_stats_match(PMEMfilepool *pfp, unsigned inodes,
-		unsigned dirs, unsigned block_arrays, unsigned inode_arrays,
-		unsigned blocks);
+			       unsigned dirs, unsigned block_arrays,
+			       unsigned inode_arrays, unsigned blocks);
 ssize_t test_pmemfile_file_size(PMEMfilepool *pfp, PMEMfile *file);
 ssize_t test_pmemfile_path_size(PMEMfilepool *pfp, const char *path);
 
@@ -88,27 +91,25 @@ public:
 	struct stat stat;
 	std::string link;
 
-	file_attrs(const struct stat &stat, const char *link = nullptr) :
-			stat(stat), link(link)
+	file_attrs(const struct stat &stat, const char *link = nullptr)
+	    : stat(stat), link(link)
 	{
 	}
 };
 
-static inline
-std::ostream& operator<<(std::ostream& stream, const file_attrs& attrs)
+static inline std::ostream &
+operator<<(std::ostream &stream, const file_attrs &attrs)
 {
 	stream << " mode " << std::hex << "0x" << attrs.stat.st_mode << std::dec
-		<< " nlink " << attrs.stat.st_nlink
-		<< " size " << attrs.stat.st_size
-		<< " uid " << attrs.stat.st_uid
-		<< " gid " << attrs.stat.st_gid
-		<< " link " << attrs.link;
+	       << " nlink " << attrs.stat.st_nlink << " size "
+	       << attrs.stat.st_size << " uid " << attrs.stat.st_uid << " gid "
+	       << attrs.stat.st_gid << " link " << attrs.link;
 
 	return stream;
 }
 
-static inline
-std::ostream& operator<<(std::ostream& stream, const std::map<std::string, file_attrs> &files)
+static inline std::ostream &
+operator<<(std::ostream &stream, const std::map<std::string, file_attrs> &files)
 {
 	for (auto it = files.cbegin(); it != files.cend(); ++it)
 		stream << "name " << it->first << it->second << '\n';
@@ -117,39 +118,46 @@ std::ostream& operator<<(std::ostream& stream, const std::map<std::string, file_
 }
 
 std::map<std::string, file_attrs> test_list_files(PMEMfilepool *pfp,
-		PMEMfile *dir, const char *dirp, unsigned length);
+						  PMEMfile *dir,
+						  const char *dirp,
+						  unsigned length);
 
 std::map<std::string, file_attrs> test_list_files(PMEMfilepool *pfp,
-		const char *path);
+						  const char *path);
 
 bool test_compare_dirs(const std::map<std::string, file_attrs> &files,
-		const std::vector<pmemfile_ls> &expected, bool check_attrs = false);
+		       const std::vector<pmemfile_ls> &expected,
+		       bool check_attrs = false);
 bool test_compare_dirs(PMEMfilepool *pfp, const char *path,
-		const std::vector<pmemfile_ls> &expected, bool check_attrs = false);
+		       const std::vector<pmemfile_ls> &expected,
+		       bool check_attrs = false);
 bool test_empty_dir(PMEMfilepool *pfp, const char *path);
 
 extern std::string global_path;
 
-class pmemfile_test : public testing::Test
-{
+class pmemfile_test : public testing::Test {
 protected:
 	std::string path;
 	PMEMfilepool *pfp;
 	size_t poolsize;
 	bool test_empty_dir_on_teardown;
+
 public:
-	pmemfile_test(size_t poolsize = 8 * 1024 * 1024) :
-		path(global_path + "/poolfile"), pfp(NULL), poolsize(poolsize),
-		test_empty_dir_on_teardown(true)
+	pmemfile_test(size_t poolsize = 8 * 1024 * 1024)
+	    : path(global_path + "/poolfile"),
+	      pfp(NULL),
+	      poolsize(poolsize),
+	      test_empty_dir_on_teardown(true)
 	{
 	}
 
-	void SetUp()
+	void
+	SetUp()
 	{
 		std::remove(path.c_str());
 
 		pfp = pmemfile_mkfs(path.c_str(), poolsize,
-				PMEMFILE_S_IWUSR | PMEMFILE_S_IRUSR);
+				    PMEMFILE_S_IWUSR | PMEMFILE_S_IRUSR);
 		EXPECT_NE(pfp, nullptr) << strerror(errno);
 		/*
 		 * Lower-case asserts are here on purpose. ASSERTs return
@@ -162,10 +170,10 @@ public:
 		assert(test_empty_dir(pfp, "/"));
 
 		assert(test_pmemfile_stats_match(pfp, 1, 0, 0, 0, 0));
-
 	}
 
-	void TearDown()
+	void
+	TearDown()
 	{
 		// XXX always enable
 		if (test_empty_dir_on_teardown)

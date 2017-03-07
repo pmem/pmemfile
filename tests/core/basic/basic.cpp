@@ -35,10 +35,11 @@
  */
 #include "pmemfile_test.hpp"
 
-class basic : public pmemfile_test
-{
+class basic : public pmemfile_test {
 public:
-	basic() : pmemfile_test() {}
+	basic() : pmemfile_test()
+	{
+	}
 };
 
 TEST_F(basic, open_create_close)
@@ -59,7 +60,7 @@ TEST_F(basic, open_create_close)
 
 	/* successful create */
 	f1 = pmemfile_open(pfp, "/aaa", PMEMFILE_O_CREAT | PMEMFILE_O_EXCL,
-			0777);
+			   0777);
 	ASSERT_NE(f1, nullptr);
 
 	pmemfile_close(pfp, f1);
@@ -67,19 +68,21 @@ TEST_F(basic, open_create_close)
 	/* file already exists */
 	errno = 0;
 	f1 = pmemfile_open(pfp, "/aaa", PMEMFILE_O_CREAT | PMEMFILE_O_EXCL,
-			0777);
+			   0777);
 	ASSERT_EQ(f1, nullptr);
 	EXPECT_EQ(errno, EEXIST);
 
 	/* too long name */
 	errno = 0;
-	f1 = pmemfile_open(pfp, "/"
-		"12345678901234567890123456789012345678901234567890"
-		"12345678901234567890123456789012345678901234567890"
-		"12345678901234567890123456789012345678901234567890"
-		"12345678901234567890123456789012345678901234567890"
-		"12345678901234567890123456789012345678901234567890"
-		"123456", PMEMFILE_O_CREAT | PMEMFILE_O_EXCL, 0777);
+	f1 = pmemfile_open(pfp,
+			   "/"
+			   "12345678901234567890123456789012345678901234567890"
+			   "12345678901234567890123456789012345678901234567890"
+			   "12345678901234567890123456789012345678901234567890"
+			   "12345678901234567890123456789012345678901234567890"
+			   "12345678901234567890123456789012345678901234567890"
+			   "123456",
+			   PMEMFILE_O_CREAT | PMEMFILE_O_EXCL, 0777);
 	ASSERT_EQ(f1, nullptr);
 	EXPECT_EQ(errno, ENAMETOOLONG);
 
@@ -91,10 +94,8 @@ TEST_F(basic, open_create_close)
 
 	/* successful create */
 	f2 = pmemfile_open(pfp, "/bbb", PMEMFILE_O_CREAT | PMEMFILE_O_EXCL,
-			0777);
+			   0777);
 	ASSERT_NE(f2, nullptr);
-
-
 
 	/* successful open */
 	f1 = pmemfile_open(pfp, "/aaa", 0);
@@ -104,12 +105,12 @@ TEST_F(basic, open_create_close)
 
 	pmemfile_close(pfp, f1);
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
-	    {040777, 2, 4008, "."},
-	    {040777, 2, 4008, ".."},
-	    {0100777, 1, 0, "aaa"},
-	    {0100777, 1, 0, "bbb"},
-	}));
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
+							{040777, 2, 4008, "."},
+							{040777, 2, 4008, ".."},
+							{0100777, 1, 0, "aaa"},
+							{0100777, 1, 0, "bbb"},
+						}));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 0, 0));
 
@@ -118,12 +119,12 @@ TEST_F(basic, open_create_close)
 	pfp = pmemfile_pool_open(path.c_str());
 	ASSERT_NE(pfp, nullptr) << strerror(errno);
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
-	    {040777, 2, 4008, "."},
-	    {040777, 2, 4008, ".."},
-	    {0100777, 1, 0, "aaa"},
-	    {0100777, 1, 0, "bbb"},
-	}));
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
+							{040777, 2, 4008, "."},
+							{040777, 2, 4008, ".."},
+							{0100777, 1, 0, "aaa"},
+							{0100777, 1, 0, "bbb"},
+						}));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 0, 0));
 }
@@ -135,24 +136,25 @@ TEST_F(basic, link)
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/aaa", PMEMFILE_O_EXCL, 0777));
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/bbb", PMEMFILE_O_EXCL, 0777));
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
-	    {040777, 2, 4008, "."},
-	    {040777, 2, 4008, ".."},
-	    {0100777, 1, 0, "aaa"},
-	    {0100777, 1, 0, "bbb"},
-	}));
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
+							{040777, 2, 4008, "."},
+							{040777, 2, 4008, ".."},
+							{0100777, 1, 0, "aaa"},
+							{0100777, 1, 0, "bbb"},
+						}));
 
 	/* successful link */
 	ret = pmemfile_link(pfp, "/aaa", "/aaa.link");
 	ASSERT_EQ(ret, 0) << strerror(errno);
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
-	    {040777, 2, 4008, "."},
-	    {040777, 2, 4008, ".."},
-	    {0100777, 2, 0, "aaa"},
-	    {0100777, 1, 0, "bbb"},
-	    {0100777, 2, 0, "aaa.link"},
-	}));
+	EXPECT_TRUE(
+		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
+						    {040777, 2, 4008, "."},
+						    {040777, 2, 4008, ".."},
+						    {0100777, 2, 0, "aaa"},
+						    {0100777, 1, 0, "bbb"},
+						    {0100777, 2, 0, "aaa.link"},
+					    }));
 
 	/* destination already exists */
 	errno = 0;
@@ -160,13 +162,14 @@ TEST_F(basic, link)
 	ASSERT_EQ(ret, -1);
 	EXPECT_EQ(errno, EEXIST);
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
-	    {040777, 2, 4008, "."},
-	    {040777, 2, 4008, ".."},
-	    {0100777, 2, 0, "aaa"},
-	    {0100777, 1, 0, "bbb"},
-	    {0100777, 2, 0, "aaa.link"},
-	}));
+	EXPECT_TRUE(
+		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
+						    {040777, 2, 4008, "."},
+						    {040777, 2, 4008, ".."},
+						    {0100777, 2, 0, "aaa"},
+						    {0100777, 1, 0, "bbb"},
+						    {0100777, 2, 0, "aaa.link"},
+					    }));
 
 	/* source does not exist */
 	errno = 0;
@@ -174,40 +177,43 @@ TEST_F(basic, link)
 	ASSERT_EQ(ret, -1);
 	EXPECT_EQ(errno, ENOENT);
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
-	    {040777, 2, 4008, "."},
-	    {040777, 2, 4008, ".."},
-	    {0100777, 2, 0, "aaa"},
-	    {0100777, 1, 0, "bbb"},
-	    {0100777, 2, 0, "aaa.link"},
-	}));
+	EXPECT_TRUE(
+		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
+						    {040777, 2, 4008, "."},
+						    {040777, 2, 4008, ".."},
+						    {0100777, 2, 0, "aaa"},
+						    {0100777, 1, 0, "bbb"},
+						    {0100777, 2, 0, "aaa.link"},
+					    }));
 
 	/* successful link from link */
 	ret = pmemfile_link(pfp, "/aaa.link", "/aaa2.link");
 	ASSERT_EQ(ret, 0) << strerror(errno);
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
-	    {040777, 2, 4008, "."},
-	    {040777, 2, 4008, ".."},
-	    {0100777, 3, 0, "aaa"},
-	    {0100777, 1, 0, "bbb"},
-	    {0100777, 3, 0, "aaa.link"},
-	    {0100777, 3, 0, "aaa2.link"},
-	}));
+	EXPECT_TRUE(test_compare_dirs(pfp, "/",
+				      std::vector<pmemfile_ls>{
+					      {040777, 2, 4008, "."},
+					      {040777, 2, 4008, ".."},
+					      {0100777, 3, 0, "aaa"},
+					      {0100777, 1, 0, "bbb"},
+					      {0100777, 3, 0, "aaa.link"},
+					      {0100777, 3, 0, "aaa2.link"},
+				      }));
 
 	/* another successful link */
 	ret = pmemfile_link(pfp, "/bbb", "/bbb2.link");
 	ASSERT_EQ(ret, 0) << strerror(errno);
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
-	    {040777, 2, 4008, "."},
-	    {040777, 2, 4008, ".."},
-	    {0100777, 3, 0, "aaa"},
-	    {0100777, 2, 0, "bbb"},
-	    {0100777, 3, 0, "aaa.link"},
-	    {0100777, 3, 0, "aaa2.link"},
-	    {0100777, 2, 0, "bbb2.link"},
-	}));
+	EXPECT_TRUE(test_compare_dirs(pfp, "/",
+				      std::vector<pmemfile_ls>{
+					      {040777, 2, 4008, "."},
+					      {040777, 2, 4008, ".."},
+					      {0100777, 3, 0, "aaa"},
+					      {0100777, 2, 0, "bbb"},
+					      {0100777, 3, 0, "aaa.link"},
+					      {0100777, 3, 0, "aaa2.link"},
+					      {0100777, 2, 0, "bbb2.link"},
+				      }));
 
 	ret = pmemfile_mkdir(pfp, "/dir", 0777);
 	ASSERT_EQ(ret, 0) << strerror(errno);
@@ -244,28 +250,30 @@ TEST_F(basic, link)
 	EXPECT_EQ(errno, ENOTDIR);
 
 	errno = 0;
-	ret = pmemfile_link(pfp, "/aaa", "/"
-		"12345678901234567890123456789012345678901234567890"
-		"12345678901234567890123456789012345678901234567890"
-		"12345678901234567890123456789012345678901234567890"
-		"12345678901234567890123456789012345678901234567890"
-		"12345678901234567890123456789012345678901234567890"
-		"123456");
+	ret = pmemfile_link(pfp, "/aaa",
+			    "/"
+			    "12345678901234567890123456789012345678901234567890"
+			    "12345678901234567890123456789012345678901234567890"
+			    "12345678901234567890123456789012345678901234567890"
+			    "12345678901234567890123456789012345678901234567890"
+			    "12345678901234567890123456789012345678901234567890"
+			    "123456");
 	ASSERT_EQ(ret, -1);
 	EXPECT_EQ(errno, ENAMETOOLONG);
 
 	ret = pmemfile_rmdir(pfp, "/dir");
 	ASSERT_EQ(ret, 0) << strerror(errno);
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
-	    {040777, 2, 4008, "."},
-	    {040777, 2, 4008, ".."},
-	    {0100777, 3, 0, "aaa"},
-	    {0100777, 2, 0, "bbb"},
-	    {0100777, 3, 0, "aaa.link"},
-	    {0100777, 3, 0, "aaa2.link"},
-	    {0100777, 2, 0, "bbb2.link"},
-	}));
+	EXPECT_TRUE(test_compare_dirs(pfp, "/",
+				      std::vector<pmemfile_ls>{
+					      {040777, 2, 4008, "."},
+					      {040777, 2, 4008, ".."},
+					      {0100777, 3, 0, "aaa"},
+					      {0100777, 2, 0, "bbb"},
+					      {0100777, 3, 0, "aaa.link"},
+					      {0100777, 3, 0, "aaa2.link"},
+					      {0100777, 2, 0, "bbb2.link"},
+				      }));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 1, 0));
 }
@@ -315,7 +323,6 @@ TEST_F(basic, unlink)
 	ASSERT_EQ(ret, -1);
 	EXPECT_EQ(errno, ENOENT);
 
-
 	f1 = pmemfile_open(pfp, "/bbb", 0);
 	ASSERT_NE(f1, nullptr) << strerror(errno);
 
@@ -339,13 +346,14 @@ TEST_F(basic, unlink)
 	ASSERT_EQ(ret, -1);
 	EXPECT_EQ(errno, EISDIR);
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
-	    {040777, 2, 4008, "."},
-	    {040777, 2, 4008, ".."},
-	    {0100777, 3, 0, "aaa"},
-	    {0100777, 3, 0, "aaa.link"},
-	    {0100777, 3, 0, "aaa2.link"},
-	}));
+	EXPECT_TRUE(test_compare_dirs(pfp, "/",
+				      std::vector<pmemfile_ls>{
+					      {040777, 2, 4008, "."},
+					      {040777, 2, 4008, ".."},
+					      {0100777, 3, 0, "aaa"},
+					      {0100777, 3, 0, "aaa.link"},
+					      {0100777, 3, 0, "aaa2.link"},
+				      }));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 1, 0));
 
@@ -363,8 +371,8 @@ TEST_F(basic, tmpfile)
 {
 	ssize_t written;
 
-	PMEMfile *f = pmemfile_open(pfp, "/",
-			PMEMFILE_O_TMPFILE | PMEMFILE_O_WRONLY, 0644);
+	PMEMfile *f = pmemfile_open(
+		pfp, "/", PMEMFILE_O_TMPFILE | PMEMFILE_O_WRONLY, 0644);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	written = pmemfile_write(pfp, f, "qwerty", 6);

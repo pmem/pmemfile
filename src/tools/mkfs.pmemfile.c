@@ -165,7 +165,8 @@ main(int argc, char *argv[])
 
 	size = parse_size(argv[optind + 1]);
 
-	if (pmemfile_mkfs(path, size, S_IWUSR | S_IRUSR) == NULL) {
+	if (pmemfile_mkfs(path, size, PMEMFILE_S_IWUSR | PMEMFILE_S_IRUSR) ==
+			NULL) {
 		perror("pmemfile_mkfs ");
 		return 1;
 	}

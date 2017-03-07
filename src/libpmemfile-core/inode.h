@@ -81,7 +81,7 @@ struct pmemfile_vinode {
 
 static inline bool inode_is_dir(const struct pmemfile_inode *inode)
 {
-	return S_ISDIR(inode->flags);
+	return PMEMFILE_S_ISDIR(inode->flags);
 }
 
 static inline bool vinode_is_dir(struct pmemfile_vinode *vinode)
@@ -91,7 +91,7 @@ static inline bool vinode_is_dir(struct pmemfile_vinode *vinode)
 
 static inline bool inode_is_regular_file(const struct pmemfile_inode *inode)
 {
-	return S_ISREG(inode->flags);
+	return PMEMFILE_S_ISREG(inode->flags);
 }
 
 static inline bool vinode_is_regular_file(struct pmemfile_vinode *vinode)
@@ -101,7 +101,7 @@ static inline bool vinode_is_regular_file(struct pmemfile_vinode *vinode)
 
 static inline bool inode_is_symlink(const struct pmemfile_inode *inode)
 {
-	return S_ISLNK(inode->flags);
+	return PMEMFILE_S_ISLNK(inode->flags);
 }
 
 static inline bool vinode_is_symlink(struct pmemfile_vinode *vinode)

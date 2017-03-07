@@ -540,17 +540,17 @@ TEST_F(symlinks, 6)
 
 	struct stat buf;
 	ASSERT_EQ(pmemfile_stat(pfp, "/dir1/symlink", &buf), 0);
-	ASSERT_EQ(S_ISLNK(buf.st_mode), 0);
+	ASSERT_EQ(PMEMFILE_S_ISLNK(buf.st_mode), 0);
 
 	ASSERT_EQ(pmemfile_lstat(pfp, "/dir1/symlink", &buf), 0);
-	ASSERT_EQ(S_ISLNK(buf.st_mode), 1);
+	ASSERT_EQ(PMEMFILE_S_ISLNK(buf.st_mode), 1);
 
 	ASSERT_EQ(pmemfile_fstatat(pfp, NULL, "/dir1/symlink", &buf, 0), 0);
-	ASSERT_EQ(S_ISLNK(buf.st_mode), 0);
+	ASSERT_EQ(PMEMFILE_S_ISLNK(buf.st_mode), 0);
 
 	ASSERT_EQ(pmemfile_fstatat(pfp, NULL, "/dir1/symlink", &buf,
 			PMEMFILE_AT_SYMLINK_NOFOLLOW), 0);
-	ASSERT_EQ(S_ISLNK(buf.st_mode), 1);
+	ASSERT_EQ(PMEMFILE_S_ISLNK(buf.st_mode), 1);
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/dir1/symlink"), 0);
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir2"), 0);

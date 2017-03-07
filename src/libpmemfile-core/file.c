@@ -241,8 +241,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	if ((flags & PMEMFILE_O_CREAT) || is_tmpfile(flags)) {
 		mode = va_arg(ap, mode_t);
 		LOG(LDBG, "mode %o", mode);
-		mode &= S_IRWXU | S_IRWXG | S_IRWXO |
-				S_ISUID | S_ISGID | S_ISVTX;
+		mode &= PMEMFILE_ALLPERMS;
 	}
 	va_end(ap);
 
@@ -1167,8 +1166,9 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		struct pmemfile_time t;
 
-		vinode = inode_alloc(pfp, PMEMFILE_S_IFLNK | 0777, &t, vparent,
-				NULL, info.remaining, namelen);
+		vinode = inode_alloc(pfp, PMEMFILE_S_IFLNK |
+				PMEMFILE_ACCESSPERMS, &t, vparent, NULL,
+				info.remaining, namelen);
 		struct pmemfile_inode *inode = vinode->inode;
 		pmemobj_memcpy_persist(pfp->pop, inode->file_data.data, target,
 				len);

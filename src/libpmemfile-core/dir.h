@@ -48,6 +48,9 @@ struct pmemfile_path_info {
 void resolve_pathat(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 		const char *path, struct pmemfile_path_info *path_info,
 		int flags);
+void resolve_symlink(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+		struct pmemfile_path_info *info);
+
 void path_info_cleanup(PMEMfilepool *pfp, struct pmemfile_path_info *path_info);
 bool str_contains(const char *str, size_t len, char c);
 bool more_than_1_component(const char *path);

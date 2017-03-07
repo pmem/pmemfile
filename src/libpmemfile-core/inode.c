@@ -720,22 +720,7 @@ _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 					info.remaining, namelen, 0);
 			if (vinode && vinode_is_symlink(vinode) &&
 					!(flags & AT_SYMLINK_NOFOLLOW)) {
-				char symlink_target[PATH_MAX];
-				COMPILE_ERROR_ON(sizeof(symlink_target) <
-						PMEMFILE_IN_INODE_STORAGE);
-
-				util_rwlock_rdlock(&vinode->rwlock);
-				strcpy(symlink_target,
-					D_RO(vinode->inode)->file_data.data);
-				util_rwlock_unlock(&vinode->rwlock);
-
-				vinode_unref_tx(pfp, vinode);
-
-				struct pmemfile_path_info info2;
-				resolve_pathat(pfp, info.vinode, symlink_target,
-						&info2, 0);
-				path_info_cleanup(pfp, &info);
-				memcpy(&info, &info2, sizeof(info));
+				resolve_symlink(pfp, vinode, &info);
 				path_info_changed = true;
 			}
 		}

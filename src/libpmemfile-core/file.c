@@ -304,22 +304,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 				goto end;
 			}
 
-			char symlink_target[PATH_MAX];
-			COMPILE_ERROR_ON(sizeof(symlink_target) <
-					PMEMFILE_IN_INODE_STORAGE);
-
-			util_rwlock_rdlock(&vinode->rwlock);
-			strcpy(symlink_target,
-					D_RO(vinode->inode)->file_data.data);
-			util_rwlock_unlock(&vinode->rwlock);
-
-			vinode_unref_tx(pfp, vinode);
-
-			struct pmemfile_path_info info2;
-			resolve_pathat(pfp, info.vinode, symlink_target,
-					&info2, 0);
-			path_info_cleanup(pfp, &info);
-			memcpy(&info, &info2, sizeof(info));
+			resolve_symlink(pfp, vinode, &info);
 			flags &= ~(O_CREAT|O_EXCL);
 			path_info_changed = true;
 		}
@@ -529,26 +514,14 @@ pmemfile_open_parent(PMEMfilepool *pfp, PMEMfile *dir, char *path,
 					vinode_lookup_dirent(pfp, info.vinode,
 					info.remaining, namelen, 0);
 
-			if (vinode && vinode_is_symlink(vinode)) {
-				char symlink_target[PATH_MAX];
-				COMPILE_ERROR_ON(sizeof(symlink_target) <
-						PMEMFILE_IN_INODE_STORAGE);
-
-				util_rwlock_rdlock(&vinode->rwlock);
-				strcpy(symlink_target,
-					D_RO(vinode->inode)->file_data.data);
-				util_rwlock_unlock(&vinode->rwlock);
-
-				struct pmemfile_path_info info2;
-				resolve_pathat(pfp, info.vinode, symlink_target,
-						&info2, 0);
-				path_info_cleanup(pfp, &info);
-				memcpy(&info, &info2, sizeof(info));
-				path_info_changed = true;
+			if (vinode) {
+				if (vinode_is_symlink(vinode)) {
+					resolve_symlink(pfp, vinode, &info);
+					path_info_changed = true;
+				} else {
+					vinode_unref_tx(pfp, vinode);
+				}
 			}
-
-			if (vinode)
-				vinode_unref_tx(pfp, vinode);
 		}
 	} while (path_info_changed);
 
@@ -661,25 +634,10 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 			error = ENOTDIR;
 			goto end;
 		}
-		path_info_cleanup(pfp, &src);
 
 		if (vinode_is_symlink(src_vinode) &&
 				(flags & AT_SYMLINK_FOLLOW)) {
-			char symlink_target[PATH_MAX];
-			COMPILE_ERROR_ON(sizeof(symlink_target) <
-					PMEMFILE_IN_INODE_STORAGE);
-
-			util_rwlock_rdlock(&src_vinode->rwlock);
-			strcpy(symlink_target,
-				D_RO(src_vinode->inode)->file_data.data);
-			util_rwlock_unlock(&src_vinode->rwlock);
-
-			vinode_unref_tx(pfp, src_vinode);
-
-			struct pmemfile_path_info src2;
-			resolve_pathat(pfp, src.vinode, symlink_target, &src2,
-					0);
-			memcpy(&src, &src2, sizeof(src));
+			resolve_symlink(pfp, src_vinode, &src);
 			src_path_info_changed = true;
 		}
 	} while (src_path_info_changed);

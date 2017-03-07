@@ -132,22 +132,22 @@ TEST_F(symlinks, 0)
 	ASSERT_TRUE(test_pmemfile_readlinkat(pfp,
 			"/dir", "sym4-not_exists-relative", "../file2"));
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
 	    {040777, 3, 4008, "."},
 	    {040777, 3, 4008, ".."},
 	    {0100644, 1, 0, "file1"},
 	    {040755, 2, 4008, "dir"},
-	    {}}));
+	}));
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir",
-			(const struct pmemfile_ls[]) {
+			std::vector<pmemfile_ls> {
 	    {040755, 2, 4008, "."},
 	    {040777, 3, 4008, ".."},
 	    {0120777, 1, 6, "sym1-exists", "/file1"},
 	    {0120777, 1, 6, "sym2-not_exists", "/file2"},
 	    {0120777, 1, 8, "sym3-exists-relative", "../file1"},
 	    {0120777, 1, 8, "sym4-not_exists-relative", "../file2"},
-	    {}}));
+	}));
 
 	ssize_t ret;
 
@@ -437,13 +437,13 @@ TEST_F(symlinks, 3)
 			PMEMFILE_AT_SYMLINK_FOLLOW), 0);
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir",
-			(const struct pmemfile_ls[]) {
+			std::vector<pmemfile_ls> {
 			    {0040777, 2, 4008, "."},
 			    {0040777, 3, 4008, ".."},
 			    {0120777, 3, 5, "symlink", "/file"},
-			    {}}));
+			}));
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
+	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
 				{0040777, 3, 4008, "."},
 				{0040777, 3, 4008, ".."},
 				{0040777, 2, 4008, "dir"},
@@ -451,7 +451,7 @@ TEST_F(symlinks, 3)
 				{0120777, 3, 5, "link_to_symlink", "/file"},
 				{0120777, 3, 5, "link_to_symlink2", "/file"},
 				{0100644, 2, 7, "link_to_underlying_file"},
-				{}}));
+	}));
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/link_to_underlying_file"), 0);
 	ASSERT_EQ(pmemfile_unlink(pfp, "/link_to_symlink2"), 0);

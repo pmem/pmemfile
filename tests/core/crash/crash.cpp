@@ -89,12 +89,12 @@ TEST(crash, 0)
 		ASSERT_NE(pfp, nullptr) << strerror(errno);
 
 		EXPECT_TRUE(test_compare_dirs(pfp, "/",
-				(const struct pmemfile_ls[]) {
+				std::vector<pmemfile_ls> {
 		    {040777, 2, 4008, "."},
 		    {040777, 2, 4008, ".."},
 		    {0100644, 1, 0, "aaa"},
 		    {0100644, 1, 0, "bbb"},
-		    {}}));
+		}));
 
 		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 0, 0));
 
@@ -104,11 +104,11 @@ TEST(crash, 0)
 		ASSERT_NE(pfp, nullptr) << strerror(errno);
 
 		EXPECT_TRUE(test_compare_dirs(pfp, "/",
-				(const struct pmemfile_ls[]) {
+				std::vector<pmemfile_ls> {
 		    {040777, 2, 4008, "."},
 		    {040777, 2, 4008, ".."},
 		    {0100644, 1, 0, "bbb"},
-		    {}}));
+		}));
 
 		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 1, 0));
 

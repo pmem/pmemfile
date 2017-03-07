@@ -67,12 +67,14 @@ add_library(test_backtrace STATIC ../test_backtrace.c)
 
 add_dependencies(pmemfile_test libgtest)
 
-#add_checker_targets("tests-core-test" ${CMAKE_CURRENT_SOURCE_DIR}/pmemfile_test.c)
+add_cppstyle("tests-core-test")
+add_check_whitespace("tests-core-test" ${CMAKE_CURRENT_SOURCE_DIR}/*.*pp)
+
 add_cstyle(tests-core-test_bt ${CMAKE_CURRENT_SOURCE_DIR}/../test_backtrace.c)
 add_check_whitespace(tests-core-test_bt ${CMAKE_CURRENT_SOURCE_DIR}/../test_backtrace.c)
 
 function(build_test name srcs)
-	add_cstyle(tests-core-${name} ${CMAKE_CURRENT_SOURCE_DIR}/${srcs})
+	add_cppstyle(tests-core-${name} ${CMAKE_CURRENT_SOURCE_DIR}/${srcs})
 	add_check_whitespace(tests-core-${name} ${CMAKE_CURRENT_SOURCE_DIR}/${srcs})
         add_executable(${name} ${srcs})
         target_link_libraries(${name} pmemfile-core_shared pmemfile_test test_backtrace libgtest)

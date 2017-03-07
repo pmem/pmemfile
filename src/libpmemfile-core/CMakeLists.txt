@@ -119,4 +119,5 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libpmemfile-core.pc
         CONFIGURATIONS Release None
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 
-add_checker_targets("pmemfile-core")
+add_cstyle(pmemfile-core)
+add_check_whitespace(pmemfile-core)

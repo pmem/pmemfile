@@ -89,4 +89,5 @@ install(TARGETS pmemfile_shared LIBRARY
 #        CONFIGURATIONS Debug
 #        DESTINATION ${CMAKE_INSTALL_LIBDIR}/pmemfile_debug)
 
-add_checker_targets("pmemfile")
+add_cstyle(pmemfile)
+add_check_whitespace(pmemfile)

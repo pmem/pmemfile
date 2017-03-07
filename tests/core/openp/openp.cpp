@@ -36,31 +36,32 @@
 
 #include "pmemfile_test.hpp"
 
-class openp : public pmemfile_test
-{
+class openp : public pmemfile_test {
 public:
-	openp() : pmemfile_test() {}
+	openp() : pmemfile_test()
+	{
+	}
 };
 
 static bool
 check_path(PMEMfilepool *pfp, int stop_at_root, const char *path,
-		const char *parent, const char *child)
+	   const char *parent, const char *child)
 {
 	char tmp_path[PMEMFILE_PATH_MAX], dir_path[PMEMFILE_PATH_MAX];
 
 	strncpy(tmp_path, path, PMEMFILE_PATH_MAX);
 	tmp_path[PMEMFILE_PATH_MAX - 1] = 0;
 
-	PMEMfile *f = pmemfile_open_parent(pfp, PMEMFILE_AT_CWD, tmp_path,
-			PMEMFILE_PATH_MAX,
-			stop_at_root ? PMEMFILE_OPEN_PARENT_STOP_AT_ROOT : 0);
+	PMEMfile *f = pmemfile_open_parent(
+		pfp, PMEMFILE_AT_CWD, tmp_path, PMEMFILE_PATH_MAX,
+		stop_at_root ? PMEMFILE_OPEN_PARENT_STOP_AT_ROOT : 0);
 	if (!f) {
 		ADD_FAILURE() << path << " " << strerror(errno);
 		return false;
 	}
 
-	char *dir_path2 = pmemfile_get_dir_path(pfp, f, dir_path,
-			PMEMFILE_PATH_MAX);
+	char *dir_path2 =
+		pmemfile_get_dir_path(pfp, f, dir_path, PMEMFILE_PATH_MAX);
 	if (dir_path2 != dir_path) {
 		ADD_FAILURE() << dir_path << " " << dir_path2;
 		pmemfile_close(pfp, f);
@@ -87,51 +88,51 @@ TEST_F(openp, 0)
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir2", 0777), 0);
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1/dir3", 0777), 0);
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1/dir3/dir4", 0777), 0);
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/file1",
-			PMEMFILE_O_EXCL, 0644));
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir2/file2",
-			PMEMFILE_O_EXCL, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/file1", PMEMFILE_O_EXCL, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir2/file2", PMEMFILE_O_EXCL,
+					 0644));
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/dir3/file3",
-			PMEMFILE_O_EXCL, 0644));
+					 PMEMFILE_O_EXCL, 0644));
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/dir3/dir4/file4",
-			PMEMFILE_O_EXCL, 0644));
+					 PMEMFILE_O_EXCL, 0644));
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
-	    {040777, 4, 4008, "."},
-	    {040777, 4, 4008, ".."},
-	    {040777, 3, 4008, "dir1"},
-	    {040777, 2, 4008, "dir2"},
-	    {0100644, 1, 0, "file1"},
-	}));
+	EXPECT_TRUE(
+		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
+						    {040777, 4, 4008, "."},
+						    {040777, 4, 4008, ".."},
+						    {040777, 3, 4008, "dir1"},
+						    {040777, 2, 4008, "dir2"},
+						    {0100644, 1, 0, "file1"},
+					    }));
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1",
-			std::vector<pmemfile_ls> {
-	    {040777, 3, 4008, "."},
-	    {040777, 4, 4008, ".."},
-	    {040777, 3, 4008, "dir3"},
-	}));
+				      std::vector<pmemfile_ls>{
+					      {040777, 3, 4008, "."},
+					      {040777, 4, 4008, ".."},
+					      {040777, 3, 4008, "dir3"},
+				      }));
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1/dir3",
-			std::vector<pmemfile_ls> {
-	    {040777, 3, 4008, "."},
-	    {040777, 3, 4008, ".."},
-	    {040777, 2, 4008, "dir4"},
-	    {0100644, 1, 0, "file3"},
-	}));
+				      std::vector<pmemfile_ls>{
+					      {040777, 3, 4008, "."},
+					      {040777, 3, 4008, ".."},
+					      {040777, 2, 4008, "dir4"},
+					      {0100644, 1, 0, "file3"},
+				      }));
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1/dir3/dir4",
-	    std::vector<pmemfile_ls> {
-	    {040777, 2, 4008, "."},
-	    {040777, 3, 4008, ".."},
-	    {0100644, 1, 0, "file4"},
-	}));
+				      std::vector<pmemfile_ls>{
+					      {040777, 2, 4008, "."},
+					      {040777, 3, 4008, ".."},
+					      {0100644, 1, 0, "file4"},
+				      }));
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir2",
-			std::vector<pmemfile_ls> {
-	    {040777, 2, 4008, "."},
-	    {040777, 4, 4008, ".."},
-	    {0100644, 1, 0, "file2"},
-	}));
+				      std::vector<pmemfile_ls>{
+					      {040777, 2, 4008, "."},
+					      {040777, 4, 4008, ".."},
+					      {0100644, 1, 0, "file2"},
+				      }));
 
 	EXPECT_TRUE(check_path(pfp, 0, "dir1", "/", "dir1"));
 	EXPECT_TRUE(check_path(pfp, 0, "dir1/", "/", "dir1/"));
@@ -151,21 +152,21 @@ TEST_F(openp, 0)
 
 	EXPECT_TRUE(check_path(pfp, 0, "dir1/dir3/dir4", "/dir1/dir3", "dir4"));
 	EXPECT_TRUE(check_path(pfp, 0, "dir1/not_exists/dir4", "/dir1",
-			"not_exists/dir4"));
+			       "not_exists/dir4"));
 
 	EXPECT_TRUE(check_path(pfp, 0, "dir1/dir3/../", "/dir1/dir3", "../"));
 
 	EXPECT_TRUE(check_path(pfp, 0, "/dir1/../../dir2", "/", "dir2"));
 	EXPECT_TRUE(check_path(pfp, 0, "dir1/../../dir2", "/", "dir2"));
-	EXPECT_TRUE(check_path(pfp, 0, "/dir1/../dir2/../../dir2", "/",
-			"dir2"));
+	EXPECT_TRUE(
+		check_path(pfp, 0, "/dir1/../dir2/../../dir2", "/", "dir2"));
 	EXPECT_TRUE(check_path(pfp, 0, "../dir1", "/", "dir1"));
 	EXPECT_TRUE(check_path(pfp, 0, "./dir1/../../dir1", "/", "dir1"));
 
 	EXPECT_TRUE(check_path(pfp, 1, "/dir1/../../dir2", "/", "../dir2"));
 	EXPECT_TRUE(check_path(pfp, 1, "dir1/../../dir2", "/", "../dir2"));
-	EXPECT_TRUE(check_path(pfp, 1, "/dir1/../dir2/../../dir2", "/",
-			"../dir2"));
+	EXPECT_TRUE(
+		check_path(pfp, 1, "/dir1/../dir2/../../dir2", "/", "../dir2"));
 	EXPECT_TRUE(check_path(pfp, 1, "../dir1", "/", "../dir1"));
 	EXPECT_TRUE(check_path(pfp, 1, "./dir1/../../dir1", "/", "../dir1"));
 

@@ -38,23 +38,26 @@
 
 static unsigned env_block_size;
 
-class rw : public pmemfile_test
-{
+class rw : public pmemfile_test {
 public:
-	rw() : pmemfile_test(256 * 1024 * 1024) {}
+	rw() : pmemfile_test(256 * 1024 * 1024)
+	{
+	}
 };
 
 TEST_F(rw, 1)
 {
 	PMEMfile *f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT |
-			PMEMFILE_O_EXCL | PMEMFILE_O_WRONLY, 0644);
+					    PMEMFILE_O_EXCL | PMEMFILE_O_WRONLY,
+				    0644);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
-	    {040777, 2, 4008, "."},
-	    {040777, 2, 4008, ".."},
-	    {0100644, 1, 0, "file1"},
-	}));
+	EXPECT_TRUE(
+		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
+						    {040777, 2, 4008, "."},
+						    {040777, 2, 4008, ".."},
+						    {0100644, 1, 0, "file1"},
+					    }));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 0));
 
@@ -68,11 +71,12 @@ TEST_F(rw, 1)
 	ssize_t written = pmemfile_write(pfp, f, data, len);
 	ASSERT_EQ(written, (ssize_t)len) << COND_ERROR(written);
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
-	    {040777, 2, 4008, "."},
-	    {040777, 2, 4008, ".."},
-	    {0100644, 1, 9, "file1"},
-	}));
+	EXPECT_TRUE(
+		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
+						    {040777, 2, 4008, "."},
+						    {040777, 2, 4008, ".."},
+						    {0100644, 1, 9, "file1"},
+					    }));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 1));
 
@@ -105,7 +109,6 @@ TEST_F(rw, 1)
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 1));
 
-
 	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
@@ -117,7 +120,6 @@ TEST_F(rw, 1)
 	ASSERT_EQ(memcmp(data2 + len, bufFF, sizeof(data2) - len), 0);
 
 	pmemfile_close(pfp, f);
-
 
 	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
@@ -138,7 +140,6 @@ TEST_F(rw, 1)
 
 	pmemfile_close(pfp, f);
 
-
 	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDWR);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
@@ -154,12 +155,12 @@ TEST_F(rw, 1)
 
 	pmemfile_close(pfp, f);
 
-
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
-	    {040777, 2, 4008, "."},
-	    {040777, 2, 4008, ".."},
-	    {0100644, 1, 9, "file1"},
-	}));
+	EXPECT_TRUE(
+		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
+						    {040777, 2, 4008, "."},
+						    {040777, 2, 4008, ".."},
+						    {0100644, 1, 9, "file1"},
+					    }));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 1));
 
@@ -201,7 +202,6 @@ TEST_F(rw, 1)
 
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_CUR), 9);
 
-
 	ASSERT_EQ(pmemfile_lseek(pfp, f, -3, PMEMFILE_SEEK_END), 6);
 
 	/* again, seeking backward works */
@@ -227,16 +227,17 @@ TEST_F(rw, 1)
 	ASSERT_EQ(memcmp("pmemin S\0", data2, 9), 0);
 	ASSERT_EQ(memcmp(data2 + 9, buf00, 100), 0);
 	ASSERT_EQ(memcmp("XYZ\0", data2 + 9 + 100, 4), 0);
-	ASSERT_EQ(memcmp(data2 + 9 + 100 + 4, bufFF,
-			sizeof(data2) - 9 - 100 - 4), 0);
+	ASSERT_EQ(
+		memcmp(data2 + 9 + 100 + 4, bufFF, sizeof(data2) - 9 - 100 - 4),
+		0);
 
 	/* write 4k past the end of file and check the hole is empty */
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_CUR), 9 + 100 + 4);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 4096, PMEMFILE_SEEK_END),
-			9 + 100 + 4 + 4096);
+		  9 + 100 + 4 + 4096);
 	ASSERT_EQ(pmemfile_write(pfp, f, "NEXT BLOCK\0", 11), 11);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 9 + 100 + 4, PMEMFILE_SEEK_SET),
-			9 + 100 + 4);
+		  9 + 100 + 4);
 	memset(data2, 0xff, sizeof(data2));
 	r = pmemfile_read(pfp, f, data2, 4096);
 	ASSERT_EQ(r, 4096) << COND_ERROR(r);
@@ -244,8 +245,8 @@ TEST_F(rw, 1)
 
 	pmemfile_close(pfp, f);
 
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0,
-			(env_block_size == 4096) ? 2 : 1));
+	EXPECT_TRUE(test_pmemfile_stats_match(
+		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? 2 : 1));
 
 	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
@@ -256,22 +257,23 @@ TEST_F(rw, 1)
 
 	pmemfile_close(pfp, f);
 
+	EXPECT_TRUE(
+		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
+						    {040777, 2, 4008, "."},
+						    {040777, 2, 4008, ".."},
+						    {0100644, 1, 4220, "file1"},
+					    }));
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
-	    {040777, 2, 4008, "."},
-	    {040777, 2, 4008, ".."},
-	    {0100644, 1, 4220, "file1"},
-	}));
-
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0,
-			(env_block_size == 4096) ? 2 : 1));
+	EXPECT_TRUE(test_pmemfile_stats_match(
+		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? 2 : 1));
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 0, 0, 1, 0));
 
-	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT | PMEMFILE_O_EXCL |
-			PMEMFILE_O_RDWR, 0644);
+	f = pmemfile_open(pfp, "/file1",
+			  PMEMFILE_O_CREAT | PMEMFILE_O_EXCL | PMEMFILE_O_RDWR,
+			  0644);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	/* check that writing slightly bigger files and seeking in them works */
@@ -291,14 +293,15 @@ TEST_F(rw, 1)
 
 	pmemfile_close(pfp, f);
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
-	    {040777, 2, 4008, "."},
-	    {040777, 2, 4008, ".."},
-	    {0100644, 1, 8192, "file1"},
-	}));
+	EXPECT_TRUE(
+		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
+						    {040777, 2, 4008, "."},
+						    {040777, 2, 4008, ".."},
+						    {0100644, 1, 8192, "file1"},
+					    }));
 
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 1,
-			(env_block_size == 4096) ? 2 : 1));
+	EXPECT_TRUE(test_pmemfile_stats_match(
+		pfp, 2, 0, 0, 1, (env_block_size == 4096) ? 2 : 1));
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
 }
@@ -315,8 +318,8 @@ TEST_F(rw, 2)
 		bufd[i] = (unsigned char)(rand() % 255);
 
 	PMEMfile *f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT |
-			PMEMFILE_O_EXCL | PMEMFILE_O_WRONLY,
-			0644);
+					    PMEMFILE_O_EXCL | PMEMFILE_O_WRONLY,
+				    0644);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 #define LEN (sizeof(bufd) - 1000)
@@ -328,15 +331,16 @@ TEST_F(rw, 2)
 
 	pmemfile_close(pfp, f);
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
-	    {040777, 2, 4008, "."},
-	    {040777, 2, 4008, ".."},
-	    {0100644, 1, 209714688, "file1"},
-	}));
+	EXPECT_TRUE(test_compare_dirs(pfp, "/",
+				      std::vector<pmemfile_ls>{
+					      {040777, 2, 4008, "."},
+					      {040777, 2, 4008, ".."},
+					      {0100644, 1, 209714688, "file1"},
+				      }));
 
 	if (env_block_size == 4096)
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0x32c, 0,
-				51200));
+		EXPECT_TRUE(
+			test_pmemfile_stats_match(pfp, 2, 0, 0x32c, 0, 51200));
 	else
 		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 10, 0, 633));
 
@@ -367,10 +371,12 @@ TEST_F(rw, trunc)
 	memset(bufFF, 0xFF, sizeof(bufFF));
 	memset(bufDD, 0xDD, sizeof(bufDD));
 
-	PMEMfile *f1 = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT |
-			PMEMFILE_O_EXCL | PMEMFILE_O_WRONLY, 0644);
-	PMEMfile *f2 = pmemfile_open(pfp, "/file2", PMEMFILE_O_CREAT |
-			PMEMFILE_O_EXCL | PMEMFILE_O_WRONLY, 0644);
+	PMEMfile *f1 = pmemfile_open(
+		pfp, "/file1",
+		PMEMFILE_O_CREAT | PMEMFILE_O_EXCL | PMEMFILE_O_WRONLY, 0644);
+	PMEMfile *f2 = pmemfile_open(
+		pfp, "/file2",
+		PMEMFILE_O_CREAT | PMEMFILE_O_EXCL | PMEMFILE_O_WRONLY, 0644);
 	ASSERT_NE(f1, nullptr) << strerror(errno);
 	ASSERT_NE(f2, nullptr) << strerror(errno);
 
@@ -385,22 +391,23 @@ TEST_F(rw, trunc)
 	pmemfile_close(pfp, f1);
 	pmemfile_close(pfp, f2);
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
-	    {040777, 2, 4008, "."},
-	    {040777, 2, 4008, ".."},
-	    {0100644, 1, 25600, "file1"},
-	    {0100644, 1, 25600, "file2"},
-	}));
+	EXPECT_TRUE(test_compare_dirs(pfp, "/",
+				      std::vector<pmemfile_ls>{
+					      {040777, 2, 4008, "."},
+					      {040777, 2, 4008, ".."},
+					      {0100644, 1, 25600, "file1"},
+					      {0100644, 1, 25600, "file2"},
+				      }));
 
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 0,
-			(env_block_size == 4096) ? 14 : 4));
+	EXPECT_TRUE(test_pmemfile_stats_match(
+		pfp, 3, 0, 0, 0, (env_block_size == 4096) ? 14 : 4));
 
 	f1 = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDWR | PMEMFILE_O_TRUNC,
-			0);
+			   0);
 	ASSERT_NE(f1, nullptr) << strerror(errno);
 
 	f2 = pmemfile_open(pfp, "/file2", PMEMFILE_O_RDWR | PMEMFILE_O_TRUNC,
-			0);
+			   0);
 	ASSERT_NE(f2, nullptr) << strerror(errno);
 
 	ssize_t r = pmemfile_read(pfp, f1, buftmp, 128);
@@ -411,12 +418,13 @@ TEST_F(rw, trunc)
 	pmemfile_close(pfp, f1);
 	pmemfile_close(pfp, f2);
 
-	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls> {
-	    {040777, 2, 4008, "."},
-	    {040777, 2, 4008, ".."},
-	    {0100644, 1, 0, "file1"},
-	    {0100644, 1, 128, "file2"},
-	}));
+	EXPECT_TRUE(
+		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
+						    {040777, 2, 4008, "."},
+						    {040777, 2, 4008, ".."},
+						    {0100644, 1, 0, "file1"},
+						    {0100644, 1, 128, "file2"},
+					    }));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 0, 1));
 
@@ -435,7 +443,8 @@ TEST_F(rw, o_append)
 	memset(bufDD, 0xDD, sizeof(bufDD));
 
 	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT | PMEMFILE_O_EXCL |
-			PMEMFILE_O_WRONLY | PMEMFILE_O_APPEND, 0644);
+				  PMEMFILE_O_WRONLY | PMEMFILE_O_APPEND,
+			  0644);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	ASSERT_EQ(pmemfile_write(pfp, f, bufFF, 128), 128);
@@ -466,7 +475,8 @@ TEST_F(rw, sparse_files)
 {
 	unsigned char buf[8192];
 	PMEMfile *f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT |
-			PMEMFILE_O_EXCL | PMEMFILE_O_RDWR, 0644);
+					    PMEMFILE_O_EXCL | PMEMFILE_O_RDWR,
+				    0644);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 4096, PMEMFILE_SEEK_SET), 4096);
@@ -506,7 +516,8 @@ TEST_F(rw, failed_write)
 	ssize_t r;
 
 	PMEMfile *f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT |
-			PMEMFILE_O_EXCL | PMEMFILE_O_RDWR, 0644);
+					    PMEMFILE_O_EXCL | PMEMFILE_O_RDWR,
+				    0644);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	ASSERT_EQ(pmemfile_write(pfp, f, "test", 5), 5);

@@ -36,17 +36,18 @@
 
 #include "pmemfile_test.hpp"
 
-class getdents : public pmemfile_test
-{
+class getdents : public pmemfile_test {
 public:
-	getdents() : pmemfile_test() {}
+	getdents() : pmemfile_test()
+	{
+	}
 };
 
 static void
 dump_linux_dirents(void *dirp, unsigned length)
 {
 	char *buf = (char *)dirp;
-	for (unsigned i = 0; i < length; ) {
+	for (unsigned i = 0; i < length;) {
 		long ino = *(long *)&buf[i];
 		T_OUT("d_ino.txt: 0x%016lx\n", ino);
 		T_OUT("d_ino.bin:");
@@ -71,8 +72,8 @@ dump_linux_dirents(void *dirp, unsigned length)
 		T_OUT("d_name.txt: \"%s\"\n", buf + i);
 		T_OUT("d_name.bin:");
 		for (int j = 0; j < reclen - 8 - 8 - 2; ++j, ++i)
-			T_OUT(" 0x%02hhx (%c)",
-					buf[i], isprint(buf[i]) ? buf[i] : '?');
+			T_OUT(" 0x%02hhx (%c)", buf[i],
+			      isprint(buf[i]) ? buf[i] : '?');
 		T_OUT("\n");
 		T_OUT("-\n");
 	}
@@ -83,7 +84,7 @@ static void
 dump_linux_dirents64(void *dirp, unsigned length)
 {
 	char *buf = (char *)dirp;
-	for (size_t i = 0; i < length; ) {
+	for (size_t i = 0; i < length;) {
 		long ino = *(long *)&buf[i];
 		T_OUT("d_ino.txt: 0x%016lx\n", ino);
 		T_OUT("d_ino.bin:");
@@ -115,8 +116,8 @@ dump_linux_dirents64(void *dirp, unsigned length)
 		T_OUT("d_name.txt: \"%s\"\n", buf + i);
 		T_OUT("d_name.bin:");
 		for (int j = 0; j < reclen - 8 - 8 - 2 - 1; ++j, ++i)
-			T_OUT(" 0x%02hhx (%c)",
-					buf[i], isprint(buf[i]) ? buf[i] : '?');
+			T_OUT(" 0x%02hhx (%c)", buf[i],
+			      isprint(buf[i]) ? buf[i] : '?');
 		T_OUT("\n");
 		T_OUT("-\n");
 	}
@@ -129,20 +130,22 @@ TEST_F(getdents, 1)
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/file1", PMEMFILE_O_EXCL, 0644));
 
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/file2with_long_name",
-			PMEMFILE_O_EXCL, 0644));
+					 PMEMFILE_O_EXCL, 0644));
 
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/file3with_very_long_name"
-			"_1234567890_1234567890_1234567890_1234567890"
-			"_1234567890_1234567890_1234567890_1234567890"
-			"_1234567890_1234567890_1234567890_1234567890"
-			"_1234567890_1234567890_1234567890_1234567890"
-			"_1234567890_1234567890_1234567890_1234567890"
-			"_qwertyuiop", PMEMFILE_O_EXCL, 0644));
+	ASSERT_TRUE(test_pmemfile_create(
+		pfp, "/file3with_very_long_name"
+		     "_1234567890_1234567890_1234567890_1234567890"
+		     "_1234567890_1234567890_1234567890_1234567890"
+		     "_1234567890_1234567890_1234567890_1234567890"
+		     "_1234567890_1234567890_1234567890_1234567890"
+		     "_1234567890_1234567890_1234567890_1234567890"
+		     "_qwertyuiop",
+		PMEMFILE_O_EXCL, 0644));
 
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/file4", PMEMFILE_O_EXCL, 0644));
 
-	PMEMfile *f = pmemfile_open(pfp, "/", PMEMFILE_O_DIRECTORY |
-			PMEMFILE_O_RDONLY);
+	PMEMfile *f = pmemfile_open(pfp, "/",
+				    PMEMFILE_O_DIRECTORY | PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	char buf[32758];
@@ -175,8 +178,8 @@ TEST_F(getdents, 2)
 {
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
 
-	PMEMfile *f = pmemfile_open(pfp, "/dir1", PMEMFILE_O_DIRECTORY |
-			PMEMFILE_O_RDONLY);
+	PMEMfile *f = pmemfile_open(pfp, "/dir1",
+				    PMEMFILE_O_DIRECTORY | PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	char buf[32758];
@@ -188,11 +191,11 @@ TEST_F(getdents, 2)
 	dump_linux_dirents(buf, (unsigned)r);
 
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/file1", PMEMFILE_O_EXCL,
-			0644));
+					 0644));
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/file2", PMEMFILE_O_EXCL,
-			0644));
+					 0644));
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/file3", PMEMFILE_O_EXCL,
-			0644));
+					 0644));
 
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_SET), 0);
 	r = pmemfile_getdents64(pfp, f, dirents64, sizeof(buf));
@@ -200,13 +203,13 @@ TEST_F(getdents, 2)
 	dump_linux_dirents64(buf, (unsigned)r);
 
 	auto files = test_list_files(pfp, f, buf, (unsigned)r);
-	ASSERT_TRUE(test_compare_dirs(files, std::vector<pmemfile_ls> {
-	    {040755, 2, 4008, "."},
-	    {040777, 3, 4008, ".."},
-	    {0100644, 1, 0, "file1"},
-	    {0100644, 1, 0, "file2"},
-	    {0100644, 1, 0, "file3"},
-	}));
+	ASSERT_TRUE(test_compare_dirs(files, std::vector<pmemfile_ls>{
+						     {040755, 2, 4008, "."},
+						     {040777, 3, 4008, ".."},
+						     {0100644, 1, 0, "file1"},
+						     {0100644, 1, 0, "file2"},
+						     {0100644, 1, 0, "file3"},
+					     }));
 
 	pmemfile_close(pfp, f);
 

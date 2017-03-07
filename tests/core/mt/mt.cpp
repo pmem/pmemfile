@@ -38,10 +38,11 @@
 
 #include "pmemfile_test.hpp"
 
-class mt : public pmemfile_test
-{
+class mt : public pmemfile_test {
 public:
-	mt() : pmemfile_test() {}
+	mt() : pmemfile_test()
+	{
+	}
 };
 
 static int ops = 20;
@@ -70,8 +71,8 @@ create_close_unlink_worker(void *arg)
 	sched_yield();
 
 	for (int i = 0; i < ops; ++i) {
-		PMEMfile *f1 = pmemfile_open(global_pfp, path, PMEMFILE_O_CREAT,
-				0644);
+		PMEMfile *f1 =
+			pmemfile_open(global_pfp, path, PMEMFILE_O_CREAT, 0644);
 		if (f1)
 			pmemfile_close(global_pfp, f1);
 		pmemfile_unlink(global_pfp, path);
@@ -84,27 +85,29 @@ TEST_F(mt, 0)
 {
 	long ncpus = sysconf(_SC_NPROCESSORS_ONLN);
 	int i = 0;
-	pthread_t *threads = (pthread_t *)malloc(
-			sizeof(threads[0]) * (size_t)ncpus * 2);
+	pthread_t *threads =
+		(pthread_t *)malloc(sizeof(threads[0]) * (size_t)ncpus * 2);
 	ASSERT_NE(threads, nullptr);
 	int ret;
 	global_pfp = pfp;
 
 	for (int j = 0; j < ncpus / 2; ++j) {
-		ret = pthread_create(&threads[i++], NULL,
-				open_close_worker, (void *)"/aaa");
+		ret = pthread_create(&threads[i++], NULL, open_close_worker,
+				     (void *)"/aaa");
 		ASSERT_EQ(ret, 0) << strerror(errno);
 		ret = pthread_create(&threads[i++], NULL,
-				create_close_unlink_worker, (void *)"/aaa");
+				     create_close_unlink_worker,
+				     (void *)"/aaa");
 		ASSERT_EQ(ret, 0) << strerror(errno);
 	}
 
 	for (int j = 0; j < ncpus / 2; ++j) {
-		ret = pthread_create(&threads[i++], NULL,
-				open_close_worker, (void *)"/bbb");
+		ret = pthread_create(&threads[i++], NULL, open_close_worker,
+				     (void *)"/bbb");
 		ASSERT_EQ(ret, 0) << strerror(errno);
 		ret = pthread_create(&threads[i++], NULL,
-				create_close_unlink_worker, (void *)"/bbb");
+				     create_close_unlink_worker,
+				     (void *)"/bbb");
 		ASSERT_EQ(ret, 0) << strerror(errno);
 	}
 

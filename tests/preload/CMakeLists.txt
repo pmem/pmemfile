@@ -32,8 +32,11 @@
 add_executable(preload_basic basic/basic.c)
 add_executable(preload_config config/config.c)
 
-add_checker_targets("tests-preload-basic" ${CMAKE_CURRENT_SOURCE_DIR}/basic/basic.c)
-add_checker_targets("tests-preload-config" ${CMAKE_CURRENT_SOURCE_DIR}/config/config.c)
+add_cstyle(tests-preload-basic ${CMAKE_CURRENT_SOURCE_DIR}/basic/basic.c)
+add_cstyle(tests-preload-config ${CMAKE_CURRENT_SOURCE_DIR}/config/config.c)
+
+add_check_whitespace(tests-preload-basic ${CMAKE_CURRENT_SOURCE_DIR}/basic/basic.c)
+add_check_whitespace(tests-preload-config ${CMAKE_CURRENT_SOURCE_DIR}/config/config.c)
 
 function(add_test_generic name main_executable)
         add_test(NAME preload_${name}

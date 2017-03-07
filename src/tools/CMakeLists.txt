@@ -40,4 +40,5 @@ install(TARGETS mkfs.pmemfile
         DESTINATION ${CMAKE_INSTALL_BINDIR}
         PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 
-add_checker_targets("tools" ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
+add_cstyle(tools ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
+add_check_whitespace(tools ${CMAKE_CURRENT_SOURCE_DIR}/*.c)

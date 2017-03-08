@@ -550,6 +550,32 @@ TEST_F(symlinks, 6)
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
 }
 
+TEST_F(symlinks, creat_excl)
+{
+	PMEMfile *file;
+	struct stat buf;
+
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", 0777), 0);
+	ASSERT_EQ(pmemfile_symlink(pfp, "../file", "/dir/symlink"), 0);
+
+	file = pmemfile_open(pfp, "/dir/symlink", O_CREAT | O_EXCL, 0644);
+	ASSERT_EQ(file, nullptr);
+	EXPECT_EQ(errno, EEXIST);
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/file", &buf), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	file = pmemfile_open(pfp, "/dir/symlink", O_CREAT, 0644);
+	ASSERT_NE(file, nullptr) << strerror(errno);
+	pmemfile_close(pfp, file);
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/file", &buf), 0);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/symlink"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
+}
+
 int
 main(int argc, char *argv[])
 {

@@ -42,6 +42,7 @@ set(SOURCES
 	stubs.c
 	out.c
 	ctree.c
+	block_array.c
 )
 
 set(HEADERS

@@ -148,11 +148,18 @@ public:
 		std::remove(path.c_str());
 
 		pfp = pmemfile_mkfs(path.c_str(), poolsize, S_IWUSR | S_IRUSR);
-		ASSERT_NE(pfp, nullptr) << strerror(errno);
+		EXPECT_NE(pfp, nullptr) << strerror(errno);
+		/*
+		 * Lower-case asserts are here on purpose. ASSERTs return
+		 * internally - they stop this function, but don't stop
+		 * test execution, so gtest happily performs a test on not
+		 * fully set up environment.
+		 */
+		assert(pfp != NULL);
 
-		ASSERT_TRUE(test_empty_dir(pfp, "/"));
+		assert(test_empty_dir(pfp, "/"));
 
-		ASSERT_EQ(test_pmemfile_stats_match(pfp, 1, 0, 0, 0, 0), true);
+		assert(test_pmemfile_stats_match(pfp, 1, 0, 0, 0, 0));
 
 	}
 
@@ -160,7 +167,8 @@ public:
 	{
 		// XXX always enable
 		if (test_empty_dir_on_teardown)
-			ASSERT_TRUE(test_empty_dir(pfp, "/"));
+			/* Again. Lower-case assert on purpose. */
+			assert(test_empty_dir(pfp, "/"));
 
 		pmemfile_pool_close(pfp);
 		std::remove(path.c_str());

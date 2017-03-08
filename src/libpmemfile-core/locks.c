@@ -40,6 +40,8 @@
 static void
 file_util_rwlock_unlock(PMEMfilepool *pfp, pthread_rwlock_t *arg)
 {
+	(void) pfp;
+
 	util_rwlock_unlock(arg);
 }
 

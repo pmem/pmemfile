@@ -185,7 +185,7 @@ check_flags(int flags)
 
 static struct pmemfile_vinode *
 create_file(PMEMfilepool *pfp, const char *filename, size_t namelen,
-		const char *full_path, struct pmemfile_vinode *parent_vinode,
+		struct pmemfile_vinode *parent_vinode,
 		int flags, mode_t mode)
 {
 	struct pmemfile_time t;
@@ -207,7 +207,7 @@ create_file(PMEMfilepool *pfp, const char *filename, size_t namelen,
 }
 
 static void
-open_file(const char *orig_pathname, struct pmemfile_vinode *vinode, int flags)
+open_file(struct pmemfile_vinode *vinode, int flags)
 {
 	if ((flags & O_DIRECTORY) && !vinode_is_dir(vinode))
 		pmemfile_tx_abort(ENOTDIR);
@@ -371,9 +371,9 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (vinode == NULL) {
 			vinode = create_file(pfp, info.remaining, namelen,
-					orig_pathname, vparent, flags, mode);
+					vparent, flags, mode);
 		} else {
-			open_file(orig_pathname, vinode, flags);
+			open_file(vinode, flags);
 		}
 
 		file = calloc(1, sizeof(*file));

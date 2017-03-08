@@ -187,7 +187,6 @@ vinode_destroy_data_state(struct pmemfile_vinode *vinode)
  */
 static void
 file_allocate_block_data(PMEMfilepool *pfp,
-		struct pmemfile_inode *inode,
 		struct pmemfile_block *block,
 		size_t count,
 		bool use_usable_size)
@@ -279,10 +278,10 @@ get_free_block(struct pmemfile_vinode *vinode)
 
 static struct pmemfile_block *
 allocate_block(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
-	struct pmemfile_inode *inode, uint64_t size, bool use_usable_size)
+	uint64_t size, bool use_usable_size)
 {
 	struct pmemfile_block *block = get_free_block(vinode);
-	file_allocate_block_data(pfp, inode, block, size, use_usable_size);
+	file_allocate_block_data(pfp, block, size, use_usable_size);
 
 	return block;
 }
@@ -358,7 +357,7 @@ file_allocate_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		} else if (block == NULL && vinode->first_block == NULL) {
 			/* File size is zero */
 
-			block = allocate_block(pfp, vinode, inode, size, over);
+			block = allocate_block(pfp, vinode, size, over);
 
 			block->offset = offset;
 			block->prev = TOID_NULL(struct pmemfile_block);
@@ -376,8 +375,7 @@ file_allocate_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			if (offset + count > first_offset)
 				count = (uint32_t)(first_offset - offset);
 
-			block = allocate_block(pfp,
-				vinode, inode, count, false);
+			block = allocate_block(pfp, vinode, count, false);
 
 			block->offset = offset;
 
@@ -393,7 +391,7 @@ file_allocate_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			/* After the last allocated block */
 
 			struct pmemfile_block *next_block =
-			    allocate_block(pfp, vinode, inode, size, over);
+			    allocate_block(pfp, vinode, size, over);
 			next_block->offset = offset;
 
 			TX_ADD_FIELD_DIRECT(block, next);
@@ -421,8 +419,7 @@ file_allocate_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			/* create a new block between previous and next */
 
 			struct pmemfile_block *block =
-			    allocate_block(pfp,
-				vinode, inode, hole_count, false);
+			    allocate_block(pfp, vinode, hole_count, false);
 			block->offset = offset;
 			if (block->size > hole_count)
 				block->size = (uint32_t)hole_count;
@@ -456,7 +453,7 @@ find_following_block(PMEMfile * file,
 enum cpy_direction { read_from_blocks, write_to_blocks };
 
 static void
-read_block_range(PMEMfilepool *pfp, const struct pmemfile_block *block,
+read_block_range(const struct pmemfile_block *block,
 	uint64_t offset, uint64_t len, char *buf)
 {
 	ASSERT(len > 0);
@@ -570,7 +567,7 @@ iterate_on_file_range(PMEMfilepool *pfp, PMEMfile *file,
 			 * Reading from holes should just read zeros.
 			 */
 
-			read_block_range(pfp, NULL, 0, read_hole_count, buf);
+			read_block_range(NULL, 0, read_hole_count, buf);
 
 			offset += read_hole_count;
 			len -= read_hole_count;
@@ -612,7 +609,7 @@ iterate_on_file_range(PMEMfilepool *pfp, PMEMfile *file,
 		ASSERT(in_block_start + in_block_len <= block->size);
 
 		if (dir == read_from_blocks)
-			read_block_range(pfp, block,
+			read_block_range(block,
 			    in_block_start, in_block_len, buf);
 		else
 			write_block_range(pfp, block,
@@ -873,6 +870,8 @@ static off64_t
 pmemfile_lseek64_locked(PMEMfilepool *pfp, PMEMfile *file, off64_t offset,
 		int whence)
 {
+	(void) pfp;
+
 	LOG(LDBG, "file %p offset %lu whence %d", file, offset, whence);
 
 	if (vinode_is_dir(file->vinode)) {

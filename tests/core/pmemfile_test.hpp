@@ -148,19 +148,31 @@ public:
 		std::remove(path.c_str());
 
 		pfp = pmemfile_mkfs(path.c_str(), poolsize, S_IWUSR | S_IRUSR);
-		ASSERT_NE(pfp, nullptr) << strerror(errno);
+		EXPECT_NE(pfp, nullptr) << strerror(errno);
+		if (!pfp)
+			abort();
 
-		ASSERT_TRUE(test_empty_dir(pfp, "/"));
+		if (!test_empty_dir(pfp, "/")) {
+			EXPECT_TRUE(0);
+			abort();
+		}
 
-		ASSERT_EQ(test_pmemfile_stats_match(pfp, 1, 0, 0, 0, 0), true);
+		if (!test_pmemfile_stats_match(pfp, 1, 0, 0, 0, 0)) {
+			EXPECT_TRUE(0);
+			abort();
+		}
 
 	}
 
 	void TearDown()
 	{
 		// XXX always enable
-		if (test_empty_dir_on_teardown)
-			ASSERT_TRUE(test_empty_dir(pfp, "/"));
+		if (test_empty_dir_on_teardown) {
+			if (!test_empty_dir(pfp, "/")) {
+				EXPECT_TRUE(0);
+				abort();
+			}
+		}
 
 		pmemfile_pool_close(pfp);
 		std::remove(path.c_str());

@@ -191,4 +191,10 @@ struct pmemfile_super {
 			- 16 /* toid */];
 };
 
+static inline TOID(struct pmemfile_block)
+blockp_as_oid(struct pmemfile_block *block)
+{
+	return (TOID(struct pmemfile_block))pmemobj_oid(block);
+}
+
 #endif

@@ -141,4 +141,11 @@ void vinode_unref_tx(PMEMfilepool *pfp, struct pmemfile_vinode *vinode);
 
 void vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode);
 
+struct pmemfile_block *allocate_new_block_metadata(
+			struct pmemfile_vinode *vinode);
+
+void unlink_and_release_block_metadata(struct pmemfile_vinode *vinode,
+		struct pmemfile_block *block,
+		struct pmemfile_block **prev);
+
 #endif

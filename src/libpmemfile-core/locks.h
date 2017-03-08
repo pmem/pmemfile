@@ -32,15 +32,14 @@
 #ifndef PMEMFILE_LOCKS_H
 #define PMEMFILE_LOCKS_H
 
-#include <pthread.h>
-
 #include "libpmemobj/thread.h"
 
 #include "out.h"
 #include "pool.h"
+#include "os_thread.h"
 
-void rwlock_tx_wlock(pthread_rwlock_t *l);
-void rwlock_tx_unlock_on_commit(pthread_rwlock_t *l);
+void rwlock_tx_wlock(os_rwlock_t *l);
+void rwlock_tx_unlock_on_commit(os_rwlock_t *l);
 
 void mutex_tx_lock(PMEMfilepool *pfp, PMEMmutex *mutexp);
 void mutex_tx_unlock_on_abort(PMEMmutex *mutexp);

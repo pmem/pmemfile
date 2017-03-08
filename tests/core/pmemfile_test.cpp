@@ -36,10 +36,7 @@
 
 #include <stdarg.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <string.h>
-#include <limits.h>
-#include <dirent.h>
 
 #include "gtest/gtest.h"
 #include "libpmemfile-core.h"
@@ -68,9 +65,11 @@ test_pmemfile_stats_match(PMEMfilepool *pfp, unsigned inodes, unsigned dirs,
 }
 
 bool
-test_pmemfile_create(PMEMfilepool *pfp, const char *path, int flags, mode_t mode)
+test_pmemfile_create(PMEMfilepool *pfp, const char *path, int flags,
+		mode_t mode)
 {
-	PMEMfile *file = pmemfile_open(pfp, path, flags | O_CREAT, mode);
+	PMEMfile *file = pmemfile_open(pfp, path, flags | PMEMFILE_O_CREAT,
+			mode);
 	EXPECT_NE(file, nullptr) << strerror(errno);
 	if (!file)
 		return false;
@@ -126,7 +125,7 @@ test_list_files(PMEMfilepool *pfp, PMEMfile *dir, const char *dirp,
 		unsigned length)
 {
 	struct stat statbuf;
-	char symlinkbuf[PATH_MAX];
+	char symlinkbuf[PMEMFILE_PATH_MAX];
 	std::map<std::string, file_attrs> retmap;
 	bool err = false;
 	bool tmp;
@@ -142,7 +141,7 @@ test_list_files(PMEMfilepool *pfp, PMEMfile *dir, const char *dirp,
 		i += 1;
 
 		int ret = pmemfile_fstatat(pfp, dir, dirp + i, &statbuf,
-				AT_SYMLINK_NOFOLLOW);
+				PMEMFILE_AT_SYMLINK_NOFOLLOW);
 		if (ret) {
 			err = true;
 			break;
@@ -150,16 +149,16 @@ test_list_files(PMEMfilepool *pfp, PMEMfile *dir, const char *dirp,
 
 		bool anyerr = false;
 		symlinkbuf[0] = 0;
-		if (type == DT_REG) {
+		if (type == PMEMFILE_DT_REG) {
 			MODE_EXPECT(S_ISREG, statbuf.st_mode, 1);
-		} else if (type == DT_DIR) {
+		} else if (type == PMEMFILE_DT_DIR) {
 			MODE_EXPECT(S_ISDIR, statbuf.st_mode, 1);
-		} else if (type == DT_LNK) {
+		} else if (type == PMEMFILE_DT_LNK) {
 			MODE_EXPECT(S_ISLNK, statbuf.st_mode, 1);
 
 			ssize_t ret = pmemfile_readlinkat(pfp, dir, dirp + i,
-					symlinkbuf, PATH_MAX);
-			tmp = ret <= 0 || ret >= PATH_MAX;
+					symlinkbuf, PMEMFILE_PATH_MAX);
+			tmp = ret <= 0 || ret >= PMEMFILE_PATH_MAX;
 			if (tmp)
 				ADD_FAILURE() << ret;
 			anyerr |= tmp;
@@ -192,7 +191,8 @@ test_list_files(PMEMfilepool *pfp, PMEMfile *dir, const char *dirp,
 std::map<std::string, file_attrs>
 test_list_files(PMEMfilepool *pfp, const char *path)
 {
-	PMEMfile *f = pmemfile_open(pfp, path, O_DIRECTORY | O_RDONLY);
+	PMEMfile *f = pmemfile_open(pfp, path, PMEMFILE_O_DIRECTORY |
+			PMEMFILE_O_RDONLY);
 	if (!f) {
 		ADD_FAILURE() << "open " << path;
 		return std::map<std::string, file_attrs>();

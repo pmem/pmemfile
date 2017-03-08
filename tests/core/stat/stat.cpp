@@ -109,8 +109,8 @@ TEST_F(stat_test, 0)
 
 TEST_F(stat_test, 1)
 {
-	PMEMfile *f = pmemfile_open(pfp, "/file1", O_CREAT | O_EXCL | O_WRONLY,
-			0644);
+	PMEMfile *f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT |
+			PMEMFILE_O_EXCL | PMEMFILE_O_WRONLY, 0644);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	ASSERT_EQ(stat_and_dump(pfp, "/file1"), 0);
@@ -146,7 +146,8 @@ TEST_F(stat_test, 2)
 
 	ASSERT_EQ(stat_and_dump(pfp, "/dir"), 0);
 
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir/file1", O_EXCL, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir/file1", PMEMFILE_O_EXCL,
+			0644));
 
 	ASSERT_EQ(stat_and_dump(pfp, "/dir/file1"), 0);
 

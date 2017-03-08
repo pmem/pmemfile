@@ -34,36 +34,37 @@
 #include "inode.h"
 #include "internal.h"
 #include "locks.h"
+
+#include "os_thread.h"
 #include "out.h"
-#include "sys_util.h"
 
 static void
-file_util_rwlock_unlock(PMEMfilepool *pfp, pthread_rwlock_t *arg)
+file_util_rwlock_unlock(PMEMfilepool *pfp, os_rwlock_t *arg)
 {
 	(void) pfp;
 
-	util_rwlock_unlock(arg);
+	os_rwlock_unlock(arg);
 }
 
 /*
  * file_tx_rwlock_wrlock -- transactional read-write lock
  */
 void
-rwlock_tx_wlock(pthread_rwlock_t *l)
+rwlock_tx_wlock(os_rwlock_t *l)
 {
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 
 	cb_push_front(TX_STAGE_ONABORT,
 			(cb_basic)file_util_rwlock_unlock, l);
 
-	util_rwlock_wrlock(l);
+	os_rwlock_wrlock(l);
 }
 
 /*
  * file_tx_rwlock_unlock_on_commit -- transactional read-write unlock
  */
 void
-rwlock_tx_unlock_on_commit(pthread_rwlock_t *l)
+rwlock_tx_unlock_on_commit(os_rwlock_t *l)
 {
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 

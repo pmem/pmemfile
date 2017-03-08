@@ -47,7 +47,7 @@ TEST_F(basic, open_create_close)
 
 	/* NULL file name */
 	errno = 0;
-	f1 = pmemfile_open(pfp, NULL, O_CREAT, 0777);
+	f1 = pmemfile_open(pfp, NULL, PMEMFILE_O_CREAT, 0777);
 	ASSERT_EQ(f1, nullptr);
 	EXPECT_EQ(errno, ENOENT);
 
@@ -58,14 +58,16 @@ TEST_F(basic, open_create_close)
 	EXPECT_EQ(errno, ENOENT);
 
 	/* successful create */
-	f1 = pmemfile_open(pfp, "/aaa", O_CREAT | O_EXCL, 0777);
+	f1 = pmemfile_open(pfp, "/aaa", PMEMFILE_O_CREAT | PMEMFILE_O_EXCL,
+			0777);
 	ASSERT_NE(f1, nullptr);
 
 	pmemfile_close(pfp, f1);
 
 	/* file already exists */
 	errno = 0;
-	f1 = pmemfile_open(pfp, "/aaa", O_CREAT | O_EXCL, 0777);
+	f1 = pmemfile_open(pfp, "/aaa", PMEMFILE_O_CREAT | PMEMFILE_O_EXCL,
+			0777);
 	ASSERT_EQ(f1, nullptr);
 	EXPECT_EQ(errno, EEXIST);
 
@@ -77,7 +79,7 @@ TEST_F(basic, open_create_close)
 		"12345678901234567890123456789012345678901234567890"
 		"12345678901234567890123456789012345678901234567890"
 		"12345678901234567890123456789012345678901234567890"
-		"123456", O_CREAT | O_EXCL, 0777);
+		"123456", PMEMFILE_O_CREAT | PMEMFILE_O_EXCL, 0777);
 	ASSERT_EQ(f1, nullptr);
 	EXPECT_EQ(errno, ENAMETOOLONG);
 
@@ -88,7 +90,8 @@ TEST_F(basic, open_create_close)
 	EXPECT_EQ(errno, ENOENT);
 
 	/* successful create */
-	f2 = pmemfile_open(pfp, "/bbb", O_CREAT | O_EXCL, 0777);
+	f2 = pmemfile_open(pfp, "/bbb", PMEMFILE_O_CREAT | PMEMFILE_O_EXCL,
+			0777);
 	ASSERT_NE(f2, nullptr);
 
 
@@ -129,8 +132,8 @@ TEST_F(basic, link)
 {
 	int ret;
 
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/aaa", O_EXCL, 0777));
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/bbb", O_EXCL, 0777));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/aaa", PMEMFILE_O_EXCL, 0777));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/bbb", PMEMFILE_O_EXCL, 0777));
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
 	    {040777, 2, 4008, "."},
@@ -271,8 +274,8 @@ TEST_F(basic, unlink)
 {
 	int ret;
 
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/aaa", O_EXCL, 0777));
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/bbb", O_EXCL, 0777));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/aaa", PMEMFILE_O_EXCL, 0777));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/bbb", PMEMFILE_O_EXCL, 0777));
 
 	ret = pmemfile_link(pfp, "/aaa", "/aaa.link");
 	ASSERT_EQ(ret, 0) << strerror(errno);
@@ -358,10 +361,10 @@ TEST_F(basic, unlink)
 
 TEST_F(basic, tmpfile)
 {
-#ifdef O_TMPFILE
 	ssize_t written;
 
-	PMEMfile *f = pmemfile_open(pfp, "/", O_TMPFILE | O_WRONLY, 0644);
+	PMEMfile *f = pmemfile_open(pfp, "/",
+			PMEMFILE_O_TMPFILE | PMEMFILE_O_WRONLY, 0644);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	written = pmemfile_write(pfp, f, "qwerty", 6);
@@ -374,7 +377,7 @@ TEST_F(basic, tmpfile)
 	pmemfile_close(pfp, f);
 
 	ASSERT_TRUE(test_empty_dir(pfp, "/"));
-#endif
+
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 0, 0, 1, 0));
 }
 

@@ -31,12 +31,8 @@
  */
 
 #define _GNU_SOURCE
-#include <fcntl.h>
+
 #include <limits.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 #include "callbacks.h"
 #include "data.h"
@@ -45,7 +41,7 @@
 #include "locks.h"
 #include "out.h"
 #include "pool.h"
-#include "sys_util.h"
+#include "os_thread.h"
 #include "util.h"
 #include "valgrind_internal.h"
 #include "ctree.h"
@@ -688,7 +684,7 @@ pmemfile_write_locked(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 	struct pmemfile_vinode *vinode = file->vinode;
 	struct pmemfile_inode *inode = D_RW(vinode->inode);
 
-	util_rwlock_wrlock(&vinode->rwlock);
+	os_rwlock_wrlock(&vinode->rwlock);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (!vinode->blocks)
@@ -711,7 +707,7 @@ pmemfile_write_locked(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 		file->offset += count;
 	} TX_END
 
-	util_rwlock_unlock(&vinode->rwlock);
+	os_rwlock_unlock(&vinode->rwlock);
 
 	if (error) {
 		errno = error;
@@ -729,9 +725,9 @@ pmemfile_write(PMEMfilepool *pfp, PMEMfile *file, const void *buf, size_t count)
 {
 	ssize_t ret;
 
-	util_mutex_lock(&file->mutex);
+	os_mutex_lock(&file->mutex);
 	ret = pmemfile_write_locked(pfp, file, buf, count);
-	util_mutex_unlock(&file->mutex);
+	os_mutex_unlock(&file->mutex);
 
 	return ret;
 }
@@ -800,14 +796,14 @@ pmemfile_read_locked(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count)
 	struct pmemfile_vinode *vinode = file->vinode;
 	struct pmemfile_inode *inode = D_RW(vinode->inode);
 
-	util_rwlock_rdlock(&vinode->rwlock);
+	os_rwlock_rdlock(&vinode->rwlock);
 	while (!vinode->blocks) {
-		util_rwlock_unlock(&vinode->rwlock);
-		util_rwlock_wrlock(&vinode->rwlock);
+		os_rwlock_unlock(&vinode->rwlock);
+		os_rwlock_wrlock(&vinode->rwlock);
 		if (!vinode->blocks)
 			vinode_rebuild_block_tree(vinode);
-		util_rwlock_unlock(&vinode->rwlock);
-		util_rwlock_rdlock(&vinode->rwlock);
+		os_rwlock_unlock(&vinode->rwlock);
+		os_rwlock_rdlock(&vinode->rwlock);
 	}
 
 	bytes_read = file_read(pfp, file, inode, buf, count);
@@ -827,10 +823,10 @@ pmemfile_read_locked(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count)
 				time_cmp(&inode->atime, &inode->mtime) < 0;
 	}
 
-	util_rwlock_unlock(&vinode->rwlock);
+	os_rwlock_unlock(&vinode->rwlock);
 
 	if (update_atime) {
-		util_rwlock_wrlock(&vinode->rwlock);
+		os_rwlock_wrlock(&vinode->rwlock);
 
 		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 			TX_SET(vinode->inode, atime, tm);
@@ -838,7 +834,7 @@ pmemfile_read_locked(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count)
 			LOG(LINF, "can not update inode atime");
 		} TX_END
 
-		util_rwlock_unlock(&vinode->rwlock);
+		os_rwlock_unlock(&vinode->rwlock);
 	}
 
 
@@ -856,9 +852,9 @@ pmemfile_read(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count)
 {
 	ssize_t ret;
 
-	util_mutex_lock(&file->mutex);
+	os_mutex_lock(&file->mutex);
 	ret = pmemfile_read_locked(pfp, file, buf, count);
-	util_mutex_unlock(&file->mutex);
+	os_mutex_unlock(&file->mutex);
 
 	return ret;
 }
@@ -875,7 +871,7 @@ pmemfile_lseek64_locked(PMEMfilepool *pfp, PMEMfile *file, off64_t offset,
 	LOG(LDBG, "file %p offset %lu whence %d", file, offset, whence);
 
 	if (vinode_is_dir(file->vinode)) {
-		if (whence == SEEK_END) {
+		if (whence == PMEMFILE_SEEK_END) {
 			errno = EINVAL;
 			return -1;
 		}
@@ -892,19 +888,19 @@ pmemfile_lseek64_locked(PMEMfilepool *pfp, PMEMfile *file, off64_t offset,
 	int new_errno = EINVAL;
 
 	switch (whence) {
-		case SEEK_SET:
+		case PMEMFILE_SEEK_SET:
 			ret = offset;
 			break;
-		case SEEK_CUR:
+		case PMEMFILE_SEEK_CUR:
 			ret = (off64_t)file->offset + offset;
 			break;
-		case SEEK_END:
-			util_rwlock_rdlock(&vinode->rwlock);
+		case PMEMFILE_SEEK_END:
+			os_rwlock_rdlock(&vinode->rwlock);
 			ret = (off64_t)inode->size + offset;
-			util_rwlock_unlock(&vinode->rwlock);
+			os_rwlock_unlock(&vinode->rwlock);
 			break;
-		case SEEK_DATA:
-			util_rwlock_rdlock(&vinode->rwlock);
+		case PMEMFILE_SEEK_DATA:
+			os_rwlock_rdlock(&vinode->rwlock);
 			if (offset < 0) {
 				ret = 0;
 			} else if ((uint64_t)offset > inode->size) {
@@ -913,17 +909,17 @@ pmemfile_lseek64_locked(PMEMfilepool *pfp, PMEMfile *file, off64_t offset,
 			} else {
 				ret = offset;
 			}
-			util_rwlock_unlock(&vinode->rwlock);
+			os_rwlock_unlock(&vinode->rwlock);
 			break;
-		case SEEK_HOLE:
-			util_rwlock_rdlock(&vinode->rwlock);
+		case PMEMFILE_SEEK_HOLE:
+			os_rwlock_rdlock(&vinode->rwlock);
 			if ((uint64_t)offset > inode->size) {
 				ret = -1;
 				new_errno = ENXIO;
 			} else {
 				ret = (off64_t)inode->size;
 			}
-			util_rwlock_unlock(&vinode->rwlock);
+			os_rwlock_unlock(&vinode->rwlock);
 			break;
 		default:
 			ret = -1;
@@ -951,9 +947,9 @@ pmemfile_lseek64(PMEMfilepool *pfp, PMEMfile *file, off64_t offset, int whence)
 {
 	off64_t ret;
 
-	util_mutex_lock(&file->mutex);
+	os_mutex_lock(&file->mutex);
 	ret = pmemfile_lseek64_locked(pfp, file, offset, whence);
-	util_mutex_unlock(&file->mutex);
+	os_mutex_unlock(&file->mutex);
 
 	return ret;
 }
@@ -973,11 +969,12 @@ pmemfile_pread(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count,
 {
 	/* XXX this is hacky implementation */
 	ssize_t ret;
-	util_mutex_lock(&file->mutex);
+	os_mutex_lock(&file->mutex);
 
 	size_t cur_off = file->offset;
 
-	if (pmemfile_lseek64_locked(pfp, file, offset, SEEK_SET) != offset) {
+	if (pmemfile_lseek64_locked(pfp, file, offset, PMEMFILE_SEEK_SET) !=
+			offset) {
 		ret = -1;
 		goto end;
 	}
@@ -987,7 +984,7 @@ pmemfile_pread(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count,
 	file->offset = cur_off;
 
 end:
-	util_mutex_unlock(&file->mutex);
+	os_mutex_unlock(&file->mutex);
 
 	return ret;
 }
@@ -998,11 +995,12 @@ pmemfile_pwrite(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 {
 	/* XXX this is hacky implementation */
 	ssize_t ret;
-	util_mutex_lock(&file->mutex);
+	os_mutex_lock(&file->mutex);
 
 	size_t cur_off = file->offset;
 
-	if (pmemfile_lseek64_locked(pfp, file, offset, SEEK_SET) != offset) {
+	if (pmemfile_lseek64_locked(pfp, file, offset, PMEMFILE_SEEK_SET) !=
+			offset) {
 		ret = -1;
 		goto end;
 	}
@@ -1012,7 +1010,7 @@ pmemfile_pwrite(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 	file->offset = cur_off;
 
 end:
-	util_mutex_unlock(&file->mutex);
+	os_mutex_unlock(&file->mutex);
 
 	return ret;
 }

@@ -34,37 +34,26 @@
  * file.c -- basic file operations
  */
 
-#define _GNU_SOURCE
-
 #include <errno.h>
-#include <fcntl.h>
-#include <limits.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 
 #include "callbacks.h"
 #include "data.h"
 #include "dir.h"
 #include "file.h"
+
 #include "inode.h"
 #include "inode_array.h"
 #include "internal.h"
 #include "locks.h"
+#include "os_thread.h"
 #include "out.h"
 #include "pool.h"
-#include "sys_util.h"
 #include "util.h"
 
 static bool
 is_tmpfile(int flags)
 {
-#ifdef O_TMPFILE
-	return (flags & O_TMPFILE) == O_TMPFILE;
-#else
-	return false;
-#endif
+	return (flags & PMEMFILE_O_TMPFILE) == PMEMFILE_O_TMPFILE;
 }
 
 /*
@@ -73,105 +62,103 @@ is_tmpfile(int flags)
 static int
 check_flags(int flags)
 {
-	if (flags & O_APPEND) {
+	if (flags & PMEMFILE_O_APPEND) {
 		LOG(LSUP, "O_APPEND");
-		flags &= ~O_APPEND;
+		flags &= ~PMEMFILE_O_APPEND;
 	}
 
-	if (flags & O_ASYNC) {
+	if (flags & PMEMFILE_O_ASYNC) {
 		LOG(LSUP, "O_ASYNC is not supported");
 		errno = EINVAL;
 		return -1;
 	}
 
-	if (flags & O_CREAT) {
+	if (flags & PMEMFILE_O_CREAT) {
 		LOG(LTRC, "O_CREAT");
-		flags &= ~O_CREAT;
+		flags &= ~PMEMFILE_O_CREAT;
 	}
 
 	// XXX: move to interposing layer
-	if (flags & O_CLOEXEC) {
+	if (flags & PMEMFILE_O_CLOEXEC) {
 		LOG(LINF, "O_CLOEXEC is always enabled");
-		flags &= ~O_CLOEXEC;
+		flags &= ~PMEMFILE_O_CLOEXEC;
 	}
 
-	if (flags & O_DIRECT) {
+	if (flags & PMEMFILE_O_DIRECT) {
 		LOG(LINF, "O_DIRECT is always enabled");
-		flags &= ~O_DIRECT;
+		flags &= ~PMEMFILE_O_DIRECT;
 	}
 
-#ifdef O_TMPFILE
 	/* O_TMPFILE contains O_DIRECTORY */
-	if ((flags & O_TMPFILE) == O_TMPFILE) {
+	if ((flags & PMEMFILE_O_TMPFILE) == PMEMFILE_O_TMPFILE) {
 		LOG(LTRC, "O_TMPFILE");
-		flags &= ~O_TMPFILE;
+		flags &= ~PMEMFILE_O_TMPFILE;
 	}
-#endif
 
-	if (flags & O_DIRECTORY) {
+	if (flags & PMEMFILE_O_DIRECTORY) {
 		LOG(LSUP, "O_DIRECTORY");
-		flags &= ~O_DIRECTORY;
+		flags &= ~PMEMFILE_O_DIRECTORY;
 	}
 
-	if (flags & O_DSYNC) {
+	if (flags & PMEMFILE_O_DSYNC) {
 		LOG(LINF, "O_DSYNC is always enabled");
-		flags &= ~O_DSYNC;
+		flags &= ~PMEMFILE_O_DSYNC;
 	}
 
-	if (flags & O_EXCL) {
+	if (flags & PMEMFILE_O_EXCL) {
 		LOG(LTRC, "O_EXCL");
-		flags &= ~O_EXCL;
+		flags &= ~PMEMFILE_O_EXCL;
 	}
 
-	if (flags & O_NOCTTY) {
+	if (flags & PMEMFILE_O_NOCTTY) {
 		LOG(LINF, "O_NOCTTY is always enabled");
-		flags &= ~O_NOCTTY;
+		flags &= ~PMEMFILE_O_NOCTTY;
 	}
 
-	if (flags & O_NOATIME) {
+	if (flags & PMEMFILE_O_NOATIME) {
 		LOG(LTRC, "O_NOATIME");
-		flags &= ~O_NOATIME;
+		flags &= ~PMEMFILE_O_NOATIME;
 	}
 
-	if (flags & O_NOFOLLOW) {
+	if (flags & PMEMFILE_O_NOFOLLOW) {
 		LOG(LTRC, "O_NOFOLLOW");
-		flags &= ~O_NOFOLLOW;
+		flags &= ~PMEMFILE_O_NOFOLLOW;
 	}
 
-	if (flags & O_NONBLOCK) {
+	if (flags & PMEMFILE_O_NONBLOCK) {
 		LOG(LINF, "O_NONBLOCK is ignored");
-		flags &= ~O_NONBLOCK;
+		flags &= ~PMEMFILE_O_NONBLOCK;
 	}
 
-	if (flags & O_PATH) {
+	if (flags & PMEMFILE_O_PATH) {
 		LOG(LSUP, "O_PATH is not supported (yet)");
 		errno = EINVAL;
 		return -1;
 	}
 
-	if (flags & O_SYNC) {
+	if (flags & PMEMFILE_O_SYNC) {
 		LOG(LINF, "O_SYNC is always enabled");
-		flags &= ~O_SYNC;
+		flags &= ~PMEMFILE_O_SYNC;
 	}
 
-	if (flags & O_TRUNC) {
+	if (flags & PMEMFILE_O_TRUNC) {
 		LOG(LTRC, "O_TRUNC");
-		flags &= ~O_TRUNC;
+		flags &= ~PMEMFILE_O_TRUNC;
 	}
 
-	if ((flags & O_ACCMODE) == O_RDONLY) {
+	if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_RDONLY) {
 		LOG(LTRC, "O_RDONLY");
-		flags -= O_RDONLY;
+		flags -= PMEMFILE_O_RDONLY;
 	}
 
-	if ((flags & O_ACCMODE) == O_WRONLY) {
+	if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_WRONLY) {
 		LOG(LTRC, "O_WRONLY");
-		flags -= O_WRONLY;
+		flags -= PMEMFILE_O_WRONLY;
 	}
 
-	if ((flags & O_ACCMODE) == O_RDWR) {
+	if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_RDWR) {
 		LOG(LTRC, "O_RDWR");
-		flags -= O_RDWR;
+		flags -= PMEMFILE_O_RDWR;
 	}
 
 	if (flags) {
@@ -192,7 +179,8 @@ create_file(PMEMfilepool *pfp, const char *filename, size_t namelen,
 
 	rwlock_tx_wlock(&parent_vinode->rwlock);
 
-	struct pmemfile_vinode *vinode = inode_alloc(pfp, S_IFREG | mode, &t,
+	struct pmemfile_vinode *vinode = inode_alloc(pfp,
+			PMEMFILE_S_IFREG | mode, &t,
 			parent_vinode, NULL, filename, namelen);
 
 	if (is_tmpfile(flags))
@@ -209,16 +197,16 @@ create_file(PMEMfilepool *pfp, const char *filename, size_t namelen,
 static void
 open_file(struct pmemfile_vinode *vinode, int flags)
 {
-	if ((flags & O_DIRECTORY) && !vinode_is_dir(vinode))
+	if ((flags & PMEMFILE_O_DIRECTORY) && !vinode_is_dir(vinode))
 		pmemfile_tx_abort(ENOTDIR);
 
-	if (flags & O_TRUNC) {
+	if (flags & PMEMFILE_O_TRUNC) {
 		if (!vinode_is_regular_file(vinode)) {
 			LOG(LUSR, "truncating non regular file");
 			pmemfile_tx_abort(EINVAL);
 		}
 
-		if ((flags & O_ACCMODE) == O_RDONLY) {
+		if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_RDONLY) {
 			LOG(LUSR, "O_TRUNC without write permissions");
 			pmemfile_tx_abort(EACCES);
 		}
@@ -250,7 +238,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	mode_t mode = 0;
 
 	/* NOTE: O_TMPFILE contains O_DIRECTORY */
-	if ((flags & O_CREAT) || is_tmpfile(flags)) {
+	if ((flags & PMEMFILE_O_CREAT) || is_tmpfile(flags)) {
 		mode = va_arg(ap, mode_t);
 		LOG(LDBG, "mode %o", mode);
 		mode &= S_IRWXU | S_IRWXG | S_IRWXO |
@@ -299,7 +287,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		}
 
 		if (vinode && vinode_is_symlink(vinode)) {
-			if (flags & O_NOFOLLOW) {
+			if (flags & PMEMFILE_O_NOFOLLOW) {
 				error = ELOOP;
 				goto end;
 			}
@@ -314,7 +302,8 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 			 * When only O_CREAT is specified, symlinks *are*
 			 * followed.
 			 */
-			if ((flags & (O_CREAT|O_EXCL)) == (O_CREAT|O_EXCL))
+			if ((flags & (PMEMFILE_O_CREAT|PMEMFILE_O_EXCL)) ==
+					(PMEMFILE_O_CREAT|PMEMFILE_O_EXCL))
 				break;
 
 			resolve_symlink(pfp, vinode, &info);
@@ -338,11 +327,12 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 			goto end;
 		}
 
-		if ((flags & O_ACCMODE) == O_RDONLY) {
+		if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_RDONLY) {
 			error = EINVAL;
 			goto end;
 		}
-	} else if ((flags & (O_CREAT | O_EXCL)) == (O_CREAT | O_EXCL)) {
+	} else if ((flags & (PMEMFILE_O_CREAT | PMEMFILE_O_EXCL)) ==
+			(PMEMFILE_O_CREAT | PMEMFILE_O_EXCL)) {
 		if (vinode) {
 			LOG(LUSR, "file %s already exists", pathname);
 			error = EEXIST;
@@ -353,7 +343,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 			error = ENOTDIR;
 			goto end;
 		}
-	} else if ((flags & O_CREAT) == O_CREAT) {
+	} else if ((flags & PMEMFILE_O_CREAT) == PMEMFILE_O_CREAT) {
 		/* nothing to be done here */
 	} else {
 		if (!vinode) {
@@ -382,16 +372,16 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 		file->vinode = vinode;
 
-		if ((flags & O_ACCMODE) == O_RDONLY)
+		if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_RDONLY)
 			file->flags = PFILE_READ;
-		else if ((flags & O_ACCMODE) == O_WRONLY)
+		else if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_WRONLY)
 			file->flags = PFILE_WRITE;
-		else if ((flags & O_ACCMODE) == O_RDWR)
+		else if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_RDWR)
 			file->flags = PFILE_READ | PFILE_WRITE;
 
-		if (flags & O_NOATIME)
+		if (flags & PMEMFILE_O_NOATIME)
 			file->flags |= PFILE_NOATIME;
-		if (flags & O_APPEND)
+		if (flags & PMEMFILE_O_APPEND)
 			file->flags |= PFILE_APPEND;
 	} TX_ONABORT {
 		error = errno;
@@ -411,7 +401,7 @@ end:
 	}
 
 	ASSERT(file != NULL);
-	util_mutex_init(&file->mutex, NULL);
+	os_mutex_init(&file->mutex);
 
 	LOG(LDBG, "pathname %s opened inode 0x%lx", orig_pathname,
 			file->vinode->inode.oid.off);
@@ -434,7 +424,7 @@ pmemfile_openat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 	va_list ap;
 	va_start(ap, flags);
 	mode_t mode = 0;
-	if ((flags & O_CREAT) || is_tmpfile(flags))
+	if ((flags & PMEMFILE_O_CREAT) || is_tmpfile(flags))
 		mode = va_arg(ap, mode_t);
 	va_end(ap);
 
@@ -468,7 +458,7 @@ pmemfile_open(PMEMfilepool *pfp, const char *pathname, int flags, ...)
 	va_list ap;
 	va_start(ap, flags);
 	mode_t mode = 0;
-	if ((flags & O_CREAT) || is_tmpfile(flags))
+	if ((flags & PMEMFILE_O_CREAT) || is_tmpfile(flags))
 		mode = va_arg(ap, mode_t);
 	va_end(ap);
 
@@ -478,7 +468,8 @@ pmemfile_open(PMEMfilepool *pfp, const char *pathname, int flags, ...)
 PMEMfile *
 pmemfile_create(PMEMfilepool *pfp, const char *pathname, mode_t mode)
 {
-	return pmemfile_open(pfp, pathname, O_CREAT | O_WRONLY | O_TRUNC, mode);
+	return pmemfile_open(pfp, pathname, PMEMFILE_O_CREAT |
+			PMEMFILE_O_WRONLY | PMEMFILE_O_TRUNC, mode);
 }
 
 /*
@@ -545,7 +536,7 @@ pmemfile_open_parent(PMEMfilepool *pfp, PMEMfile *dir, char *path,
 
 	ret->vinode = vinode_ref(pfp, vparent);
 	ret->flags = PFILE_READ | PFILE_NOATIME;
-	util_mutex_init(&ret->mutex, NULL);
+	os_mutex_init(&ret->mutex);
 	size_t len = strlen(info.remaining);
 	if (len >= path_size)
 		len = path_size - 1;
@@ -577,7 +568,7 @@ pmemfile_close(PMEMfilepool *pfp, PMEMfile *file)
 
 	vinode_unref_tx(pfp, file->vinode);
 
-	util_mutex_destroy(&file->mutex);
+	os_mutex_destroy(&file->mutex);
 
 	free(file);
 }
@@ -590,13 +581,14 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 {
 	LOG(LDBG, "oldpath %s newpath %s", oldpath, newpath);
 
-	if (oldpath[0] == 0 && (flags & AT_EMPTY_PATH)) {
+	if (oldpath[0] == 0 && (flags & PMEMFILE_AT_EMPTY_PATH)) {
 		LOG(LSUP, "AT_EMPTY_PATH not supported yet");
 		errno = EINVAL;
 		return -1;
 	}
 
-	if ((flags & ~(AT_SYMLINK_FOLLOW | AT_EMPTY_PATH)) != 0) {
+	if ((flags & ~(PMEMFILE_AT_SYMLINK_FOLLOW | PMEMFILE_AT_EMPTY_PATH))
+			!= 0) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -648,7 +640,7 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 		}
 
 		if (vinode_is_symlink(src_vinode) &&
-				(flags & AT_SYMLINK_FOLLOW)) {
+				(flags & PMEMFILE_AT_SYMLINK_FOLLOW)) {
 			resolve_symlink(pfp, src_vinode, &src);
 			src_path_info_changed = true;
 		}
@@ -673,7 +665,7 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 
 	size_t dst_namelen = component_length(dst.remaining);
 
-	util_rwlock_wrlock(&dst.vinode->rwlock);
+	os_rwlock_wrlock(&dst.vinode->rwlock);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		struct pmemfile_time t;
@@ -684,7 +676,7 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 		error = errno;
 	} TX_END
 
-	util_rwlock_unlock(&dst.vinode->rwlock);
+	os_rwlock_unlock(&dst.vinode->rwlock);
 
 	if (error == 0) {
 		vinode_clear_debug_path(pfp, src_vinode);
@@ -814,7 +806,7 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto end;
 	}
 
-	util_rwlock_wrlock(&vparent->rwlock);
+	os_rwlock_wrlock(&vparent->rwlock);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		vinode_unlink_dirent(pfp, vparent, info.remaining, namelen,
@@ -823,7 +815,7 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		error = errno;
 	} TX_END
 
-	util_rwlock_unlock(&vparent->rwlock);
+	os_rwlock_unlock(&vparent->rwlock);
 
 end:
 	path_info_cleanup(pfp, &info);
@@ -857,7 +849,7 @@ pmemfile_unlinkat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 
 	int ret;
 
-	if (flags & AT_REMOVEDIR)
+	if (flags & PMEMFILE_AT_REMOVEDIR)
 		ret = _pmemfile_rmdirat(pfp, at, pathname);
 	else {
 		if (flags != 0) {
@@ -971,13 +963,13 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	}
 
 	if (src_parent == dst_parent)
-		util_rwlock_wrlock(&dst_parent->rwlock);
+		os_rwlock_wrlock(&dst_parent->rwlock);
 	else if (src_parent < dst_parent) {
-		util_rwlock_wrlock(&src_parent->rwlock);
-		util_rwlock_wrlock(&dst_parent->rwlock);
+		os_rwlock_wrlock(&src_parent->rwlock);
+		os_rwlock_wrlock(&dst_parent->rwlock);
 	} else {
-		util_rwlock_wrlock(&dst_parent->rwlock);
-		util_rwlock_wrlock(&src_parent->rwlock);
+		os_rwlock_wrlock(&dst_parent->rwlock);
+		os_rwlock_wrlock(&src_parent->rwlock);
 	}
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
@@ -1006,10 +998,10 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	} TX_END
 
 	if (src_parent == dst_parent)
-		util_rwlock_unlock(&dst_parent->rwlock);
+		os_rwlock_unlock(&dst_parent->rwlock);
 	else {
-		util_rwlock_unlock(&src_parent->rwlock);
-		util_rwlock_unlock(&dst_parent->rwlock);
+		os_rwlock_unlock(&src_parent->rwlock);
+		os_rwlock_unlock(&dst_parent->rwlock);
 	}
 
 	if (dst_parent_refed)
@@ -1171,13 +1163,13 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 		goto end;
 	}
 
-	util_rwlock_wrlock(&vparent->rwlock);
+	os_rwlock_wrlock(&vparent->rwlock);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		struct pmemfile_time t;
 
-		vinode = inode_alloc(pfp, S_IFLNK | 0777, &t, vparent, NULL,
-				info.remaining, namelen);
+		vinode = inode_alloc(pfp, PMEMFILE_S_IFLNK | 0777, &t, vparent,
+				NULL, info.remaining, namelen);
 		inode = D_RW(vinode->inode);
 		pmemobj_memcpy_persist(pfp->pop, inode->file_data.data, target,
 				len);
@@ -1190,7 +1182,7 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 		vinode = NULL;
 	} TX_END
 
-	util_rwlock_unlock(&vparent->rwlock);
+	os_rwlock_unlock(&vparent->rwlock);
 
 end:
 	path_info_cleanup(pfp, &info);
@@ -1286,7 +1278,7 @@ _pmemfile_readlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto end;
 	}
 
-	util_rwlock_rdlock(&vinode->rwlock);
+	os_rwlock_rdlock(&vinode->rwlock);
 
 	const struct pmemfile_inode *inode = D_RO(vinode->inode);
 	size_t len = strlen(inode->file_data.data);
@@ -1295,7 +1287,7 @@ _pmemfile_readlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	memcpy(buf, inode->file_data.data, len);
 	ret = (ssize_t)len;
 
-	util_rwlock_unlock(&vinode->rwlock);
+	os_rwlock_unlock(&vinode->rwlock);
 
 end:
 	path_info_cleanup(pfp, &info);
@@ -1361,23 +1353,23 @@ pmemfile_fcntl(PMEMfilepool *pfp, PMEMfile *file, int cmd, ...)
 	(void) file;
 
 	switch (cmd) {
-		case F_SETLK:
-		case F_UNLCK:
+		case PMEMFILE_F_SETLK:
+		case PMEMFILE_F_UNLCK:
 			// XXX
 			return 0;
-		case F_GETFL:
-			ret |= O_LARGEFILE;
+		case PMEMFILE_F_GETFL:
+			ret |= PMEMFILE_O_LARGEFILE;
 			if (file->flags & PFILE_APPEND)
-				ret |= O_APPEND;
+				ret |= PMEMFILE_O_APPEND;
 			if (file->flags & PFILE_NOATIME)
-				ret |= O_NOATIME;
+				ret |= PMEMFILE_O_NOATIME;
 			if ((file->flags & PFILE_READ) == PFILE_READ)
-				ret |= O_RDONLY;
+				ret |= PMEMFILE_O_RDONLY;
 			if ((file->flags & PFILE_WRITE) == PFILE_WRITE)
-				ret |= O_WRONLY;
+				ret |= PMEMFILE_O_WRONLY;
 			if ((file->flags & (PFILE_READ | PFILE_WRITE)) ==
 					(PFILE_READ | PFILE_WRITE))
-				ret |= O_RDWR;
+				ret |= PMEMFILE_O_RDWR;
 			return ret;
 	}
 

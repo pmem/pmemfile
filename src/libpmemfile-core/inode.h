@@ -33,18 +33,18 @@
 #ifndef PMEMFILE_INODE_H
 #define PMEMFILE_INODE_H
 
-#include <pthread.h>
 #include <stdint.h>
 #include <time.h>
 
 #include "libpmemfile-core.h"
 #include "layout.h"
+#include "os_thread.h"
 
 /* Inode */
 struct pmemfile_vinode {
 	uint32_t ref;
 
-	pthread_rwlock_t rwlock;
+	os_rwlock_t rwlock;
 	TOID(struct pmemfile_inode) inode;
 
 #ifdef DEBUG

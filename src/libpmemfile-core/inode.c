@@ -34,14 +34,8 @@
  * inode.c -- inode operations
  */
 
-#define _GNU_SOURCE
 #include <errno.h>
-#include <fcntl.h>
-#include <limits.h>
-#include <stdlib.h>
 #include <unistd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 
 #include "callbacks.h"
 #include "data.h"
@@ -50,8 +44,8 @@
 #include "inode_array.h"
 #include "internal.h"
 #include "locks.h"
+#include "os_thread.h"
 #include "out.h"
-#include "sys_util.h"
 
 /*
  * pmfi_path -- returns one of the full paths inode can be reached on
@@ -97,7 +91,7 @@ struct inode_map_bucket {
 
 /* First impl */
 struct pmemfile_inode_map {
-	pthread_rwlock_t rwlock;
+	os_rwlock_t rwlock;
 	uint32_t hash_fun_a; /* fun */
 	uint32_t hash_fun_b; /* even more fun */
 	uint64_t hash_fun_p; /* party! */
@@ -134,7 +128,7 @@ inode_map_alloc()
 	inode_map_rand_params(c);
 	c->hash_fun_p = 32212254719ULL;
 
-	util_rwlock_init(&c->rwlock);
+	os_rwlock_init(&c->rwlock);
 
 	return c;
 }
@@ -153,7 +147,7 @@ inode_map_free(struct pmemfile_inode_map *c)
 				FATAL("memory leak");
 	}
 
-	util_rwlock_destroy(&c->rwlock);
+	os_rwlock_destroy(&c->rwlock);
 	free(c->buckets);
 	free(c);
 }
@@ -238,7 +232,7 @@ vinode_unregister_locked(PMEMfilepool *pfp,
 	/* "path" field is defined only in DEBUG builds */
 	free(vinode->path);
 #endif
-	util_rwlock_destroy(&vinode->rwlock);
+	os_rwlock_destroy(&vinode->rwlock);
 	free(vinode);
 }
 
@@ -265,7 +259,7 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 		}
 	}
 
-	util_rwlock_rdlock(&c->rwlock);
+	os_rwlock_rdlock(&c->rwlock);
 	size_t idx = inode_hash(c, inode) % c->sz;
 
 	struct inode_map_bucket *b = &c->buckets[idx];
@@ -276,13 +270,13 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 			goto end;
 		}
 	}
-	util_rwlock_unlock(&c->rwlock);
+	os_rwlock_unlock(&c->rwlock);
 
 	if (is_new) {
 		rwlock_tx_wlock(&c->rwlock);
 		tx = 1;
 	} else
-		util_rwlock_wrlock(&c->rwlock);
+		os_rwlock_wrlock(&c->rwlock);
 
 	/* recalculate slot, someone could rebuild the hashmap */
 	idx = inode_hash(c, inode) % c->sz;
@@ -328,7 +322,7 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 	if (!vinode)
 		goto end;
 
-	util_rwlock_init(&vinode->rwlock);
+	os_rwlock_init(&vinode->rwlock);
 	vinode->inode = inode;
 	if (inode_is_dir(D_RO(inode)) && parent) {
 		vinode->parent = vinode_ref(pfp, parent);
@@ -355,7 +349,7 @@ end:
 	if (is_new && tx)
 		rwlock_tx_unlock_on_commit(&c->rwlock);
 	else
-		util_rwlock_unlock(&c->rwlock);
+		os_rwlock_unlock(&c->rwlock);
 
 	return vinode;
 }
@@ -676,13 +670,14 @@ _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		return -1;
 	}
 
-	if (path[0] == 0 && (flags & AT_EMPTY_PATH)) {
+	if (path[0] == 0 && (flags & PMEMFILE_AT_EMPTY_PATH)) {
 		LOG(LSUP, "AT_EMPTY_PATH not supported yet");
 		errno = EINVAL;
 		return -1;
 	}
 
-	if (flags & ~(AT_NO_AUTOMOUNT|AT_SYMLINK_NOFOLLOW|AT_EMPTY_PATH)) {
+	if (flags & ~(PMEMFILE_AT_NO_AUTOMOUNT | PMEMFILE_AT_SYMLINK_NOFOLLOW |
+			PMEMFILE_AT_EMPTY_PATH)) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -723,7 +718,8 @@ _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 			vinode = vinode_lookup_dirent(pfp, info.vinode,
 					info.remaining, namelen, 0);
 			if (vinode && vinode_is_symlink(vinode) &&
-					!(flags & AT_SYMLINK_NOFOLLOW)) {
+					!(flags &
+						PMEMFILE_AT_SYMLINK_NOFOLLOW)) {
 				resolve_symlink(pfp, vinode, &info);
 				path_info_changed = true;
 			}
@@ -839,5 +835,5 @@ int
 pmemfile_lstat(PMEMfilepool *pfp, const char *path, struct stat *buf)
 {
 	return pmemfile_fstatat(pfp, PMEMFILE_AT_CWD, path, buf,
-			AT_SYMLINK_NOFOLLOW);
+			PMEMFILE_AT_SYMLINK_NOFOLLOW);
 }

@@ -70,7 +70,8 @@ create_close_unlink_worker(void *arg)
 	sched_yield();
 
 	for (int i = 0; i < ops; ++i) {
-		PMEMfile *f1 = pmemfile_open(global_pfp, path, O_CREAT, 0644);
+		PMEMfile *f1 = pmemfile_open(global_pfp, path, PMEMFILE_O_CREAT,
+				0644);
 		if (f1)
 			pmemfile_close(global_pfp, f1);
 		pmemfile_unlink(global_pfp, path);

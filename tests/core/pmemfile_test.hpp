@@ -34,7 +34,6 @@
 #define PMEMFILE_TEST_HPP
 
 #include <errno.h>
-#include <fcntl.h>
 #include <string>
 #include <map>
 

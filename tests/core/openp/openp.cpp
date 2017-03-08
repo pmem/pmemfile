@@ -35,7 +35,6 @@
  */
 
 #include "pmemfile_test.hpp"
-#include <climits>
 
 class openp : public pmemfile_test
 {
@@ -47,19 +46,21 @@ static bool
 check_path(PMEMfilepool *pfp, int stop_at_root, const char *path,
 		const char *parent, const char *child)
 {
-	char tmp_path[PATH_MAX], dir_path[PATH_MAX];
+	char tmp_path[PMEMFILE_PATH_MAX], dir_path[PMEMFILE_PATH_MAX];
 
-	strncpy(tmp_path, path, PATH_MAX);
-	tmp_path[PATH_MAX - 1] = 0;
+	strncpy(tmp_path, path, PMEMFILE_PATH_MAX);
+	tmp_path[PMEMFILE_PATH_MAX - 1] = 0;
 
 	PMEMfile *f = pmemfile_open_parent(pfp, PMEMFILE_AT_CWD, tmp_path,
-		PATH_MAX, stop_at_root ? PMEMFILE_OPEN_PARENT_STOP_AT_ROOT : 0);
+			PMEMFILE_PATH_MAX,
+			stop_at_root ? PMEMFILE_OPEN_PARENT_STOP_AT_ROOT : 0);
 	if (!f) {
 		ADD_FAILURE() << path << " " << strerror(errno);
 		return false;
 	}
 
-	char *dir_path2 = pmemfile_get_dir_path(pfp, f, dir_path, PATH_MAX);
+	char *dir_path2 = pmemfile_get_dir_path(pfp, f, dir_path,
+			PMEMFILE_PATH_MAX);
 	if (dir_path2 != dir_path) {
 		ADD_FAILURE() << dir_path << " " << dir_path2;
 		pmemfile_close(pfp, f);
@@ -86,12 +87,14 @@ TEST_F(openp, 0)
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir2", 0777), 0);
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1/dir3", 0777), 0);
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1/dir3/dir4", 0777), 0);
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/file1", O_EXCL, 0644));
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir2/file2", O_EXCL, 0644));
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/dir3/file3", O_EXCL,
-			0644));
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/dir3/dir4/file4", O_EXCL,
-			0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/file1",
+			PMEMFILE_O_EXCL, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir2/file2",
+			PMEMFILE_O_EXCL, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/dir3/file3",
+			PMEMFILE_O_EXCL, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/dir3/dir4/file4",
+			PMEMFILE_O_EXCL, 0644));
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/", (const struct pmemfile_ls[]) {
 	    {040777, 4, 4008, "."},

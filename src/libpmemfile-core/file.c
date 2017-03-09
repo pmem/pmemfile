@@ -662,6 +662,8 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 		goto end;
 	}
 
+	// XXX: handle protected_hardlinks (see man 5 proc)
+
 	size_t dst_namelen = component_length(dst.remaining);
 
 	os_rwlock_wrlock(&dst.vinode->rwlock);

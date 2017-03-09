@@ -65,6 +65,12 @@ initialize_super_block(PMEMfilepool *pfp)
 		return -1;
 	}
 
+	pfp->fsuid = 0;
+	pfp->fsgid = 0;
+	pfp->groupsnum = 0;
+	pfp->groups = NULL;
+
+	os_rwlock_init(&pfp->cred_rwlock);
 	os_rwlock_init(&pfp->rwlock);
 	os_rwlock_init(&pfp->cwd_rwlock);
 
@@ -108,6 +114,7 @@ tx_err:
 inode_map_alloc_fail:
 	os_rwlock_destroy(&pfp->rwlock);
 	os_rwlock_destroy(&pfp->cwd_rwlock);
+	os_rwlock_destroy(&pfp->cred_rwlock);
 	errno = error;
 	return -1;
 }
@@ -279,14 +286,19 @@ pmemfile_pool_close(PMEMfilepool *pfp)
 {
 	LOG(LDBG, "pfp %p", pfp);
 
+	if (pfp->groups)
+		free(pfp->groups);
+
 	vinode_unref_tx(pfp, pfp->cwd);
 	vinode_unref_tx(pfp, pfp->root);
 	inode_map_free(pfp->inode_map);
+	os_rwlock_destroy(&pfp->cred_rwlock);
 	os_rwlock_destroy(&pfp->rwlock);
 	os_rwlock_destroy(&pfp->cwd_rwlock);
 
 	pmemobj_close(pfp->pop);
-	pfp->pop = NULL;
+
+	memset(pfp, 0, sizeof(*pfp));
 
 	free(pfp);
 }

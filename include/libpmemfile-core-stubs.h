@@ -59,11 +59,6 @@ int pmemfile_flock(PMEMfilepool *, PMEMfile *file, int operation);
 int pmemfile_truncate(PMEMfilepool *, const char *path, off_t length);
 int pmemfile_ftruncate(PMEMfilepool *, PMEMfile *file, off_t length);
 
-int pmemfile_chmod(PMEMfilepool *, const char *path, mode_t mode);
-int pmemfile_fchmod(PMEMfilepool *, PMEMfile *, mode_t mode);
-int pmemfile_fchmodat(PMEMfilepool *, PMEMfile *dir, const char *pathname,
-	mode_t mode, int flags);
-
 int pmemfile_chown(PMEMfilepool *, const char *pathname, uid_t owner,
 		gid_t group);
 int pmemfile_fchown(PMEMfilepool *, PMEMfile *file, uid_t owner, gid_t group);

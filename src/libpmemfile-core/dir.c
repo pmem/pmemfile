@@ -825,6 +825,7 @@ resolve_pathat_nested(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 		if (!child)
 			break;
 
+		// XXX: handle protected_symlinks (see man 5 proc)
 		if (vinode_is_symlink(child)) {
 			os_rwlock_rdlock(&child->rwlock);
 			const char *symlink_target =
@@ -881,6 +882,8 @@ void
 resolve_symlink(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		struct pmemfile_path_info *info)
 {
+	// XXX: handle protected_symlinks (see man 5 proc)
+
 	char symlink_target[PMEMFILE_PATH_MAX];
 	COMPILE_ERROR_ON(sizeof(symlink_target) < PMEMFILE_IN_INODE_STORAGE);
 

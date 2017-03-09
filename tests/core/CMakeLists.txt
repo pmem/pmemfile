@@ -90,6 +90,7 @@ build_test(file_dirs dirs/dirs.cpp)
 build_test(file_getdents getdents/getdents.cpp)
 build_test(file_mt mt/mt.cpp)
 build_test(file_openp openp/openp.cpp)
+build_test(file_permissions permissions/permissions.cpp)
 build_test(file_rw rw/rw.cpp)
 build_test(file_stat stat/stat.cpp)
 build_test(file_symlinks symlinks/symlinks.cpp)
@@ -158,6 +159,10 @@ add_test_generic(mt pmemcheck -Dops=50)
 
 add_test_generic(openp none)
 add_test_generic(openp memcheck)
+
+add_test_generic(permissions none)
+add_test_generic(permissions memcheck)
+add_test_generic(permissions pmemcheck)
 
 add_test_generic(rw none)
 add_test_generic(rw none_blk4096 '' PMEMFILECORE_BLOCK_SIZE=4096)

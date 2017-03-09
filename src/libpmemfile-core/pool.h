@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Intel Corporation
+ * Copyright 2016-2017, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -54,6 +54,12 @@ struct pmemfilepool {
 	os_rwlock_t rwlock;
 
 	struct pmemfile_inode_map *inode_map;
+
+	uid_t fsuid;
+	gid_t fsgid;
+	gid_t *groups;
+	size_t groupsnum;
+	os_rwlock_t cred_rwlock;
 };
 
 #endif

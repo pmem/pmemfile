@@ -1,5 +1,6 @@
+#!/usr/bin/perl -w
 #
-# Copyright 2016-2017, Intel Corporation
+# Copyright 2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,72 +30,43 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#
-# Dockerfile - a 'recipe' for Docker to build an image of fedora-based
-#              environment for building the PMEMFILE project.
-#
+use strict;
+use Text::Diff;
 
-# Pull base image
-FROM fedora:25
-MAINTAINER marcin.slusarz@intel.com
+my $clangfmt = shift or die;
+my $mode = shift or die;
 
-# Install basic tools
-RUN dnf install -y \
-	autoconf \
-	automake \
-	capstone-devel \
-	clang \
-	cmake \
-	doxygen \
-	gcc \
-	git \
-	libunwind-devel \
-	make \
-	pandoc \
-	perl-Text-Diff \
-	passwd \
-	rpm-build \
-	sqlite \
-	sudo \
-	which \
-	whois
+sub check {
+	my ($file) = @_;
+	my $original;
+	my $formatted;
 
-# Install valgrind
-COPY install-valgrind.sh install-valgrind.sh
-RUN ./install-valgrind.sh
+	$formatted = `$clangfmt -style=file "$file"`;
 
-# Install nvml
-COPY install-nvml.sh install-nvml.sh
-RUN ./install-nvml.sh rpm
+	if ($mode eq 'check') {
+		local $/=undef;
+		open FILE, "$file" or die "Couldn't open file: $file";
+		binmode FILE;
+		$original = <FILE>;
+		close FILE;
 
-# Install syscall_intercept
-COPY install-syscall_intercept.sh install-syscall_intercept.sh
-RUN ./install-syscall_intercept.sh rpm
+		my $diff = diff \$original, \$formatted;
 
-RUN curl -L -o /googletest-1.8.0.zip https://github.com/google/googletest/archive/release-1.8.0.zip
+		if ($diff ne "") {
+			print "Style check using $clangfmt for file $file failed\n";
+			print $diff;
+			die "Style check using $clangfmt for file $file failed\n";
+		}
+	} elsif ($mode eq 'format') {
+		local $/=undef;
+		open FILE, '>', "$file" or die "Couldn't open file: $file";
+		print FILE "$formatted";
+		close FILE;
+	} else {
+		die 'unknown mode';
+	}
+}
 
-# Add user
-ENV USER user
-ENV USERPASS pass
-RUN useradd -m $USER
-RUN echo $USERPASS | passwd $USER --stdin
-RUN gpasswd wheel -a $USER
-
-RUN dnf remove -y \
-	autoconf \
-	automake \
-	doxygen \
-	passwd \
-	which \
-	whois
-
-RUN dnf autoremove -y
-
-USER $USER
-
-# Set required environment variables
-ENV OS fedora
-ENV OS_VER 25
-ENV PACKAGE_MANAGER rpm
-ENV NOTTY 1
-
+foreach(@ARGV) {
+	check($_)
+}

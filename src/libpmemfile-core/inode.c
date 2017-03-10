@@ -59,7 +59,7 @@ pmfi_path(struct pmemfile_vinode *vinode)
 	if (!vinode)
 		return NULL;
 	if (!vinode->path)
-		LOG(LTRC, "0x%lx: no vinode->path", vinode->inode.oid.off);
+		LOG(LTRC, "0x%lx: no vinode->path", vinode->tinode.oid.off);
 	return vinode->path;
 #else
 	return NULL;
@@ -211,7 +211,7 @@ vinode_unregister_locked(PMEMfilepool *pfp,
 {
 	struct pmemfile_inode_map *c = pfp->inode_map;
 
-	size_t idx = inode_hash(c, vinode->inode) % c->sz;
+	size_t idx = inode_hash(c, vinode->tinode) % c->sz;
 	struct inode_map_bucket *b = &c->buckets[idx];
 	unsigned j;
 	for (j = 0; j < BUCKET_SIZE; ++j) {
@@ -323,8 +323,9 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 		goto end;
 
 	os_rwlock_init(&vinode->rwlock);
-	vinode->inode = inode;
-	if (inode_is_dir(D_RO(inode)) && parent) {
+	vinode->tinode = inode;
+	vinode->inode = D_RW(inode);
+	if (inode_is_dir(vinode->inode) && parent) {
 		vinode->parent = vinode_ref(pfp, parent);
 
 		if (parent_refed)
@@ -406,11 +407,11 @@ vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 		return false;
 	}
 
-	if (D_RO(vinode->inode)->nlink == 0) {
+	if (vinode->inode->nlink == 0) {
 		inode_array_unregister(pfp, vinode->orphaned.arr,
 				vinode->orphaned.idx);
 
-		inode_free(pfp, vinode->inode);
+		inode_free(pfp, vinode->tinode);
 	}
 
 	cb_push_back(TX_STAGE_ONCOMMIT,
@@ -507,7 +508,7 @@ inode_alloc(PMEMfilepool *pfp, uint64_t flags, struct pmemfile_time *t,
 void
 vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
-	LOG(LDBG, "inode 0x%lx path %s", vinode->inode.oid.off,
+	LOG(LDBG, "inode 0x%lx path %s", vinode->tinode.oid.off,
 			pmfi_path(vinode));
 
 	ASSERTeq(vinode->orphaned.arr, NULL);
@@ -603,12 +604,12 @@ pmemfile_time_to_timespec(const struct pmemfile_time *t)
 static int
 vinode_stat(struct pmemfile_vinode *vinode, struct stat *buf)
 {
-	struct pmemfile_inode *inode = D_RW(vinode->inode);
+	struct pmemfile_inode *inode = vinode->inode;
 
 	memset(buf, 0, sizeof(*buf));
-	buf->st_dev = vinode->inode.oid.pool_uuid_lo;
-	buf->st_ino = vinode->inode.oid.off;
-	buf->st_mode = inode->flags & (S_IFMT | S_IRWXU | S_IRWXG | S_IRWXO);
+	buf->st_dev = vinode->tinode.oid.pool_uuid_lo;
+	buf->st_ino = vinode->tinode.oid.off;
+	buf->st_mode = inode->flags & (PMEMFILE_S_IFMT | PMEMFILE_ALLPERMS);
 	buf->st_nlink = inode->nlink;
 	buf->st_uid = inode->uid;
 	buf->st_gid = inode->gid;

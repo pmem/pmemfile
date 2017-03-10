@@ -34,19 +34,20 @@
  * pmemfile_test.cpp -- unit test utility functions for pmemfile
  */
 
-#include <stdarg.h>
 #include <errno.h>
+#include <stdarg.h>
 #include <string.h>
 
-#include "gtest/gtest.h"
 #include "libpmemfile-core.h"
 #include "pmemfile_test.hpp"
+#include "gtest/gtest.h"
 
 std::string global_path;
 
 bool
 test_pmemfile_stats_match(PMEMfilepool *pfp, unsigned inodes, unsigned dirs,
-		unsigned block_arrays, unsigned inode_arrays, unsigned blocks)
+			  unsigned block_arrays, unsigned inode_arrays,
+			  unsigned blocks)
 {
 	struct pmemfile_stats stats;
 	pmemfile_stats(pfp, &stats);
@@ -57,19 +58,17 @@ test_pmemfile_stats_match(PMEMfilepool *pfp, unsigned inodes, unsigned dirs,
 	EXPECT_EQ(stats.inode_arrays, inode_arrays);
 	EXPECT_EQ(stats.blocks, blocks);
 
-	return stats.inodes == inodes &&
-			stats.dirs == dirs &&
-			stats.block_arrays == block_arrays &&
-			stats.inode_arrays == inode_arrays &&
-			stats.blocks == blocks;
+	return stats.inodes == inodes && stats.dirs == dirs &&
+		stats.block_arrays == block_arrays &&
+		stats.inode_arrays == inode_arrays && stats.blocks == blocks;
 }
 
 bool
 test_pmemfile_create(PMEMfilepool *pfp, const char *path, int flags,
-		mode_t mode)
+		     mode_t mode)
 {
-	PMEMfile *file = pmemfile_open(pfp, path, flags | PMEMFILE_O_CREAT,
-			mode);
+	PMEMfile *file =
+		pmemfile_open(pfp, path, flags | PMEMFILE_O_CREAT, mode);
 	EXPECT_NE(file, nullptr) << strerror(errno);
 	if (!file)
 		return false;
@@ -99,26 +98,29 @@ test_pmemfile_path_size(PMEMfilepool *pfp, const char *path)
 	return buf.st_size;
 }
 
-#define VAL_EXPECT_EQ(v1, v2) do { \
-	tmp = (v1) != (v2); \
-	if (tmp) \
-		ADD_FAILURE() << (v1) << " != " << (v2); \
-	anyerr |= tmp; \
-} while (0)
+#define VAL_EXPECT_EQ(v1, v2)                                                  \
+	do {                                                                   \
+		tmp = (v1) != (v2);                                            \
+		if (tmp)                                                       \
+			ADD_FAILURE() << (v1) << " != " << (v2);               \
+		anyerr |= tmp;                                                 \
+	} while (0)
 
-#define MODE_EXPECT(f, v, exp) do { \
-	tmp = f(v) != (exp); \
-	if (tmp) \
-		ADD_FAILURE() << #f << " " << (v); \
-	anyerr |= tmp; \
-} while (0)
+#define MODE_EXPECT(f, v, exp)                                                 \
+	do {                                                                   \
+		tmp = f(v) != (exp);                                           \
+		if (tmp)                                                       \
+			ADD_FAILURE() << #f << " " << (v);                     \
+		anyerr |= tmp;                                                 \
+	} while (0)
 
-#define STR_EXPECT_EQ(v1, v2) do { \
-	tmp = strcmp(v1, v2) != 0; \
-	if (tmp) \
-		ADD_FAILURE() << (v1) << " != " << (v2); \
-	anyerr |= tmp; \
-} while (0)
+#define STR_EXPECT_EQ(v1, v2)                                                  \
+	do {                                                                   \
+		tmp = strcmp(v1, v2) != 0;                                     \
+		if (tmp)                                                       \
+			ADD_FAILURE() << (v1) << " != " << (v2);               \
+		anyerr |= tmp;                                                 \
+	} while (0)
 
 std::map<std::string, file_attrs>
 test_list_files(PMEMfilepool *pfp, PMEMfile *dir, const char *dirp,
@@ -130,7 +132,7 @@ test_list_files(PMEMfilepool *pfp, PMEMfile *dir, const char *dirp,
 	bool err = false;
 	bool tmp;
 
-	for (unsigned i = 0; i < length; ) {
+	for (unsigned i = 0; i < length;) {
 		i += 8;
 		i += 8;
 
@@ -141,7 +143,7 @@ test_list_files(PMEMfilepool *pfp, PMEMfile *dir, const char *dirp,
 		i += 1;
 
 		int ret = pmemfile_fstatat(pfp, dir, dirp + i, &statbuf,
-				PMEMFILE_AT_SYMLINK_NOFOLLOW);
+					   PMEMFILE_AT_SYMLINK_NOFOLLOW);
 		if (ret) {
 			err = true;
 			break;
@@ -150,14 +152,15 @@ test_list_files(PMEMfilepool *pfp, PMEMfile *dir, const char *dirp,
 		bool anyerr = false;
 		symlinkbuf[0] = 0;
 		if (type == PMEMFILE_DT_REG) {
-			MODE_EXPECT(S_ISREG, statbuf.st_mode, 1);
+			MODE_EXPECT(PMEMFILE_S_ISREG, statbuf.st_mode, 1);
 		} else if (type == PMEMFILE_DT_DIR) {
-			MODE_EXPECT(S_ISDIR, statbuf.st_mode, 1);
+			MODE_EXPECT(PMEMFILE_S_ISDIR, statbuf.st_mode, 1);
 		} else if (type == PMEMFILE_DT_LNK) {
-			MODE_EXPECT(S_ISLNK, statbuf.st_mode, 1);
+			MODE_EXPECT(PMEMFILE_S_ISLNK, statbuf.st_mode, 1);
 
 			ssize_t ret = pmemfile_readlinkat(pfp, dir, dirp + i,
-					symlinkbuf, PMEMFILE_PATH_MAX);
+							  symlinkbuf,
+							  PMEMFILE_PATH_MAX);
 			tmp = ret <= 0 || ret >= PMEMFILE_PATH_MAX;
 			if (tmp)
 				ADD_FAILURE() << ret;
@@ -173,7 +176,7 @@ test_list_files(PMEMfilepool *pfp, PMEMfile *dir, const char *dirp,
 		if (!anyerr) {
 			file_attrs attr(statbuf, symlinkbuf);
 			retmap.insert(std::pair<std::string, file_attrs>(
-					std::string(dirp + i), attr));
+				std::string(dirp + i), attr));
 		}
 
 		err |= anyerr;
@@ -191,8 +194,8 @@ test_list_files(PMEMfilepool *pfp, PMEMfile *dir, const char *dirp,
 std::map<std::string, file_attrs>
 test_list_files(PMEMfilepool *pfp, const char *path)
 {
-	PMEMfile *f = pmemfile_open(pfp, path, PMEMFILE_O_DIRECTORY |
-			PMEMFILE_O_RDONLY);
+	PMEMfile *f = pmemfile_open(pfp, path,
+				    PMEMFILE_O_DIRECTORY | PMEMFILE_O_RDONLY);
 	if (!f) {
 		ADD_FAILURE() << "open " << path;
 		return std::map<std::string, file_attrs>();
@@ -203,20 +206,21 @@ test_list_files(PMEMfilepool *pfp, const char *path)
 	char dir_buf[32758];
 	while (1) {
 		int r = pmemfile_getdents64(pfp, f,
-		    (struct linux_dirent64 *)dir_buf, sizeof(dir_buf));
+					    (struct linux_dirent64 *)dir_buf,
+					    sizeof(dir_buf));
 		if (r < 0) {
-			ADD_FAILURE() << "getdents " << path << " " <<
-					strerror(errno);
+			ADD_FAILURE() << "getdents " << path << " "
+				      << strerror(errno);
 			return std::map<std::string, file_attrs>();
 		}
 		if (r == 0)
 			break;
 
 		std::map<std::string, file_attrs> tmp =
-				test_list_files(pfp, f, dir_buf, (unsigned)r);
+			test_list_files(pfp, f, dir_buf, (unsigned)r);
 		if (tmp.empty()) {
-			ADD_FAILURE() << "test_list_files " << path << " " <<
-					strerror(errno);
+			ADD_FAILURE() << "test_list_files " << path << " "
+				      << strerror(errno);
 			return tmp;
 		}
 
@@ -230,37 +234,35 @@ test_list_files(PMEMfilepool *pfp, const char *path)
 
 bool
 test_compare_dirs(const std::map<std::string, file_attrs> &files,
-		const struct pmemfile_ls expected[], bool check_attrs)
+		  const std::vector<pmemfile_ls> &expected, bool check_attrs)
 {
 	bool anyerr = false;
 	bool tmp;
 
-	while (expected[0].name) {
-		auto attrs_iter = files.find(expected[0].name);
+	for (auto c = expected.cbegin(); c != expected.cend(); ++c) {
+		auto attrs_iter = files.find(c->name);
 		if (attrs_iter == files.end()) {
-			ADD_FAILURE() << expected[0].name << " not found";
+			ADD_FAILURE() << c->name << " not found";
 			return false;
 		}
 		const file_attrs &attrs = (*attrs_iter).second;
 
-		VAL_EXPECT_EQ(expected->mode, attrs.stat.st_mode);
-		VAL_EXPECT_EQ(expected->nlink, attrs.stat.st_nlink);
-		VAL_EXPECT_EQ(expected->size, attrs.stat.st_size);
+		VAL_EXPECT_EQ(c->mode, attrs.stat.st_mode);
+		VAL_EXPECT_EQ(c->nlink, attrs.stat.st_nlink);
+		VAL_EXPECT_EQ(c->size, attrs.stat.st_size);
 
-		if (expected->link == NULL) {
-			MODE_EXPECT(S_ISLNK, attrs.stat.st_mode, 0);
+		if (c->link == NULL) {
+			MODE_EXPECT(PMEMFILE_S_ISLNK, attrs.stat.st_mode, 0);
 		} else {
-			MODE_EXPECT(S_ISLNK, attrs.stat.st_mode, 1);
+			MODE_EXPECT(PMEMFILE_S_ISLNK, attrs.stat.st_mode, 1);
 
-			STR_EXPECT_EQ(expected->link, attrs.link.c_str());
+			STR_EXPECT_EQ(c->link, attrs.link.c_str());
 		}
 
 		if (check_attrs) {
-			VAL_EXPECT_EQ(expected->uid, attrs.stat.st_uid);
-			VAL_EXPECT_EQ(expected->gid, attrs.stat.st_gid);
+			VAL_EXPECT_EQ(c->uid, attrs.stat.st_uid);
+			VAL_EXPECT_EQ(c->gid, attrs.stat.st_gid);
 		}
-
-		expected++;
 	}
 
 	if (anyerr)
@@ -271,7 +273,7 @@ test_compare_dirs(const std::map<std::string, file_attrs> &files,
 
 bool
 test_compare_dirs(PMEMfilepool *pfp, const char *path,
-		const struct pmemfile_ls expected[], bool check_attrs)
+		  const std::vector<pmemfile_ls> &expected, bool check_attrs)
 {
 	std::map<std::string, file_attrs> files = test_list_files(pfp, path);
 	if (files.empty())
@@ -284,8 +286,8 @@ test_empty_dir(PMEMfilepool *pfp, const char *path)
 {
 	std::map<std::string, file_attrs> files = test_list_files(pfp, path);
 
-	return test_compare_dirs(files, (const struct pmemfile_ls[]) {
-	    {040777, 2, 4008, "."},
-	    {040777, 2, 4008, ".."},
-	    {}});
+	return test_compare_dirs(
+		files, std::vector<pmemfile_ls>{
+			       {040777, 2, 4008, "."}, {040777, 2, 4008, ".."},
+		       });
 }

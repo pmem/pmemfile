@@ -41,7 +41,8 @@ create_pool(const char *path)
 {
 	char tmp[PMEMFILE_PATH_MAX];
 	sprintf(tmp, "%s/pool", path);
-	return pmemfile_mkfs(tmp, 8 * 1024 * 1024, S_IWUSR | S_IRUSR);
+	return pmemfile_mkfs(tmp, 8 * 1024 * 1024,
+			     PMEMFILE_S_IWUSR | PMEMFILE_S_IRUSR);
 }
 
 static PMEMfilepool *
@@ -62,9 +63,9 @@ TEST(crash, 0)
 		ASSERT_NE(pfp, nullptr) << strerror(errno);
 
 		ASSERT_TRUE(test_pmemfile_create(pfp, "/aaa", PMEMFILE_O_EXCL,
-				0644));
+						 0644));
 		ASSERT_TRUE(test_pmemfile_create(pfp, "/bbb", PMEMFILE_O_EXCL,
-				0644));
+						 0644));
 
 		pmemfile_pool_close(pfp);
 	} else if (strcmp(op, "crash1") == 0) {
@@ -83,17 +84,17 @@ TEST(crash, 0)
 
 		exit(0);
 	} else if (strcmp(op, "openclose1") == 0 ||
-	    strcmp(op, "openclose2") == 0) {
+		   strcmp(op, "openclose2") == 0) {
 		PMEMfilepool *pfp = open_pool(path);
 		ASSERT_NE(pfp, nullptr) << strerror(errno);
 
 		EXPECT_TRUE(test_compare_dirs(pfp, "/",
-				(const struct pmemfile_ls[]) {
-		    {040777, 2, 4008, "."},
-		    {040777, 2, 4008, ".."},
-		    {0100644, 1, 0, "aaa"},
-		    {0100644, 1, 0, "bbb"},
-		    {}}));
+					      std::vector<pmemfile_ls>{
+						      {040777, 2, 4008, "."},
+						      {040777, 2, 4008, ".."},
+						      {0100644, 1, 0, "aaa"},
+						      {0100644, 1, 0, "bbb"},
+					      }));
 
 		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 0, 0));
 
@@ -103,11 +104,11 @@ TEST(crash, 0)
 		ASSERT_NE(pfp, nullptr) << strerror(errno);
 
 		EXPECT_TRUE(test_compare_dirs(pfp, "/",
-				(const struct pmemfile_ls[]) {
-		    {040777, 2, 4008, "."},
-		    {040777, 2, 4008, ".."},
-		    {0100644, 1, 0, "bbb"},
-		    {}}));
+					      std::vector<pmemfile_ls>{
+						      {040777, 2, 4008, "."},
+						      {040777, 2, 4008, ".."},
+						      {0100644, 1, 0, "bbb"},
+					      }));
 
 		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 1, 0));
 

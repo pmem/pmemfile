@@ -98,14 +98,15 @@ add_custom_target(pmemfile-core_static ALL DEPENDS libpmemfile-core.a)
 
 configure_file(libpmemfile-core.pc.in libpmemfile-core.pc)
 
-install(TARGETS pmemfile-core_shared LIBRARY
-        CONFIGURATIONS Release None
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(TARGETS pmemfile-core_shared
+	CONFIGURATIONS Release None
+	DESTINATION ${CMAKE_INSTALL_LIBDIR}
+	PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-install(TARGETS pmemfile-core_shared LIBRARY
-        CONFIGURATIONS Debug
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/pmemfile_debug)
+install(TARGETS pmemfile-core_shared
+	CONFIGURATIONS Debug
+	DESTINATION ${CMAKE_INSTALL_LIBDIR}/pmemfile_debug
+	PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libpmemfile-core.a
         CONFIGURATIONS Release None
@@ -119,4 +120,5 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libpmemfile-core.pc
         CONFIGURATIONS Release None
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 
-add_checker_targets("pmemfile-core")
+add_cstyle(pmemfile-core)
+add_check_whitespace(pmemfile-core)

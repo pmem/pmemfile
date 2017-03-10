@@ -36,10 +36,11 @@
 
 #include "pmemfile_test.hpp"
 
-class stat_test : public pmemfile_test
-{
+class stat_test : public pmemfile_test {
 public:
-	stat_test() : pmemfile_test() {}
+	stat_test() : pmemfile_test()
+	{
+	}
 };
 
 static const char *
@@ -65,11 +66,11 @@ dump_stat(struct stat *st, const char *path)
 	T_OUT("st_blksize: %ld\n", st->st_blksize);
 	T_OUT("st_blocks:  %ld\n", st->st_blocks);
 	T_OUT("st_atim:    %ld.%.9ld, %s\n", st->st_atim.tv_sec,
-			st->st_atim.tv_nsec, timespec_to_str(&st->st_atim));
+	      st->st_atim.tv_nsec, timespec_to_str(&st->st_atim));
 	T_OUT("st_mtim:    %ld.%.9ld, %s\n", st->st_mtim.tv_sec,
-			st->st_mtim.tv_nsec, timespec_to_str(&st->st_mtim));
+	      st->st_mtim.tv_nsec, timespec_to_str(&st->st_mtim));
 	T_OUT("st_ctim:    %ld.%.9ld, %s\n", st->st_ctim.tv_sec,
-			st->st_ctim.tv_nsec, timespec_to_str(&st->st_ctim));
+	      st->st_ctim.tv_nsec, timespec_to_str(&st->st_ctim));
 	T_OUT("---\n");
 }
 
@@ -110,7 +111,8 @@ TEST_F(stat_test, 0)
 TEST_F(stat_test, 1)
 {
 	PMEMfile *f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT |
-			PMEMFILE_O_EXCL | PMEMFILE_O_WRONLY, 0644);
+					    PMEMFILE_O_EXCL | PMEMFILE_O_WRONLY,
+				    0644);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	ASSERT_EQ(stat_and_dump(pfp, "/file1"), 0);
@@ -146,8 +148,8 @@ TEST_F(stat_test, 2)
 
 	ASSERT_EQ(stat_and_dump(pfp, "/dir"), 0);
 
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir/file1", PMEMFILE_O_EXCL,
-			0644));
+	ASSERT_TRUE(
+		test_pmemfile_create(pfp, "/dir/file1", PMEMFILE_O_EXCL, 0644));
 
 	ASSERT_EQ(stat_and_dump(pfp, "/dir/file1"), 0);
 

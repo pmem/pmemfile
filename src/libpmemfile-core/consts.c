@@ -32,7 +32,7 @@
 
 #define _GNU_SOURCE
 
-#include "libpmemfile-core.h"
+#include "libpmemfile-posix.h"
 #include "util.h"
 
 #include <dirent.h>

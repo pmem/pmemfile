@@ -1,6 +1,0 @@
-usr/lib/*/pkgconfig/libpmemfile-core.pc
-usr/lib/*/libpmemfile-core.so
-usr/lib/*/libpmemfile-core.a
-usr/include/libpmemfile-core.h
-usr/include/libpmemfile-core-stubs.h
-usr/share/man/man3/libpmemfile-core.3

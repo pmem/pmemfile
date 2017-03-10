@@ -31,14 +31,14 @@
  */
 
 /*
- * libpmemfile-core.h -- definitions of libpmemfile-core entry points
+ * libpmemfile-posix.h -- definitions of libpmemfile-posix entry points
  *
  * This library provides support for programming with persistent memory (pmem).
  *
- * libpmemfile-core provides support for pmem-resident files.
+ * libpmemfile-posix provides support for pmem-resident files.
  */
-#ifndef LIBPMEMFILE_CORE_H
-#define LIBPMEMFILE_CORE_H 1
+#ifndef LIBPMEMFILE_POSIX_H
+#define LIBPMEMFILE_POSIX_H 1
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -277,9 +277,9 @@ const char *pmemfile_check_version(
 
 const char *pmemfile_errormsg(void);
 
-#include "libpmemfile-core-stubs.h"
+#include "libpmemfile-posix-stubs.h"
 
 #ifdef __cplusplus
 }
 #endif
-#endif	/* libpmemfile-core.h */
+#endif	/* libpmemfile-posix.h */

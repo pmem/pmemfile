@@ -67,17 +67,17 @@ add_library(test_backtrace STATIC ../test_backtrace.c)
 
 add_dependencies(pmemfile_test libgtest)
 
-add_cppstyle("tests-core-test")
-add_check_whitespace("tests-core-test" ${CMAKE_CURRENT_SOURCE_DIR}/*.*pp)
+add_cppstyle("tests-posix-test")
+add_check_whitespace("tests-posix-test" ${CMAKE_CURRENT_SOURCE_DIR}/*.*pp)
 
-add_cstyle(tests-core-test_bt ${CMAKE_CURRENT_SOURCE_DIR}/../test_backtrace.c)
-add_check_whitespace(tests-core-test_bt ${CMAKE_CURRENT_SOURCE_DIR}/../test_backtrace.c)
+add_cstyle(tests-posix-test_bt ${CMAKE_CURRENT_SOURCE_DIR}/../test_backtrace.c)
+add_check_whitespace(tests-posix-test_bt ${CMAKE_CURRENT_SOURCE_DIR}/../test_backtrace.c)
 
 function(build_test name srcs)
-	add_cppstyle(tests-core-${name} ${CMAKE_CURRENT_SOURCE_DIR}/${srcs})
-	add_check_whitespace(tests-core-${name} ${CMAKE_CURRENT_SOURCE_DIR}/${srcs})
+	add_cppstyle(tests-posix-${name} ${CMAKE_CURRENT_SOURCE_DIR}/${srcs})
+	add_check_whitespace(tests-posix-${name} ${CMAKE_CURRENT_SOURCE_DIR}/${srcs})
 	add_executable(${name} ${srcs})
-	target_link_libraries(${name} pmemfile-core_shared pmemfile_test test_backtrace libgtest)
+	target_link_libraries(${name} pmemfile-posix_shared pmemfile_test test_backtrace libgtest)
 	if(LIBUNWIND_FOUND)
 		target_link_libraries(${name} ${LIBUNWIND_LIBRARIES} ${CMAKE_DL_LIBS})
 	endif()
@@ -165,7 +165,7 @@ add_test_generic(permissions memcheck)
 add_test_generic(permissions pmemcheck)
 
 add_test_generic(rw none)
-add_test_generic(rw none_blk4096 '' PMEMFILECORE_BLOCK_SIZE=4096)
+add_test_generic(rw none_blk4096 '' PMEMFILE_BLOCK_SIZE=4096)
 add_test_generic(rw memcheck)
 add_long_test_generic(rw pmemcheck)
 

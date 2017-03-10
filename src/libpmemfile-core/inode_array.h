@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Intel Corporation
+ * Copyright 2016-2017, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,7 +32,7 @@
 #ifndef PMEMFILE_INODE_ARRAY_H
 #define PMEMFILE_INODE_ARRAY_H
 
-#include "libpmemfile-core.h"
+#include "libpmemfile-posix.h"
 #include "inode.h"
 #include "layout.h"
 

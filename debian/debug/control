@@ -5,7 +5,7 @@ Priority: extra
 Standards-version: 3.9.8
 Build-Depends: debhelper (>= 9), libsyscall-intercept-dev, libpmemobj-dev
 
-Package: libpmemfile-core0-debug
+Package: libpmemfile-posix0-debug
 Architecture: any
 Depends: libpmemobj, ${shlibs:Depends}, ${misc:Depends}
 Description: File System in Persistent Memory - debug library
@@ -14,7 +14,7 @@ Description: File System in Persistent Memory - debug library
 
 Package: libpmemfile0-debug
 Architecture: any
-Depends: libpmemfile-core0 | libpmemfile-core0-debug, libsyscall-intercept0, ${shlibs:Depends}, ${misc:Depends}
+Depends: libpmemfile-posix0 | libpmemfile-posix0-debug, libsyscall-intercept0, ${shlibs:Depends}, ${misc:Depends}
 Description: File System in Persistent Memory - debug library
  Persistent memory-backed, transaparent (LD_PRELOAD) userspace implementation
  of POSIX-like API - debug library.

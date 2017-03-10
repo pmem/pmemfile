@@ -38,7 +38,6 @@
 #include <stdarg.h>
 #include <string.h>
 
-#include "libpmemfile-core.h"
 #include "pmemfile_test.hpp"
 #include "gtest/gtest.h"
 

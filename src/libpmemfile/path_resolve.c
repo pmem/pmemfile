@@ -46,7 +46,7 @@
 #include <string.h>
 
 #include "libsyscall_intercept_hook_point.h"
-#include "libpmemfile-core.h"
+#include "libpmemfile-posix.h"
 
 #include "preload.h"
 

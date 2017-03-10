@@ -31,24 +31,24 @@
  */
 
 /*
- * libpmemfile-core-stubs.h -- definitions of not yet implemented
- * libpmemfile-core entry points. Do not use these. All the routines
+ * libpmemfile-posix-stubs.h -- definitions of not yet implemented
+ * libpmemfile-posix entry points. Do not use these. All the routines
  * just set errno to ENOTSUP.
  * This is header file, and the symbols exported are used while designing
  * the interface of the library.
  * Everything here is subject to change at any time.
  *
  * If/when some pmemfile functionality is implemented, the corresponding
- * header declarations should be moved to the libpmemfile-core.h header file.
+ * header declarations should be moved to the libpmemfile-posix.h header file.
  *
  * This file is expected to be removed eventually.
  */
-#ifndef LIBPMEMFILE_CORE_H
+#ifndef LIBPMEMFILE_POSIX_H
 #error Never include this header file directly
 #endif
 
-#ifndef LIBPMEMFILE_CORE_STUBS_H
-#define LIBPMEMFILE_CORE_STUBS_H
+#ifndef LIBPMEMFILE_POSIX_STUBS_H
+#define LIBPMEMFILE_POSIX_STUBS_H
 
 int pmemfile_access(PMEMfilepool *, const char *path, mode_t mode);
 int pmemfile_euidaccess(PMEMfilepool *, const char *pathname, int mode);
@@ -67,7 +67,7 @@ int pmemfile_lchown(PMEMfilepool *, const char *pathname, uid_t owner,
 int pmemfile_fchownat(PMEMfilepool *, PMEMfile *dir, const char *pathname,
 		uid_t owner, gid_t group, int flags);
 
-// De we need dup, dup2 in corelib? Maybe, dunno...
+// De we need dup, dup2 in libpmemfile-posix? Maybe, dunno...
 PMEMfile *pmemfile_dup(PMEMfilepool *, PMEMfile *);
 PMEMfile *pmemfile_dup2(PMEMfilepool *, PMEMfile *file, PMEMfile *file2);
 

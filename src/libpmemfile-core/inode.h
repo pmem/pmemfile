@@ -71,6 +71,11 @@ struct pmemfile_vinode {
 
 	struct pmemfile_block *first_block;
 	struct ctree *blocks;
+
+	struct {
+		struct block_info first_free_block;
+		struct pmemfile_block *first_block;
+	} snapshot;
 };
 
 static inline bool inode_is_dir(const struct pmemfile_inode *inode)
@@ -140,5 +145,8 @@ struct pmemfile_vinode *inode_ref_new(PMEMfilepool *pfp,
 void vinode_unref_tx(PMEMfilepool *pfp, struct pmemfile_vinode *vinode);
 
 void vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode);
+
+void vinode_snapshot(struct pmemfile_vinode *vinode);
+void vinode_restore_on_abort(struct pmemfile_vinode *vinode);
 
 #endif

@@ -686,6 +686,8 @@ pmemfile_write_locked(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 
 	os_rwlock_wrlock(&vinode->rwlock);
 
+	vinode_snapshot(vinode);
+
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (!vinode->blocks)
 			vinode_rebuild_block_tree(vinode);
@@ -702,7 +704,7 @@ pmemfile_write_locked(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 		}
 	} TX_ONABORT {
 		error = errno;
-		vinode_destroy_data_state(vinode);
+		vinode_restore_on_abort(vinode);
 	} TX_ONCOMMIT {
 		file->offset += count;
 	} TX_END
@@ -1059,4 +1061,27 @@ vinode_truncate(struct pmemfile_vinode *vinode)
 	// we don't have to rollback destroy of data state on abort, because
 	// it will be rebuilded when it's needed
 	vinode_destroy_data_state(vinode);
+}
+
+void
+vinode_snapshot(struct pmemfile_vinode *vinode)
+{
+	vinode->snapshot.first_free_block = vinode->first_free_block;
+	vinode->snapshot.first_block = vinode->first_block;
+}
+
+void
+vinode_restore_on_abort(struct pmemfile_vinode *vinode)
+{
+	vinode->first_free_block = vinode->snapshot.first_free_block;
+	vinode->first_block = vinode->snapshot.first_block;
+
+	/*
+	 * The ctree is not restored here. It is rebuilt the next
+	 * time the vinode is used.
+	 */
+	if (vinode->blocks) {
+		ctree_delete(vinode->blocks);
+		vinode->blocks = NULL;
+	}
 }

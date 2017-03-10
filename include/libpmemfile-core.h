@@ -237,6 +237,16 @@ ssize_t pmemfile_readlink(PMEMfilepool *, const char *path,
 ssize_t pmemfile_readlinkat(PMEMfilepool *, PMEMfile *dir, const char *pathname,
 			char *buf, size_t bufsiz);
 
+int pmemfile_chmod(PMEMfilepool *, const char *path, mode_t mode);
+int pmemfile_fchmod(PMEMfilepool *, PMEMfile *, mode_t mode);
+int pmemfile_fchmodat(PMEMfilepool *, PMEMfile *dir, const char *pathname,
+	mode_t mode, int flags);
+
+int pmemfile_setfsuid(PMEMfilepool *, uid_t fsuid);
+int pmemfile_setfsgid(PMEMfilepool *, uid_t fsgid);
+int pmemfile_getgroups(PMEMfilepool *, int size, gid_t list[]);
+int pmemfile_setgroups(PMEMfilepool *, size_t size, const gid_t *list);
+
 struct pmemfile_stats {
 	unsigned inodes;
 	unsigned dirs;

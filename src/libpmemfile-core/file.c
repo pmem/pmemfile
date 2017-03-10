@@ -35,6 +35,7 @@
  */
 
 #include <errno.h>
+#include <limits.h>
 
 #include "callbacks.h"
 #include "data.h"
@@ -194,9 +195,55 @@ create_file(PMEMfilepool *pfp, const char *filename, size_t namelen,
 	return vinode;
 }
 
-static void
-open_file(struct pmemfile_vinode *vinode, int flags)
+static bool
+gid_in_list(PMEMfilepool *pfp, gid_t gid)
 {
+	for (size_t i = 0; i < pfp->groupsnum; ++i) {
+		if (pfp->groups[i] == gid)
+			return true;
+	}
+
+	return false;
+}
+
+static void
+open_file(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, int flags)
+{
+	const struct pmemfile_inode *inode = vinode->inode;
+	int acc = flags & PMEMFILE_O_ACCMODE;
+	mode_t perm = inode->flags & PMEMFILE_ALLPERMS;
+	if (acc == PMEMFILE_O_ACCMODE)
+		pmemfile_tx_abort(EINVAL);
+
+	mode_t req;
+	os_rwlock_rdlock(&pfp->cred_rwlock);
+	if (inode->uid == pfp->fsuid) {
+		if (acc == PMEMFILE_O_RDWR)
+			req = PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR;
+		else if (acc == PMEMFILE_O_RDONLY)
+			req = PMEMFILE_S_IRUSR;
+		else
+			req = PMEMFILE_S_IWUSR;
+	} else if (inode->gid == pfp->fsgid || gid_in_list(pfp, inode->gid)) {
+		if (acc == PMEMFILE_O_RDWR)
+			req = PMEMFILE_S_IRGRP | PMEMFILE_S_IWGRP;
+		else if (acc == PMEMFILE_O_RDONLY)
+			req = PMEMFILE_S_IRGRP;
+		else
+			req = PMEMFILE_S_IWGRP;
+	} else {
+		if (acc == PMEMFILE_O_RDWR)
+			req = PMEMFILE_S_IROTH | PMEMFILE_S_IWOTH;
+		else if (acc == PMEMFILE_O_RDONLY)
+			req = PMEMFILE_S_IROTH;
+		else
+			req = PMEMFILE_S_IWOTH;
+	}
+	os_rwlock_unlock(&pfp->cred_rwlock);
+
+	if ((perm & req) != req)
+		pmemfile_tx_abort(EACCES);
+
 	if ((flags & PMEMFILE_O_DIRECTORY) && !vinode_is_dir(vinode))
 		pmemfile_tx_abort(ENOTDIR);
 
@@ -362,7 +409,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 			vinode = create_file(pfp, info.remaining, namelen,
 					vparent, flags, mode);
 		} else {
-			open_file(vinode, flags);
+			open_file(pfp, vinode, flags);
 		}
 
 		file = calloc(1, sizeof(*file));
@@ -662,6 +709,8 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 		goto end;
 	}
 
+	// XXX: handle protected_hardlinks (see man 5 proc)
+
 	size_t dst_namelen = component_length(dst.remaining);
 
 	os_rwlock_wrlock(&dst.vinode->rwlock);
@@ -806,6 +855,8 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	}
 
 	os_rwlock_wrlock(&vparent->rwlock);
+
+	// XXX: take directory permissions into account
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		vinode_unlink_dirent(pfp, vparent, info.remaining, namelen,
@@ -970,6 +1021,8 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 		os_rwlock_wrlock(&dst_parent->rwlock);
 		os_rwlock_wrlock(&src_parent->rwlock);
 	}
+
+	// XXX: take directory permissions into account
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		// XXX, when src dir == dst dir we can just update dirent,
@@ -1162,6 +1215,8 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 	}
 
 	os_rwlock_wrlock(&vparent->rwlock);
+
+	// XXX: take directory permissions into account
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		struct pmemfile_time t;
@@ -1407,4 +1462,263 @@ pmemfile_stats(PMEMfilepool *pfp, struct pmemfile_stats *stats)
 	stats->block_arrays = block_arrays;
 	stats->inode_arrays = inode_arrays;
 	stats->blocks = blocks;
+}
+
+static int
+vinode_chmod(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, mode_t mode)
+{
+	struct pmemfile_inode *inode = vinode->inode;
+	int error = 0;
+
+	os_rwlock_wrlock(&vinode->rwlock);
+
+	// XXX: validate user permissions
+	// XXX: take CAP_FOWNER into account
+	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
+		TX_ADD_DIRECT(&inode->flags);
+
+		inode->flags = (inode->flags & ~(uint64_t)PMEMFILE_ALLPERMS)
+				| mode;
+	} TX_ONABORT {
+		error = errno;
+	} TX_END
+
+	os_rwlock_unlock(&vinode->rwlock);
+
+	if (error) {
+		errno = error;
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+_pmemfile_fchmodat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
+		const char *path, mode_t mode, int flags)
+{
+	mode &= PMEMFILE_ALLPERMS;
+
+	if (flags & PMEMFILE_AT_SYMLINK_NOFOLLOW) {
+		errno = ENOTSUP;
+		return -1;
+	}
+
+	if (flags & ~(PMEMFILE_AT_SYMLINK_NOFOLLOW)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	LOG(LDBG, "path %s", path);
+
+	int error = 0;
+	struct pmemfile_path_info info;
+	resolve_pathat(pfp, dir, path, &info, 0);
+
+	struct pmemfile_vinode *vinode = NULL;
+	bool path_info_changed;
+
+	do {
+		path_info_changed = false;
+
+		if (info.vinode == NULL) {
+			error = ELOOP;
+			goto end;
+		}
+
+		if (!vinode_is_dir(info.vinode)) {
+			error = ENOTDIR;
+			goto end;
+		}
+
+		if (more_than_1_component(info.remaining)) {
+			error = ENOENT;
+			goto end;
+		}
+
+		size_t namelen = component_length(info.remaining);
+
+		if (namelen == 0) {
+			ASSERT(info.vinode == pfp->root);
+			vinode = vinode_ref(pfp, info.vinode);
+		} else {
+			vinode = vinode_lookup_dirent(pfp, info.vinode,
+					info.remaining, namelen, 0);
+			if (vinode && vinode_is_symlink(vinode)) {
+				resolve_symlink(pfp, vinode, &info);
+				path_info_changed = true;
+			}
+		}
+
+		if (!vinode) {
+			error = ENOENT;
+			goto end;
+		}
+	} while (path_info_changed);
+
+	if (!vinode_is_dir(vinode) && strchr(info.remaining, '/')) {
+		error = ENOTDIR;
+		goto end;
+	}
+
+	error = vinode_chmod(pfp, vinode, mode);
+
+end:
+	path_info_cleanup(pfp, &info);
+
+	vinode_unref_tx(pfp, vinode);
+
+	if (error) {
+		errno = error;
+		return -1;
+	}
+
+	return 0;
+}
+
+int
+pmemfile_fchmodat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
+	mode_t mode, int flags)
+{
+	struct pmemfile_vinode *at;
+	bool at_unref;
+
+	if (!pathname) {
+		errno = ENOENT;
+		return -1;
+	}
+
+	at = pool_get_dir_for_path(pfp, dir, pathname, &at_unref);
+
+	int ret = _pmemfile_fchmodat(pfp, at, pathname, mode, flags);
+
+	if (at_unref) {
+		int error;
+		if (ret)
+			error = errno;
+		vinode_unref_tx(pfp, at);
+
+		if (ret)
+			errno = error;
+	}
+
+	return ret;
+}
+
+int
+pmemfile_chmod(PMEMfilepool *pfp, const char *path, mode_t mode)
+{
+	return pmemfile_fchmodat(pfp, PMEMFILE_AT_CWD, path, mode, 0);
+}
+
+int
+pmemfile_fchmod(PMEMfilepool *pfp, PMEMfile *file, mode_t mode)
+{
+	if (!file) {
+		errno = EBADF;
+		return -1;
+	}
+
+	struct pmemfile_vinode *vinode;
+
+	bool unref = false;
+	if (file == PMEMFILE_AT_CWD) {
+		unref = true;
+		vinode = pool_get_cwd(pfp);
+	} else {
+		vinode = file->vinode;
+	}
+
+	int ret = vinode_chmod(pfp, vinode, mode);
+
+	if (unref)
+		vinode_unref_tx(pfp, vinode);
+
+	if (ret) {
+		errno = ret;
+		return -1;
+	}
+
+	return 0;
+}
+
+int
+pmemfile_setfsuid(PMEMfilepool *pfp, uid_t fsuid)
+{
+	if (fsuid > INT_MAX) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	os_rwlock_wrlock(&pfp->cred_rwlock);
+	uid_t prev_fsuid = pfp->fsuid;
+	pfp->fsuid = fsuid;
+	os_rwlock_unlock(&pfp->cred_rwlock);
+
+	return (int)prev_fsuid;
+}
+
+int
+pmemfile_setfsgid(PMEMfilepool *pfp, uid_t fsgid)
+{
+	if (fsgid > INT_MAX) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	os_rwlock_wrlock(&pfp->cred_rwlock);
+	uid_t prev_fsgid = pfp->fsgid;
+	pfp->fsgid = fsgid;
+	os_rwlock_unlock(&pfp->cred_rwlock);
+
+	return (int)prev_fsgid;
+}
+
+int
+pmemfile_getgroups(PMEMfilepool *pfp, int size, gid_t list[])
+{
+	if (size < 0) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	os_rwlock_rdlock(&pfp->cred_rwlock);
+	size_t groupsnum = pfp->groupsnum;
+	if (groupsnum > (size_t)size) {
+		errno = EINVAL;
+		os_rwlock_unlock(&pfp->cred_rwlock);
+		return -1;
+	}
+
+	memcpy(list, pfp->groups, pfp->groupsnum * sizeof(pfp->groups[0]));
+
+	os_rwlock_unlock(&pfp->cred_rwlock);
+	return (int)groupsnum;
+}
+
+int
+pmemfile_setgroups(PMEMfilepool *pfp, size_t size, const gid_t *list)
+{
+	int error = 0;
+	os_rwlock_wrlock(&pfp->cred_rwlock);
+	if (size != pfp->groupsnum) {
+		void *r = realloc(pfp->groups, size * sizeof(pfp->groups[0]));
+		if (!r) {
+			error = errno;
+			goto end;
+		}
+
+		pfp->groups = r;
+		pfp->groupsnum = size;
+	}
+	memcpy(pfp->groups, list, size * sizeof(*list));
+
+end:
+	os_rwlock_unlock(&pfp->cred_rwlock);
+
+	if (error) {
+		errno = error;
+		return -1;
+	}
+	return 0;
 }

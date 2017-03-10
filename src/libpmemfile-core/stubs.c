@@ -133,27 +133,6 @@ pmemfile_ftruncate(PMEMfilepool *pfp, PMEMfile *file, off_t length)
 	return -1;
 }
 
-int
-pmemfile_chmod(PMEMfilepool *pfp, const char *path, mode_t mode)
-{
-	check_pfp(pfp);
-
-	(void) path;
-	(void) mode;
-
-	return 0;
-}
-
-int
-pmemfile_fchmod(PMEMfilepool *pfp, PMEMfile *file, mode_t mode)
-{
-	check_pfp_file(pfp, file);
-
-	(void) mode;
-
-	return 0;
-}
-
 PMEMfile *
 pmemfile_dup(PMEMfilepool *pfp, PMEMfile *file)
 {
@@ -299,20 +278,6 @@ pmemfile_pwritev(PMEMfilepool *pfp, PMEMfile *file, const struct iovec *iov,
 
 	errno = ENOTSUP;
 	return -1;
-}
-
-int
-pmemfile_fchmodat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
-	mode_t mode, int flags)
-{
-	check_pfp(pfp);
-
-	(void) dir;
-	(void) pathname;
-	(void) mode;
-	(void) flags;
-
-	return 0;
 }
 
 int

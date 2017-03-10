@@ -186,7 +186,9 @@ add_executable(check_license EXCLUDE_FROM_ALL utils/check_license/check-license.
 function(add_cstyle name)
 	if(${ARGC} EQUAL 1)
 		add_custom_target(cstyle-${name}
-			COMMAND ${CMAKE_SOURCE_DIR}/utils/cstyle ${CMAKE_CURRENT_SOURCE_DIR}/*.c ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
+			COMMAND ${CMAKE_SOURCE_DIR}/utils/cstyle
+				${CMAKE_CURRENT_SOURCE_DIR}/*.c
+				${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 	else()
 		add_custom_target(cstyle-${name}
 			COMMAND ${CMAKE_SOURCE_DIR}/utils/cstyle ${ARGN})
@@ -236,7 +238,9 @@ endfunction()
 function(add_check_whitespace name)
 	if(${ARGC} EQUAL 1)
 		add_custom_target(check-whitespace-${name}
-			COMMAND ${CMAKE_SOURCE_DIR}/utils/check_whitespace ${CMAKE_CURRENT_SOURCE_DIR}/*.c ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
+			COMMAND ${CMAKE_SOURCE_DIR}/utils/check_whitespace
+				${CMAKE_CURRENT_SOURCE_DIR}/*.c
+				${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 	else()
 		add_custom_target(check-whitespace-${name}
 			COMMAND ${CMAKE_SOURCE_DIR}/utils/check_whitespace ${ARGN})

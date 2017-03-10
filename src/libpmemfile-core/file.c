@@ -856,6 +856,8 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	os_rwlock_wrlock(&vparent->rwlock);
 
+	// XXX: take directory permissions into account
+
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		vinode_unlink_dirent(pfp, vparent, info.remaining, namelen,
 				&vinode, &parent_refed, true);
@@ -1019,6 +1021,8 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 		os_rwlock_wrlock(&dst_parent->rwlock);
 		os_rwlock_wrlock(&src_parent->rwlock);
 	}
+
+	// XXX: take directory permissions into account
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		// XXX, when src dir == dst dir we can just update dirent,
@@ -1211,6 +1215,8 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 	}
 
 	os_rwlock_wrlock(&vparent->rwlock);
+
+	// XXX: take directory permissions into account
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		struct pmemfile_time t;
@@ -1466,6 +1472,8 @@ vinode_chmod(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, mode_t mode)
 
 	os_rwlock_wrlock(&vinode->rwlock);
 
+	// XXX: validate user permissions
+	// XXX: take CAP_FOWNER into account
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		TX_ADD_DIRECT(&inode->flags);
 

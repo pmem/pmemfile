@@ -795,6 +795,7 @@ resolve_pathat_nested(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 		const char *path, struct pmemfile_path_info *path_info,
 		int flags, int nest_level)
 {
+	// XXX: take directory permissions into account
 	if (nest_level > 40)
 		return;
 
@@ -1096,6 +1097,8 @@ _pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		error = EBUSY;
 		goto vparent_end;
 	}
+
+	// XXX: take directory permissions into account
 
 	os_rwlock_wrlock(&vdir->rwlock);
 

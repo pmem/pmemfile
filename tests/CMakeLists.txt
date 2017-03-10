@@ -37,7 +37,7 @@ set(GLOBAL_TEST_ARGS
 	-DTESTS_USE_FORCED_PMEM=${TESTS_USE_FORCED_PMEM})
 
 if(TRACE_TESTS)
-        set(GLOBAL_TEST_ARGS ${GLOBAL_TEST_ARGS} --trace-expand)
+	set(GLOBAL_TEST_ARGS ${GLOBAL_TEST_ARGS} --trace-expand)
 endif()
 
 add_subdirectory(core)

@@ -31,18 +31,18 @@
 
 find_program(PANDOC pandoc)
 if (NOT PANDOC)
-        message(WARNING "pandoc not found")
+	message(WARNING "pandoc not found")
 endif()
 
 add_custom_target(manpages)
 
 function(generate_manpage name)
-        add_custom_target(manpage-${name}
-                          COMMAND ${CMAKE_SOURCE_DIR}/utils/md2man.sh
-                                  ${CMAKE_CURRENT_SOURCE_DIR}/${name}.md
-                                  ${CMAKE_CURRENT_SOURCE_DIR}/default.man
-                                  ${CMAKE_CURRENT_SOURCE_DIR}/generated/${name})
-        add_dependencies(manpages manpage-${name})
+	add_custom_target(manpage-${name}
+			COMMAND ${CMAKE_SOURCE_DIR}/utils/md2man.sh
+				${CMAKE_CURRENT_SOURCE_DIR}/${name}.md
+				${CMAKE_CURRENT_SOURCE_DIR}/default.man
+				${CMAKE_CURRENT_SOURCE_DIR}/generated/${name})
+	add_dependencies(manpages manpage-${name})
 endfunction()
 
 generate_manpage(libpmemfile-core.3)

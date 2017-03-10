@@ -36,9 +36,9 @@ add_executable(pmemfile-cat pmemfile-cat.c)
 target_link_libraries(pmemfile-cat pmemfile-core_shared)
 
 install(TARGETS mkfs.pmemfile
-        CONFIGURATIONS Release None
-        DESTINATION ${CMAKE_INSTALL_BINDIR}
-        PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+	CONFIGURATIONS Release None
+	DESTINATION ${CMAKE_INSTALL_BINDIR}
+	PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 
 add_cstyle(tools ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
 add_check_whitespace(tools ${CMAKE_CURRENT_SOURCE_DIR}/*.c)

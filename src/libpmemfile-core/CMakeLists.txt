@@ -47,19 +47,19 @@ set(SOURCES
 )
 
 set(HEADERS
-        callbacks.h
-        ctree.h
-        data.h
-        dir.h
-        file.h
-        inode_array.h
-        inode.h
-        internal.h
-        layout.h
-        locks.h
-        out.h
-        pool.h
-        valgrind_internal.h
+	callbacks.h
+	ctree.h
+	data.h
+	dir.h
+	file.h
+	inode_array.h
+	inode.h
+	internal.h
+	layout.h
+	locks.h
+	out.h
+	pool.h
+	valgrind_internal.h
 )
 
 add_c_flag(-Wmissing-field-initializers)
@@ -87,13 +87,13 @@ set_target_properties(pmemfile-core_shared PROPERTIES OUTPUT_NAME pmemfile-core)
 set_target_properties(pmemfile-core_shared PROPERTIES VERSION ${VERSION} SOVERSION ${VERSION_MAJOR})
 
 if(NOT ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-        set_target_properties(pmemfile-core_shared PROPERTIES
-                PUBLIC_HEADER "${CMAKE_SOURCE_DIR}/include/libpmemfile-core.h;${CMAKE_SOURCE_DIR}/include/libpmemfile-core-stubs.h")
+	set_target_properties(pmemfile-core_shared PROPERTIES
+		PUBLIC_HEADER "${CMAKE_SOURCE_DIR}/include/libpmemfile-core.h;${CMAKE_SOURCE_DIR}/include/libpmemfile-core-stubs.h")
 endif()
 
 add_custom_command(OUTPUT libpmemfile-core.a
-                   COMMAND objcopy --localize-hidden `sed -n "'s/^\\s*\\([a-zA-Z0-9_]*\\);$$/-G \\1/p'" ${CMAKE_CURRENT_SOURCE_DIR}/libpmemfile-core.map` libpmemfile-core_unscoped.a libpmemfile-core.a
-                   DEPENDS pmemfile-core_static_unscoped)
+		COMMAND objcopy --localize-hidden `sed -n "'s/^\\s*\\([a-zA-Z0-9_]*\\);$$/-G \\1/p'" ${CMAKE_CURRENT_SOURCE_DIR}/libpmemfile-core.map` libpmemfile-core_unscoped.a libpmemfile-core.a
+		DEPENDS pmemfile-core_static_unscoped)
 add_custom_target(pmemfile-core_static ALL DEPENDS libpmemfile-core.a)
 
 configure_file(libpmemfile-core.pc.in libpmemfile-core.pc)
@@ -109,16 +109,16 @@ install(TARGETS pmemfile-core_shared
 	PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libpmemfile-core.a
-        CONFIGURATIONS Release None
-        DESTINATION ${CMAKE_INSTALL_LIBDIR})
+	CONFIGURATIONS Release None
+	DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libpmemfile-core.a
-        CONFIGURATIONS Debug
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/pmemfile_debug)
+	CONFIGURATIONS Debug
+	DESTINATION ${CMAKE_INSTALL_LIBDIR}/pmemfile_debug)
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libpmemfile-core.pc
-        CONFIGURATIONS Release None
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+	CONFIGURATIONS Release None
+	DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 
 add_cstyle(pmemfile-core)
 add_check_whitespace(pmemfile-core)

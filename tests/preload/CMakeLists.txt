@@ -39,8 +39,8 @@ add_check_whitespace(tests-preload-basic ${CMAKE_CURRENT_SOURCE_DIR}/basic/basic
 add_check_whitespace(tests-preload-config ${CMAKE_CURRENT_SOURCE_DIR}/config/config.c)
 
 function(add_test_generic name main_executable)
-        add_test(NAME preload_${name}
-                 COMMAND ${CMAKE_COMMAND}
+	add_test(NAME preload_${name}
+		COMMAND ${CMAKE_COMMAND}
 			${GLOBAL_TEST_ARGS}
 			-DTEST_NAME=${name}
 			-DSRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/${name}
@@ -49,15 +49,15 @@ function(add_test_generic name main_executable)
 			-DMAIN_EXECUTABLE=${main_executable}
 			-P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/test.cmake)
 
-        set_tests_properties(preload_${name} PROPERTIES
-                ENVIRONMENT "LC_ALL=C;${ARGV3}")
+	set_tests_properties(preload_${name} PROPERTIES
+		ENVIRONMENT "LC_ALL=C;${ARGV3}")
 endfunction()
 
 find_program(SQLITE3 sqlite3)
 if (SQLITE3)
-        add_test_generic(sqlite none)
+	add_test_generic(sqlite none)
 else()
-        add_test(NAME sqlite_SKIPPED_BECAUSE_OF_MISSING_SQLITE3 COMMAND true)
+	add_test(NAME sqlite_SKIPPED_BECAUSE_OF_MISSING_SQLITE3 COMMAND true)
 endif()
 
 add_test_generic(basic $<TARGET_FILE:preload_basic>)

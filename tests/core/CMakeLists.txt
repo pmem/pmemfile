@@ -40,26 +40,26 @@ else()
 set(GTEST_URL https://github.com/google/googletest/archive/release-${GTEST_VERSION}.zip)
 endif()
 ExternalProject_Add(
-    gtest
-    URL ${GTEST_URL}
-    DOWNLOAD_NAME googletest-${GTEST_VERSION}.zip
-    DOWNLOAD_DIR ${CMAKE_SOURCE_DIR}
-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/gtest
-    INSTALL_COMMAND ""
-    CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+	gtest
+	URL ${GTEST_URL}
+	DOWNLOAD_NAME googletest-${GTEST_VERSION}.zip
+	DOWNLOAD_DIR ${CMAKE_SOURCE_DIR}
+	PREFIX ${CMAKE_CURRENT_BINARY_DIR}/gtest
+	INSTALL_COMMAND ""
+	CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
 )
 ExternalProject_Get_Property(gtest source_dir binary_dir)
 add_library(libgtest IMPORTED STATIC GLOBAL)
 add_dependencies(libgtest gtest)
 set_target_properties(libgtest PROPERTIES
-    "IMPORTED_LOCATION" "${binary_dir}/googlemock/gtest/libgtest.a"
-    "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
+	"IMPORTED_LOCATION" "${binary_dir}/googlemock/gtest/libgtest.a"
+	"IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
 )
 include_directories("${source_dir}/googletest/include")
 
 include_directories(.)
 if(LIBUNWIND_FOUND)
-        add_definitions(-DUSE_LIBUNWIND)
+	add_definitions(-DUSE_LIBUNWIND)
 endif()
 
 add_library(pmemfile_test STATIC pmemfile_test.cpp)
@@ -76,12 +76,12 @@ add_check_whitespace(tests-core-test_bt ${CMAKE_CURRENT_SOURCE_DIR}/../test_back
 function(build_test name srcs)
 	add_cppstyle(tests-core-${name} ${CMAKE_CURRENT_SOURCE_DIR}/${srcs})
 	add_check_whitespace(tests-core-${name} ${CMAKE_CURRENT_SOURCE_DIR}/${srcs})
-        add_executable(${name} ${srcs})
-        target_link_libraries(${name} pmemfile-core_shared pmemfile_test test_backtrace libgtest)
-        if(LIBUNWIND_FOUND)
-                target_link_libraries(${name} ${LIBUNWIND_LIBRARIES} ${CMAKE_DL_LIBS})
-        endif()
-        add_dependencies(tests ${name})
+	add_executable(${name} ${srcs})
+	target_link_libraries(${name} pmemfile-core_shared pmemfile_test test_backtrace libgtest)
+	if(LIBUNWIND_FOUND)
+		target_link_libraries(${name} ${LIBUNWIND_LIBRARIES} ${CMAKE_DL_LIBS})
+	endif()
+	add_dependencies(tests ${name})
 endfunction()
 
 build_test(file_basic basic/basic.cpp)
@@ -95,24 +95,24 @@ build_test(file_stat stat/stat.cpp)
 build_test(file_symlinks symlinks/symlinks.cpp)
 
 function(add_test_generic name tracer)
-        set(vg_tracers memcheck helgrind drd pmemcheck)
+	set(vg_tracers memcheck helgrind drd pmemcheck)
 
-        if ((NOT VALGRIND_FOUND) AND ${tracer} IN_LIST vg_tracers)
-                add_test(NAME ${name}_${tracer}_SKIPPED_BECAUSE_OF_MISSING_VALGRIND
-                         COMMAND true)
-                return()
-        endif()
+	if ((NOT VALGRIND_FOUND) AND ${tracer} IN_LIST vg_tracers)
+		add_test(NAME ${name}_${tracer}_SKIPPED_BECAUSE_OF_MISSING_VALGRIND
+			COMMAND true)
+		return()
+	endif()
 
-        if(${tracer} STREQUAL pmemcheck)
-                if (VALGRIND_PMEMCHECK_NOT_FOUND)
-                        add_test(NAME ${name}_${tracer}_SKIPPED_BECAUSE_OF_MISSING_PMEMCHECK
-                                 COMMAND true)
-                        return()
-                endif()
-        endif()
+	if(${tracer} STREQUAL pmemcheck)
+		if (VALGRIND_PMEMCHECK_NOT_FOUND)
+			add_test(NAME ${name}_${tracer}_SKIPPED_BECAUSE_OF_MISSING_PMEMCHECK
+				COMMAND true)
+			return()
+		endif()
+	endif()
 
-        add_test(NAME ${name}_${tracer}
-                 COMMAND ${CMAKE_COMMAND}
+	add_test(NAME ${name}_${tracer}
+		COMMAND ${CMAKE_COMMAND}
 			${GLOBAL_TEST_ARGS}
 			-DTEST_NAME=${name}_${tracer}
 			-DSRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/${name}
@@ -122,17 +122,17 @@ function(add_test_generic name tracer)
 			${ARGV2}
 			-P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/test.cmake)
 
-        set_tests_properties(${name}_${tracer} PROPERTIES
-                ENVIRONMENT "LC_ALL=C;PATH=$ENV{PATH};${ARGV3}")
+	set_tests_properties(${name}_${tracer} PROPERTIES
+		ENVIRONMENT "LC_ALL=C;PATH=$ENV{PATH};${ARGV3}")
 endfunction()
 
 function(add_long_test_generic name tracer)
-        if (LONG_TESTS)
-                add_test_generic(${name} ${tracer} ${ARGN})
-        else()
-                add_test(NAME ${name}_${tracer}_SKIPPED_BECAUSE_LONG_TESTS_ARE_DISABLED
-                         COMMAND true)
-        endif()
+	if (LONG_TESTS)
+		add_test_generic(${name} ${tracer} ${ARGN})
+	else()
+		add_test(NAME ${name}_${tracer}_SKIPPED_BECAUSE_LONG_TESTS_ARE_DISABLED
+			COMMAND true)
+	endif()
 endfunction()
 
 add_test_generic(basic none)

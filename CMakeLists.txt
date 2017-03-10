@@ -58,22 +58,22 @@ if(NOT CMAKE_BUILD_TYPE)
 endif (NOT CMAKE_BUILD_TYPE)
 
 if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
-        execute_process(COMMAND git describe
-                        OUTPUT_VARIABLE SRCVERSION
-                        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-                        OUTPUT_STRIP_TRAILING_WHITESPACE
-                        ERROR_QUIET)
-        if(NOT SRCVERSION)
-                execute_process(COMMAND git log -1 --format=%h
-                                OUTPUT_VARIABLE SRCVERSION
-                                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-                                OUTPUT_STRIP_TRAILING_WHITESPACE)
-        endif()
+	execute_process(COMMAND git describe
+			OUTPUT_VARIABLE SRCVERSION
+			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+			OUTPUT_STRIP_TRAILING_WHITESPACE
+			ERROR_QUIET)
+	if(NOT SRCVERSION)
+		execute_process(COMMAND git log -1 --format=%h
+				OUTPUT_VARIABLE SRCVERSION
+				WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+				OUTPUT_STRIP_TRAILING_WHITESPACE)
+	endif()
 else()
-        execute_process(COMMAND cat .version
-                        OUTPUT_VARIABLE SRCVERSION
-                        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-                        OUTPUT_STRIP_TRAILING_WHITESPACE)
+	execute_process(COMMAND cat .version
+			OUTPUT_VARIABLE SRCVERSION
+			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+			OUTPUT_STRIP_TRAILING_WHITESPACE)
 endif()
 add_definitions(-DSRCVERSION="${SRCVERSION}")
 add_definitions(-DUSE_VALGRIND)
@@ -184,14 +184,14 @@ endif(DEVELOPER_MODE)
 add_executable(check_license EXCLUDE_FROM_ALL utils/check_license/check-license.c)
 
 function(add_cstyle name)
-        if(${ARGC} EQUAL 1)
-                add_custom_target(cstyle-${name}
-                        COMMAND ${CMAKE_SOURCE_DIR}/utils/cstyle ${CMAKE_CURRENT_SOURCE_DIR}/*.c ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
-        else()
-                add_custom_target(cstyle-${name}
-                        COMMAND ${CMAKE_SOURCE_DIR}/utils/cstyle ${ARGN})
-        endif()
-        add_dependencies(cstyle cstyle-${name})
+	if(${ARGC} EQUAL 1)
+		add_custom_target(cstyle-${name}
+			COMMAND ${CMAKE_SOURCE_DIR}/utils/cstyle ${CMAKE_CURRENT_SOURCE_DIR}/*.c ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
+	else()
+		add_custom_target(cstyle-${name}
+			COMMAND ${CMAKE_SOURCE_DIR}/utils/cstyle ${ARGN})
+	endif()
+	add_dependencies(cstyle cstyle-${name})
 endfunction()
 
 function(add_cppstyle name)
@@ -199,49 +199,49 @@ function(add_cppstyle name)
 		return()
 	endif()
 
-        if(${ARGC} EQUAL 1)
-                add_custom_target(cppstyle-${name}
-                        COMMAND ${CMAKE_SOURCE_DIR}/utils/cppstyle
+	if(${ARGC} EQUAL 1)
+		add_custom_target(cppstyle-${name}
+			COMMAND ${CMAKE_SOURCE_DIR}/utils/cppstyle
 				${CLANG_FORMAT}
 				check
 				${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
 				${CMAKE_CURRENT_SOURCE_DIR}/*.hpp
-                        )
-                add_custom_target(cppformat-${name}
-                        COMMAND ${CMAKE_SOURCE_DIR}/utils/cppstyle
+			)
+		add_custom_target(cppformat-${name}
+			COMMAND ${CMAKE_SOURCE_DIR}/utils/cppstyle
 				${CLANG_FORMAT}
 				format
 				${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
 				${CMAKE_CURRENT_SOURCE_DIR}/*.hpp
-                        )
-        else()
-                add_custom_target(cppstyle-${name}
-                        COMMAND ${CMAKE_SOURCE_DIR}/utils/cppstyle
+			)
+	else()
+		add_custom_target(cppstyle-${name}
+			COMMAND ${CMAKE_SOURCE_DIR}/utils/cppstyle
 				${CLANG_FORMAT}
 				check
 				${ARGN}
-                        )
-                add_custom_target(cppformat-${name}
-                        COMMAND ${CMAKE_SOURCE_DIR}/utils/cppstyle
+			)
+		add_custom_target(cppformat-${name}
+			COMMAND ${CMAKE_SOURCE_DIR}/utils/cppstyle
 				${CLANG_FORMAT}
 				format
 				${ARGN}
-                        )
-        endif()
+			)
+	endif()
 
-        add_dependencies(cppstyle cppstyle-${name})
-        add_dependencies(cppformat cppformat-${name})
+	add_dependencies(cppstyle cppstyle-${name})
+	add_dependencies(cppformat cppformat-${name})
 endfunction()
 
 function(add_check_whitespace name)
-        if(${ARGC} EQUAL 1)
-                add_custom_target(check-whitespace-${name}
-                        COMMAND ${CMAKE_SOURCE_DIR}/utils/check_whitespace ${CMAKE_CURRENT_SOURCE_DIR}/*.c ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
-        else()
-                add_custom_target(check-whitespace-${name}
-                        COMMAND ${CMAKE_SOURCE_DIR}/utils/check_whitespace ${ARGN})
-        endif()
-        add_dependencies(check-whitespace check-whitespace-${name})
+	if(${ARGC} EQUAL 1)
+		add_custom_target(check-whitespace-${name}
+			COMMAND ${CMAKE_SOURCE_DIR}/utils/check_whitespace ${CMAKE_CURRENT_SOURCE_DIR}/*.c ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
+	else()
+		add_custom_target(check-whitespace-${name}
+			COMMAND ${CMAKE_SOURCE_DIR}/utils/check_whitespace ${ARGN})
+	endif()
+	add_dependencies(check-whitespace check-whitespace-${name})
 endfunction()
 
 add_custom_target(checkers ALL)
@@ -250,24 +250,24 @@ add_custom_target(cppstyle)
 add_custom_target(cppformat)
 add_custom_target(check-whitespace)
 add_custom_target(check-license
-        COMMAND ${CMAKE_SOURCE_DIR}/utils/check_license/check-headers.sh
-                ${CMAKE_SOURCE_DIR}
-                ${CMAKE_BINARY_DIR}/check_license
-                ${CMAKE_SOURCE_DIR}/LICENSE
-                -a)
+	COMMAND ${CMAKE_SOURCE_DIR}/utils/check_license/check-headers.sh
+		${CMAKE_SOURCE_DIR}
+		${CMAKE_BINARY_DIR}/check_license
+		${CMAKE_SOURCE_DIR}/LICENSE
+		-a)
 add_dependencies(check-license check_license)
 add_cstyle(check_license ${CMAKE_SOURCE_DIR}/utils/check_license/*.c)
 add_check_whitespace(check_license ${CMAKE_SOURCE_DIR}/utils/check_license/*.c)
 
 add_custom_target(check-whitespace-main
-                  COMMAND ${CMAKE_SOURCE_DIR}/utils/check_whitespace
-                          ${CMAKE_SOURCE_DIR}/utils/check_license/*.sh
-                          ${CMAKE_SOURCE_DIR}/utils/*.sh
-                          ${CMAKE_SOURCE_DIR}/README.md
-                          ${CMAKE_SOURCE_DIR}/*.spec
-                          ${CMAKE_SOURCE_DIR}/debian/*
-                          ${CMAKE_SOURCE_DIR}/debian/*/*
-                          ${CMAKE_SOURCE_DIR}/doc/*.md)
+		COMMAND ${CMAKE_SOURCE_DIR}/utils/check_whitespace
+			${CMAKE_SOURCE_DIR}/utils/check_license/*.sh
+			${CMAKE_SOURCE_DIR}/utils/*.sh
+			${CMAKE_SOURCE_DIR}/README.md
+			${CMAKE_SOURCE_DIR}/*.spec
+			${CMAKE_SOURCE_DIR}/debian/*
+			${CMAKE_SOURCE_DIR}/debian/*/*
+			${CMAKE_SOURCE_DIR}/doc/*.md)
 add_dependencies(check-whitespace check-whitespace-main)
 
 add_custom_target(tests)
@@ -278,19 +278,19 @@ if(DEVELOPER_MODE)
 		message(WARNING "clang-format not found - C++ sources will not be checked")
 	endif()
 
-        add_dependencies(checkers cstyle)
-        add_dependencies(checkers cppstyle)
-        add_dependencies(checkers check-whitespace)
-        add_dependencies(checkers check-license)
+	add_dependencies(checkers cstyle)
+	add_dependencies(checkers cppstyle)
+	add_dependencies(checkers check-whitespace)
+	add_dependencies(checkers check-license)
 endif(DEVELOPER_MODE)
 
 configure_file(
-        "${CMAKE_CURRENT_SOURCE_DIR}/cmake_uninstall.cmake.in"
-        "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
-        IMMEDIATE @ONLY)
+	"${CMAKE_CURRENT_SOURCE_DIR}/cmake_uninstall.cmake.in"
+	"${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+	IMMEDIATE @ONLY)
 
 add_custom_target(uninstall
-        COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
+	COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
 
 if(PKG_CONFIG_FOUND)
 	pkg_check_modules(VALGRIND QUIET valgrind)
@@ -299,16 +299,16 @@ else()
 endif()
 
 if(VALGRIND_FOUND)
-        set(ENV{PATH} ${VALGRIND_PREFIX}/bin:$ENV{PATH})
-        execute_process(COMMAND valgrind --tool=pmemcheck --help
-                        RESULT_VARIABLE VALGRIND_PMEMCHECK_NOT_FOUND
-                        OUTPUT_QUIET
-                        ERROR_QUIET)
-        if(VALGRIND_PMEMCHECK_NOT_FOUND)
-                message(WARNING "Valgrind pmemcheck NOT found. Pmemcheck tests will not be performed.")
-        endif()
+	set(ENV{PATH} ${VALGRIND_PREFIX}/bin:$ENV{PATH})
+	execute_process(COMMAND valgrind --tool=pmemcheck --help
+			RESULT_VARIABLE VALGRIND_PMEMCHECK_NOT_FOUND
+			OUTPUT_QUIET
+			ERROR_QUIET)
+	if(VALGRIND_PMEMCHECK_NOT_FOUND)
+		message(WARNING "Valgrind pmemcheck NOT found. Pmemcheck tests will not be performed.")
+	endif()
 else()
-        message(WARNING "Valgrind not found. Valgrind tests will not be performed.")
+	message(WARNING "Valgrind not found. Valgrind tests will not be performed.")
 endif()
 
 if(PKG_CONFIG_FOUND)
@@ -317,13 +317,13 @@ else()
 	find_package(LIBUNWIND QUIET)
 endif()
 if(NOT LIBUNWIND_FOUND)
-        message(WARNING "libunwind not found. Any stack traces from tests will not be reliable")
+	message(WARNING "libunwind not found. Any stack traces from tests will not be reliable")
 endif()
 
 if(TEST_DIR)
-        enable_testing()
+	enable_testing()
 else()
-        message(WARNING "TEST_DIR is empty - 'make test' will not work")
+	message(WARNING "TEST_DIR is empty - 'make test' will not work")
 endif()
 
 add_subdirectory(src/libpmemfile-core)

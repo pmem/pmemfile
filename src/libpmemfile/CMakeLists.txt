@@ -30,9 +30,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 set(SOURCES
-        fd_pool.c
-        path_resolve.c
-        preload.c
+	fd_pool.c
+	path_resolve.c
+	preload.c
 )
 
 add_c_flag(-Wmissing-field-initializers)
@@ -69,25 +69,25 @@ set_target_properties(pmemfile_shared PROPERTIES OUTPUT_NAME pmemfile)
 set_target_properties(pmemfile_shared PROPERTIES VERSION ${VERSION} SOVERSION ${VERSION_MAJOR})
 
 add_custom_command(OUTPUT libpmemfile.a
-                   COMMAND objcopy --localize-hidden `sed -n "'s/^\\s*\\([a-zA-Z0-9_]*\\);$$/-G \\1/p'" ${CMAKE_CURRENT_SOURCE_DIR}/libpmemfile.map` libpmemfile_unscoped.a libpmemfile.a
-                   DEPENDS pmemfile_static_unscoped)
+		COMMAND objcopy --localize-hidden `sed -n "'s/^\\s*\\([a-zA-Z0-9_]*\\);$$/-G \\1/p'" ${CMAKE_CURRENT_SOURCE_DIR}/libpmemfile.map` libpmemfile_unscoped.a libpmemfile.a
+		DEPENDS pmemfile_static_unscoped)
 add_custom_target(pmemfile_static ALL DEPENDS libpmemfile.a)
 
 install(TARGETS pmemfile_shared LIBRARY
-        CONFIGURATIONS Release None
-        DESTINATION ${CMAKE_INSTALL_LIBDIR})
+	CONFIGURATIONS Release None
+	DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 install(TARGETS pmemfile_shared LIBRARY
-        CONFIGURATIONS Debug
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/pmemfile_debug)
+	CONFIGURATIONS Debug
+	DESTINATION ${CMAKE_INSTALL_LIBDIR}/pmemfile_debug)
 
 #install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libpmemfile.a
-#        CONFIGURATIONS Release None
-#        DESTINATION ${CMAKE_INSTALL_LIBDIR})
+#	CONFIGURATIONS Release None
+#	DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 #install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libpmemfile.a
-#        CONFIGURATIONS Debug
-#        DESTINATION ${CMAKE_INSTALL_LIBDIR}/pmemfile_debug)
+#	CONFIGURATIONS Debug
+#	DESTINATION ${CMAKE_INSTALL_LIBDIR}/pmemfile_debug)
 
 add_cstyle(pmemfile)
 add_check_whitespace(pmemfile)

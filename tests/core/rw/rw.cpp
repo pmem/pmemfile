@@ -500,6 +500,37 @@ TEST_F(rw, sparse_files)
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
 }
 
+TEST_F(rw, failed_write)
+{
+	char buf[256];
+	ssize_t r;
+
+	PMEMfile *f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT |
+			PMEMFILE_O_EXCL | PMEMFILE_O_RDWR, 0644);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+
+	ASSERT_EQ(pmemfile_write(pfp, f, "test", 5), 5);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_SET), 0);
+
+	/*
+	 * Writing from an uninitialized buffer.
+	 * The write should fail during allocation in pmemfile, before ever
+	 * accessing the contents of the buffer - since the requested write size
+	 * is larger than the pool size.
+	 */
+	ASSERT_EQ(pmemfile_write(pfp, f, buf, 1024 * 1024 * 1024), -1);
+
+	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 5);
+
+	r = pmemfile_read(pfp, f, buf, 5);
+	ASSERT_EQ(r, 5) << COND_ERROR(r);
+	ASSERT_EQ(memcmp(buf, "test", 5), 0);
+
+	pmemfile_close(pfp, f);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
+}
+
 int
 main(int argc, char *argv[])
 {

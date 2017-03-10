@@ -66,13 +66,13 @@ TEST_F(permissions, chmod)
 	 * Adding group or other permissions should not change anything
 	 * WRT permission checks.
 	 */
-	for (mode_t m : {0, PMEMFILE_S_IRGRP | PMEMFILE_S_IWGRP,
-			 PMEMFILE_S_IROTH | PMEMFILE_S_IWOTH}) {
+	for (auto m : {0, PMEMFILE_S_IRGRP | PMEMFILE_S_IWGRP,
+		       PMEMFILE_S_IROTH | PMEMFILE_S_IWOTH}) {
 		SCOPED_TRACE(m);
 
 		/* chmod u+rw */
 		ASSERT_EQ(pmemfile_chmod(pfp, "/aaa", PMEMFILE_S_IRUSR |
-						 PMEMFILE_S_IWUSR | m),
+						 PMEMFILE_S_IWUSR | (mode_t)m),
 			  0)
 			<< strerror(errno);
 		ASSERT_EQ(pmemfile_stat(pfp, "/aaa", &statbuf), 0);
@@ -95,12 +95,12 @@ TEST_F(permissions, chmod)
 		pmemfile_close(pfp, f);
 	}
 
-	for (mode_t m : {0, PMEMFILE_S_IRGRP | PMEMFILE_S_IWGRP,
-			 PMEMFILE_S_IROTH | PMEMFILE_S_IWOTH}) {
+	for (auto m : {0, PMEMFILE_S_IRGRP | PMEMFILE_S_IWGRP,
+		       PMEMFILE_S_IROTH | PMEMFILE_S_IWOTH}) {
 		SCOPED_TRACE(m);
 
 		/* chmod u+r */
-		ASSERT_EQ(pmemfile_chmod(pfp, "/aaa", S_IRUSR | m), 0)
+		ASSERT_EQ(pmemfile_chmod(pfp, "/aaa", S_IRUSR | (mode_t)m), 0)
 			<< strerror(errno);
 		ASSERT_EQ(pmemfile_stat(pfp, "/aaa", &statbuf), 0);
 		EXPECT_EQ(statbuf.st_mode & PMEMFILE_ALLPERMS,
@@ -122,12 +122,14 @@ TEST_F(permissions, chmod)
 		EXPECT_EQ(errno, EACCES);
 	}
 
-	for (mode_t m : {0, PMEMFILE_S_IRGRP | PMEMFILE_S_IWGRP,
-			 PMEMFILE_S_IROTH | PMEMFILE_S_IWOTH}) {
+	for (auto m : {0, PMEMFILE_S_IRGRP | PMEMFILE_S_IWGRP,
+		       PMEMFILE_S_IROTH | PMEMFILE_S_IWOTH}) {
 		SCOPED_TRACE(m);
 
 		/* chmod u+w */
-		ASSERT_EQ(pmemfile_chmod(pfp, "/aaa", PMEMFILE_S_IWUSR | m), 0)
+		ASSERT_EQ(pmemfile_chmod(pfp, "/aaa",
+					 PMEMFILE_S_IWUSR | (mode_t)m),
+			  0)
 			<< strerror(errno);
 		ASSERT_EQ(pmemfile_stat(pfp, "/aaa", &statbuf), 0);
 		EXPECT_EQ(statbuf.st_mode & PMEMFILE_ALLPERMS,

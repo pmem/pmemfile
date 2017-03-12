@@ -73,7 +73,6 @@
 		pmemfile_link;
 		pmemfile_linkat;
 		pmemfile_lseek;
-		pmemfile_lseek64;
 		pmemfile_lstat;
 		pmemfile_lstat;
 		pmemfile_lutimes;

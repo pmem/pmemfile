@@ -195,11 +195,6 @@ ssize_t pmemfile_read(PMEMfilepool *pfp, PMEMfile *file, void *buf,
 off_t pmemfile_lseek(PMEMfilepool *pfp, PMEMfile *file, off_t offset,
 		int whence);
 
-#ifdef __off64_t_defined
-off64_t pmemfile_lseek64(PMEMfilepool *pfp, PMEMfile *file, off64_t offset,
-		int whence);
-#endif
-
 ssize_t pmemfile_pwrite(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 		size_t count, off_t offset);
 

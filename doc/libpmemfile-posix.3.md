@@ -187,11 +187,6 @@ ssize_t pmemfile_pwritev(PMEMfilepool *pfp, PMEMfile *file, const struct iovec *
 off_t pmemfile_lseek(PMEMfilepool *pfp, PMEMfile *file, off_t offset,
                 int whence);
 
-#ifdef __off64_t_defined
-off64_t pmemfile_lseek64(PMEMfilepool *pfp, PMEMfile *file, off64_t offset,
-                int whence);
-#endif
-
 int pmemfile_truncate(PMEMfilepool *pfp, const char *path, off_t length);
 int pmemfile_ftruncate(PMEMfilepool *pfp, PMEMfile *file, off_t length);
 ```

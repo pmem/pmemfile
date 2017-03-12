@@ -785,11 +785,11 @@ pmemfile_read(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count)
 }
 
 /*
- * lseek64_seek_data -- part of the lseek implementation
+ * lseek_seek_data -- part of the lseek implementation
  * Looks for data (not a hole), starting at the specified offset.
  */
 static off64_t
-lseek64_seek_data(struct pmemfile_vinode *vinode, off64_t offset, off64_t fsize)
+lseek_seek_data(struct pmemfile_vinode *vinode, off64_t offset, off64_t fsize)
 {
 	if (vinode->blocks == NULL)
 		vinode_rebuild_block_tree(vinode);
@@ -815,11 +815,11 @@ lseek64_seek_data(struct pmemfile_vinode *vinode, off64_t offset, off64_t fsize)
 }
 
 /*
- * lseek64_seek_hole -- part of the lseek implementation
+ * lseek_seek_hole -- part of the lseek implementation
  * Looks for a hole, starting at the specified offset.
  */
 static off64_t
-lseek64_seek_hole(struct pmemfile_vinode *vinode, off64_t offset, off64_t fsize)
+lseek_seek_hole(struct pmemfile_vinode *vinode, off64_t offset, off64_t fsize)
 {
 	if (vinode->blocks == NULL)
 		vinode_rebuild_block_tree(vinode);
@@ -846,11 +846,11 @@ lseek64_seek_hole(struct pmemfile_vinode *vinode, off64_t offset, off64_t fsize)
 }
 
 /*
- * lseek64_seek_data_or_hole -- part of the lseek implementation
+ * lseek_seek_data_or_hole -- part of the lseek implementation
  * Expects the vinode to be locked while being called.
  */
 static off64_t
-lseek64_seek_data_or_hole(struct pmemfile_vinode *vinode, off64_t offset,
+lseek_seek_data_or_hole(struct pmemfile_vinode *vinode, off64_t offset,
 			int whence)
 {
 	ssize_t fsize = (off64_t)vinode->inode->size;
@@ -865,10 +865,10 @@ lseek64_seek_data_or_hole(struct pmemfile_vinode *vinode, off64_t offset,
 		offset = 0;
 
 	if (whence == PMEMFILE_SEEK_DATA) {
-		offset = lseek64_seek_data(vinode, offset, fsize);
+		offset = lseek_seek_data(vinode, offset, fsize);
 	} else {
 		ASSERT(whence == PMEMFILE_SEEK_HOLE);
-		offset = lseek64_seek_hole(vinode, offset, fsize);
+		offset = lseek_seek_hole(vinode, offset, fsize);
 	}
 
 	if (offset > fsize)
@@ -878,10 +878,10 @@ lseek64_seek_data_or_hole(struct pmemfile_vinode *vinode, off64_t offset,
 }
 
 /*
- * pmemfile_lseek64 -- changes file current offset
+ * pmemfile_lseek_locked -- changes file current offset
  */
 static off64_t
-pmemfile_lseek64_locked(PMEMfilepool *pfp, PMEMfile *file, off64_t offset,
+pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, off64_t offset,
 		int whence)
 {
 	(void) pfp;
@@ -925,7 +925,7 @@ pmemfile_lseek64_locked(PMEMfilepool *pfp, PMEMfile *file, off64_t offset,
 		case PMEMFILE_SEEK_DATA:
 		case PMEMFILE_SEEK_HOLE:
 			os_rwlock_rdlock(&vinode->rwlock);
-			ret = lseek64_seek_data_or_hole(vinode, offset, whence);
+			ret = lseek_seek_data_or_hole(vinode, offset, whence);
 			if (ret < 0) {
 				new_errno = (int)-ret;
 				ret = -1;
@@ -951,27 +951,19 @@ pmemfile_lseek64_locked(PMEMfilepool *pfp, PMEMfile *file, off64_t offset,
 }
 
 /*
- * pmemfile_lseek64 -- changes file current offset
- */
-off64_t
-pmemfile_lseek64(PMEMfilepool *pfp, PMEMfile *file, off64_t offset, int whence)
-{
-	off64_t ret;
-
-	os_mutex_lock(&file->mutex);
-	ret = pmemfile_lseek64_locked(pfp, file, offset, whence);
-	os_mutex_unlock(&file->mutex);
-
-	return ret;
-}
-
-/*
  * pmemfile_lseek -- changes file current offset
  */
 off_t
 pmemfile_lseek(PMEMfilepool *pfp, PMEMfile *file, off_t offset, int whence)
 {
-	return pmemfile_lseek64(pfp, file, offset, whence);
+	COMPILE_ERROR_ON(sizeof(offset) != 8);
+	off_t ret;
+
+	os_mutex_lock(&file->mutex);
+	ret = pmemfile_lseek_locked(pfp, file, offset, whence);
+	os_mutex_unlock(&file->mutex);
+
+	return ret;
 }
 
 ssize_t
@@ -984,7 +976,7 @@ pmemfile_pread(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count,
 
 	size_t cur_off = file->offset;
 
-	if (pmemfile_lseek64_locked(pfp, file, offset, PMEMFILE_SEEK_SET) !=
+	if (pmemfile_lseek_locked(pfp, file, offset, PMEMFILE_SEEK_SET) !=
 			offset) {
 		ret = -1;
 		goto end;
@@ -1010,7 +1002,7 @@ pmemfile_pwrite(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 
 	size_t cur_off = file->offset;
 
-	if (pmemfile_lseek64_locked(pfp, file, offset, PMEMFILE_SEEK_SET) !=
+	if (pmemfile_lseek_locked(pfp, file, offset, PMEMFILE_SEEK_SET) !=
 			offset) {
 		ret = -1;
 		goto end;

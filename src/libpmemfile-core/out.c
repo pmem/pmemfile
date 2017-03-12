@@ -39,10 +39,19 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <limits.h>
 #include <string.h>
 #include <errno.h>
+
+#ifdef DEBUG
+#ifndef _WIN32
+#include <unistd.h>
+#define os_getpid getpid
+#else
+#include <process.h>
+#define os_getpid _getpid
+#endif
+#endif
 
 #include "os_thread.h"
 #include "out.h"
@@ -125,7 +134,7 @@ getexecname(void)
 #ifndef _WIN32
 	char procpath[PATH_MAX];
 
-	snprintf(procpath, PATH_MAX, "/proc/%d/exe", getpid());
+	snprintf(procpath, PATH_MAX, "/proc/%d/exe", os_getpid());
 
 	if ((cc = readlink(procpath, namepath, PATH_MAX)) < 0)
 #else
@@ -195,7 +204,7 @@ out_init(const char *log_prefix, const char *log_level_var,
 
 		if (cc > 0 && log_file[cc - 1] == '-') {
 			snprintf(log_file_pid, cc + 30, "%s%d",
-				log_file, getpid());
+				log_file, os_getpid());
 			log_file = log_file_pid;
 		}
 		if ((Out_fp = fopen(log_file, "w")) == NULL) {
@@ -222,7 +231,7 @@ out_init(const char *log_prefix, const char *log_level_var,
 		setvbuf(Out_fp, NULL, _IOLBF, 0);
 
 #ifdef DEBUG
-	LOG(1, "pid %d: program: %s", getpid(), getexecname());
+	LOG(1, "pid %d: program: %s", os_getpid(), getexecname());
 #endif
 	LOG(1, "%s version %d.%d", log_prefix, major_version, minor_version);
 	LOG(1, "src version %s", nvml_src_version);

@@ -184,6 +184,9 @@ typedef blkcnt64_t pmemfile_blkcnt_t;
 typedef dev_t pmemfile_dev_t;
 typedef ino64_t pmemfile_ino_t;
 
+typedef struct timespec pmemfile_timespec_t;
+typedef struct stat pmemfile_stat_t;
+
 #define PMEMFILE_AT_CWD ((PMEMfile *)(((unsigned char *)0) - 1))
 
 PMEMfilepool *pmemfile_mkfs(const char *pathname, size_t poolsize,
@@ -229,11 +232,11 @@ pmemfile_ssize_t pmemfile_pwrite(PMEMfilepool *pfp, PMEMfile *file,
 pmemfile_ssize_t pmemfile_pread(PMEMfilepool *pfp, PMEMfile *file, void *buf,
 		size_t count, pmemfile_off_t offset);
 
-int pmemfile_stat(PMEMfilepool *, const char *path, struct stat *buf);
-int pmemfile_lstat(PMEMfilepool *, const char *path, struct stat *buf);
-int pmemfile_fstat(PMEMfilepool *, PMEMfile *file, struct stat *buf);
+int pmemfile_stat(PMEMfilepool *, const char *path, pmemfile_stat_t *buf);
+int pmemfile_lstat(PMEMfilepool *, const char *path, pmemfile_stat_t *buf);
+int pmemfile_fstat(PMEMfilepool *, PMEMfile *file, pmemfile_stat_t *buf);
 int pmemfile_fstatat(PMEMfilepool *, PMEMfile *dir, const char *path,
-		struct stat *buf, int flags);
+		pmemfile_stat_t *buf, int flags);
 
 struct linux_dirent;
 struct linux_dirent64;

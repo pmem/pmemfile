@@ -69,7 +69,7 @@ get_stat(struct resolved_path *result, struct stat *buf)
 		int r = pmemfile_fstatat(result->at.pmem_fda.pool->pool,
 			result->at.pmem_fda.file,
 			result->path,
-			buf,
+			(pmemfile_stat_t *)buf,
 			AT_SYMLINK_NOFOLLOW);
 
 		if (r == 0) {

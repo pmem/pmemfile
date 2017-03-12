@@ -48,7 +48,7 @@ protected:
 	pmemfile_blkcnt_t
 	stat_block_count(PMEMfile *f)
 	{
-		struct stat stat_buf;
+		pmemfile_stat_t stat_buf;
 
 		if (pmemfile_fstat(pfp, f, &stat_buf) != 0) {
 			perror("stat_block_count");

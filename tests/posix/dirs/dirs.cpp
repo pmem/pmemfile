@@ -46,15 +46,16 @@ public:
 };
 
 static const char *
-timespec_to_str(const struct timespec *t)
+timespec_to_str(const pmemfile_timespec_t *t)
 {
-	char *s = asctime(localtime(&t->tv_sec));
+	time_t sec = t->tv_sec;
+	char *s = asctime(localtime(&sec));
 	s[strlen(s) - 1] = 0;
 	return s;
 }
 
 static void
-dump_stat(struct stat *st, const char *path)
+dump_stat(pmemfile_stat_t *st, const char *path)
 {
 	T_OUT("path:       %s\n", path);
 	T_OUT("st_dev:     0x%lx\n", st->st_dev);
@@ -123,7 +124,7 @@ list_files(PMEMfilepool *pfp, const char *dir, size_t expected_files,
 			      d->d_name);
 			sprintf(path, "/%s/%s", dir, d->d_name);
 
-			struct stat st;
+			pmemfile_stat_t st;
 			int ret = pmemfile_stat(pfp, path, &st);
 			VAL_EXPECT_EQ(ret, 0);
 			dump_stat(&st, path);
@@ -336,7 +337,7 @@ TEST_F(dirs, mkdirat)
 	ASSERT_EQ(pmemfile_mkdirat(pfp, dir, "../external", PMEMFILE_S_IRWXU),
 		  0);
 
-	struct stat statbuf;
+	pmemfile_stat_t statbuf;
 	ASSERT_EQ(pmemfile_stat(pfp, "/dir/internal", &statbuf), 0);
 	ASSERT_EQ(PMEMFILE_S_ISDIR(statbuf.st_mode), 1);
 	ASSERT_EQ(pmemfile_stat(pfp, "/external", &statbuf), 0);
@@ -561,7 +562,7 @@ TEST_F(dirs, chdir_getcwd)
 
 TEST_F(dirs, relative_paths)
 {
-	struct stat stat;
+	pmemfile_stat_t stat;
 
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
 	ASSERT_EQ(pmemfile_chdir(pfp, "/dir1"), 0);
@@ -702,7 +703,7 @@ TEST_F(dirs, file_renames)
 static bool
 is_owned(PMEMfilepool *pfp, const char *path, pmemfile_uid_t owner)
 {
-	struct stat st;
+	pmemfile_stat_t st;
 	memset(&st, 0xff, sizeof(st));
 
 	int r = pmemfile_lstat(pfp, path, &st);
@@ -846,7 +847,7 @@ static bool
 test_file_info(PMEMfilepool *pfp, const char *path, pmemfile_nlink_t nlink,
 	       pmemfile_ino_t ino)
 {
-	struct stat st;
+	pmemfile_stat_t st;
 	memset(&st, 0, sizeof(st));
 
 	int r = pmemfile_lstat(pfp, path, &st);
@@ -873,7 +874,7 @@ TEST_F(dirs, linkat)
 	ASSERT_TRUE(
 		test_pmemfile_create(pfp, "/dir2/file2", 0, PMEMFILE_S_IRWXU));
 
-	struct stat st_file1, st_file2, st_file1_sym;
+	pmemfile_stat_t st_file1, st_file2, st_file1_sym;
 	ASSERT_EQ(pmemfile_lstat(pfp, "/dir1/file1", &st_file1), 0);
 	ASSERT_EQ(pmemfile_lstat(pfp, "/dir2/file2", &st_file2), 0);
 
@@ -1024,7 +1025,7 @@ TEST_F(dirs, O_PATH)
 
 	pmemfile_close(pfp, file2);
 
-	struct stat st;
+	pmemfile_stat_t st;
 
 	memset(&st, 0xff, sizeof(st));
 	ASSERT_EQ(pmemfile_fstat(pfp, file, &st), 0);

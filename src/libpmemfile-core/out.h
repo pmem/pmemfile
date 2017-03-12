@@ -70,7 +70,8 @@
 
 #else
 
-static __attribute__((always_inline)) inline void
+static __attribute__((always_inline)) __attribute__((format(printf, 5, 6)))
+inline void
 out_log_discard(const char *file, int line, const char *func, int level,
 		const char *fmt, ...)
 {
@@ -81,14 +82,16 @@ out_log_discard(const char *file, int line, const char *func, int level,
 	(void) fmt;
 }
 
-static __attribute__((always_inline)) inline void
+static __attribute__((always_inline)) __attribute__((format(printf, 2, 3)))
+inline void
 out_nonl_discard(int level, const char *fmt, ...)
 {
 	(void) level;
 	(void) fmt;
 }
 
-static __attribute__((always_inline)) OUT_FATAL_DISCARD_NORETURN inline void
+static __attribute__((always_inline)) __attribute__((format(printf, 4, 5)))
+OUT_FATAL_DISCARD_NORETURN inline void
 out_fatal_discard(const char *file, int line, const char *func,
 		const char *fmt, ...)
 {
@@ -98,7 +101,8 @@ out_fatal_discard(const char *file, int line, const char *func,
 	(void) fmt;
 }
 
-static __attribute__((always_inline)) __attribute__((noreturn)) inline void
+static __attribute__((always_inline)) __attribute__((format(printf, 4, 5)))
+__attribute__((noreturn)) inline void
 out_fatal_abort(const char *file, int line, const char *func,
 		const char *fmt, ...)
 {

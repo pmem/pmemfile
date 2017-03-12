@@ -100,7 +100,9 @@ TEST_F(permissions, chmod)
 		SCOPED_TRACE(m);
 
 		/* chmod u+r */
-		ASSERT_EQ(pmemfile_chmod(pfp, "/aaa", S_IRUSR | (mode_t)m), 0)
+		ASSERT_EQ(pmemfile_chmod(pfp, "/aaa",
+					 PMEMFILE_S_IRUSR | (mode_t)m),
+			  0)
 			<< strerror(errno);
 		ASSERT_EQ(pmemfile_stat(pfp, "/aaa", &statbuf), 0);
 		EXPECT_EQ(statbuf.st_mode & PMEMFILE_ALLPERMS,

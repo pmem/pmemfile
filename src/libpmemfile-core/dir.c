@@ -102,6 +102,17 @@ component_length(const char *path)
 	return (uintptr_t)slash - (uintptr_t)path;
 }
 
+#ifdef DEBUG
+static inline char *
+util_strndup(const char *c, size_t len)
+{
+	char *cp = malloc(len + 1);
+	memcpy(cp, c, len);
+	cp[len] = 0;
+	return cp;
+}
+#endif
+
 /*
  * vinode_set_debug_path_locked -- (internal) sets full path in runtime
  * structures of child_inode based on parent inode and name.
@@ -124,7 +135,7 @@ vinode_set_debug_path_locked(PMEMfilepool *pfp,
 		return;
 
 	if (parent_vinode == NULL) {
-		child_vinode->path = strndup(name, namelen);
+		child_vinode->path = util_strndup(name, namelen);
 		return;
 	}
 

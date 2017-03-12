@@ -44,22 +44,22 @@ struct pmemfile_inode_map;
 
 struct pmemfile_cred {
 	/* real user id */
-	uid_t ruid;
+	pmemfile_uid_t ruid;
 	/* real group id */
-	gid_t rgid;
+	pmemfile_gid_t rgid;
 
 	/* effective user id */
-	uid_t euid;
+	pmemfile_uid_t euid;
 	/* effective group id */
-	gid_t egid;
+	pmemfile_gid_t egid;
 
 	/* filesystem user id */
-	uid_t fsuid;
+	pmemfile_uid_t fsuid;
 	/* filesystem group id */
-	gid_t fsgid;
+	pmemfile_gid_t fsgid;
 
 	/* supplementary group IDs */
-	gid_t *groups;
+	pmemfile_gid_t *groups;
 	size_t groupsnum;
 
 	/* capabilities */
@@ -104,6 +104,6 @@ bool vinode_can_access(const struct pmemfile_cred *cred,
 bool _vinode_can_access(const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *vinode, int acc);
 
-bool gid_in_list(const struct pmemfile_cred *cred, gid_t gid);
+bool gid_in_list(const struct pmemfile_cred *cred, pmemfile_gid_t gid);
 
 #endif

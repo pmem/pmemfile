@@ -121,7 +121,7 @@ TEST_F(stat_test, 1)
 	memset(buf, 0xdd, 1024);
 
 	for (int i = 0; i < 100; ++i) {
-		ssize_t written = pmemfile_write(pfp, f, buf, 1024);
+		pmemfile_ssize_t written = pmemfile_write(pfp, f, buf, 1024);
 		ASSERT_EQ(written, 1024) << COND_ERROR(written);
 	}
 

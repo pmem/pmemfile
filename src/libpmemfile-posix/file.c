@@ -175,7 +175,7 @@ check_flags(int flags)
 static struct pmemfile_vinode *
 create_file(PMEMfilepool *pfp, struct pmemfile_cred *cred, const char *filename,
 		size_t namelen, struct pmemfile_vinode *parent_vinode,
-		int flags, mode_t mode)
+		int flags, pmemfile_mode_t mode)
 {
 	rwlock_tx_wlock(&parent_vinode->rwlock);
 
@@ -255,11 +255,11 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	va_list ap;
 	va_start(ap, flags);
-	mode_t mode = 0;
+	pmemfile_mode_t mode = 0;
 
 	/* NOTE: O_TMPFILE contains O_DIRECTORY */
 	if ((flags & PMEMFILE_O_CREAT) || is_tmpfile(flags)) {
-		mode = va_arg(ap, mode_t);
+		mode = va_arg(ap, pmemfile_mode_t);
 		LOG(LDBG, "mode %o", mode);
 		mode &= PMEMFILE_ALLPERMS;
 	}
@@ -437,9 +437,9 @@ pmemfile_openat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 
 	va_list ap;
 	va_start(ap, flags);
-	mode_t mode = 0;
+	pmemfile_mode_t mode = 0;
 	if ((flags & PMEMFILE_O_CREAT) || is_tmpfile(flags))
-		mode = va_arg(ap, mode_t);
+		mode = va_arg(ap, pmemfile_mode_t);
 	va_end(ap);
 
 	struct pmemfile_vinode *at;
@@ -463,16 +463,16 @@ pmemfile_open(PMEMfilepool *pfp, const char *pathname, int flags, ...)
 {
 	va_list ap;
 	va_start(ap, flags);
-	mode_t mode = 0;
+	pmemfile_mode_t mode = 0;
 	if ((flags & PMEMFILE_O_CREAT) || is_tmpfile(flags))
-		mode = va_arg(ap, mode_t);
+		mode = va_arg(ap, pmemfile_mode_t);
 	va_end(ap);
 
 	return pmemfile_openat(pfp, PMEMFILE_AT_CWD, pathname, flags, mode);
 }
 
 PMEMfile *
-pmemfile_create(PMEMfilepool *pfp, const char *pathname, mode_t mode)
+pmemfile_create(PMEMfilepool *pfp, const char *pathname, pmemfile_mode_t mode)
 {
 	return pmemfile_open(pfp, pathname, PMEMFILE_O_CREAT |
 			PMEMFILE_O_WRONLY | PMEMFILE_O_TRUNC, mode);
@@ -1179,7 +1179,7 @@ pmemfile_symlink(PMEMfilepool *pfp, const char *target, const char *linkpath)
 	return pmemfile_symlinkat(pfp, target, PMEMFILE_AT_CWD, linkpath);
 }
 
-static ssize_t
+static pmemfile_ssize_t
 _pmemfile_readlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		const char *pathname, char *buf, size_t bufsiz)
 {
@@ -1188,7 +1188,7 @@ _pmemfile_readlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		return -1;
 
 	int error = 0;
-	ssize_t ret = -1;
+	pmemfile_ssize_t ret = -1;
 	struct pmemfile_vinode *vinode = NULL;
 	struct pmemfile_path_info info;
 	resolve_pathat(pfp, &cred, dir, pathname, &info, 0);
@@ -1224,7 +1224,7 @@ _pmemfile_readlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	if (len > bufsiz)
 		len = bufsiz;
 	memcpy(buf, data, len);
-	ret = (ssize_t)len;
+	ret = (pmemfile_ssize_t)len;
 
 	os_rwlock_unlock(&vinode->rwlock);
 
@@ -1243,7 +1243,7 @@ end:
 	return ret;
 }
 
-ssize_t
+pmemfile_ssize_t
 pmemfile_readlinkat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 		char *buf, size_t bufsiz)
 {
@@ -1257,7 +1257,8 @@ pmemfile_readlinkat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 
 	at = pool_get_dir_for_path(pfp, dir, pathname, &at_unref);
 
-	ssize_t ret = _pmemfile_readlinkat(pfp, at, pathname, buf, bufsiz);
+	pmemfile_ssize_t ret =
+			_pmemfile_readlinkat(pfp, at, pathname, buf, bufsiz);
 
 	if (at_unref)
 		vinode_cleanup(pfp, at, ret < 0);
@@ -1265,7 +1266,7 @@ pmemfile_readlinkat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 	return ret;
 }
 
-ssize_t
+pmemfile_ssize_t
 pmemfile_readlink(PMEMfilepool *pfp, const char *pathname, char *buf,
 		size_t bufsiz)
 {
@@ -1339,11 +1340,12 @@ pmemfile_stats(PMEMfilepool *pfp, struct pmemfile_stats *stats)
 }
 
 static int
-vinode_chmod(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, mode_t mode)
+vinode_chmod(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+		pmemfile_mode_t mode)
 {
 	struct pmemfile_inode *inode = vinode->inode;
 	int error = 0;
-	uid_t fsuid;
+	pmemfile_uid_t fsuid;
 	int cap;
 
 	os_rwlock_rdlock(&pfp->cred_rwlock);
@@ -1373,7 +1375,7 @@ vinode_chmod(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, mode_t mode)
 
 static int
 _pmemfile_fchmodat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
-		const char *path, mode_t mode, int flags)
+		const char *path, pmemfile_mode_t mode, int flags)
 {
 	mode &= PMEMFILE_ALLPERMS;
 
@@ -1427,7 +1429,7 @@ end:
 
 int
 pmemfile_fchmodat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
-	mode_t mode, int flags)
+		pmemfile_mode_t mode, int flags)
 {
 	struct pmemfile_vinode *at;
 	bool at_unref;
@@ -1448,13 +1450,13 @@ pmemfile_fchmodat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 }
 
 int
-pmemfile_chmod(PMEMfilepool *pfp, const char *path, mode_t mode)
+pmemfile_chmod(PMEMfilepool *pfp, const char *path, pmemfile_mode_t mode)
 {
 	return pmemfile_fchmodat(pfp, PMEMFILE_AT_CWD, path, mode, 0);
 }
 
 int
-pmemfile_fchmod(PMEMfilepool *pfp, PMEMfile *file, mode_t mode)
+pmemfile_fchmod(PMEMfilepool *pfp, PMEMfile *file, pmemfile_mode_t mode)
 {
 	if (!file) {
 		errno = EBADF;
@@ -1472,22 +1474,22 @@ pmemfile_fchmod(PMEMfilepool *pfp, PMEMfile *file, mode_t mode)
 }
 
 int
-pmemfile_setreuid(PMEMfilepool *pfp, uid_t ruid, uid_t euid)
+pmemfile_setreuid(PMEMfilepool *pfp, pmemfile_uid_t ruid, pmemfile_uid_t euid)
 {
-	if (ruid != (uid_t)-1 && ruid > INT_MAX) {
+	if (ruid != (pmemfile_uid_t)-1 && ruid > INT_MAX) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	if (euid != (uid_t)-1 && euid > INT_MAX) {
+	if (euid != (pmemfile_uid_t)-1 && euid > INT_MAX) {
 		errno = EINVAL;
 		return -1;
 	}
 
 	os_rwlock_wrlock(&pfp->cred_rwlock);
-	if (ruid != (uid_t)-1)
+	if (ruid != (pmemfile_uid_t)-1)
 		pfp->cred.ruid = ruid;
-	if (euid != (uid_t)-1) {
+	if (euid != (pmemfile_uid_t)-1) {
 		pfp->cred.euid = euid;
 		pfp->cred.fsuid = euid;
 	}
@@ -1497,22 +1499,22 @@ pmemfile_setreuid(PMEMfilepool *pfp, uid_t ruid, uid_t euid)
 }
 
 int
-pmemfile_setregid(PMEMfilepool *pfp, gid_t rgid, gid_t egid)
+pmemfile_setregid(PMEMfilepool *pfp, pmemfile_gid_t rgid, pmemfile_gid_t egid)
 {
-	if (rgid != (gid_t)-1 && rgid > INT_MAX) {
+	if (rgid != (pmemfile_gid_t)-1 && rgid > INT_MAX) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	if (egid != (gid_t)-1 && egid > INT_MAX) {
+	if (egid != (pmemfile_gid_t)-1 && egid > INT_MAX) {
 		errno = EINVAL;
 		return -1;
 	}
 
 	os_rwlock_wrlock(&pfp->cred_rwlock);
-	if (rgid != (uid_t)-1)
+	if (rgid != (pmemfile_gid_t)-1)
 		pfp->cred.rgid = rgid;
-	if (egid != (uid_t)-1) {
+	if (egid != (pmemfile_gid_t)-1) {
 		pfp->cred.egid = egid;
 		pfp->cred.fsgid = egid;
 	}
@@ -1522,31 +1524,31 @@ pmemfile_setregid(PMEMfilepool *pfp, gid_t rgid, gid_t egid)
 }
 
 int
-pmemfile_setuid(PMEMfilepool *pfp, uid_t uid)
+pmemfile_setuid(PMEMfilepool *pfp, pmemfile_uid_t uid)
 {
-	return pmemfile_setreuid(pfp, uid, (uid_t)-1);
+	return pmemfile_setreuid(pfp, uid, (pmemfile_uid_t)-1);
 }
 
 int
-pmemfile_setgid(PMEMfilepool *pfp, gid_t gid)
+pmemfile_setgid(PMEMfilepool *pfp, pmemfile_gid_t gid)
 {
-	return pmemfile_setregid(pfp, gid, (gid_t)-1);
+	return pmemfile_setregid(pfp, gid, (pmemfile_gid_t)-1);
 }
 
-uid_t
+pmemfile_uid_t
 pmemfile_getuid(PMEMfilepool *pfp)
 {
-	uid_t ret;
+	pmemfile_uid_t ret;
 	os_rwlock_rdlock(&pfp->cred_rwlock);
 	ret = pfp->cred.ruid;
 	os_rwlock_unlock(&pfp->cred_rwlock);
 	return ret;
 }
 
-gid_t
+pmemfile_gid_t
 pmemfile_getgid(PMEMfilepool *pfp)
 {
-	gid_t ret;
+	pmemfile_gid_t ret;
 	os_rwlock_rdlock(&pfp->cred_rwlock);
 	ret = pfp->cred.rgid;
 	os_rwlock_unlock(&pfp->cred_rwlock);
@@ -1554,31 +1556,31 @@ pmemfile_getgid(PMEMfilepool *pfp)
 }
 
 int
-pmemfile_seteuid(PMEMfilepool *pfp, uid_t uid)
+pmemfile_seteuid(PMEMfilepool *pfp, pmemfile_uid_t uid)
 {
-	return pmemfile_setreuid(pfp, (uid_t)-1, uid);
+	return pmemfile_setreuid(pfp, (pmemfile_uid_t)-1, uid);
 }
 
 int
-pmemfile_setegid(PMEMfilepool *pfp, gid_t gid)
+pmemfile_setegid(PMEMfilepool *pfp, pmemfile_gid_t gid)
 {
-	return pmemfile_setregid(pfp, (gid_t)-1, gid);
+	return pmemfile_setregid(pfp, (pmemfile_gid_t)-1, gid);
 }
 
-uid_t
+pmemfile_uid_t
 pmemfile_geteuid(PMEMfilepool *pfp)
 {
-	uid_t ret;
+	pmemfile_uid_t ret;
 	os_rwlock_rdlock(&pfp->cred_rwlock);
 	ret = pfp->cred.euid;
 	os_rwlock_unlock(&pfp->cred_rwlock);
 	return ret;
 }
 
-gid_t
+pmemfile_gid_t
 pmemfile_getegid(PMEMfilepool *pfp)
 {
-	gid_t ret;
+	pmemfile_gid_t ret;
 	os_rwlock_rdlock(&pfp->cred_rwlock);
 	ret = pfp->cred.egid;
 	os_rwlock_unlock(&pfp->cred_rwlock);
@@ -1586,7 +1588,7 @@ pmemfile_getegid(PMEMfilepool *pfp)
 }
 
 int
-pmemfile_setfsuid(PMEMfilepool *pfp, uid_t fsuid)
+pmemfile_setfsuid(PMEMfilepool *pfp, pmemfile_uid_t fsuid)
 {
 	if (fsuid > INT_MAX) {
 		errno = EINVAL;
@@ -1594,7 +1596,7 @@ pmemfile_setfsuid(PMEMfilepool *pfp, uid_t fsuid)
 	}
 
 	os_rwlock_wrlock(&pfp->cred_rwlock);
-	uid_t prev_fsuid = pfp->cred.fsuid;
+	pmemfile_uid_t prev_fsuid = pfp->cred.fsuid;
 	pfp->cred.fsuid = fsuid;
 	os_rwlock_unlock(&pfp->cred_rwlock);
 
@@ -1602,7 +1604,7 @@ pmemfile_setfsuid(PMEMfilepool *pfp, uid_t fsuid)
 }
 
 int
-pmemfile_setfsgid(PMEMfilepool *pfp, uid_t fsgid)
+pmemfile_setfsgid(PMEMfilepool *pfp, pmemfile_gid_t fsgid)
 {
 	if (fsgid > INT_MAX) {
 		errno = EINVAL;
@@ -1610,7 +1612,7 @@ pmemfile_setfsgid(PMEMfilepool *pfp, uid_t fsgid)
 	}
 
 	os_rwlock_wrlock(&pfp->cred_rwlock);
-	uid_t prev_fsgid = pfp->cred.fsgid;
+	pmemfile_uid_t prev_fsgid = pfp->cred.fsgid;
 	pfp->cred.fsgid = fsgid;
 	os_rwlock_unlock(&pfp->cred_rwlock);
 
@@ -1618,7 +1620,7 @@ pmemfile_setfsgid(PMEMfilepool *pfp, uid_t fsgid)
 }
 
 int
-pmemfile_getgroups(PMEMfilepool *pfp, int size, gid_t list[])
+pmemfile_getgroups(PMEMfilepool *pfp, int size, pmemfile_gid_t list[])
 {
 	if (size < 0) {
 		errno = EINVAL;
@@ -1641,7 +1643,7 @@ pmemfile_getgroups(PMEMfilepool *pfp, int size, gid_t list[])
 }
 
 int
-pmemfile_setgroups(PMEMfilepool *pfp, size_t size, const gid_t *list)
+pmemfile_setgroups(PMEMfilepool *pfp, size_t size, const pmemfile_gid_t *list)
 {
 	int error = 0;
 	os_rwlock_wrlock(&pfp->cred_rwlock);
@@ -1694,7 +1696,7 @@ _pmemfile_ftruncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 }
 
 int
-pmemfile_ftruncate(PMEMfilepool *pfp, PMEMfile *file, off_t length)
+pmemfile_ftruncate(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t length)
 {
 	int ret;
 
@@ -1731,7 +1733,7 @@ pmemfile_ftruncate(PMEMfilepool *pfp, PMEMfile *file, off_t length)
 }
 
 int
-pmemfile_truncate(PMEMfilepool *pfp, const char *path, off_t length)
+pmemfile_truncate(PMEMfilepool *pfp, const char *path, pmemfile_off_t length)
 {
 	if (length < 0) {
 		errno = EINVAL;
@@ -1800,12 +1802,13 @@ end:
 
 static int
 vinode_chown(PMEMfilepool *pfp, struct pmemfile_cred *cred,
-		struct pmemfile_vinode *vinode, uid_t owner, gid_t group)
+		struct pmemfile_vinode *vinode, pmemfile_uid_t owner,
+		pmemfile_gid_t group)
 {
 	struct pmemfile_inode *inode = vinode->inode;
 	int error = 0;
 
-	if (owner == (uid_t)-1 && group == (gid_t)-1)
+	if (owner == (pmemfile_uid_t)-1 && group == (pmemfile_gid_t)-1)
 		return 0;
 
 	os_rwlock_wrlock(&vinode->rwlock);
@@ -1816,12 +1819,12 @@ vinode_chown(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 			goto end;
 		}
 
-		if (owner != (uid_t)-1 && owner != inode->uid) {
+		if (owner != (pmemfile_uid_t)-1 && owner != inode->uid) {
 			error = EPERM;
 			goto end;
 		}
 
-		if (group != (gid_t)-1 && group != inode->gid) {
+		if (group != (pmemfile_gid_t)-1 && group != inode->gid) {
 			if (group != cred->fsgid && !gid_in_list(cred, group)) {
 				error = EPERM;
 				goto end;
@@ -1837,9 +1840,9 @@ vinode_chown(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 		pmemobj_tx_add_range_direct(&inode->uid,
 				sizeof(inode->uid) + sizeof(inode->gid));
 
-		if (owner != (uid_t)-1)
+		if (owner != (pmemfile_uid_t)-1)
 			inode->uid = owner;
-		if (group != (gid_t)-1)
+		if (group != (pmemfile_gid_t)-1)
 			inode->gid = group;
 	} TX_ONABORT {
 		error = errno;
@@ -1853,7 +1856,8 @@ end:
 
 static int
 _pmemfile_fchownat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
-		const char *path, uid_t owner, gid_t group, int flags)
+		const char *path, pmemfile_uid_t owner, pmemfile_gid_t group,
+		int flags)
 {
 	if (flags & PMEMFILE_AT_EMPTY_PATH) {
 		errno = ENOTSUP;
@@ -1906,7 +1910,7 @@ end:
 
 int
 pmemfile_fchownat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
-		uid_t owner, gid_t group, int flags)
+		pmemfile_uid_t owner, pmemfile_gid_t group, int flags)
 {
 	struct pmemfile_vinode *at;
 	bool at_unref;
@@ -1927,23 +1931,24 @@ pmemfile_fchownat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 }
 
 int
-pmemfile_chown(PMEMfilepool *pfp, const char *pathname, uid_t owner,
-		gid_t group)
+pmemfile_chown(PMEMfilepool *pfp, const char *pathname, pmemfile_uid_t owner,
+		pmemfile_gid_t group)
 {
 	return pmemfile_fchownat(pfp, PMEMFILE_AT_CWD, pathname, owner, group,
 			0);
 }
 
 int
-pmemfile_lchown(PMEMfilepool *pfp, const char *pathname, uid_t owner,
-		gid_t group)
+pmemfile_lchown(PMEMfilepool *pfp, const char *pathname, pmemfile_uid_t owner,
+		pmemfile_gid_t group)
 {
 	return pmemfile_fchownat(pfp, PMEMFILE_AT_CWD, pathname, owner, group,
 			PMEMFILE_AT_SYMLINK_NOFOLLOW);
 }
 
 int
-pmemfile_fchown(PMEMfilepool *pfp, PMEMfile *file, uid_t owner, gid_t group)
+pmemfile_fchown(PMEMfilepool *pfp, PMEMfile *file, pmemfile_uid_t owner,
+		pmemfile_gid_t group)
 {
 	if (!file) {
 		errno = EBADF;

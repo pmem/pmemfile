@@ -164,9 +164,17 @@ extern "C" {
 typedef struct pmemfilepool PMEMfilepool;
 typedef struct pmemfile_file PMEMfile;
 
+typedef unsigned pmemfile_mode_t;
+typedef unsigned pmemfile_uid_t;
+typedef unsigned pmemfile_gid_t;
+typedef long long pmemfile_ssize_t;
+typedef long long pmemfile_off_t;
+typedef unsigned long long pmemfile_nlink_t;
+
 #define PMEMFILE_AT_CWD ((PMEMfile *)(((unsigned char *)0) - 1))
 
-PMEMfilepool *pmemfile_mkfs(const char *pathname, size_t poolsize, mode_t mode);
+PMEMfilepool *pmemfile_mkfs(const char *pathname, size_t poolsize,
+		pmemfile_mode_t mode);
 
 PMEMfilepool *pmemfile_pool_open(const char *pathname);
 void pmemfile_pool_close(PMEMfilepool *pfp);
@@ -175,7 +183,8 @@ PMEMfile *pmemfile_open(PMEMfilepool *pfp, const char *pathname, int flags,
 		...);
 PMEMfile *pmemfile_openat(PMEMfilepool *pfp, PMEMfile *dir,
 		const char *pathname, int flags, ...);
-PMEMfile *pmemfile_create(PMEMfilepool *pfp, const char *pathname, mode_t mode);
+PMEMfile *pmemfile_create(PMEMfilepool *pfp, const char *pathname,
+		pmemfile_mode_t mode);
 /* XXX Should we get rid of PMEMfilepool pointer? */
 void pmemfile_close(PMEMfilepool *pfp, PMEMfile *file);
 
@@ -192,20 +201,20 @@ int pmemfile_renameat(PMEMfilepool *, PMEMfile *old_at, const char *old_path,
 int pmemfile_renameat2(PMEMfilepool *, PMEMfile *old_at, const char *old_path,
 		PMEMfile *new_at, const char *new_path, unsigned flags);
 
-ssize_t pmemfile_write(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
+pmemfile_ssize_t pmemfile_write(PMEMfilepool *pfp, PMEMfile *file,
+		const void *buf, size_t count);
+
+pmemfile_ssize_t pmemfile_read(PMEMfilepool *pfp, PMEMfile *file, void *buf,
 		size_t count);
 
-ssize_t pmemfile_read(PMEMfilepool *pfp, PMEMfile *file, void *buf,
-		size_t count);
+pmemfile_off_t pmemfile_lseek(PMEMfilepool *pfp, PMEMfile *file,
+		pmemfile_off_t offset, int whence);
 
-off_t pmemfile_lseek(PMEMfilepool *pfp, PMEMfile *file, off_t offset,
-		int whence);
+pmemfile_ssize_t pmemfile_pwrite(PMEMfilepool *pfp, PMEMfile *file,
+		const void *buf, size_t count, pmemfile_off_t offset);
 
-ssize_t pmemfile_pwrite(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
-		size_t count, off_t offset);
-
-ssize_t pmemfile_pread(PMEMfilepool *pfp, PMEMfile *file, void *buf,
-		size_t count, off_t offset);
+pmemfile_ssize_t pmemfile_pread(PMEMfilepool *pfp, PMEMfile *file, void *buf,
+		size_t count, pmemfile_off_t offset);
 
 int pmemfile_stat(PMEMfilepool *, const char *path, struct stat *buf);
 int pmemfile_lstat(PMEMfilepool *, const char *path, struct stat *buf);
@@ -219,9 +228,9 @@ int pmemfile_getdents(PMEMfilepool *, PMEMfile *file,
 			struct linux_dirent *dirp, unsigned count);
 int pmemfile_getdents64(PMEMfilepool *, PMEMfile *file,
 			struct linux_dirent64 *dirp, unsigned count);
-int pmemfile_mkdir(PMEMfilepool *, const char *path, mode_t mode);
+int pmemfile_mkdir(PMEMfilepool *, const char *path, pmemfile_mode_t mode);
 int pmemfile_mkdirat(PMEMfilepool *, PMEMfile *dir, const char *path,
-		mode_t mode);
+		pmemfile_mode_t mode);
 int pmemfile_rmdir(PMEMfilepool *, const char *path);
 
 int pmemfile_chdir(PMEMfilepool *, const char *path);
@@ -233,42 +242,43 @@ int pmemfile_symlink(PMEMfilepool *, const char *path1, const char *path2);
 int pmemfile_symlinkat(PMEMfilepool *, const char *path1,
 				PMEMfile *at, const char *path2);
 
-ssize_t pmemfile_readlink(PMEMfilepool *, const char *path,
+pmemfile_ssize_t pmemfile_readlink(PMEMfilepool *, const char *path,
 			char *buf, size_t buf_len);
-ssize_t pmemfile_readlinkat(PMEMfilepool *, PMEMfile *dir, const char *pathname,
-			char *buf, size_t bufsiz);
+pmemfile_ssize_t pmemfile_readlinkat(PMEMfilepool *, PMEMfile *dir,
+			const char *pathname, char *buf, size_t bufsiz);
 
-int pmemfile_chmod(PMEMfilepool *, const char *path, mode_t mode);
-int pmemfile_fchmod(PMEMfilepool *, PMEMfile *, mode_t mode);
+int pmemfile_chmod(PMEMfilepool *, const char *path, pmemfile_mode_t mode);
+int pmemfile_fchmod(PMEMfilepool *, PMEMfile *, pmemfile_mode_t mode);
 int pmemfile_fchmodat(PMEMfilepool *, PMEMfile *dir, const char *pathname,
-	mode_t mode, int flags);
+		pmemfile_mode_t mode, int flags);
 
-int pmemfile_setreuid(PMEMfilepool *, uid_t ruid, uid_t euid);
-int pmemfile_setregid(PMEMfilepool *, gid_t rgid, gid_t egid);
+int pmemfile_setreuid(PMEMfilepool *, pmemfile_uid_t ruid, pmemfile_uid_t euid);
+int pmemfile_setregid(PMEMfilepool *, pmemfile_gid_t rgid, pmemfile_gid_t egid);
 
-int pmemfile_setuid(PMEMfilepool *, uid_t uid);
-int pmemfile_setgid(PMEMfilepool *, gid_t gid);
-uid_t pmemfile_getuid(PMEMfilepool *);
-gid_t pmemfile_getgid(PMEMfilepool *);
+int pmemfile_setuid(PMEMfilepool *, pmemfile_uid_t uid);
+int pmemfile_setgid(PMEMfilepool *, pmemfile_gid_t gid);
+pmemfile_uid_t pmemfile_getuid(PMEMfilepool *);
+pmemfile_gid_t pmemfile_getgid(PMEMfilepool *);
 
-int pmemfile_seteuid(PMEMfilepool *, uid_t uid);
-int pmemfile_setegid(PMEMfilepool *, gid_t gid);
-uid_t pmemfile_geteuid(PMEMfilepool *);
-gid_t pmemfile_getegid(PMEMfilepool *);
+int pmemfile_seteuid(PMEMfilepool *, pmemfile_uid_t uid);
+int pmemfile_setegid(PMEMfilepool *, pmemfile_gid_t gid);
+pmemfile_uid_t pmemfile_geteuid(PMEMfilepool *);
+pmemfile_gid_t pmemfile_getegid(PMEMfilepool *);
 
-int pmemfile_setfsuid(PMEMfilepool *, uid_t fsuid);
-int pmemfile_setfsgid(PMEMfilepool *, uid_t fsgid);
+int pmemfile_setfsuid(PMEMfilepool *, pmemfile_uid_t fsuid);
+int pmemfile_setfsgid(PMEMfilepool *, pmemfile_uid_t fsgid);
 
-int pmemfile_getgroups(PMEMfilepool *, int size, gid_t list[]);
-int pmemfile_setgroups(PMEMfilepool *, size_t size, const gid_t *list);
+int pmemfile_getgroups(PMEMfilepool *, int size, pmemfile_gid_t list[]);
+int pmemfile_setgroups(PMEMfilepool *, size_t size, const pmemfile_gid_t *list);
 
-int pmemfile_chown(PMEMfilepool *, const char *pathname, uid_t owner,
-		gid_t group);
-int pmemfile_fchown(PMEMfilepool *, PMEMfile *file, uid_t owner, gid_t group);
-int pmemfile_lchown(PMEMfilepool *, const char *pathname, uid_t owner,
-		gid_t group);
+int pmemfile_chown(PMEMfilepool *, const char *pathname, pmemfile_uid_t owner,
+		pmemfile_gid_t group);
+int pmemfile_fchown(PMEMfilepool *, PMEMfile *file, pmemfile_uid_t owner,
+		pmemfile_gid_t group);
+int pmemfile_lchown(PMEMfilepool *, const char *pathname, pmemfile_uid_t owner,
+		pmemfile_gid_t group);
 int pmemfile_fchownat(PMEMfilepool *, PMEMfile *dir, const char *pathname,
-		uid_t owner, gid_t group, int flags);
+		pmemfile_uid_t owner, pmemfile_gid_t group, int flags);
 
 int pmemfile_access(PMEMfilepool *, const char *path, int mode);
 int pmemfile_euidaccess(PMEMfilepool *, const char *pathname, int mode);
@@ -289,8 +299,8 @@ struct pmemfile_stats {
 };
 void pmemfile_stats(PMEMfilepool *pfp, struct pmemfile_stats *stats);
 
-int pmemfile_truncate(PMEMfilepool *, const char *path, off_t length);
-int pmemfile_ftruncate(PMEMfilepool *, PMEMfile *file, off_t length);
+int pmemfile_truncate(PMEMfilepool *, const char *path, pmemfile_off_t length);
+int pmemfile_ftruncate(PMEMfilepool *, PMEMfile *file, pmemfile_off_t length);
 
 char *pmemfile_get_dir_path(PMEMfilepool *pfp, PMEMfile *dir, char *buf,
 		size_t size);

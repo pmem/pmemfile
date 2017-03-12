@@ -58,7 +58,7 @@ PMEMfile *pmemfile_dup2(PMEMfilepool *, PMEMfile *file, PMEMfile *file2);
 
 // Memory mapping pmemfiles, these need extra suppport in the preloadable lib
 void *pmemfile_mmap(PMEMfilepool *, void *addr, size_t len,
-		int prot, int flags, PMEMfile *file, off_t off);
+		int prot, int flags, PMEMfile *file, pmemfile_off_t off);
 int pmemfile_munmap(PMEMfilepool *, void *addr, size_t len);
 void *pmemfile_mremap(PMEMfilepool *, void *old_addr, size_t old_size,
 			size_t new_size, int flags, void *new_addr);
@@ -66,14 +66,14 @@ int pmemfile_msync(PMEMfilepool *, void *addr, size_t len, int flags);
 int pmemfile_mprotect(PMEMfilepool *, void *addr, size_t len, int prot);
 
 struct iovec;
-ssize_t pmemfile_readv(PMEMfilepool *, PMEMfile *file,
+pmemfile_ssize_t pmemfile_readv(PMEMfilepool *, PMEMfile *file,
 	const struct iovec *iov, int iovcnt);
-ssize_t pmemfile_writev(PMEMfilepool *, PMEMfile *file,
+pmemfile_ssize_t pmemfile_writev(PMEMfilepool *, PMEMfile *file,
 	const struct iovec *iov, int iovcnt);
-ssize_t pmemfile_preadv(PMEMfilepool *, PMEMfile *file,
-	const struct iovec *iov, int iovcnt, off_t offset);
-ssize_t pmemfile_pwritev(PMEMfilepool *, PMEMfile *file,
-	const struct iovec *iov, int iovcnt, off_t offset);
+pmemfile_ssize_t pmemfile_preadv(PMEMfilepool *, PMEMfile *file,
+	const struct iovec *iov, int iovcnt, pmemfile_off_t offset);
+pmemfile_ssize_t pmemfile_pwritev(PMEMfilepool *, PMEMfile *file,
+	const struct iovec *iov, int iovcnt, pmemfile_off_t offset);
 
 struct utimbuf;
 int pmemfile_utime(PMEMfilepool *, const char *filename,
@@ -89,11 +89,11 @@ int pmemfile_utimensat(PMEMfilepool *, PMEMfile *dir, const char *pathname,
 int pmemfile_futimens(PMEMfilepool *, PMEMfile *file,
 		const struct timespec times[2]);
 
-mode_t pmemfile_umask(PMEMfilepool *, mode_t mask);
+pmemfile_mode_t pmemfile_umask(PMEMfilepool *, pmemfile_mode_t mask);
 
-ssize_t pmemfile_copy_file_range(PMEMfilepool *,
-		PMEMfile *file_in, loff_t *off_in,
-		PMEMfile *file_out, loff_t *off_out,
+pmemfile_ssize_t pmemfile_copy_file_range(PMEMfilepool *,
+		PMEMfile *file_in, pmemfile_off_t *off_in,
+		PMEMfile *file_out, pmemfile_off_t *off_out,
 		size_t len, unsigned flags);
 
 /*

@@ -88,10 +88,10 @@ pmemfile_ssize_t test_pmemfile_path_size(PMEMfilepool *pfp, const char *path);
 
 class file_attrs {
 public:
-	struct stat stat;
+	struct pmemfile_stat stat;
 	std::string link;
 
-	file_attrs(const struct stat &stat, const char *link = nullptr)
+	file_attrs(const struct pmemfile_stat &stat, const char *link = nullptr)
 	    : stat(stat), link(link)
 	{
 	}

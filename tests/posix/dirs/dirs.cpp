@@ -46,32 +46,33 @@ public:
 };
 
 static const char *
-timespec_to_str(const struct timespec *t)
+timespec_to_str(const struct pmemfile_timespec *t)
 {
-	char *s = asctime(localtime(&t->tv_sec));
+	time_t sec = t->tv_sec;
+	char *s = asctime(localtime(&sec));
 	s[strlen(s) - 1] = 0;
 	return s;
 }
 
 static void
-dump_stat(struct stat *st, const char *path)
+dump_stat(struct pmemfile_stat *st, const char *path)
 {
 	T_OUT("path:       %s\n", path);
-	T_OUT("st_dev:     0x%lx\n", st->st_dev);
-	T_OUT("st_ino:     %ld\n", st->st_ino);
+	T_OUT("st_dev:     0x%llx\n", st->st_dev);
+	T_OUT("st_ino:     %lld\n", st->st_ino);
 	T_OUT("st_mode:    0%o\n", st->st_mode);
-	T_OUT("st_nlink:   %lu\n", st->st_nlink);
+	T_OUT("st_nlink:   %llu\n", st->st_nlink);
 	T_OUT("st_uid:     %u\n", st->st_uid);
 	T_OUT("st_gid:     %u\n", st->st_gid);
-	T_OUT("st_rdev:    0x%lx\n", st->st_rdev);
-	T_OUT("st_size:    %ld\n", st->st_size);
-	T_OUT("st_blksize: %ld\n", st->st_blksize);
-	T_OUT("st_blocks:  %ld\n", st->st_blocks);
-	T_OUT("st_atim:    %ld.%.9ld, %s\n", st->st_atim.tv_sec,
+	T_OUT("st_rdev:    0x%llx\n", st->st_rdev);
+	T_OUT("st_size:    %lld\n", st->st_size);
+	T_OUT("st_blksize: %lld\n", st->st_blksize);
+	T_OUT("st_blocks:  %lld\n", st->st_blocks);
+	T_OUT("st_atim:    %lld.%.9lld, %s\n", st->st_atim.tv_sec,
 	      st->st_atim.tv_nsec, timespec_to_str(&st->st_atim));
-	T_OUT("st_mtim:    %ld.%.9ld, %s\n", st->st_mtim.tv_sec,
+	T_OUT("st_mtim:    %lld.%.9lld, %s\n", st->st_mtim.tv_sec,
 	      st->st_mtim.tv_nsec, timespec_to_str(&st->st_mtim));
-	T_OUT("st_ctim:    %ld.%.9ld, %s\n", st->st_ctim.tv_sec,
+	T_OUT("st_ctim:    %lld.%.9lld, %s\n", st->st_ctim.tv_sec,
 	      st->st_ctim.tv_nsec, timespec_to_str(&st->st_ctim));
 	T_OUT("---");
 }
@@ -123,7 +124,7 @@ list_files(PMEMfilepool *pfp, const char *dir, size_t expected_files,
 			      d->d_name);
 			sprintf(path, "/%s/%s", dir, d->d_name);
 
-			struct stat st;
+			struct pmemfile_stat st;
 			int ret = pmemfile_stat(pfp, path, &st);
 			VAL_EXPECT_EQ(ret, 0);
 			dump_stat(&st, path);
@@ -487,7 +488,7 @@ TEST_F(dirs, 4)
 
 TEST_F(dirs, 5)
 {
-	struct stat stat;
+	struct pmemfile_stat stat;
 
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
 	ASSERT_EQ(pmemfile_chdir(pfp, "/dir1"), 0);

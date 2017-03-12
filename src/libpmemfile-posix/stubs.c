@@ -161,8 +161,8 @@ pmemfile_mprotect(PMEMfilepool *pfp, void *addr, size_t len, int prot)
 }
 
 pmemfile_ssize_t
-pmemfile_readv(PMEMfilepool *pfp, PMEMfile *file, const struct iovec *iov,
-	int iovcnt)
+pmemfile_readv(PMEMfilepool *pfp, PMEMfile *file,
+		const struct pmemfile_iovec *iov, int iovcnt)
 {
 	check_pfp(pfp);
 
@@ -175,8 +175,8 @@ pmemfile_readv(PMEMfilepool *pfp, PMEMfile *file, const struct iovec *iov,
 }
 
 pmemfile_ssize_t
-pmemfile_writev(PMEMfilepool *pfp, PMEMfile *file, const struct iovec *iov,
-	int iovcnt)
+pmemfile_writev(PMEMfilepool *pfp, PMEMfile *file,
+		const struct pmemfile_iovec *iov, int iovcnt)
 {
 	check_pfp(pfp);
 
@@ -189,8 +189,9 @@ pmemfile_writev(PMEMfilepool *pfp, PMEMfile *file, const struct iovec *iov,
 }
 
 pmemfile_ssize_t
-pmemfile_preadv(PMEMfilepool *pfp, PMEMfile *file, const struct iovec *iov,
-	int iovcnt, pmemfile_off_t offset)
+pmemfile_preadv(PMEMfilepool *pfp, PMEMfile *file,
+		const struct pmemfile_iovec *iov, int iovcnt,
+		pmemfile_off_t offset)
 {
 	check_pfp(pfp);
 
@@ -204,8 +205,9 @@ pmemfile_preadv(PMEMfilepool *pfp, PMEMfile *file, const struct iovec *iov,
 }
 
 pmemfile_ssize_t
-pmemfile_pwritev(PMEMfilepool *pfp, PMEMfile *file, const struct iovec *iov,
-	int iovcnt, pmemfile_off_t offset)
+pmemfile_pwritev(PMEMfilepool *pfp, PMEMfile *file,
+		const struct pmemfile_iovec *iov, int iovcnt,
+		pmemfile_off_t offset)
 {
 	check_pfp(pfp);
 
@@ -220,7 +222,7 @@ pmemfile_pwritev(PMEMfilepool *pfp, PMEMfile *file, const struct iovec *iov,
 
 int
 pmemfile_utime(PMEMfilepool *pfp, const char *filename,
-		const struct utimbuf *times)
+		const struct pmemfile_utimbuf *times)
 {
 	check_pfp(pfp);
 
@@ -233,7 +235,7 @@ pmemfile_utime(PMEMfilepool *pfp, const char *filename,
 
 int
 pmemfile_utimes(PMEMfilepool *pfp, const char *filename,
-		const struct timeval times[2])
+		const struct pmemfile_timeval times[2])
 {
 	check_pfp(pfp);
 
@@ -246,7 +248,7 @@ pmemfile_utimes(PMEMfilepool *pfp, const char *filename,
 
 int
 pmemfile_futimes(PMEMfilepool *pfp, PMEMfile *file,
-		const struct timeval tv[2])
+		const struct pmemfile_timeval tv[2])
 {
 	check_pfp(pfp);
 
@@ -259,7 +261,7 @@ pmemfile_futimes(PMEMfilepool *pfp, PMEMfile *file,
 
 int
 pmemfile_lutimes(PMEMfilepool *pfp, const char *filename,
-		const struct timeval tv[2])
+		const struct pmemfile_timeval tv[2])
 {
 	check_pfp(pfp);
 
@@ -272,7 +274,7 @@ pmemfile_lutimes(PMEMfilepool *pfp, const char *filename,
 
 int
 pmemfile_utimensat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
-		const struct timespec times[2], int flags)
+		const struct pmemfile_timespec times[2], int flags)
 {
 	check_pfp(pfp);
 
@@ -287,7 +289,7 @@ pmemfile_utimensat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 
 int
 pmemfile_futimens(PMEMfilepool *pfp, PMEMfile *file,
-		const struct timespec times[2])
+		const struct pmemfile_timespec times[2])
 {
 	check_pfp(pfp);
 

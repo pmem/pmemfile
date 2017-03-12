@@ -35,6 +35,7 @@
  */
 
 #include <errno.h>
+#include <inttypes.h>
 
 #include "callbacks.h"
 #include "dir.h"
@@ -126,7 +127,7 @@ static void
 cleanup_orphanded_inodes_single(PMEMfilepool *pfp,
 		TOID(struct pmemfile_inode_array) single)
 {
-	LOG(LDBG, "pfp %p arr 0x%lx", pfp, single.oid.off);
+	LOG(LDBG, "pfp %p arr 0x%" PRIx64, pfp, single.oid.off);
 
 	struct pmemfile_inode_array *op = D_RW(single);
 	for (unsigned i = 0; op->used && i < NUMINODES_PER_ENTRY; ++i) {

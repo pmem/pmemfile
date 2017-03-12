@@ -35,6 +35,7 @@
  */
 
 #include <errno.h>
+#include <inttypes.h>
 
 #include "callbacks.h"
 #include "data.h"
@@ -248,7 +249,7 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 	int tx = 0;
 
 	if (D_RO(inode)->version != PMEMFILE_INODE_VERSION(1)) {
-		ERR("unknown inode version 0x%x for inode 0x%lx",
+		ERR("unknown inode version 0x%x for inode 0x%" PRIx64,
 				D_RO(inode)->version, inode.oid.off);
 		if (pmemobj_tx_stage() == TX_STAGE_WORK)
 			pmemfile_tx_abort(EINVAL);
@@ -509,7 +510,7 @@ inode_alloc(PMEMfilepool *pfp, uint64_t flags, struct pmemfile_time *t,
 void
 vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
-	LOG(LDBG, "inode 0x%lx path %s", vinode->tinode.oid.off,
+	LOG(LDBG, "inode 0x%" PRIx64 " path %s", vinode->tinode.oid.off,
 			pmfi_path(vinode));
 
 	ASSERTeq(vinode->orphaned.arr, NULL);
@@ -550,7 +551,7 @@ inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 {
 	(void) pfp;
 
-	LOG(LDBG, "inode 0x%lx", tinode.oid.off);
+	LOG(LDBG, "inode 0x%" PRIx64, tinode.oid.off);
 
 	struct pmemfile_inode *inode = D_RW(tinode);
 	if (inode_is_dir(inode)) {

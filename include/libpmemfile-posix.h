@@ -40,8 +40,7 @@
 #ifndef LIBPMEMFILE_POSIX_H
 #define LIBPMEMFILE_POSIX_H 1
 
-#include <sys/stat.h>
-#include <sys/types.h>
+#include <stddef.h>
 
 #define PMEMFILE_PATH_MAX 4096
 
@@ -163,7 +162,37 @@ typedef unsigned pmemfile_uid_t;
 typedef unsigned pmemfile_gid_t;
 typedef long long pmemfile_ssize_t;
 typedef long long pmemfile_off_t;
-typedef unsigned long long pmemfile_nlink_t;
+typedef unsigned long pmemfile_nlink_t;
+typedef long pmemfile_blksize_t;
+typedef long pmemfile_blkcnt_t;
+typedef unsigned long pmemfile_dev_t;
+typedef unsigned long pmemfile_ino_t;
+
+struct pmemfile_timespec
+{
+	long tv_sec;
+	long tv_nsec;
+};
+
+struct pmemfile_stat
+{
+	pmemfile_dev_t st_dev;
+	pmemfile_ino_t st_ino;
+	pmemfile_nlink_t st_nlink;
+	pmemfile_mode_t st_mode;
+	pmemfile_uid_t st_uid;
+	pmemfile_gid_t st_gid;
+	int __pad0;
+	pmemfile_dev_t st_rdev;
+	pmemfile_off_t st_size;
+	pmemfile_blksize_t st_blksize;
+	pmemfile_blkcnt_t st_blocks;
+	struct pmemfile_timespec st_atim;
+	struct pmemfile_timespec st_mtim;
+	struct pmemfile_timespec st_ctim;
+	long __glibc_reserved[3];
+};
+
 
 #define PMEMFILE_AT_CWD ((PMEMfile *)(((unsigned char *)0) - 1))
 
@@ -210,11 +239,11 @@ pmemfile_ssize_t pmemfile_pwrite(PMEMfilepool *pfp, PMEMfile *file,
 pmemfile_ssize_t pmemfile_pread(PMEMfilepool *pfp, PMEMfile *file, void *buf,
 		size_t count, pmemfile_off_t offset);
 
-int pmemfile_stat(PMEMfilepool *, const char *path, struct stat *buf);
-int pmemfile_lstat(PMEMfilepool *, const char *path, struct stat *buf);
-int pmemfile_fstat(PMEMfilepool *, PMEMfile *file, struct stat *buf);
+int pmemfile_stat(PMEMfilepool *, const char *path, struct pmemfile_stat *buf);
+int pmemfile_lstat(PMEMfilepool *, const char *path, struct pmemfile_stat *buf);
+int pmemfile_fstat(PMEMfilepool *, PMEMfile *file, struct pmemfile_stat *buf);
 int pmemfile_fstatat(PMEMfilepool *, PMEMfile *dir, const char *path,
-		struct stat *buf, int flags);
+		struct pmemfile_stat *buf, int flags);
 
 struct linux_dirent;
 struct linux_dirent64;

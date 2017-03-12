@@ -44,7 +44,7 @@ public:
 };
 
 static const char *
-timespec_to_str(const struct timespec *t)
+timespec_to_str(const struct pmemfile_timespec *t)
 {
 	char *s = asctime(localtime(&t->tv_sec));
 	s[strlen(s) - 1] = 0;
@@ -52,7 +52,7 @@ timespec_to_str(const struct timespec *t)
 }
 
 static void
-dump_stat(struct stat *st, const char *path)
+dump_stat(struct pmemfile_stat *st, const char *path)
 {
 	T_OUT("path:       %s\n", path);
 	T_OUT("st_dev:     0x%lx\n", st->st_dev);
@@ -62,7 +62,7 @@ dump_stat(struct stat *st, const char *path)
 	T_OUT("st_uid:     %u\n", st->st_uid);
 	T_OUT("st_gid:     %u\n", st->st_gid);
 	T_OUT("st_rdev:    0x%lx\n", st->st_rdev);
-	T_OUT("st_size:    %ld\n", st->st_size);
+	T_OUT("st_size:    %lld\n", st->st_size);
 	T_OUT("st_blksize: %ld\n", st->st_blksize);
 	T_OUT("st_blocks:  %ld\n", st->st_blocks);
 	T_OUT("st_atim:    %ld.%.9ld, %s\n", st->st_atim.tv_sec,
@@ -77,7 +77,7 @@ dump_stat(struct stat *st, const char *path)
 static int
 stat_and_dump(PMEMfilepool *pfp, const char *path)
 {
-	struct stat st;
+	struct pmemfile_stat st;
 	int ret = pmemfile_stat(pfp, path, &st);
 	if (ret)
 		return ret;
@@ -89,7 +89,7 @@ stat_and_dump(PMEMfilepool *pfp, const char *path)
 static int
 fstat_and_dump(PMEMfilepool *pfp, PMEMfile *f)
 {
-	struct stat st;
+	struct pmemfile_stat st;
 	int ret = pmemfile_fstat(pfp, f, &st);
 	if (ret)
 		return ret;

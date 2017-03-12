@@ -46,7 +46,7 @@ public:
 TEST_F(permissions, chmod)
 {
 	PMEMfile *f;
-	struct stat statbuf;
+	struct pmemfile_stat statbuf;
 
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/aaa", PMEMFILE_O_EXCL,
 					 PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR |
@@ -165,7 +165,7 @@ TEST_F(permissions, chmod)
 
 TEST_F(permissions, symlink)
 {
-	struct stat statbuf;
+	struct pmemfile_stat statbuf;
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/aaa", PMEMFILE_O_EXCL,
 					 PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR |
 						 PMEMFILE_S_IRGRP |
@@ -206,7 +206,7 @@ TEST_F(permissions, symlink)
 TEST_F(permissions, fsuid_fsgid_getgroups_setgroups)
 {
 	PMEMfile *f;
-	struct stat statbuf;
+	struct pmemfile_stat statbuf;
 	int prev_uid;
 	int prev_gid;
 
@@ -292,7 +292,7 @@ TEST_F(permissions, fsuid_fsgid_getgroups_setgroups)
 TEST_F(permissions, fchmod)
 {
 	PMEMfile *f;
-	struct stat statbuf;
+	struct pmemfile_stat statbuf;
 
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/aaa", PMEMFILE_O_EXCL,
 					 PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR |
@@ -330,7 +330,7 @@ TEST_F(permissions, fchmod)
 TEST_F(permissions, fchmodat)
 {
 	PMEMfile *dir;
-	struct stat statbuf;
+	struct pmemfile_stat statbuf;
 
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", PMEMFILE_S_IRWXU), 0);
 

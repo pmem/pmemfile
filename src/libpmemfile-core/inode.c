@@ -597,10 +597,10 @@ inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 	TX_FREE(tinode);
 }
 
-static inline struct timespec
+static inline struct pmemfile_timespec
 pmemfile_time_to_timespec(const struct pmemfile_time *t)
 {
-	struct timespec tm;
+	struct pmemfile_timespec tm;
 	tm.tv_sec = t->sec;
 	tm.tv_nsec = t->nsec;
 	return tm;
@@ -610,7 +610,7 @@ pmemfile_time_to_timespec(const struct pmemfile_time *t)
  * vinode_stat
  */
 static int
-vinode_stat(struct pmemfile_vinode *vinode, struct stat *buf)
+vinode_stat(struct pmemfile_vinode *vinode, struct pmemfile_stat *buf)
 {
 	struct pmemfile_inode *inode = vinode->inode;
 
@@ -672,7 +672,7 @@ vinode_stat(struct pmemfile_vinode *vinode, struct stat *buf)
 
 static int
 _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
-		const char *path, struct stat *buf, int flags)
+		const char *path, struct pmemfile_stat *buf, int flags)
 {
 	if (!buf) {
 		errno = EFAULT;
@@ -757,7 +757,7 @@ end:
 
 int
 pmemfile_fstatat(PMEMfilepool *pfp, PMEMfile *dir, const char *path,
-		struct stat *buf, int flags)
+		struct pmemfile_stat *buf, int flags)
 {
 	struct pmemfile_vinode *at;
 	bool at_unref;
@@ -788,7 +788,7 @@ pmemfile_fstatat(PMEMfilepool *pfp, PMEMfile *dir, const char *path,
  * pmemfile_stat
  */
 int
-pmemfile_stat(PMEMfilepool *pfp, const char *path, struct stat *buf)
+pmemfile_stat(PMEMfilepool *pfp, const char *path, struct pmemfile_stat *buf)
 {
 	return pmemfile_fstatat(pfp, PMEMFILE_AT_CWD, path, buf, 0);
 }
@@ -797,7 +797,7 @@ pmemfile_stat(PMEMfilepool *pfp, const char *path, struct stat *buf)
  * pmemfile_fstat
  */
 int
-pmemfile_fstat(PMEMfilepool *pfp, PMEMfile *file, struct stat *buf)
+pmemfile_fstat(PMEMfilepool *pfp, PMEMfile *file, struct pmemfile_stat *buf)
 {
 	if (!file) {
 		errno = EBADF;
@@ -836,7 +836,7 @@ pmemfile_fstat(PMEMfilepool *pfp, PMEMfile *file, struct stat *buf)
  * pmemfile_lstat
  */
 int
-pmemfile_lstat(PMEMfilepool *pfp, const char *path, struct stat *buf)
+pmemfile_lstat(PMEMfilepool *pfp, const char *path, struct pmemfile_stat *buf)
 {
 	return pmemfile_fstatat(pfp, PMEMFILE_AT_CWD, path, buf,
 			PMEMFILE_AT_SYMLINK_NOFOLLOW);

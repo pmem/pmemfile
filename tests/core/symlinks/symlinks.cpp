@@ -551,7 +551,7 @@ TEST_F(symlinks, 6)
 
 	ASSERT_EQ(pmemfile_symlink(pfp, "/dir2", "/dir1/symlink"), 0);
 
-	struct stat buf;
+	struct pmemfile_stat buf;
 	ASSERT_EQ(pmemfile_stat(pfp, "/dir1/symlink", &buf), 0);
 	ASSERT_EQ(PMEMFILE_S_ISLNK(buf.st_mode), 0);
 
@@ -574,7 +574,7 @@ TEST_F(symlinks, 6)
 TEST_F(symlinks, creat_excl)
 {
 	PMEMfile *file;
-	struct stat buf;
+	struct pmemfile_stat buf;
 
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", 0777), 0);
 	ASSERT_EQ(pmemfile_symlink(pfp, "../file", "/dir/symlink"), 0);

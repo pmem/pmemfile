@@ -324,7 +324,7 @@ else()
 	find_package(LIBUNWIND QUIET)
 endif()
 if(NOT LIBUNWIND_FOUND)
-	message(WARNING "libunwind not found. Any stack traces from tests will not be reliable")
+	message(WARNING "libunwind not found. Stack traces from tests will not be reliable")
 endif()
 
 if(TEST_DIR)

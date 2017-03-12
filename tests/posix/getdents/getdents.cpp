@@ -160,7 +160,7 @@ TEST_F(getdents, 1)
 	r = pmemfile_getdents(pfp, f, dirents, sizeof(buf));
 	ASSERT_EQ(r, 0);
 
-	off_t off = pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_SET);
+	pmemfile_off_t off = pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_SET);
 	ASSERT_EQ(off, 0);
 
 	r = pmemfile_getdents64(pfp, f, dirents64, sizeof(buf));

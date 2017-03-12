@@ -208,7 +208,7 @@ TEST_F(dirs, lots_of_files)
 	int ret;
 	PMEMfile *f;
 	char buf[1001];
-	ssize_t written;
+	pmemfile_ssize_t written;
 
 	ASSERT_TRUE(test_empty_dir(pfp, "/"));
 	memset(buf, 0xff, sizeof(buf));
@@ -222,7 +222,7 @@ TEST_F(dirs, lots_of_files)
 		ASSERT_NE(f, nullptr) << strerror(errno);
 
 		written = pmemfile_write(pfp, f, buf, i);
-		ASSERT_EQ(written, (ssize_t)i) << COND_ERROR(written);
+		ASSERT_EQ(written, (pmemfile_ssize_t)i) << COND_ERROR(written);
 
 		pmemfile_close(pfp, f);
 
@@ -700,7 +700,7 @@ TEST_F(dirs, file_renames)
 }
 
 static bool
-is_owned(PMEMfilepool *pfp, const char *path, uid_t owner)
+is_owned(PMEMfilepool *pfp, const char *path, pmemfile_uid_t owner)
 {
 	struct stat st;
 	memset(&st, 0xff, sizeof(st));
@@ -843,7 +843,8 @@ TEST_F(dirs, openat)
 }
 
 static bool
-test_file_info(PMEMfilepool *pfp, const char *path, nlink_t nlink, ino_t ino)
+test_file_info(PMEMfilepool *pfp, const char *path, pmemfile_nlink_t nlink,
+	       pmemfile_ino_t ino)
 {
 	struct stat st;
 	memset(&st, 0, sizeof(st));
@@ -1076,7 +1077,8 @@ TEST_F(dirs, O_PATH)
 	ASSERT_EQ(pmemfile_symlinkat(pfp, "/file1", dir, "fileXXX"), -1);
 	EXPECT_EQ(errno, EACCES);
 
-	ssize_t r = pmemfile_readlinkat(pfp, dir, "symlink", buf, sizeof(buf));
+	pmemfile_ssize_t r =
+		pmemfile_readlinkat(pfp, dir, "symlink", buf, sizeof(buf));
 	EXPECT_GT(r, 0);
 	if (r > 0)
 		EXPECT_EQ((size_t)r, strlen("/dir/file"));

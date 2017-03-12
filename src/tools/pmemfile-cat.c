@@ -57,7 +57,7 @@ static void
 dump_file(PMEMfilepool *pool, const char *path)
 {
 	char buffer[0x10000];
-	ssize_t read_size;
+	pmemfile_ssize_t read_size;
 
 	errno = 0;
 

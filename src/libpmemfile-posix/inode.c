@@ -636,14 +636,14 @@ vinode_stat(struct pmemfile_vinode *vinode, struct stat *buf)
 	buf->st_uid = inode->uid;
 	buf->st_gid = inode->gid;
 	buf->st_rdev = 0;
-	if ((off_t)inode->size < 0)
+	if ((pmemfile_off_t)inode->size < 0)
 		return EOVERFLOW;
-	buf->st_size = (off_t)inode->size;
+	buf->st_size = (pmemfile_off_t)inode->size;
 	buf->st_blksize = 1;
-	if ((blkcnt_t)inode->size < 0)
+	if ((pmemfile_blkcnt_t)inode->size < 0)
 		return EOVERFLOW;
 
-	blkcnt_t blks = 0;
+	pmemfile_blkcnt_t blks = 0;
 	if (inode_is_regular_file(inode)) {
 		const struct pmemfile_block_array *arr =
 				&inode->file_data.blocks;
@@ -658,7 +658,7 @@ vinode_stat(struct pmemfile_vinode *vinode, struct stat *buf)
 		 * XXX This doesn't match reality. It will match once we start
 		 * getting 4k-aligned blocks from pmemobj allocator.
 		 */
-		blks = (blkcnt_t)((sz + 511) / 512);
+		blks = (pmemfile_blkcnt_t)((sz + 511) / 512);
 	} else if (inode_is_dir(inode)) {
 		const struct pmemfile_dir *arr = &inode->file_data.dir;
 		size_t sz = 0;
@@ -671,7 +671,7 @@ vinode_stat(struct pmemfile_vinode *vinode, struct stat *buf)
 		 * XXX This doesn't match reality. It will match once we start
 		 * getting 4k-aligned blocks from pmemobj allocator.
 		 */
-		blks = (blkcnt_t)((sz + 511) / 512);
+		blks = (pmemfile_blkcnt_t)((sz + 511) / 512);
 	} else if (inode_is_symlink(inode)) {
 		blks = 0;
 	} else

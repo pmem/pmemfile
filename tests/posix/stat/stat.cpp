@@ -77,9 +77,9 @@ dump_stat(struct stat *st, const char *path)
 }
 
 static int
-test_stat(PMEMfilepool *pfp, const char *path, mode_t mode = 0,
-	  nlink_t nlink = 0, off_t size = 0, blksize_t blksize = 0,
-	  blkcnt_t blocks = 0)
+test_stat(PMEMfilepool *pfp, const char *path, pmemfile_mode_t mode = 0,
+	  pmemfile_nlink_t nlink = 0, pmemfile_off_t size = 0,
+	  pmemfile_blksize_t blksize = 0, pmemfile_blkcnt_t blocks = 0)
 {
 	struct stat st;
 	memset(&st, 0, sizeof(st));
@@ -102,8 +102,9 @@ test_stat(PMEMfilepool *pfp, const char *path, mode_t mode = 0,
 }
 
 static int
-test_fstat(PMEMfilepool *pfp, PMEMfile *f, mode_t mode = 0, nlink_t nlink = 0,
-	   off_t size = 0, blksize_t blksize = 0, blkcnt_t blocks = 0)
+test_fstat(PMEMfilepool *pfp, PMEMfile *f, pmemfile_mode_t mode = 0,
+	   pmemfile_nlink_t nlink = 0, pmemfile_off_t size = 0,
+	   pmemfile_blksize_t blksize = 0, pmemfile_blkcnt_t blocks = 0)
 {
 	struct stat st;
 	memset(&st, 0, sizeof(st));
@@ -127,8 +128,9 @@ test_fstat(PMEMfilepool *pfp, PMEMfile *f, mode_t mode = 0, nlink_t nlink = 0,
 
 static int
 test_fstatat(PMEMfilepool *pfp, PMEMfile *dir, const char *path, int flags,
-	     mode_t mode = 0, nlink_t nlink = 0, off_t size = 0,
-	     blksize_t blksize = 0, blkcnt_t blocks = 0)
+	     pmemfile_mode_t mode = 0, pmemfile_nlink_t nlink = 0,
+	     pmemfile_off_t size = 0, pmemfile_blksize_t blksize = 0,
+	     pmemfile_blkcnt_t blocks = 0)
 {
 	struct stat st;
 	memset(&st, 0, sizeof(st));
@@ -172,7 +174,7 @@ TEST_F(stat_test, stat_big_file)
 	memset(buf, 0xdd, 1024);
 
 	for (int i = 0; i < 100; ++i) {
-		ssize_t written = pmemfile_write(pfp, f, buf, 1024);
+		pmemfile_ssize_t written = pmemfile_write(pfp, f, buf, 1024);
 		ASSERT_EQ(written, 1024) << COND_ERROR(written);
 	}
 

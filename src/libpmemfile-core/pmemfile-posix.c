@@ -59,8 +59,7 @@ unsigned _On_valgrind;
  *
  * Called automatically by the run-time loader.
  */
-__attribute__((constructor))
-static void
+pf_constructor void
 libpmemfile_posix_init(void)
 {
 	COMPILE_ERROR_ON(sizeof(struct pmemfile_super) != 4096);
@@ -117,8 +116,7 @@ libpmemfile_posix_init(void)
  *
  * Called automatically when the process terminates.
  */
-__attribute__((destructor))
-static void
+pf_destructor void
 libpmemfile_posix_fini(void)
 {
 	LOG(LDBG, NULL);

@@ -213,22 +213,22 @@ out_init(const char *log_prefix, const char *log_level_var,
 	 * Attribute "used" to prevent compiler from optimizing out the variable
 	 * when LOG expands to no code (!DEBUG)
 	 */
-	static __attribute__((used)) const char *pmemcheck_msg =
+	static pf_used_var const char *pmemcheck_msg =
 			"compiled with support for Valgrind pmemcheck";
 	LOG(1, "%s", pmemcheck_msg);
 #endif /* USE_VG_PMEMCHECK */
 #ifdef USE_VG_HELGRIND
-	static __attribute__((used)) const char *helgrind_msg =
+	static pf_used_var const char *helgrind_msg =
 			"compiled with support for Valgrind helgrind";
 	LOG(1, "%s", helgrind_msg);
 #endif /* USE_VG_HELGRIND */
 #ifdef USE_VG_MEMCHECK
-	static __attribute__((used)) const char *memcheck_msg =
+	static pf_used_var const char *memcheck_msg =
 			"compiled with support for Valgrind memcheck";
 	LOG(1, "%s", memcheck_msg);
 #endif /* USE_VG_MEMCHECK */
 #ifdef USE_VG_DRD
-	static __attribute__((used)) const char *drd_msg =
+	static pf_used_var const char *drd_msg =
 			"compiled with support for Valgrind drd";
 	LOG(1, "%s", drd_msg);
 #endif /* USE_VG_DRD */
@@ -305,8 +305,7 @@ out_set_vsnprintf_func(int (*vsnprintf_func)(char *str, size_t size,
 /*
  * out_snprintf -- (internal) custom snprintf implementation
  */
-__attribute__((format(printf, 3, 4)))
-static int
+static pf_printf_like(3, 4) int
 out_snprintf(char *str, size_t size, const char *format, ...)
 {
 	int ret;

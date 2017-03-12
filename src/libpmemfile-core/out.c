@@ -139,6 +139,24 @@ getexecname(void)
 }
 #endif	/* DEBUG */
 
+static void
+describe_errno(int errnum, char *buf, size_t buflen)
+{
+#ifdef _WIN32
+	if (strerror_s(buf, buflen, errnum))
+		snprintf(buf, buflen, "Unknown errno %d", errnum);
+#else
+	/*
+	 * There are 2 versions of strerror_r - returning int and char * -
+	 * defined depending on feature macros. We want int variant, so to
+	 * catch accidental change in the definition we use temporary int
+	 * variable.
+	 */
+	int r = strerror_r(errnum, buf, buflen);
+	if (r)
+		snprintf(buf, buflen, "Unknown errno %d", errnum);
+#endif
+}
 /*
  * out_init -- initialize the log
  *
@@ -182,7 +200,7 @@ out_init(const char *log_prefix, const char *log_level_var,
 		}
 		if ((Out_fp = fopen(log_file, "w")) == NULL) {
 			char buff[UTIL_MAX_ERR_MSG];
-			strerror_r(errno, buff, UTIL_MAX_ERR_MSG);
+			describe_errno(errno, buff, UTIL_MAX_ERR_MSG);
 			fprintf(stderr, "Error (%s): %s=%s: %s\n",
 					log_prefix, log_file_var,
 					log_file, buff);
@@ -354,7 +372,7 @@ out_common(const char *file, int line, const char *func, int level,
 		if (*fmt == '!') {
 			fmt++;
 			sep = ": ";
-			strerror_r(errno, errstr, UTIL_MAX_ERR_MSG);
+			describe_errno(errno, errstr, UTIL_MAX_ERR_MSG);
 		}
 		ret = Vsnprintf(&buf[cc], MAXPRINT - cc, fmt, ap);
 		if (ret < 0) {
@@ -391,7 +409,7 @@ out_error(const char *file, int line, const char *func,
 		if (*fmt == '!') {
 			fmt++;
 			sep = ": ";
-			strerror_r(errno, errstr, UTIL_MAX_ERR_MSG);
+			describe_errno(errno, errstr, UTIL_MAX_ERR_MSG);
 		}
 		ret = Vsnprintf(&errormsg[cc], MAXPRINT, fmt, ap);
 		if (ret < 0) {

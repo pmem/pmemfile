@@ -302,7 +302,7 @@ vinode_add_dirent(PMEMfilepool *pfp,
  */
 struct pmemfile_vinode *
 vinode_new_dir(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
-		const char *name, size_t namelen, mode_t mode,
+		const char *name, size_t namelen, pmemfile_mode_t mode,
 		bool add_to_parent, volatile bool *parent_refed)
 {
 	LOG(LDBG, "parent 0x%" PRIx64 " ppath %s new_name %.*s",
@@ -311,7 +311,7 @@ vinode_new_dir(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 
-	if (mode & ~(mode_t)PMEMFILE_ACCESSPERMS) {
+	if (mode & ~(pmemfile_mode_t)PMEMFILE_ACCESSPERMS) {
 		/* XXX: what the kernel does in this case? */
 		ERR("invalid mode flags 0%o", mode);
 		pmemfile_tx_abort(EINVAL);
@@ -968,7 +968,7 @@ path_info_cleanup(PMEMfilepool *pfp, struct pmemfile_path_info *path_info)
 
 static int
 _pmemfile_mkdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
-		const char *path, mode_t mode)
+		const char *path, pmemfile_mode_t mode)
 {
 	struct pmemfile_path_info info;
 	struct pmemfile_cred cred;
@@ -1032,7 +1032,7 @@ end:
 
 int
 pmemfile_mkdirat(PMEMfilepool *pfp, PMEMfile *dir, const char *path,
-		mode_t mode)
+		pmemfile_mode_t mode)
 {
 	struct pmemfile_vinode *at;
 	bool at_unref;
@@ -1061,7 +1061,7 @@ pmemfile_mkdirat(PMEMfilepool *pfp, PMEMfile *dir, const char *path,
 }
 
 int
-pmemfile_mkdir(PMEMfilepool *pfp, const char *path, mode_t mode)
+pmemfile_mkdir(PMEMfilepool *pfp, const char *path, pmemfile_mode_t mode)
 {
 	return pmemfile_mkdirat(pfp, PMEMFILE_AT_CWD, path, mode);
 }

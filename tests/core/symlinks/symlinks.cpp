@@ -48,8 +48,8 @@ test_pmemfile_readlink(PMEMfilepool *pfp, const char *pathname,
 {
 	static char readlink_buf[PMEMFILE_PATH_MAX];
 
-	ssize_t ret = pmemfile_readlink(pfp, pathname, readlink_buf,
-					sizeof(readlink_buf) - 1);
+	pmemfile_ssize_t ret = pmemfile_readlink(pfp, pathname, readlink_buf,
+						 sizeof(readlink_buf) - 1);
 	EXPECT_GT(ret, 0) << pathname << " " << errno << " " << strerror(errno);
 	if (ret <= 0)
 		return false;
@@ -79,8 +79,8 @@ test_pmemfile_readlinkat(PMEMfilepool *pfp, const char *dirpath,
 		return false;
 	}
 
-	ssize_t ret = pmemfile_readlinkat(pfp, dir, pathname, readlink_buf,
-					  sizeof(readlink_buf) - 1);
+	pmemfile_ssize_t ret = pmemfile_readlinkat(
+		pfp, dir, pathname, readlink_buf, sizeof(readlink_buf) - 1);
 	EXPECT_GT(ret, 0) << pathname << " " << errno << " " << strerror(errno);
 	pmemfile_close(pfp, dir);
 	if (ret <= 0)
@@ -154,7 +154,7 @@ TEST_F(symlinks, 0)
 			{0120777, 1, 8, "sym4-not_exists-relative", "../file2"},
 		}));
 
-	ssize_t ret;
+	pmemfile_ssize_t ret;
 
 	ret = pmemfile_symlink(pfp, "whatever", "/not-exisiting-dir/xxx");
 	ASSERT_EQ(ret, -1);
@@ -238,7 +238,7 @@ test_symlink_valid(PMEMfilepool *pfp, const char *path)
 	if (!file)
 		return false;
 
-	ssize_t r = pmemfile_read(pfp, file, buf, sizeof(buf));
+	pmemfile_ssize_t r = pmemfile_read(pfp, file, buf, sizeof(buf));
 	if (r != 7) {
 		ADD_FAILURE() << r << " " << COND_ERROR(r);
 		return false;
@@ -280,7 +280,7 @@ test_symlink_to_dir_valid(PMEMfilepool *pfp, const char *path)
 	EXPECT_NE(file, nullptr) << strerror(errno);
 	if (!file)
 		return false;
-	ssize_t r = pmemfile_read(pfp, file, buf, sizeof(buf), -1, EBADF);
+	pmemfile_ssize_t r = pmemfile_read(pfp, file, buf, sizeof(buf), -1, EBADF);
 	if (r != -1)
 		return false;
 	if (errno != EBADF)
@@ -347,7 +347,7 @@ TEST_F(symlinks, 1)
 		pmemfile_open(pfp, "/dir1/internal_dir/file",
 			      PMEMFILE_O_CREAT | PMEMFILE_O_WRONLY, 0644);
 	ASSERT_NE(file, nullptr) << strerror(errno);
-	ssize_t written = pmemfile_write(pfp, file, "qwerty\n", 7);
+	pmemfile_ssize_t written = pmemfile_write(pfp, file, "qwerty\n", 7);
 	ASSERT_EQ(written, 7) << COND_ERROR(written);
 	pmemfile_close(pfp, file);
 
@@ -385,7 +385,7 @@ TEST_F(symlinks, 2)
 		pfp, "/file1", PMEMFILE_O_CREAT | PMEMFILE_O_WRONLY, 0644);
 	ASSERT_NE(file, nullptr) << strerror(errno);
 
-	ssize_t written = pmemfile_write(pfp, file, "qwerty\n", 7);
+	pmemfile_ssize_t written = pmemfile_write(pfp, file, "qwerty\n", 7);
 	ASSERT_EQ(written, 7) << COND_ERROR(written);
 	pmemfile_close(pfp, file);
 
@@ -406,7 +406,7 @@ TEST_F(symlinks, 2)
 	file = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDONLY);
 	ASSERT_NE(file, nullptr) << strerror(errno);
 
-	ssize_t r = pmemfile_read(pfp, file, buf, sizeof(buf));
+	pmemfile_ssize_t r = pmemfile_read(pfp, file, buf, sizeof(buf));
 	ASSERT_EQ(r, 7) << COND_ERROR(r);
 	pmemfile_close(pfp, file);
 	ASSERT_EQ(memcmp(buf, "qwerty\n", 7), 0);
@@ -433,7 +433,7 @@ TEST_F(symlinks, 3)
 		pfp, "/file", PMEMFILE_O_CREAT | PMEMFILE_O_WRONLY, 0644);
 	ASSERT_NE(file, nullptr) << strerror(errno);
 
-	ssize_t written = pmemfile_write(pfp, file, "qwerty\n", 7);
+	pmemfile_ssize_t written = pmemfile_write(pfp, file, "qwerty\n", 7);
 	ASSERT_EQ(written, 7) << COND_ERROR(written);
 	pmemfile_close(pfp, file);
 

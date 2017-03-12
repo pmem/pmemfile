@@ -64,7 +64,7 @@ test_pmemfile_stats_match(PMEMfilepool *pfp, unsigned inodes, unsigned dirs,
 
 bool
 test_pmemfile_create(PMEMfilepool *pfp, const char *path, int flags,
-		     mode_t mode)
+		     pmemfile_mode_t mode)
 {
 	PMEMfile *file =
 		pmemfile_open(pfp, path, flags | PMEMFILE_O_CREAT, mode);
@@ -75,7 +75,7 @@ test_pmemfile_create(PMEMfilepool *pfp, const char *path, int flags,
 	return true;
 }
 
-ssize_t
+pmemfile_ssize_t
 test_pmemfile_file_size(PMEMfilepool *pfp, PMEMfile *file)
 {
 	struct stat buf;
@@ -86,7 +86,7 @@ test_pmemfile_file_size(PMEMfilepool *pfp, PMEMfile *file)
 	return buf.st_size;
 }
 
-ssize_t
+pmemfile_ssize_t
 test_pmemfile_path_size(PMEMfilepool *pfp, const char *path)
 {
 	struct stat buf;
@@ -157,9 +157,9 @@ test_list_files(PMEMfilepool *pfp, PMEMfile *dir, const char *dirp,
 		} else if (type == PMEMFILE_DT_LNK) {
 			MODE_EXPECT(PMEMFILE_S_ISLNK, statbuf.st_mode, 1);
 
-			ssize_t ret = pmemfile_readlinkat(pfp, dir, dirp + i,
-							  symlinkbuf,
-							  PMEMFILE_PATH_MAX);
+			pmemfile_ssize_t ret = pmemfile_readlinkat(
+				pfp, dir, dirp + i, symlinkbuf,
+				PMEMFILE_PATH_MAX);
 			tmp = ret <= 0 || ret >= PMEMFILE_PATH_MAX;
 			if (tmp)
 				ADD_FAILURE() << ret;

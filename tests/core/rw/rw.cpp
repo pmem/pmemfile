@@ -68,8 +68,8 @@ TEST_F(rw, 1)
 	memset(bufFF, 0xff, sizeof(bufFF));
 	memset(buf00, 0x00, sizeof(buf00));
 
-	ssize_t written = pmemfile_write(pfp, f, data, len);
-	ASSERT_EQ(written, (ssize_t)len) << COND_ERROR(written);
+	pmemfile_ssize_t written = pmemfile_write(pfp, f, data, len);
+	ASSERT_EQ(written, (pmemfile_ssize_t)len) << COND_ERROR(written);
 
 	EXPECT_TRUE(
 		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
@@ -81,7 +81,7 @@ TEST_F(rw, 1)
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 1));
 
 	/* try to read write-only file */
-	ssize_t r = pmemfile_read(pfp, f, data2, len);
+	pmemfile_ssize_t r = pmemfile_read(pfp, f, data2, len);
 	ASSERT_EQ(r, -1);
 	EXPECT_EQ(errno, EBADF);
 	pmemfile_close(pfp, f);
@@ -92,7 +92,7 @@ TEST_F(rw, 1)
 	/* read only what we wrote and check nothing else was read */
 	memset(data2, 0xff, sizeof(data2));
 	r = pmemfile_read(pfp, f, data2, len);
-	ASSERT_EQ(r, (ssize_t)len) << COND_ERROR(r);
+	ASSERT_EQ(r, (pmemfile_ssize_t)len) << COND_ERROR(r);
 	ASSERT_EQ(memcmp(data, data2, len), 0);
 	ASSERT_EQ(memcmp(data2 + len, bufFF, sizeof(data2) - len), 0);
 
@@ -115,7 +115,7 @@ TEST_F(rw, 1)
 	/* read as much as possible and check that we read only what we wrote */
 	memset(data2, 0xff, sizeof(data2));
 	r = pmemfile_read(pfp, f, data2, sizeof(data2));
-	ASSERT_EQ(r, (ssize_t)len);
+	ASSERT_EQ(r, (pmemfile_ssize_t)len);
 	ASSERT_EQ(memcmp(data, data2, len), 0);
 	ASSERT_EQ(memcmp(data2 + len, bufFF, sizeof(data2) - len), 0);
 
@@ -325,8 +325,9 @@ TEST_F(rw, 2)
 #define LEN (sizeof(bufd) - 1000)
 #define LOOPS ((200 * 1024 * 1024) / LEN)
 	for (size_t i = 0; i < LOOPS; ++i) {
-		ssize_t written = pmemfile_write(pfp, f, bufd, LEN);
-		ASSERT_EQ(written, (ssize_t)LEN) << COND_ERROR(written);
+		pmemfile_ssize_t written = pmemfile_write(pfp, f, bufd, LEN);
+		ASSERT_EQ(written, (pmemfile_ssize_t)LEN)
+			<< COND_ERROR(written);
 	}
 
 	pmemfile_close(pfp, f);
@@ -346,12 +347,12 @@ TEST_F(rw, 2)
 
 	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
-	ssize_t r;
+	pmemfile_ssize_t r;
 
 	for (size_t i = 0; i < LOOPS; ++i) {
 		memset(buftmp, 0, sizeof(buftmp));
 		r = pmemfile_read(pfp, f, buftmp, LEN);
-		ASSERT_EQ(r, (ssize_t)LEN) << COND_ERROR(r);
+		ASSERT_EQ(r, (pmemfile_ssize_t)LEN) << COND_ERROR(r);
 		ASSERT_EQ(memcmp(buftmp, bufd, LEN), 0);
 	}
 #undef LEN
@@ -410,7 +411,7 @@ TEST_F(rw, trunc)
 			   0);
 	ASSERT_NE(f2, nullptr) << strerror(errno);
 
-	ssize_t r = pmemfile_read(pfp, f1, buftmp, 128);
+	pmemfile_ssize_t r = pmemfile_read(pfp, f1, buftmp, 128);
 	ASSERT_EQ(r, 0) << COND_ERROR(r);
 
 	ASSERT_EQ(pmemfile_write(pfp, f2, bufDD, 128), 128);
@@ -486,7 +487,7 @@ TEST_F(rw, sparse_files)
 
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_SET), 0);
 	memset(buf, 0xff, sizeof(buf));
-	ssize_t r = pmemfile_read(pfp, f, buf, 8192);
+	pmemfile_ssize_t r = pmemfile_read(pfp, f, buf, 8192);
 	ASSERT_EQ(r, 4096 + 5) << COND_ERROR(r);
 
 	ASSERT_EQ(is_zeroed(buf, 4096), 1);
@@ -513,7 +514,7 @@ TEST_F(rw, sparse_files)
 TEST_F(rw, failed_write)
 {
 	char buf[256];
-	ssize_t r;
+	pmemfile_ssize_t r;
 
 	PMEMfile *f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT |
 					    PMEMFILE_O_EXCL | PMEMFILE_O_RDWR,

@@ -369,7 +369,7 @@ TEST_F(basic, unlink)
 
 TEST_F(basic, tmpfile)
 {
-	ssize_t written;
+	pmemfile_ssize_t written;
 
 	PMEMfile *f = pmemfile_open(
 		pfp, "/", PMEMFILE_O_TMPFILE | PMEMFILE_O_WRONLY, 0644);

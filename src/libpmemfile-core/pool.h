@@ -43,9 +43,9 @@
 struct pmemfile_inode_map;
 
 struct pmemfile_cred {
-	uid_t fsuid;
-	gid_t fsgid;
-	gid_t *groups;
+	pmemfile_uid_t fsuid;
+	pmemfile_gid_t fsgid;
+	pmemfile_gid_t *groups;
 	size_t groupsnum;
 };
 

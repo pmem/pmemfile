@@ -552,7 +552,7 @@ file_write(PMEMfilepool *pfp, PMEMfile *file, struct pmemfile_inode *inode,
 	}
 }
 
-static ssize_t
+static pmemfile_ssize_t
 pmemfile_write_locked(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 		size_t count)
 {
@@ -568,7 +568,7 @@ pmemfile_write_locked(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 		return -1;
 	}
 
-	if ((ssize_t)count < 0)    /* Normally this will still   */
+	if ((pmemfile_ssize_t)count < 0)    /* Normally this will still   */
 		count = SSIZE_MAX; /* try to write 2^63 bytes... */
 
 	if (file->offset + count < file->offset) /* overflow check */
@@ -614,16 +614,16 @@ pmemfile_write_locked(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 		return -1;
 	}
 
-	return (ssize_t)count;
+	return (pmemfile_ssize_t)count;
 }
 
 /*
  * pmemfile_write -- writes to file
  */
-ssize_t
+pmemfile_ssize_t
 pmemfile_write(PMEMfilepool *pfp, PMEMfile *file, const void *buf, size_t count)
 {
-	ssize_t ret;
+	pmemfile_ssize_t ret;
 
 	os_mutex_lock(&file->mutex);
 	ret = pmemfile_write_locked(pfp, file, buf, count);
@@ -673,7 +673,7 @@ time_cmp(const struct pmemfile_time *t1, const struct pmemfile_time *t2)
 	return 0;
 }
 
-static ssize_t
+static pmemfile_ssize_t
 pmemfile_read_locked(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count)
 {
 	LOG(LDBG, "file %p buf %p count %zu", file, buf, count);
@@ -688,7 +688,7 @@ pmemfile_read_locked(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count)
 		return -1;
 	}
 
-	if ((ssize_t)count < 0)
+	if ((pmemfile_ssize_t)count < 0)
 		count = SSIZE_MAX;
 
 	size_t bytes_read = 0;
@@ -741,16 +741,16 @@ pmemfile_read_locked(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count)
 	file->offset += bytes_read;
 
 	ASSERT(bytes_read <= count);
-	return (ssize_t)bytes_read;
+	return (pmemfile_ssize_t)bytes_read;
 }
 
 /*
  * pmemfile_read -- reads file
  */
-ssize_t
+pmemfile_ssize_t
 pmemfile_read(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count)
 {
-	ssize_t ret;
+	pmemfile_ssize_t ret;
 
 	os_mutex_lock(&file->mutex);
 	ret = pmemfile_read_locked(pfp, file, buf, count);
@@ -762,13 +762,13 @@ pmemfile_read(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count)
 /*
  * pmemfile_lseek_locked -- changes file current offset
  */
-static off_t
-pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, off_t offset,
+static pmemfile_off_t
+pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t offset,
 		int whence)
 {
 	(void) pfp;
 
-	LOG(LDBG, "file %p offset %lu whence %d", file, offset, whence);
+	LOG(LDBG, "file %p offset %lld whence %d", file, offset, whence);
 
 	if (vinode_is_dir(file->vinode)) {
 		if (whence == PMEMFILE_SEEK_END) {
@@ -784,7 +784,7 @@ pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, off_t offset,
 
 	struct pmemfile_vinode *vinode = file->vinode;
 	struct pmemfile_inode *inode = vinode->inode;
-	off_t ret;
+	pmemfile_off_t ret;
 	int new_errno = EINVAL;
 
 	switch (whence) {
@@ -792,11 +792,11 @@ pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, off_t offset,
 			ret = offset;
 			break;
 		case PMEMFILE_SEEK_CUR:
-			ret = (off_t)file->offset + offset;
+			ret = (pmemfile_off_t)file->offset + offset;
 			break;
 		case PMEMFILE_SEEK_END:
 			os_rwlock_rdlock(&vinode->rwlock);
-			ret = (off_t)inode->size + offset;
+			ret = (pmemfile_off_t)inode->size + offset;
 			os_rwlock_unlock(&vinode->rwlock);
 			break;
 		case PMEMFILE_SEEK_DATA:
@@ -817,7 +817,7 @@ pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, off_t offset,
 				ret = -1;
 				new_errno = ENXIO;
 			} else {
-				ret = (off_t)inode->size;
+				ret = (pmemfile_off_t)inode->size;
 			}
 			os_rwlock_unlock(&vinode->rwlock);
 			break;
@@ -842,11 +842,12 @@ pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, off_t offset,
 /*
  * pmemfile_lseek -- changes file current offset
  */
-off_t
-pmemfile_lseek(PMEMfilepool *pfp, PMEMfile *file, off_t offset, int whence)
+pmemfile_off_t
+pmemfile_lseek(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t offset,
+		int whence)
 {
 	COMPILE_ERROR_ON(sizeof(offset) != 8);
-	off_t ret;
+	pmemfile_off_t ret;
 
 	os_mutex_lock(&file->mutex);
 	ret = pmemfile_lseek_locked(pfp, file, offset, whence);
@@ -855,12 +856,12 @@ pmemfile_lseek(PMEMfilepool *pfp, PMEMfile *file, off_t offset, int whence)
 	return ret;
 }
 
-ssize_t
+pmemfile_ssize_t
 pmemfile_pread(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count,
-		off_t offset)
+		pmemfile_off_t offset)
 {
 	/* XXX this is hacky implementation */
-	ssize_t ret;
+	pmemfile_ssize_t ret;
 	os_mutex_lock(&file->mutex);
 
 	size_t cur_off = file->offset;
@@ -881,12 +882,12 @@ end:
 	return ret;
 }
 
-ssize_t
+pmemfile_ssize_t
 pmemfile_pwrite(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
-		size_t count, off_t offset)
+		size_t count, pmemfile_off_t offset)
 {
 	/* XXX this is hacky implementation */
-	ssize_t ret;
+	pmemfile_ssize_t ret;
 	os_mutex_lock(&file->mutex);
 
 	size_t cur_off = file->offset;

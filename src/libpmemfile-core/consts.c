@@ -141,4 +141,11 @@ verify_consts(void)
 	COMPILE_ERROR_ON(PMEMFILE_DT_WHT != DT_WHT);
 
 	COMPILE_ERROR_ON(PMEMFILE_MAP_FAILED != MAP_FAILED);
+
+	COMPILE_ERROR_ON(sizeof(mode_t) != sizeof(pmemfile_mode_t));
+	COMPILE_ERROR_ON(sizeof(uid_t) != sizeof(pmemfile_uid_t));
+	COMPILE_ERROR_ON(sizeof(gid_t) != sizeof(pmemfile_gid_t));
+	COMPILE_ERROR_ON(sizeof(ssize_t) != sizeof(pmemfile_ssize_t));
+	COMPILE_ERROR_ON(sizeof(off_t) != sizeof(pmemfile_off_t));
+	COMPILE_ERROR_ON(sizeof(nlink_t) != sizeof(pmemfile_nlink_t));
 }

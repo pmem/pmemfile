@@ -622,9 +622,9 @@ vinode_stat(struct pmemfile_vinode *vinode, struct stat *buf)
 	buf->st_uid = inode->uid;
 	buf->st_gid = inode->gid;
 	buf->st_rdev = 0;
-	if ((off_t)inode->size < 0)
+	if ((pmemfile_off_t)inode->size < 0)
 		return EOVERFLOW;
-	buf->st_size = (off_t)inode->size;
+	buf->st_size = (pmemfile_off_t)inode->size;
 	buf->st_blksize = 1;
 	if ((blkcnt_t)inode->size < 0)
 		return EOVERFLOW;

@@ -61,7 +61,7 @@ check_pfp_file(PMEMfilepool *pfp, PMEMfile *file)
 }
 
 int
-pmemfile_access(PMEMfilepool *pfp, const char *path, mode_t mode)
+pmemfile_access(PMEMfilepool *pfp, const char *path, pmemfile_mode_t mode)
 {
 	check_pfp(pfp);
 
@@ -111,7 +111,7 @@ pmemfile_flock(PMEMfilepool *pfp, PMEMfile *file, int operation)
 }
 
 int
-pmemfile_truncate(PMEMfilepool *pfp, const char *path, off_t length)
+pmemfile_truncate(PMEMfilepool *pfp, const char *path, pmemfile_off_t length)
 {
 	check_pfp(pfp);
 
@@ -123,7 +123,7 @@ pmemfile_truncate(PMEMfilepool *pfp, const char *path, off_t length)
 }
 
 int
-pmemfile_ftruncate(PMEMfilepool *pfp, PMEMfile *file, off_t length)
+pmemfile_ftruncate(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t length)
 {
 	check_pfp_file(pfp, file);
 
@@ -154,7 +154,7 @@ pmemfile_dup2(PMEMfilepool *pfp, PMEMfile *file, PMEMfile *file2)
 
 void *
 pmemfile_mmap(PMEMfilepool *pfp, void *addr, size_t len,
-		int prot, int flags, PMEMfile *file, off_t off)
+		int prot, int flags, PMEMfile *file, pmemfile_off_t off)
 {
 	check_pfp_file(pfp, file);
 
@@ -222,7 +222,7 @@ pmemfile_mprotect(PMEMfilepool *pfp, void *addr, size_t len, int prot)
 	return -1;
 }
 
-ssize_t
+pmemfile_ssize_t
 pmemfile_readv(PMEMfilepool *pfp, PMEMfile *file, const struct iovec *iov,
 	int iovcnt)
 {
@@ -236,7 +236,7 @@ pmemfile_readv(PMEMfilepool *pfp, PMEMfile *file, const struct iovec *iov,
 	return -1;
 }
 
-ssize_t
+pmemfile_ssize_t
 pmemfile_writev(PMEMfilepool *pfp, PMEMfile *file, const struct iovec *iov,
 	int iovcnt)
 {
@@ -250,9 +250,9 @@ pmemfile_writev(PMEMfilepool *pfp, PMEMfile *file, const struct iovec *iov,
 	return -1;
 }
 
-ssize_t
+pmemfile_ssize_t
 pmemfile_preadv(PMEMfilepool *pfp, PMEMfile *file, const struct iovec *iov,
-	int iovcnt, off_t offset)
+	int iovcnt, pmemfile_off_t offset)
 {
 	check_pfp(pfp);
 
@@ -265,9 +265,9 @@ pmemfile_preadv(PMEMfilepool *pfp, PMEMfile *file, const struct iovec *iov,
 	return -1;
 }
 
-ssize_t
+pmemfile_ssize_t
 pmemfile_pwritev(PMEMfilepool *pfp, PMEMfile *file, const struct iovec *iov,
-	int iovcnt, off_t offset)
+	int iovcnt, pmemfile_off_t offset)
 {
 	check_pfp(pfp);
 
@@ -281,8 +281,8 @@ pmemfile_pwritev(PMEMfilepool *pfp, PMEMfile *file, const struct iovec *iov,
 }
 
 int
-pmemfile_chown(PMEMfilepool *pfp, const char *pathname, uid_t owner,
-		gid_t group)
+pmemfile_chown(PMEMfilepool *pfp, const char *pathname, pmemfile_uid_t owner,
+		pmemfile_gid_t group)
 {
 	check_pfp(pfp);
 
@@ -295,7 +295,8 @@ pmemfile_chown(PMEMfilepool *pfp, const char *pathname, uid_t owner,
 }
 
 int
-pmemfile_fchown(PMEMfilepool *pfp, PMEMfile *file, uid_t owner, gid_t group)
+pmemfile_fchown(PMEMfilepool *pfp, PMEMfile *file, pmemfile_uid_t owner,
+		pmemfile_gid_t group)
 {
 	check_pfp(pfp);
 
@@ -308,8 +309,8 @@ pmemfile_fchown(PMEMfilepool *pfp, PMEMfile *file, uid_t owner, gid_t group)
 }
 
 int
-pmemfile_lchown(PMEMfilepool *pfp, const char *pathname, uid_t owner,
-		gid_t group)
+pmemfile_lchown(PMEMfilepool *pfp, const char *pathname, pmemfile_uid_t owner,
+		pmemfile_gid_t group)
 {
 	check_pfp(pfp);
 
@@ -323,7 +324,7 @@ pmemfile_lchown(PMEMfilepool *pfp, const char *pathname, uid_t owner,
 
 int
 pmemfile_fchownat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
-		uid_t owner, gid_t group, int flags)
+		pmemfile_uid_t owner, pmemfile_gid_t group, int flags)
 {
 	check_pfp(pfp);
 
@@ -417,8 +418,8 @@ pmemfile_futimens(PMEMfilepool *pfp, PMEMfile *file,
 	return -1;
 }
 
-mode_t
-pmemfile_umask(PMEMfilepool *pfp, mode_t mask)
+pmemfile_mode_t
+pmemfile_umask(PMEMfilepool *pfp, pmemfile_mode_t mask)
 {
 	check_pfp(pfp);
 
@@ -427,10 +428,10 @@ pmemfile_umask(PMEMfilepool *pfp, mode_t mask)
 	return 0;
 }
 
-ssize_t
+pmemfile_ssize_t
 pmemfile_copy_file_range(PMEMfilepool *pfp,
-		PMEMfile *file_in, loff_t *off_in,
-		PMEMfile *file_out, loff_t *off_out,
+		PMEMfile *file_in, pmemfile_off_t *off_in,
+		PMEMfile *file_out, pmemfile_off_t *off_out,
 		size_t len, unsigned flags)
 {
 	check_pfp(pfp);

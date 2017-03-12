@@ -204,7 +204,7 @@ TEST_F(dirs, 1)
 	int ret;
 	PMEMfile *f;
 	char buf[1001];
-	ssize_t written;
+	pmemfile_ssize_t written;
 
 	ASSERT_TRUE(test_empty_dir(pfp, "/"));
 	memset(buf, 0xff, sizeof(buf));
@@ -218,7 +218,7 @@ TEST_F(dirs, 1)
 		ASSERT_NE(f, nullptr) << strerror(errno);
 
 		written = pmemfile_write(pfp, f, buf, i);
-		ASSERT_EQ(written, (ssize_t)i) << COND_ERROR(written);
+		ASSERT_EQ(written, (pmemfile_ssize_t)i) << COND_ERROR(written);
 
 		pmemfile_close(pfp, f);
 

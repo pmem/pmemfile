@@ -125,27 +125,40 @@ Last_errormsg_get()
  * This function is only used when logging is enabled, to make
  * it more clear in the log which program was running.
  */
+#ifdef _WIN32
+#include <windows.h>
 static const char *
 getexecname(void)
 {
-	static char namepath[PATH_MAX];
-	ssize_t cc;
+	static char namepath[MAX_PATH];
 
-#ifndef _WIN32
-	char procpath[PATH_MAX];
-
-	snprintf(procpath, PATH_MAX, "/proc/%d/exe", os_getpid());
-
-	if ((cc = readlink(procpath, namepath, PATH_MAX)) < 0)
-#else
-	if ((cc = GetModuleFileNameA(NULL, namepath, PATH_MAX)) == 0)
-#endif
+	DWORD cc;
+	if ((cc = GetModuleFileNameA(NULL, namepath, MAX_PATH)) == 0)
 		strcpy(namepath, "unknown");
 	else
 		namepath[cc] = '\0';
 
 	return namepath;
 }
+#else
+#include <unistd.h>
+static const char *
+getexecname(void)
+{
+	static char namepath[PATH_MAX];
+	char procpath[PATH_MAX];
+	ssize_t cc;
+
+	snprintf(procpath, PATH_MAX, "/proc/%d/exe", os_getpid());
+
+	if ((cc = readlink(procpath, namepath, PATH_MAX)) < 0)
+		strcpy(namepath, "unknown");
+	else
+		namepath[cc] = '\0';
+
+	return namepath;
+}
+#endif
 #endif	/* DEBUG */
 
 static void

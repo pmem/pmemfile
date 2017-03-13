@@ -307,18 +307,9 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		path_info_changed = false;
 		vparent = info.vinode;
 		vinode = NULL;
-		if (vparent == NULL) {
-			error = ELOOP;
-			goto end;
-		}
 
-		if (!vinode_is_dir(vparent)) {
-			error = ENOTDIR;
-			goto end;
-		}
-
-		if (more_than_1_component(info.remaining)) {
-			error = ENOENT;
+		if (info.error) {
+			error = info.error;
 			goto end;
 		}
 
@@ -639,7 +630,7 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 		return -1;
 	}
 
-	struct pmemfile_path_info src, dst = { NULL, NULL };
+	struct pmemfile_path_info src, dst = { NULL, NULL, 0 };
 	struct pmemfile_vinode *src_vinode;
 
 	resolve_pathat(pfp, olddir, oldpath, &src, 0);
@@ -651,18 +642,8 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 		src_path_info_changed = false;
 		src_vinode = NULL;
 
-		if (src.vinode == NULL) {
-			error = ELOOP;
-			goto end;
-		}
-
-		if (!vinode_is_dir(src.vinode)) {
-			error = ENOTDIR;
-			goto end;
-		}
-
-		if (more_than_1_component(src.remaining)) {
-			error = ENOENT;
+		if (src.error) {
+			error = src.error;
 			goto end;
 		}
 
@@ -694,18 +675,8 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 
 	resolve_pathat(pfp, newdir, newpath, &dst, 0);
 
-	if (dst.vinode == NULL) {
-		error = ELOOP;
-		goto end;
-	}
-
-	if (!vinode_is_dir(dst.vinode)) {
-		error = ENOTDIR;
-		goto end;
-	}
-
-	if (more_than_1_component(dst.remaining)) {
-		error = ENOENT;
+	if (dst.error) {
+		error = dst.error;
 		goto end;
 	}
 
@@ -832,18 +803,8 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	struct pmemfile_vinode *volatile vinode = NULL;
 	volatile bool parent_refed = false;
 
-	if (vparent == NULL) {
-		error = ELOOP;
-		goto end;
-	}
-
-	if (!vinode_is_dir(vparent)) {
-		error = ENOTDIR;
-		goto end;
-	}
-
-	if (more_than_1_component(info.remaining)) {
-		error = ENOENT;
+	if (info.error) {
+		error = info.error;
 		goto end;
 	}
 
@@ -959,38 +920,17 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 
 	int error = 0;
 
-	if (src.vinode == NULL) {
-		error = ELOOP;
+	if (src.error) {
+		error = src.error;
 		goto end;
 	}
 
-	if (dst.vinode == NULL) {
-		error = ELOOP;
-		goto end;
-	}
-
-	if (!vinode_is_dir(src.vinode)) {
-		error = ENOTDIR;
-		goto end;
-	}
-
-	if (!vinode_is_dir(dst.vinode)) {
-		error = ENOTDIR;
-		goto end;
-	}
-
-	if (more_than_1_component(src.remaining)) {
-		error = ENOENT;
+	if (dst.error) {
+		error = dst.error;
 		goto end;
 	}
 
 	size_t src_namelen = component_length(src.remaining);
-
-	if (more_than_1_component(dst.remaining)) {
-		error = ENOENT;
-		goto end;
-	}
-
 	size_t dst_namelen = component_length(dst.remaining);
 
 	src_vinode = vinode_lookup_dirent(pfp, src.vinode, src.remaining,
@@ -1183,18 +1123,8 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 
 	struct pmemfile_vinode *vparent = info.vinode;
 
-	if (vparent == NULL) {
-		error = ELOOP;
-		goto end;
-	}
-
-	if (!vinode_is_dir(vparent)) {
-		error = ENOTDIR;
-		goto end;
-	}
-
-	if (more_than_1_component(info.remaining)) {
-		error = ENOENT;
+	if (info.error) {
+		error = info.error;
 		goto end;
 	}
 
@@ -1298,18 +1228,8 @@ _pmemfile_readlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	struct pmemfile_path_info info;
 	resolve_pathat(pfp, dir, pathname, &info, 0);
 
-	if (info.vinode == NULL) {
-		error = ELOOP;
-		goto end;
-	}
-
-	if (!vinode_is_dir(info.vinode)) {
-		error = ENOTDIR;
-		goto end;
-	}
-
-	if (more_than_1_component(info.remaining)) {
-		error = ENOENT;
+	if (info.error) {
+		error = info.error;
 		goto end;
 	}
 
@@ -1523,18 +1443,8 @@ _pmemfile_fchmodat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	do {
 		path_info_changed = false;
 
-		if (info.vinode == NULL) {
-			error = ELOOP;
-			goto end;
-		}
-
-		if (!vinode_is_dir(info.vinode)) {
-			error = ENOTDIR;
-			goto end;
-		}
-
-		if (more_than_1_component(info.remaining)) {
-			error = ENOENT;
+		if (info.error) {
+			error = info.error;
 			goto end;
 		}
 

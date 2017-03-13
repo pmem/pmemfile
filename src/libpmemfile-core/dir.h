@@ -43,6 +43,8 @@ struct pmemfile_path_info {
 	struct pmemfile_vinode *vinode;
 	/* Remaining part of the path. */
 	char *remaining;
+
+	int error;
 };
 
 void resolve_pathat(PMEMfilepool *pfp, struct pmemfile_vinode *parent,

@@ -415,13 +415,17 @@ vinode_lookup_dirent(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 	LOG(LDBG, "parent 0x%lx ppath %s name %s", parent->tinode.oid.off,
 			pmfi_path(parent), name);
 
-	if (namelen == 0)
+	if (namelen == 0) {
+		errno = ENOENT;
 		return NULL;
+	}
 
 	if ((flags & PMEMFILE_OPEN_PARENT_STOP_AT_ROOT) &&
 			parent == pfp->root &&
-			str_compare("..", name, namelen) == 0)
+			str_compare("..", name, namelen) == 0) {
+		errno = EXDEV;
 		return NULL;
+	}
 
 	struct pmemfile_vinode *vinode = NULL;
 
@@ -796,8 +800,10 @@ resolve_pathat_nested(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 		int flags, int nest_level)
 {
 	// XXX: take directory permissions into account
-	if (nest_level > 40)
+	if (nest_level > 40) {
+		path_info->error = ELOOP;
 		return;
+	}
 
 	if (path[0] == '/') {
 		while (path[0] == '/')
@@ -823,8 +829,10 @@ resolve_pathat_nested(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 
 		child = vinode_lookup_dirent(pfp, parent, path,
 				(uintptr_t)slash - (uintptr_t)path, flags);
-		if (!child)
+		if (!child) {
+			path_info->error = errno;
 			break;
+		}
 
 		// XXX: handle protected_symlinks (see man 5 proc)
 		if (vinode_is_symlink(child)) {
@@ -855,6 +863,13 @@ resolve_pathat_nested(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 
 	path_info->remaining = strdup(path);
 	path_info->vinode = parent;
+
+	if (!path_info->error) {
+		if (!vinode_is_dir(path_info->vinode))
+			path_info->error = ENOTDIR;
+		else if (more_than_1_component(path_info->remaining))
+			path_info->error = ENOENT;
+	}
 }
 
 /*
@@ -921,18 +936,8 @@ _pmemfile_mkdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	int error = 0;
 	volatile bool parent_refed = false;
 
-	if (parent == NULL) {
-		error = ELOOP;
-		goto end;
-	}
-
-	if (!vinode_is_dir(parent)) {
-		error = ENOTDIR;
-		goto end;
-	}
-
-	if (more_than_1_component(info.remaining)) {
-		error = ENOENT;
+	if (info.error) {
+		error = info.error;
 		goto end;
 	}
 
@@ -1031,18 +1036,8 @@ _pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	struct pmemfile_vinode *vdir = NULL;
 	int error = 0;
 
-	if (vparent == NULL) {
-		error = ELOOP;
-		goto end;
-	}
-
-	if (!vinode_is_dir(vparent)) {
-		error = ENOTDIR;
-		goto end;
-	}
-
-	if (more_than_1_component(info.remaining)) {
-		error = ENOENT;
+	if (info.error) {
+		error = info.error;
 		goto end;
 	}
 
@@ -1260,18 +1255,8 @@ pmemfile_chdir(PMEMfilepool *pfp, const char *path)
 	do {
 		path_info_changed = false;
 
-		if (info.vinode == NULL) {
-			error = ELOOP;
-			goto end;
-		}
-
-		if (!vinode_is_dir(info.vinode)) {
-			error = ENOTDIR;
-			goto end;
-		}
-
-		if (more_than_1_component(info.remaining)) {
-			error = ENOENT;
+		if (info.error) {
+			error = info.error;
 			goto end;
 		}
 

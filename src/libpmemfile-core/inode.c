@@ -246,6 +246,7 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 {
 	struct pmemfile_inode_map *c = pfp->inode_map;
 	int tx = 0;
+	int error = 0;
 
 	if (D_RO(inode)->version != PMEMFILE_INODE_VERSION(1)) {
 		ERR("unknown inode version 0x%x for inode 0x%lx",
@@ -318,8 +319,10 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 	}
 
 	vinode = calloc(1, sizeof(*vinode));
-	if (!vinode)
+	if (!vinode) {
+		error = errno;
 		goto end;
+	}
 
 	os_rwlock_init(&vinode->rwlock);
 	vinode->tinode = inode;
@@ -350,6 +353,9 @@ end:
 		rwlock_tx_unlock_on_commit(&c->rwlock);
 	else
 		os_rwlock_unlock(&c->rwlock);
+
+	if (error)
+		errno = error;
 
 	return vinode;
 }
@@ -696,18 +702,8 @@ _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	do {
 		path_info_changed = false;
 
-		if (info.vinode == NULL) {
-			error = ELOOP;
-			goto end;
-		}
-
-		if (!vinode_is_dir(info.vinode)) {
-			error = ENOTDIR;
-			goto end;
-		}
-
-		if (more_than_1_component(info.remaining)) {
-			error = ENOENT;
+		if (info.error) {
+			error = info.error;
 			goto end;
 		}
 

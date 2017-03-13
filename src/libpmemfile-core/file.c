@@ -211,20 +211,32 @@ open_file(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, int flags)
 {
 	const struct pmemfile_inode *inode = vinode->inode;
 	int acc = flags & PMEMFILE_O_ACCMODE;
-	mode_t perm = inode->flags & PMEMFILE_ALLPERMS;
+
+	uint64_t inode_flags;
+	uid_t inode_uid;
+	gid_t inode_gid;
+
 	if (acc == PMEMFILE_O_ACCMODE)
 		pmemfile_tx_abort(EINVAL);
 
+	os_rwlock_rdlock(&vinode->rwlock);
+	inode_flags = inode->flags;
+	inode_uid = inode->uid;
+	inode_gid = inode->gid;
+	os_rwlock_unlock(&vinode->rwlock);
+
+	mode_t perm = inode_flags & PMEMFILE_ACCESSPERMS;
 	mode_t req;
+
 	os_rwlock_rdlock(&pfp->cred_rwlock);
-	if (inode->uid == pfp->fsuid) {
+	if (inode_uid == pfp->fsuid) {
 		if (acc == PMEMFILE_O_RDWR)
 			req = PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR;
 		else if (acc == PMEMFILE_O_RDONLY)
 			req = PMEMFILE_S_IRUSR;
 		else
 			req = PMEMFILE_S_IWUSR;
-	} else if (inode->gid == pfp->fsgid || gid_in_list(pfp, inode->gid)) {
+	} else if (inode_gid == pfp->fsgid || gid_in_list(pfp, inode_gid)) {
 		if (acc == PMEMFILE_O_RDWR)
 			req = PMEMFILE_S_IRGRP | PMEMFILE_S_IWGRP;
 		else if (acc == PMEMFILE_O_RDONLY)

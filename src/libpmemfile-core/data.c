@@ -920,32 +920,79 @@ end:
 	return ret;
 }
 
+static bool
+is_block_contained_by_range(struct pmemfile_block *block,
+		uint64_t start, uint64_t len)
+{
+	return block->offset >= start &&
+		(block->offset + block->size) <= (start + len);
+}
+
+static void
+vinode_remove_interval(struct pmemfile_vinode *vinode,
+			uint64_t offset, uint64_t len)
+{
+	struct pmemfile_block *block = find_block(vinode, offset + len);
+
+	while (block != NULL && block->offset + block->size > offset) {
+		if (is_block_contained_by_range(block, offset, len)) {
+			ctree_remove_unlocked(vinode->blocks, block->offset, 1);
+			block = block_list_remove(vinode, block);
+		} else {
+			uint64_t remove_offset;
+			uint64_t remove_len;
+
+			if (block->offset < offset)
+				remove_offset = offset - block->offset;
+			else
+				remove_offset = 0;
+
+			remove_len = block->size - remove_offset;
+
+			if (block->offset + block->size > offset + len)
+				remove_len -= (block->offset + block->size) -
+				    (offset + len);
+
+			TX_MEMSET(D_RW(block->data) + remove_offset, 0,
+				remove_len);
+
+			block = D_RW(block->prev);
+		}
+	}
+}
+
 /*
- * vinode_truncate -- changes file size to 0
+ * vinode_truncate -- changes file size to size
  */
 void
-vinode_truncate(struct pmemfile_vinode *vinode)
+vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+		uint64_t size)
 {
 	struct pmemfile_inode *inode = vinode->inode;
+
+	if (inode->size == size)
+		return;
 
 	if (vinode->blocks == NULL)
 		vinode_rebuild_block_tree(vinode);
 
-	struct pmemfile_block *block = find_last_block(vinode);
-
-	while (block != NULL)
-		block = block_list_remove(vinode, block);
+	/*
+	 * Might need to handle the special case where size == 0.
+	 * Setting all the next and prev fields is pointless, when all the
+	 * blocks are removed.
+	 */
+	if (inode->size > size)
+		vinode_remove_interval(vinode, size, UINT64_MAX - size);
+	else
+		file_allocate_range(pfp, vinode,
+		    inode->size, size - inode->size);
 
 	TX_ADD_DIRECT(&inode->size);
-	inode->size = 0;
+	inode->size = size;
 
 	struct pmemfile_time tm;
 	file_get_time(&tm);
 	TX_SET_DIRECT(inode, mtime, tm);
-
-	// we don't have to rollback destroy of data state on abort, because
-	// it will be rebuilded when it's needed
-	vinode_destroy_data_state(vinode);
 }
 
 void

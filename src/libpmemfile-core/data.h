@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Intel Corporation
+ * Copyright 2016-2017, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,6 +38,7 @@ extern size_t pmemfile_core_block_size;
 extern bool pmemfile_overallocate_on_append;
 
 void vinode_destroy_data_state(struct pmemfile_vinode *vinode);
-void vinode_truncate(struct pmemfile_vinode *vinode);
+void vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+			uint64_t size);
 
 #endif

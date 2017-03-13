@@ -252,7 +252,7 @@ overallocate_size(uint64_t count)
 }
 
 static void
-file_allocate_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		uint64_t offset, uint64_t size)
 {
 	ASSERT(size > 0);
@@ -538,7 +538,7 @@ file_write(PMEMfilepool *pfp, PMEMfile *file, struct pmemfile_inode *inode,
 	 * - Copy the data from the users buffer
 	 */
 
-	file_allocate_range(pfp, file->vinode, file->offset, count);
+	vinode_allocate_interval(pfp, file->vinode, file->offset, count);
 
 	uint64_t original_size = inode->size;
 	uint64_t new_size = inode->size;
@@ -984,7 +984,7 @@ vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	if (inode->size > size)
 		vinode_remove_interval(vinode, size, UINT64_MAX - size);
 	else
-		file_allocate_range(pfp, vinode,
+		vinode_allocate_interval(pfp, vinode,
 		    inode->size, size - inode->size);
 
 	TX_ADD_DIRECT(&inode->size);

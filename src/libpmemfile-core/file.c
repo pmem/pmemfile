@@ -1469,12 +1469,19 @@ vinode_chmod(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, mode_t mode)
 {
 	struct pmemfile_inode *inode = vinode->inode;
 	int error = 0;
+	uid_t fsuid;
+
+	os_rwlock_rdlock(&pfp->cred_rwlock);
+	fsuid = pfp->fsuid;
+	os_rwlock_unlock(&pfp->cred_rwlock);
 
 	os_rwlock_wrlock(&vinode->rwlock);
 
-	// XXX: validate user permissions
-	// XXX: take CAP_FOWNER into account
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
+		// XXX: take CAP_FOWNER into account
+		if (vinode->inode->uid != fsuid)
+			pmemfile_tx_abort(EPERM);
+
 		TX_ADD_DIRECT(&inode->flags);
 
 		inode->flags = (inode->flags & ~(uint64_t)PMEMFILE_ALLPERMS)
@@ -1485,12 +1492,7 @@ vinode_chmod(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, mode_t mode)
 
 	os_rwlock_unlock(&vinode->rwlock);
 
-	if (error) {
-		errno = error;
-		return -1;
-	}
-
-	return 0;
+	return error;
 }
 
 static int

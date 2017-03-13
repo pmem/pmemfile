@@ -226,6 +226,9 @@ TEST_F(permissions, fsuid_fsgid_getgroups_setgroups)
 	EXPECT_EQ(statbuf.st_uid, TEST_FSUID);
 	EXPECT_EQ(statbuf.st_gid, TEST_FSGID);
 
+	ASSERT_EQ(pmemfile_chmod(pfp, "/aaa", PMEMFILE_S_IRUSR), -1);
+	EXPECT_EQ(errno, EPERM);
+
 	/* open rw */
 	f = pmemfile_open(pfp, "/aaa", PMEMFILE_O_RDWR);
 	ASSERT_EQ(f, nullptr);

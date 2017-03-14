@@ -33,6 +33,10 @@ include(${SRC_DIR}/../posix-helpers.cmake)
 
 setup()
 
-execute(${TEST_EXECUTABLE})
+if(LONG_TESTS OR NOT (TRACER STREQUAL "pmemcheck"))
+	execute(${TEST_EXECUTABLE})
+else()
+	execute(${TEST_EXECUTABLE} --gtest_filter=-rw.2)
+endif()
 
 cleanup()

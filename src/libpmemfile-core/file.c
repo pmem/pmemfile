@@ -1589,3 +1589,147 @@ end:
 	}
 	return 0;
 }
+
+static int
+_pmemfile_ftruncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+			uint64_t length)
+{
+	if (!vinode_is_regular_file(vinode))
+		return EINVAL;
+
+	int error = 0;
+
+	os_rwlock_wrlock(&vinode->rwlock);
+
+	vinode_snapshot(vinode);
+
+	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
+		vinode_truncate(pfp, vinode, length);
+	} TX_ONABORT {
+		error = errno;
+		vinode_restore_on_abort(vinode);
+	} TX_END
+
+	os_rwlock_unlock(&vinode->rwlock);
+
+	return error;
+}
+
+int
+pmemfile_ftruncate(PMEMfilepool *pfp, PMEMfile *file, off_t length)
+{
+	int ret;
+
+	if (length < 0) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (length > SSIZE_MAX) {
+		errno = EFBIG;
+		return -1;
+	}
+
+	os_mutex_lock(&file->mutex);
+
+	if (file->flags & PFILE_WRITE) {
+		int err;
+
+		err = _pmemfile_ftruncate(pfp, file->vinode, (uint64_t)length);
+		if (err == 0) {
+			ret = 0;
+		} else {
+			errno = err;
+			ret = -1;
+		}
+	} else {
+		errno = EBADF;
+		ret = -1;
+	}
+
+	os_mutex_unlock(&file->mutex);
+
+	return ret;
+}
+
+int
+pmemfile_truncate(PMEMfilepool *pfp, const char *path, off_t length)
+{
+	if (length < 0) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (length > SSIZE_MAX) {
+		errno = EFBIG;
+		return -1;
+	}
+
+	struct pmemfile_cred cred;
+	if (get_cred(pfp, &cred))
+		return -1;
+
+	int error = 0;
+	struct pmemfile_vinode *vinode = NULL;
+	struct pmemfile_vinode *vparent;
+	struct pmemfile_path_info info;
+	bool path_info_changed;
+
+	if (path[0] == '/')
+		vparent = pfp->root;
+	else
+		vparent = pool_get_cwd(pfp);
+
+	resolve_pathat(pfp, &cred, vparent, path, &info, 0);
+
+	do {
+		path_info_changed = false;
+
+		if (info.error) {
+			error = info.error;
+			goto end;
+		}
+
+		size_t namelen = component_length(info.remaining);
+
+		if (namelen == 0) {
+			ASSERT(info.vinode == pfp->root);
+			vinode = vinode_ref(pfp, info.vinode);
+		} else {
+			vinode = vinode_lookup_dirent(pfp, info.vinode,
+					info.remaining, namelen, 0);
+			if (vinode && vinode_is_symlink(vinode)) {
+				resolve_symlink(pfp, &cred, vinode, &info);
+				path_info_changed = true;
+			}
+		}
+
+		if (!vinode) {
+			error = ENOENT;
+			goto end;
+		}
+	} while (path_info_changed);
+
+	if (vinode_is_dir(vinode)) {
+		error = EISDIR;
+		goto end;
+	}
+
+	error = _pmemfile_ftruncate(pfp, vinode, (uint64_t)length);
+
+end:
+	path_info_cleanup(pfp, &info);
+	put_cred(&cred);
+
+	if (vinode)
+		vinode_unref_tx(pfp, vinode);
+
+	vinode_unref_tx(pfp, vparent);
+
+	if (error) {
+		errno = error;
+		return -1;
+	}
+
+	return 0;
+}

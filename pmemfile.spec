@@ -89,7 +89,7 @@ make install DESTDIR=%{buildroot}
 
 %check
 cd build
-ctest -V %{?_smp_mflags}
+ctest -V %{?_smp_mflags} --output-on-failure
 
 %post   -n libpmemfile-posix -p /sbin/ldconfig
 %postun -n libpmemfile-posix -p /sbin/ldconfig

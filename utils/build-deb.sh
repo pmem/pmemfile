@@ -48,7 +48,7 @@ if [ -n "$1" ]; then
 	cp $1 .
 fi
 echo XXX | dpkg-source --commit
-debuild -us -uc
+debuild -us -uc -j$(($(nproc)+1))
 cd ../..
 
 cd release/pmemfile
@@ -57,5 +57,5 @@ if [ -n "$1" ]; then
 	cp $1 .
 fi
 echo XXX | dpkg-source --commit
-debuild -us -uc
+debuild -us -uc -j$(($(nproc)+1))
 cd ../..

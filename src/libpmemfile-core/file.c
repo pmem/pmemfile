@@ -260,7 +260,7 @@ open_file(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, int flags)
 
 		rwlock_tx_wlock(&vinode->rwlock);
 
-		vinode_truncate(vinode);
+		vinode_truncate(pfp, vinode, 0);
 
 		rwlock_tx_unlock_on_commit(&vinode->rwlock);
 	}

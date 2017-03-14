@@ -46,12 +46,6 @@
 #include "valgrind_internal.h"
 #include "ctree.h"
 
-static TOID(struct pmemfile_block)
-blockp_as_oid(struct pmemfile_block *block)
-{
-	return (TOID(struct pmemfile_block))pmemobj_oid(block);
-}
-
 /*
  * block_cache_insert_block -- inserts block into the tree
  */
@@ -80,9 +74,6 @@ vinode_rebuild_block_tree(struct pmemfile_vinode *vinode)
 	struct pmemfile_block_array *block_array =
 			&vinode->inode->file_data.blocks;
 	struct pmemfile_block *first = NULL;
-#ifdef DEBUG
-	TOID(struct pmemfile_block) prev = TOID_NULL(struct pmemfile_block);
-#endif
 
 	while (block_array != NULL) {
 		for (unsigned i = 0; i < block_array->length; ++i) {
@@ -90,11 +81,6 @@ vinode_rebuild_block_tree(struct pmemfile_vinode *vinode)
 
 			if (block->size == 0)
 				break;
-
-#ifdef DEBUG
-			ASSERT(memcmp(&block->prev, &prev, sizeof(prev)) == 0);
-			prev = blockp_as_oid(block);
-#endif
 
 			block_cache_insert_block(c, block);
 			if (first == NULL || block->offset < first->offset)
@@ -233,54 +219,6 @@ file_allocate_block_data(PMEMfilepool *pfp,
 	block->flags = 0;
 }
 
-static struct pmemfile_block *
-get_free_block(struct pmemfile_vinode *vinode)
-{
-	struct block_info *binfo = &vinode->first_free_block;
-	struct pmemfile_block_array *prev = NULL;
-
-	if (!binfo->arr) {
-		binfo->arr = &vinode->inode->file_data.blocks;
-		binfo->idx = 0;
-	}
-
-	while (binfo->arr) {
-		while (binfo->idx < binfo->arr->length) {
-			if (binfo->arr->blocks[binfo->idx].size == 0)
-				return &binfo->arr->blocks[binfo->idx++];
-			binfo->idx++;
-		}
-
-		prev = binfo->arr;
-		binfo->arr = D_RW(binfo->arr->next);
-		binfo->idx = 0;
-	}
-
-	TOID(struct pmemfile_block_array) next =
-			TX_ZALLOC(struct pmemfile_block_array, FILE_PAGE_SIZE);
-	D_RW(next)->length = (uint32_t)
-			((page_rounddown(pmemobj_alloc_usable_size(next.oid)) -
-			sizeof(struct pmemfile_block_array)) /
-			sizeof(struct pmemfile_block));
-	ASSERT(prev != NULL);
-	TX_SET_DIRECT(prev, next, next);
-
-	binfo->arr = D_RW(next);
-	binfo->idx = 0;
-
-	return &binfo->arr->blocks[binfo->idx];
-}
-
-static struct pmemfile_block *
-allocate_block(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
-	uint64_t size, bool use_usable_size)
-{
-	struct pmemfile_block *block = get_free_block(vinode);
-	file_allocate_block_data(pfp, block, size, use_usable_size);
-
-	return block;
-}
-
 static bool
 is_append(struct pmemfile_vinode *vinode, struct pmemfile_inode *inode,
 		uint64_t offset, uint64_t size)
@@ -314,7 +252,7 @@ overallocate_size(uint64_t count)
 }
 
 static void
-file_allocate_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		uint64_t offset, uint64_t size)
 {
 	ASSERT(size > 0);
@@ -352,14 +290,9 @@ file_allocate_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		} else if (block == NULL && vinode->first_block == NULL) {
 			/* File size is zero */
 
-			block = allocate_block(pfp, vinode, size, over);
-
+			block = block_list_insert_after(vinode, NULL);
 			block->offset = offset;
-			block->prev = TOID_NULL(struct pmemfile_block);
-			block->next = TOID_NULL(struct pmemfile_block);
-
-			vinode->first_block = block;
-
+			file_allocate_block_data(pfp, block, size, over);
 			block_cache_insert_block(vinode->blocks, block);
 		} else if (block == NULL && vinode->first_block != NULL) {
 			/* In a hole before the first block */
@@ -370,38 +303,20 @@ file_allocate_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			if (offset + count > first_offset)
 				count = (uint32_t)(first_offset - offset);
 
-			block = allocate_block(pfp, vinode, count, false);
-
+			block = block_list_insert_after(vinode, NULL);
 			block->offset = offset;
-
-			block->next = blockp_as_oid(vinode->first_block);
-			block->prev = TOID_NULL(struct pmemfile_block);
-			TX_ADD_FIELD_DIRECT(vinode->first_block, prev);
-			vinode->first_block->prev = blockp_as_oid(block);
-
-			vinode->first_block = block;
-
+			file_allocate_block_data(pfp, block, count, false);
 			block_cache_insert_block(vinode->blocks, block);
 		} else if (TOID_IS_NULL(block->next)) {
 			/* After the last allocated block */
 
-			struct pmemfile_block *next_block =
-			    allocate_block(pfp, vinode, size, over);
-			next_block->offset = offset;
-
-			TX_ADD_FIELD_DIRECT(block, next);
-			block->next = blockp_as_oid(next_block);
-
-			block_cache_insert_block(vinode->blocks, next_block);
-
-			next_block->prev = blockp_as_oid(block);
-			next_block->next = TOID_NULL(struct pmemfile_block);
-
-			block = next_block;
+			block = block_list_insert_after(vinode, block);
+			block->offset = offset;
+			file_allocate_block_data(pfp, block, size, over);
+			block_cache_insert_block(vinode->blocks, block);
 		} else {
 			/* In a hole between two allocated blocks */
 
-			struct pmemfile_block *previous = block;
 			struct pmemfile_block *next = D_RW(block->next);
 
 			/* How many bytes in this hole can be used? */
@@ -413,24 +328,13 @@ file_allocate_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 
 			/* create a new block between previous and next */
 
-			struct pmemfile_block *block =
-			    allocate_block(pfp, vinode, hole_count, false);
+			block = block_list_insert_after(vinode, block);
 			block->offset = offset;
+			file_allocate_block_data(pfp, block, hole_count, false);
+			block_cache_insert_block(vinode->blocks, block);
+
 			if (block->size > hole_count)
 				block->size = (uint32_t)hole_count;
-
-			/* link the new block into the linked list */
-
-			TX_ADD_FIELD_DIRECT(previous, next);
-			previous->next = blockp_as_oid(block);
-
-			block->prev = blockp_as_oid(previous);
-			block->next = blockp_as_oid(next);
-
-			TX_ADD_FIELD_DIRECT(next, prev);
-			next->prev = blockp_as_oid(block);
-
-			block_cache_insert_block(vinode->blocks, block);
 		}
 	} while (size > 0);
 }
@@ -634,7 +538,7 @@ file_write(PMEMfilepool *pfp, PMEMfile *file, struct pmemfile_inode *inode,
 	 * - Copy the data from the users buffer
 	 */
 
-	file_allocate_range(pfp, file->vinode, file->offset, count);
+	vinode_allocate_interval(pfp, file->vinode, file->offset, count);
 
 	uint64_t original_size = inode->size;
 	uint64_t new_size = inode->size;
@@ -1016,48 +920,79 @@ end:
 	return ret;
 }
 
+static bool
+is_block_contained_by_range(struct pmemfile_block *block,
+		uint64_t start, uint64_t len)
+{
+	return block->offset >= start &&
+		(block->offset + block->size) <= (start + len);
+}
+
+static void
+vinode_remove_interval(struct pmemfile_vinode *vinode,
+			uint64_t offset, uint64_t len)
+{
+	struct pmemfile_block *block = find_block(vinode, offset + len);
+
+	while (block != NULL && block->offset + block->size > offset) {
+		if (is_block_contained_by_range(block, offset, len)) {
+			ctree_remove_unlocked(vinode->blocks, block->offset, 1);
+			block = block_list_remove(vinode, block);
+		} else {
+			uint64_t remove_offset;
+			uint64_t remove_len;
+
+			if (block->offset < offset)
+				remove_offset = offset - block->offset;
+			else
+				remove_offset = 0;
+
+			remove_len = block->size - remove_offset;
+
+			if (block->offset + block->size > offset + len)
+				remove_len -= (block->offset + block->size) -
+				    (offset + len);
+
+			TX_MEMSET(D_RW(block->data) + remove_offset, 0,
+				remove_len);
+
+			block = D_RW(block->prev);
+		}
+	}
+}
+
 /*
- * vinode_truncate -- changes file size to 0
+ * vinode_truncate -- changes file size to size
  */
 void
-vinode_truncate(struct pmemfile_vinode *vinode)
+vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+		uint64_t size)
 {
 	struct pmemfile_inode *inode = vinode->inode;
-	struct pmemfile_block_array *arr = &inode->file_data.blocks;
-	TOID(struct pmemfile_block_array) tarr = arr->next;
 
-	TX_MEMSET(&arr->next, 0, sizeof(arr->next));
-	for (uint32_t i = 0; i < arr->length; ++i) {
-		if (arr->blocks[i].size > 0) {
-			TX_FREE(arr->blocks[i].data);
-			continue;
-		}
+	if (inode->size == size)
+		return;
 
-		TX_MEMSET(&arr->blocks[0], 0, sizeof(arr->blocks[0]) * i);
-		break;
-	}
+	if (vinode->blocks == NULL)
+		vinode_rebuild_block_tree(vinode);
 
-	arr = D_RW(tarr);
-	while (arr != NULL) {
-		for (uint32_t i = 0; i < arr->length; ++i)
-			TX_FREE(arr->blocks[i].data);
-
-		TOID(struct pmemfile_block_array) next = arr->next;
-		TX_FREE(tarr);
-		tarr = next;
-		arr = D_RW(tarr);
-	}
+	/*
+	 * Might need to handle the special case where size == 0.
+	 * Setting all the next and prev fields is pointless, when all the
+	 * blocks are removed.
+	 */
+	if (inode->size > size)
+		vinode_remove_interval(vinode, size, UINT64_MAX - size);
+	else
+		vinode_allocate_interval(pfp, vinode,
+		    inode->size, size - inode->size);
 
 	TX_ADD_DIRECT(&inode->size);
-	inode->size = 0;
+	inode->size = size;
 
 	struct pmemfile_time tm;
 	file_get_time(&tm);
 	TX_SET_DIRECT(inode, mtime, tm);
-
-	// we don't have to rollback destroy of data state on abort, because
-	// it will be rebuilded when it's needed
-	vinode_destroy_data_state(vinode);
 }
 
 void

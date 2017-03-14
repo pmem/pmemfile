@@ -261,6 +261,9 @@ struct pmemfile_stats {
 };
 void pmemfile_stats(PMEMfilepool *pfp, struct pmemfile_stats *stats);
 
+int pmemfile_truncate(PMEMfilepool *, const char *path, off_t length);
+int pmemfile_ftruncate(PMEMfilepool *, PMEMfile *file, off_t length);
+
 char *pmemfile_get_dir_path(PMEMfilepool *pfp, PMEMfile *dir, char *buf,
 		size_t size);
 

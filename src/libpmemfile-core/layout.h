@@ -65,6 +65,7 @@ struct pmemfile_block {
 
 /* File */
 struct pmemfile_block_array {
+	TOID(struct pmemfile_block_array) prev;
 	TOID(struct pmemfile_block_array) next;
 
 	/* size of the blocks array */

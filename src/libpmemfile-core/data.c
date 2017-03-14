@@ -52,6 +52,13 @@ blockp_as_oid(struct pmemfile_block *block)
 	return (TOID(struct pmemfile_block))pmemobj_oid(block);
 }
 
+static TOID(struct pmemfile_block_array)
+blockarrp_as_oid(struct pmemfile_block_array *array)
+{
+	return (TOID(struct pmemfile_block_array))pmemobj_oid(array);
+}
+
+
 /*
  * block_cache_insert_block -- inserts block into the tree
  */
@@ -82,9 +89,16 @@ vinode_rebuild_block_tree(struct pmemfile_vinode *vinode)
 	struct pmemfile_block *first = NULL;
 #ifdef DEBUG
 	TOID(struct pmemfile_block) prev = TOID_NULL(struct pmemfile_block);
+	TOID(struct pmemfile_block_array) prev_array =
+		TOID_NULL(struct pmemfile_block_array);
 #endif
 
 	while (block_array != NULL) {
+#ifdef DEBUG
+		ASSERT(memcmp(&block_array->prev, &prev_array,
+		    sizeof(prev_array)) == 0);
+		prev_array = blockp_as_oid(block_array);
+#endif
 		for (unsigned i = 0; i < block_array->length; ++i) {
 			struct pmemfile_block *block = &block_array->blocks[i];
 
@@ -264,6 +278,7 @@ get_free_block(struct pmemfile_vinode *vinode)
 			sizeof(struct pmemfile_block));
 	ASSERT(prev != NULL);
 	TX_SET_DIRECT(prev, next, next);
+	D_RW(next)->prev = blockarrp_as_oid(prev);
 
 	binfo->arr = D_RW(next);
 	binfo->idx = 0;

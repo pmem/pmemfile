@@ -429,8 +429,242 @@ TEST_F(rw, trunc)
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 0, 1));
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
-
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file2"), 0);
+}
+
+TEST_F(rw, ftruncate)
+{
+	char buf[0x1000];
+	char bufFF[sizeof(buf)];
+	PMEMfile *f;
+	ssize_t r;
+
+	memset(bufFF, 0xff, sizeof(bufFF));
+
+	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT | PMEMFILE_O_RDWR, 0);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+
+	r = pmemfile_ftruncate(pfp, f, 1024);
+	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 1024);
+	r = pmemfile_ftruncate(pfp, f, 10240);
+	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 10240);
+
+	EXPECT_TRUE(test_pmemfile_stats_match(
+		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? 3 : 1));
+
+	r = pmemfile_ftruncate(pfp, f, 0);
+	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 0);
+
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 0));
+
+	static const ssize_t large = 0x100000;
+
+	r = pmemfile_ftruncate(pfp, f, large / 32);
+	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), (large / 32));
+
+	EXPECT_TRUE(test_pmemfile_stats_match(
+		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? 8 : 1));
+
+	r = pmemfile_ftruncate(pfp, f, large + 4);
+	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), large + 4);
+
+	static const char data0[] = "testtest";
+	static const ssize_t l0 = sizeof(data0);
+
+	ASSERT_EQ(pmemfile_lseek(pfp, f, large, PMEMFILE_SEEK_SET), large);
+	ASSERT_EQ(pmemfile_write(pfp, f, data0, l0), l0);
+	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), large + l0);
+	memset(buf, 0xff, sizeof(buf));
+	r = pmemfile_read(pfp, f, buf, 8192);
+	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(memcmp(buf, bufFF, sizeof(buf)), 0);
+
+	static const char data1[] = "\0\0\0testtest";
+	static const ssize_t l1 = sizeof(data1);
+
+	ASSERT_EQ(pmemfile_lseek(pfp, f, large, PMEMFILE_SEEK_SET), large);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, -3, PMEMFILE_SEEK_CUR), large - 3);
+	memset(buf, 0xff, sizeof(buf));
+	r = pmemfile_read(pfp, f, buf, 8192);
+	ASSERT_EQ(r, l1) << COND_ERROR(r);
+	ASSERT_EQ(memcmp(buf, data1, l1), 0);
+	ASSERT_EQ(memcmp(buf + l1, bufFF, sizeof(buf) - l1), 0);
+
+	if (env_block_size == 4096)
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 4, 0, 257));
+	else
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 2));
+
+	static const char data2[] = "\0\0\0te";
+	static const ssize_t l2 = sizeof(data2) - 1;
+
+	r = pmemfile_ftruncate(pfp, f, large + 2);
+	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), (large + 2));
+	ASSERT_EQ(pmemfile_lseek(pfp, f, large, PMEMFILE_SEEK_SET), large);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, -3, PMEMFILE_SEEK_CUR), large - 3);
+	memset(buf, 0xff, sizeof(buf));
+	r = pmemfile_read(pfp, f, buf, 8192);
+	ASSERT_EQ(r, l2) << COND_ERROR(r);
+	ASSERT_EQ(memcmp(buf, data2, l2), 0);
+	ASSERT_EQ(memcmp(buf + l2, bufFF, sizeof(buf) - l2), 0);
+
+	if (env_block_size == 4096)
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 4, 0, 257));
+	else
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 2));
+
+	static const char data3[] = "\0\0\0te\0\0\0\0\0\0";
+	static const ssize_t l3 = sizeof(data3) - 1;
+
+	r = pmemfile_ftruncate(pfp, f, large + 8);
+	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), (large + 8));
+	ASSERT_EQ(pmemfile_lseek(pfp, f, large, PMEMFILE_SEEK_SET), large);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, -3, PMEMFILE_SEEK_CUR), large - 3);
+	memset(buf, 0xff, sizeof(buf));
+	r = pmemfile_read(pfp, f, buf, 8192);
+	ASSERT_EQ(r, l3) << COND_ERROR(r);
+	ASSERT_EQ(memcmp(buf, data3, l3), 0);
+	ASSERT_EQ(memcmp(buf + l3, bufFF, sizeof(buf) - l3), 0);
+
+	if (env_block_size == 4096)
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 4, 0, 257));
+	else
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 2));
+
+	r = pmemfile_ftruncate(pfp, f, 0x100);
+	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 0x100);
+
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 1));
+
+	pmemfile_close(pfp, f);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
+}
+
+TEST_F(rw, truncate)
+{
+	char buf[0x1000];
+	char bufFF[sizeof(buf)];
+	PMEMfile *f;
+	ssize_t r;
+
+	memset(bufFF, 0xff, sizeof(bufFF));
+
+	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT | PMEMFILE_O_RDWR,
+			  PMEMFILE_S_IRWXU);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+
+	r = pmemfile_truncate(pfp, "/file1", 1024);
+	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 1024);
+	r = pmemfile_truncate(pfp, "/file1", 10240);
+	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 10240);
+
+	EXPECT_TRUE(test_pmemfile_stats_match(
+		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? 3 : 1));
+
+	r = pmemfile_truncate(pfp, "/file1", 0);
+	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 0);
+
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 0));
+
+	static const ssize_t large = 0x100000;
+
+	r = pmemfile_truncate(pfp, "/file1", large / 32);
+	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), (large / 32));
+
+	EXPECT_TRUE(test_pmemfile_stats_match(
+		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? 8 : 1));
+
+	r = pmemfile_truncate(pfp, "/file1", large + 4);
+	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), large + 4);
+
+	static constexpr char data0[] = "testtest";
+	static constexpr ssize_t l0 = sizeof(data0) - 1;
+
+	ASSERT_EQ(pmemfile_lseek(pfp, f, large, PMEMFILE_SEEK_SET), large);
+	ASSERT_EQ(pmemfile_write(pfp, f, data0, l0), l0);
+	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), large + l0);
+	memset(buf, 0xff, sizeof(buf));
+	r = pmemfile_read(pfp, f, buf, 8192);
+	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(memcmp(buf, bufFF, sizeof(buf)), 0);
+
+	static constexpr char data1[] = "\0\0\0testtest";
+	static constexpr ssize_t l1 = sizeof(data1) - 1;
+
+	ASSERT_EQ(pmemfile_lseek(pfp, f, large, PMEMFILE_SEEK_SET), large);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, -3, PMEMFILE_SEEK_CUR), large - 3);
+	memset(buf, 0xff, sizeof(buf));
+	r = pmemfile_read(pfp, f, buf, 8192);
+	ASSERT_EQ(r, l1) << COND_ERROR(r);
+	ASSERT_EQ(memcmp(buf, data1, l1), 0);
+	ASSERT_EQ(memcmp(buf + l1, bufFF, sizeof(buf) - l1), 0);
+
+	if (env_block_size == 4096)
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 4, 0, 257));
+	else
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 2));
+
+	static constexpr char data2[] = "\0\0\0te";
+	static constexpr ssize_t l2 = sizeof(data2) - 1;
+
+	r = pmemfile_truncate(pfp, "/file1", large + 2);
+	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), (large + 2));
+	ASSERT_EQ(pmemfile_lseek(pfp, f, large, PMEMFILE_SEEK_SET), large);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, -3, PMEMFILE_SEEK_CUR), large - 3);
+	memset(buf, 0xff, sizeof(buf));
+	r = pmemfile_read(pfp, f, buf, 8192);
+	ASSERT_EQ(r, l2) << COND_ERROR(r);
+	ASSERT_EQ(memcmp(buf, data2, l2), 0);
+	ASSERT_EQ(memcmp(buf + l2, bufFF, sizeof(buf) - l2), 0);
+
+	if (env_block_size == 4096)
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 4, 0, 257));
+	else
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 2));
+
+	static constexpr char data3[] = "\0\0\0te\0\0\0\0\0\0";
+	static constexpr ssize_t l3 = sizeof(data3) - 1;
+
+	r = pmemfile_truncate(pfp, "/file1", large + 8);
+	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), (large + 8));
+	ASSERT_EQ(pmemfile_lseek(pfp, f, large, PMEMFILE_SEEK_SET), large);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, -3, PMEMFILE_SEEK_CUR), large - 3);
+	memset(buf, 0xff, sizeof(buf));
+	r = pmemfile_read(pfp, f, buf, 8192);
+	ASSERT_EQ(r, l3) << COND_ERROR(r);
+	ASSERT_EQ(memcmp(buf, data3, l3), 0);
+	ASSERT_EQ(memcmp(buf + l3, bufFF, sizeof(buf) - l3), 0);
+
+	if (env_block_size == 4096)
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 4, 0, 257));
+	else
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 2));
+
+	r = pmemfile_truncate(pfp, "/file1", 0x100);
+	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 0x100);
+
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 1));
+
+	pmemfile_close(pfp, f);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
 }
 
 TEST_F(rw, o_append)

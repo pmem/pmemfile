@@ -18,17 +18,17 @@ BuildRequires:	libsyscall_intercept-devel
 %description
 XXX
 
-%package -n libpmemfile-core-debug
+%package -n libpmemfile-posix-debug
 Summary: Persistent memory-backed, userspace implementation of POSIX-like API
 Group: System Environment/Libraries
-%description -n libpmemfile-core-debug
+%description -n libpmemfile-posix-debug
 XXX
 
-%files -n libpmemfile-core-debug
+%files -n libpmemfile-posix-debug
 %defattr(-,root,root,-)
-%{_libdir}/pmemfile_debug/libpmemfile-core.so.*
-%{_libdir}/pmemfile_debug/libpmemfile-core.so
-%{_libdir}/pmemfile_debug/libpmemfile-core.a
+%{_libdir}/pmemfile_debug/libpmemfile-posix.so.*
+%{_libdir}/pmemfile_debug/libpmemfile-posix.so
+%{_libdir}/pmemfile_debug/libpmemfile-posix.a
 %license LICENSE
 
 %package -n libpmemfile-debug

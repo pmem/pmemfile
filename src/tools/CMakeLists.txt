@@ -30,10 +30,10 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 add_executable(mkfs.pmemfile mkfs.pmemfile.c)
-target_link_libraries(mkfs.pmemfile pmemfile-core_shared)
+target_link_libraries(mkfs.pmemfile pmemfile-posix_shared)
 
 add_executable(pmemfile-cat pmemfile-cat.c)
-target_link_libraries(pmemfile-cat pmemfile-core_shared)
+target_link_libraries(pmemfile-cat pmemfile-posix_shared)
 
 install(TARGETS mkfs.pmemfile
 	CONFIGURATIONS Release None

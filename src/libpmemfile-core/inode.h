@@ -36,7 +36,7 @@
 #include <stdint.h>
 #include <time.h>
 
-#include "libpmemfile-core.h"
+#include "libpmemfile-posix.h"
 #include "layout.h"
 #include "os_thread.h"
 

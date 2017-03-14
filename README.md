@@ -3,8 +3,8 @@
 Pmemfile project's goal is to provide low-overhead userspace implementation of
 file APIs using persistent memory.
 It consists of 2 major compoments:
-- libpmemfile-core - provides syscall-like API which can be used by applications
-- libpmemfile - provides transparent access to libpmemfile-core pools
+- libpmemfile-posix - provides syscall-like API which can be used by applications
+- libpmemfile - provides transparent access to libpmemfile-posix pools
 
 # How to build #
 
@@ -53,7 +53,7 @@ $ ./utils/build-rpm.sh
 ```
 Resulting packages will be in ~/rpmbuild/RPMS.
 
-Note: Before 1.0 pmemfile-core API and ABI is considered unstable.
+Note: Before 1.0 pmemfile-posix API and ABI is considered unstable.
 We reserve the right to change the on-media layout without warning.
 
 # Description: #
@@ -84,7 +84,7 @@ ls: cannot access '/tmp/mountpoint/dir_in_pmemfile': No such file or directory
 ```
 
 # Limitations: #
-* libpmemfile[-core].so does not support multiple processes accessing the pool
+* libpmemfile[-posix].so does not support multiple processes accessing the pool
   (libpmemobj limitation)
 * libpmemfile.so supports Linux only (other UNIX-like systems could be supported)
 * libpmemfile.so supports x86\_64 only (libsyscall_intercept limitation)
@@ -100,12 +100,12 @@ libpmemobj.so:
 * PMEMOBJ_LOG_FILE - log file
 * PMEMOBJ_LOG_LEVEL - logging level
 
-libpmemfile-core.so:
-* PMEMFILECORE_LOG_FILE - log file
-* PMEMFILECORE_LOG_LEVEL - logging level
+libpmemfile-posix.so:
+* PMEMFILE_POSIX_LOG_FILE - log file
+* PMEMFILE_POSIX_LOG_LEVEL - logging level
 
 libpmemfile.so:
-* PMEMFILE_PRELOAD_LOG - log file for operations handled by libpmemfile-core
+* PMEMFILE_PRELOAD_LOG - log file for operations handled by libpmemfile-posix
 * PMEMFILE_EXIT_ON_NOT_SUPPORTED - when set to 1, aborts an application which
   uses currently unsupported syscalls
 

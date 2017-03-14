@@ -31,7 +31,7 @@
  */
 
 /*
- * core-util.c -- utility functions
+ * inode_array.c -- inode_array utility functions
  */
 
 #include "inode.h"

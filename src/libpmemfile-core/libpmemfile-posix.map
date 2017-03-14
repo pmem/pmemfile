@@ -31,7 +31,7 @@
 #
 
 #
-# src/libpmemfile-core/libpmemfile-core.map -- linker map file for libpmemfile-core
+# src/libpmemfile-posix/libpmemfile-posix.map -- linker map file for libpmemfile-posix
 #
 {
 	global:

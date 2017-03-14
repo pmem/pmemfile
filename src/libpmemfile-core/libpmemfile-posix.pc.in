@@ -3,10 +3,10 @@ libdir=@CMAKE_INSTALL_PREFIX@/lib
 version=@VERSION@
 includedir=@CMAKE_INSTALL_PREFIX@/include
 
-Name: libpmemfile-core
-Description: libpmemfile-core - persistent memory filesystem with POSIX-like API
+Name: libpmemfile-posix
+Description: libpmemfile-posix - persistent memory filesystem with POSIX-like API
 Version: @VERSION@
 URL: http://github.com/marcinslusarz/pmemfile
 Requires.private: libpmemobj
-Libs: -L@CMAKE_INSTALL_PREFIX@/lib -lpmemfile-core
+Libs: -L@CMAKE_INSTALL_PREFIX@/lib -lpmemfile-posix
 Cflags: -I@CMAKE_INSTALL_PREFIX@/include

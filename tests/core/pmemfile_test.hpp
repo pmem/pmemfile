@@ -39,7 +39,7 @@
 #include <vector>
 
 #include "../test_backtrace.h"
-#include "libpmemfile-core.h"
+#include "libpmemfile-posix.h"
 #include "gtest/gtest.h"
 
 #define START()                                                                \

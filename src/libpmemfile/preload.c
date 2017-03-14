@@ -64,7 +64,7 @@
 #include <asm-generic/errno.h>
 
 #include "libsyscall_intercept_hook_point.h"
-#include "libpmemfile-core.h"
+#include "libpmemfile-posix.h"
 #include "util.h"
 
 /*
@@ -769,7 +769,7 @@ dispatch_syscall(long syscall_number,
 
 	/*
 	 * NOP implementations for the xattr family. None of these
-	 * actually call pmemfile-core. Some of them do need path resolution,
+	 * actually call pmemfile-posix. Some of them do need path resolution,
 	 * fgetxattr and fsetxattr don't.
 	 */
 	if (syscall_number == SYS_getxattr)
@@ -867,7 +867,7 @@ dispatch_syscall(long syscall_number,
 
 	/*
 	 * Some syscalls that have a path argument, but are not ( yet ) handled
-	 * by libpmemfile-core. The argument of these are not interpreted,
+	 * by libpmemfile-posix. The argument of these are not interpreted,
 	 * except for the path itself. If the path points to something pmemfile
 	 * resident, -ENOTSUP is returned, otherwise, the call is forwarded
 	 * to the kernel.

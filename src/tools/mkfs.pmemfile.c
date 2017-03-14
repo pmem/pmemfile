@@ -45,7 +45,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "libpmemfile-core.h"
+#include "libpmemfile-posix.h"
 
 static const char *progname;
 

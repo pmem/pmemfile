@@ -18,33 +18,33 @@ BuildRequires:	libsyscall_intercept-devel
 %description
 XXX
 
-%package -n libpmemfile-core
+%package -n libpmemfile-posix
 Summary: Persistent memory-backed, userspace implementation of POSIX-like API
 Group: System Environment/Libraries
-%description -n libpmemfile-core
+%description -n libpmemfile-posix
 XXX
 
-%files -n libpmemfile-core
+%files -n libpmemfile-posix
 %defattr(-,root,root,-)
-%{_libdir}/libpmemfile-core.so.*
+%{_libdir}/libpmemfile-posix.so.*
 %license LICENSE
 %doc README.md
 
-%package -n libpmemfile-core-devel
-Summary: Development files for libpmemfile-core library
+%package -n libpmemfile-posix-devel
+Summary: Development files for libpmemfile-posix library
 Group: Development/Libraries
-Requires: libpmemfile-core = %{version}-%{release}
-%description -n libpmemfile-core-devel
-Development files for libpmemfile-core library
+Requires: libpmemfile-posix = %{version}-%{release}
+%description -n libpmemfile-posix-devel
+Development files for libpmemfile-posix library
 
-%files -n libpmemfile-core-devel
+%files -n libpmemfile-posix-devel
 %defattr(-,root,root,-)
-%{_libdir}/libpmemfile-core.so
-%{_libdir}/libpmemfile-core.a
-%{_libdir}/pkgconfig/libpmemfile-core.pc
-%{_includedir}/libpmemfile-core.h
-%{_includedir}/libpmemfile-core-stubs.h
-%{_mandir}/man3/libpmemfile-core.3.gz
+%{_libdir}/libpmemfile-posix.so
+%{_libdir}/libpmemfile-posix.a
+%{_libdir}/pkgconfig/libpmemfile-posix.pc
+%{_includedir}/libpmemfile-posix.h
+%{_includedir}/libpmemfile-posix-stubs.h
+%{_mandir}/man3/libpmemfile-posix.3.gz
 %license LICENSE
 %doc
 
@@ -91,8 +91,8 @@ make install DESTDIR=%{buildroot}
 cd build
 ctest -V %{?_smp_mflags}
 
-%post   -n libpmemfile-core -p /sbin/ldconfig
-%postun -n libpmemfile-core -p /sbin/ldconfig
+%post   -n libpmemfile-posix -p /sbin/ldconfig
+%postun -n libpmemfile-posix -p /sbin/ldconfig
 
 %changelog
 * Tue Feb 14 2017 Marcin Ślusarz <marcin.slusarz@intel.com> - 0.1-1

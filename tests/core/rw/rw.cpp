@@ -552,14 +552,14 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
-	const char *e = getenv("PMEMFILECORE_BLOCK_SIZE");
+	const char *e = getenv("PMEMFILE_BLOCK_SIZE");
 
 	if (e == NULL)
 		env_block_size = 0;
 	else if (strcmp(e, "4096") == 0)
 		env_block_size = 4096;
 	else {
-		fprintf(stderr, "unexpected PMEMFILECORE_BLOCK_SIZE\n");
+		fprintf(stderr, "unexpected PMEMFILE_BLOCK_SIZE\n");
 		exit(1);
 	}
 

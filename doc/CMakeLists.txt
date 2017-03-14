@@ -45,13 +45,13 @@ function(generate_manpage name)
 	add_dependencies(manpages manpage-${name})
 endfunction()
 
-generate_manpage(libpmemfile-core.3)
+generate_manpage(libpmemfile-posix.3)
 if(BUILD_LIBPMEMFILE)
 generate_manpage(libpmemfile.1)
 endif()
 generate_manpage(mkfs.pmemfile.1)
 
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/generated/libpmemfile-core.3
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/generated/libpmemfile-posix.3
 	DESTINATION ${CMAKE_INSTALL_MANDIR}/man3
 	CONFIGURATIONS Release None)
 if(BUILD_LIBPMEMFILE)

@@ -37,7 +37,7 @@ set(SOURCES
 	inode.c
 	inode_array.c
 	locks.c
-	pmemfile-core.c
+	pmemfile-posix.c
 	pool.c
 	stubs.c
 	out.c
@@ -71,54 +71,54 @@ else()
 endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-add_library(pmemfile-core_o OBJECT ${SOURCES})
+add_library(pmemfile-posix_o OBJECT ${SOURCES})
 
 include_directories(${PMEMOBJ_INCLUDE_DIRS} .. .)
 link_directories(${PMEMOBJ_LIBRARY_DIRS})
 
-add_library(pmemfile-core_shared SHARED $<TARGET_OBJECTS:pmemfile-core_o>)
-add_library(pmemfile-core_static_unscoped STATIC $<TARGET_OBJECTS:pmemfile-core_o>)
+add_library(pmemfile-posix_shared SHARED $<TARGET_OBJECTS:pmemfile-posix_o>)
+add_library(pmemfile-posix_static_unscoped STATIC $<TARGET_OBJECTS:pmemfile-posix_o>)
 
-target_link_libraries(pmemfile-core_shared PRIVATE ${PMEMOBJ_LIBRARIES})
-target_link_libraries(pmemfile-core_shared PRIVATE -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/libpmemfile-core.map)
+target_link_libraries(pmemfile-posix_shared PRIVATE ${PMEMOBJ_LIBRARIES})
+target_link_libraries(pmemfile-posix_shared PRIVATE -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/libpmemfile-posix.map)
 
-set_target_properties(pmemfile-core_static_unscoped PROPERTIES OUTPUT_NAME pmemfile-core_unscoped)
-set_target_properties(pmemfile-core_shared PROPERTIES OUTPUT_NAME pmemfile-core)
-set_target_properties(pmemfile-core_shared PROPERTIES VERSION ${VERSION} SOVERSION ${VERSION_MAJOR})
+set_target_properties(pmemfile-posix_static_unscoped PROPERTIES OUTPUT_NAME pmemfile-posix_unscoped)
+set_target_properties(pmemfile-posix_shared PROPERTIES OUTPUT_NAME pmemfile-posix)
+set_target_properties(pmemfile-posix_shared PROPERTIES VERSION ${VERSION} SOVERSION ${VERSION_MAJOR})
 
 if(NOT ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-	set_target_properties(pmemfile-core_shared PROPERTIES
-		PUBLIC_HEADER "${CMAKE_SOURCE_DIR}/include/libpmemfile-core.h;${CMAKE_SOURCE_DIR}/include/libpmemfile-core-stubs.h")
+	set_target_properties(pmemfile-posix_shared PROPERTIES
+		PUBLIC_HEADER "${CMAKE_SOURCE_DIR}/include/libpmemfile-posix.h;${CMAKE_SOURCE_DIR}/include/libpmemfile-posix-stubs.h")
 endif()
 
-add_custom_command(OUTPUT libpmemfile-core.a
-		COMMAND objcopy --localize-hidden `sed -n "'s/^\\s*\\([a-zA-Z0-9_]*\\);$$/-G \\1/p'" ${CMAKE_CURRENT_SOURCE_DIR}/libpmemfile-core.map` libpmemfile-core_unscoped.a libpmemfile-core.a
-		DEPENDS pmemfile-core_static_unscoped)
-add_custom_target(pmemfile-core_static ALL DEPENDS libpmemfile-core.a)
+add_custom_command(OUTPUT libpmemfile-posix.a
+		COMMAND objcopy --localize-hidden `sed -n "'s/^\\s*\\([a-zA-Z0-9_]*\\);$$/-G \\1/p'" ${CMAKE_CURRENT_SOURCE_DIR}/libpmemfile-posix.map` libpmemfile-posix_unscoped.a libpmemfile-posix.a
+		DEPENDS pmemfile-posix_static_unscoped)
+add_custom_target(pmemfile-posix_static ALL DEPENDS libpmemfile-posix.a)
 
-configure_file(libpmemfile-core.pc.in libpmemfile-core.pc)
+configure_file(libpmemfile-posix.pc.in libpmemfile-posix.pc)
 
-install(TARGETS pmemfile-core_shared
+install(TARGETS pmemfile-posix_shared
 	CONFIGURATIONS Release None
 	DESTINATION ${CMAKE_INSTALL_LIBDIR}
 	PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-install(TARGETS pmemfile-core_shared
+install(TARGETS pmemfile-posix_shared
 	CONFIGURATIONS Debug
 	DESTINATION ${CMAKE_INSTALL_LIBDIR}/pmemfile_debug
 	PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libpmemfile-core.a
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libpmemfile-posix.a
 	CONFIGURATIONS Release None
 	DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libpmemfile-core.a
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libpmemfile-posix.a
 	CONFIGURATIONS Debug
 	DESTINATION ${CMAKE_INSTALL_LIBDIR}/pmemfile_debug)
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libpmemfile-core.pc
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libpmemfile-posix.pc
 	CONFIGURATIONS Release None
 	DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 
-add_cstyle(pmemfile-core)
-add_check_whitespace(pmemfile-core)
+add_cstyle(pmemfile-posix)
+add_check_whitespace(pmemfile-posix)

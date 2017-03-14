@@ -39,7 +39,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "libpmemfile-core.h"
+#include "libpmemfile-posix.h"
 
 static void
 print_version(void)

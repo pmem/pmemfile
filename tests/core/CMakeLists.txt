@@ -122,20 +122,12 @@ function(add_test_generic name tracer)
 			-DBIN_DIR=${CMAKE_CURRENT_BINARY_DIR}/${name}_${tracer}
 			-DTEST_EXECUTABLE=$<TARGET_FILE:file_${name}>
 			-DTRACER=${tracer}
+			-DLONG_TESTS=${LONG_TESTS}
 			${ARGV2}
 			-P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/test.cmake)
 
 	set_tests_properties(${name}_${tracer} PROPERTIES
 		ENVIRONMENT "LC_ALL=C;PATH=$ENV{PATH};${ARGV3}")
-endfunction()
-
-function(add_long_test_generic name tracer)
-	if (LONG_TESTS)
-		add_test_generic(${name} ${tracer} ${ARGN})
-	else()
-		add_test(NAME ${name}_${tracer}_SKIPPED_BECAUSE_LONG_TESTS_ARE_DISABLED
-			COMMAND true)
-	endif()
 endfunction()
 
 add_test_generic(basic none)
@@ -169,7 +161,7 @@ add_test_generic(permissions pmemcheck)
 add_test_generic(rw none)
 add_test_generic(rw none_blk4096 '' PMEMFILE_BLOCK_SIZE=4096)
 add_test_generic(rw memcheck)
-add_long_test_generic(rw pmemcheck)
+add_test_generic(rw pmemcheck)
 
 add_test_generic(stat none)
 add_test_generic(stat memcheck)
@@ -177,3 +169,8 @@ add_test_generic(stat pmemcheck)
 
 add_test_generic(symlinks none)
 add_test_generic(symlinks memcheck)
+
+if(NOT LONG_TESTS)
+	add_test(NAME SOME_TESTS_WERE_SKIPPED_BECAUSE_LONG_TESTS_ARE_DISABLED
+		COMMAND true)
+endif()

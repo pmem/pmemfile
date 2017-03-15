@@ -195,7 +195,7 @@ create_file(PMEMfilepool *pfp, const char *filename, size_t namelen,
 	return vinode;
 }
 
-static bool
+bool
 gid_in_list(PMEMfilepool *pfp, gid_t gid)
 {
 	for (size_t i = 0; i < pfp->groupsnum; ++i) {
@@ -206,54 +206,60 @@ gid_in_list(PMEMfilepool *pfp, gid_t gid)
 	return false;
 }
 
+bool
+can_access(PMEMfilepool *pfp, struct inode_perms *perms, int acc)
+{
+	mode_t perm = perms->flags & PMEMFILE_ACCESSPERMS;
+	mode_t req = 0;
+
+	os_rwlock_rdlock(&pfp->cred_rwlock);
+	if (perms->uid == pfp->fsuid) {
+		if (acc & PFILE_WANT_READ)
+			req |=  PMEMFILE_S_IRUSR;
+		if (acc & PFILE_WANT_WRITE)
+			req |=  PMEMFILE_S_IWUSR;
+		if (acc & PFILE_WANT_EXECUTE)
+			req |=  PMEMFILE_S_IXUSR;
+	} else if (perms->gid == pfp->fsgid || gid_in_list(pfp, perms->gid)) {
+		if (acc & PFILE_WANT_READ)
+			req |=  PMEMFILE_S_IRGRP;
+		if (acc & PFILE_WANT_WRITE)
+			req |=  PMEMFILE_S_IWGRP;
+		if (acc & PFILE_WANT_EXECUTE)
+			req |=  PMEMFILE_S_IXGRP;
+	} else {
+		if (acc & PFILE_WANT_READ)
+			req |=  PMEMFILE_S_IROTH;
+		if (acc & PFILE_WANT_WRITE)
+			req |=  PMEMFILE_S_IWOTH;
+		if (acc & PFILE_WANT_EXECUTE)
+			req |=  PMEMFILE_S_IXOTH;
+	}
+	os_rwlock_unlock(&pfp->cred_rwlock);
+
+	return ((perm & req) == req);
+}
+
 static void
 open_file(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, int flags)
 {
-	const struct pmemfile_inode *inode = vinode->inode;
 	int acc = flags & PMEMFILE_O_ACCMODE;
-
-	uint64_t inode_flags;
-	uid_t inode_uid;
-	gid_t inode_gid;
 
 	if (acc == PMEMFILE_O_ACCMODE)
 		pmemfile_tx_abort(EINVAL);
 
-	os_rwlock_rdlock(&vinode->rwlock);
-	inode_flags = inode->flags;
-	inode_uid = inode->uid;
-	inode_gid = inode->gid;
-	os_rwlock_unlock(&vinode->rwlock);
+	struct inode_perms inode_perms;
+	vinode_get_perms(vinode, &inode_perms);
 
-	mode_t perm = inode_flags & PMEMFILE_ACCESSPERMS;
-	mode_t req;
+	int acc2;
+	if (acc == PMEMFILE_O_RDWR)
+		acc2 = PFILE_WANT_READ | PFILE_WANT_WRITE;
+	else if (acc == PMEMFILE_O_RDONLY)
+		acc2 = PFILE_WANT_READ;
+	else
+		acc2 = PFILE_WANT_WRITE;
 
-	os_rwlock_rdlock(&pfp->cred_rwlock);
-	if (inode_uid == pfp->fsuid) {
-		if (acc == PMEMFILE_O_RDWR)
-			req = PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR;
-		else if (acc == PMEMFILE_O_RDONLY)
-			req = PMEMFILE_S_IRUSR;
-		else
-			req = PMEMFILE_S_IWUSR;
-	} else if (inode_gid == pfp->fsgid || gid_in_list(pfp, inode_gid)) {
-		if (acc == PMEMFILE_O_RDWR)
-			req = PMEMFILE_S_IRGRP | PMEMFILE_S_IWGRP;
-		else if (acc == PMEMFILE_O_RDONLY)
-			req = PMEMFILE_S_IRGRP;
-		else
-			req = PMEMFILE_S_IWGRP;
-	} else {
-		if (acc == PMEMFILE_O_RDWR)
-			req = PMEMFILE_S_IROTH | PMEMFILE_S_IWOTH;
-		else if (acc == PMEMFILE_O_RDONLY)
-			req = PMEMFILE_S_IROTH;
-		else
-			req = PMEMFILE_S_IWOTH;
-	}
-	os_rwlock_unlock(&pfp->cred_rwlock);
-
-	if ((perm & req) != req)
+	if (!can_access(pfp, &inode_perms, acc2))
 		pmemfile_tx_abort(EACCES);
 
 	if ((flags & PMEMFILE_O_DIRECTORY) && !vinode_is_dir(vinode))

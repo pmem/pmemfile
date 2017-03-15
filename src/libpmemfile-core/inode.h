@@ -79,6 +79,29 @@ struct pmemfile_vinode {
 	} snapshot;
 };
 
+struct inode_perms {
+	uint64_t flags;
+	uint32_t uid;
+	uint32_t gid;
+};
+
+static inline void
+_vinode_get_perms(struct pmemfile_vinode *vinode, struct inode_perms *perms)
+{
+	struct pmemfile_inode *inode = vinode->inode;
+	perms->flags = inode->flags;
+	perms->uid = inode->uid;
+	perms->gid = inode->gid;
+}
+
+static inline void
+vinode_get_perms(struct pmemfile_vinode *vinode, struct inode_perms *perms)
+{
+	os_rwlock_rdlock(&vinode->rwlock);
+	_vinode_get_perms(vinode, perms);
+	os_rwlock_unlock(&vinode->rwlock);
+}
+
 static inline bool inode_is_dir(const struct pmemfile_inode *inode)
 {
 	return PMEMFILE_S_ISDIR(inode->flags);

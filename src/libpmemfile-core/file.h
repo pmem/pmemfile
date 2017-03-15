@@ -78,5 +78,11 @@ struct pmemfile_file {
 };
 
 const char *file_check_pathname(const char *pathname);
+bool gid_in_list(PMEMfilepool *pfp, gid_t gid);
+
+#define PFILE_WANT_READ (1<<0)
+#define PFILE_WANT_WRITE (1<<1)
+#define PFILE_WANT_EXECUTE (1<<2)
+bool can_access(PMEMfilepool *pfp, struct inode_perms *perms, int acc);
 
 #endif

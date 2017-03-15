@@ -30,21 +30,21 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 set(SOURCES
+	block_array.c
 	callbacks.c
+	consts.c
+	ctree.c
 	data.c
 	dir.c
 	file.c
 	inode.c
 	inode_array.c
 	locks.c
+	os_thread_pthread.c
+	out.c
 	pmemfile-posix.c
 	pool.c
 	stubs.c
-	out.c
-	ctree.c
-	consts.c
-	os_thread_pthread.c
-	block_array.c
 )
 
 set(HEADERS

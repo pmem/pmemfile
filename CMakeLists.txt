@@ -198,7 +198,7 @@ if(DEVELOPER_MODE)
 	add_c_flag(-Werror)
 	add_cxx_flag(-Werror)
 
-	check_c_compiler_flag(-Wl,--warn-common LINKER_HAS_FATAL_WARNINGS)
+	check_c_compiler_flag(-Wl,--fatal-warnings LINKER_HAS_FATAL_WARNINGS)
 	if(LINKER_HAS_FATAL_WARNINGS)
 		set(CMAKE_LD_FLAGS  "${CMAKE_LD_FLAGS} -Wl,--fatal-warnings")
 	endif()

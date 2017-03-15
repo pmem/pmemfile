@@ -603,6 +603,10 @@ file_getdents(PMEMfile *file, struct linux_dirent *dirp,
 		size_t namelen = strlen(dirent->name);
 		unsigned short slen = (unsigned short)
 				(8 + 8 + 2 + namelen + 1 + 1);
+		unsigned short alignment = (unsigned short)(8 - (slen & 7));
+		if (alignment == 8)
+			alignment = 0;
+		slen = (unsigned short)(slen + alignment);
 		uint64_t next_off = file->offset + 1;
 		if (dirent_id + 1 >= dir->num_elements)
 			next_off = ((next_off >> 32) + 1) << 32;
@@ -621,6 +625,9 @@ file_getdents(PMEMfile *file, struct linux_dirent *dirp,
 
 		memcpy(data, dirent->name, namelen + 1);
 		data += namelen + 1;
+
+		while (alignment--)
+			*data++ = 0;
 
 		const struct pmemfile_inode *inode = D_RO(dirent->inode);
 		if (inode_is_regular_file(inode))
@@ -715,6 +722,10 @@ file_getdents64(PMEMfile *file, struct linux_dirent64 *dirp,
 		size_t namelen = strlen(dirent->name);
 		unsigned short slen = (unsigned short)
 				(8 + 8 + 2 + 1 + namelen + 1);
+		unsigned short alignment = (unsigned short)(8 - (slen & 7));
+		if (alignment == 8)
+			alignment = 0;
+		slen = (unsigned short)(slen + alignment);
 		uint64_t next_off = file->offset + 1;
 		if (dirent_id + 1 >= dir->num_elements)
 			next_off = ((next_off >> 32) + 1) << 32;
@@ -744,6 +755,8 @@ file_getdents64(PMEMfile *file, struct linux_dirent64 *dirp,
 
 		memcpy(data, dirent->name, namelen + 1);
 		data += namelen + 1;
+		while (alignment--)
+			*data++ = 0;
 
 		read1 += slen;
 

@@ -1,7 +1,10 @@
 #!/usr/bin/make -f
 #export DH_VERBOSE=1
 %:
-	dh $@ --buildsystem=cmake
+	dh $@ --buildsystem=cmake --parallel
 
 override_dh_auto_configure:
 	dh_auto_configure -- -DTESTS_USE_FORCED_PMEM=1
+
+override_dh_auto_test:
+	dh_auto_test -- ARGS+=--output-on-failure

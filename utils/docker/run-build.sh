@@ -52,8 +52,8 @@ cmake .. -DDEVELOPER_MODE=1 \
 		-DTRACE_TESTS=1 \
 		-DTESTS_USE_FORCED_PMEM=1
 
-make
-ctest --output-on-failure
+make -j2
+ctest -j2 --output-on-failure
 make install
 cd ..
 rm -r build
@@ -67,8 +67,8 @@ cmake .. -DCMAKE_INSTALL_PREFIX=/tmp/pmemfile \
 		-DTRACE_TESTS=1 \
 		-DTESTS_USE_FORCED_PMEM=1
 
-make
-ctest --output-on-failure
+make -j2
+ctest -j2 --output-on-failure
 make install
 cd ..
 rm -r build

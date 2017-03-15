@@ -29,6 +29,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+option(TESTS_USE_FORCED_PMEM "let tests force enable or force disable use of optimized flush in libpmemobj (to speed them up)" OFF)
+
 set(GLOBAL_TEST_ARGS
 	-DMATCH_SCRIPT=${PROJECT_SOURCE_DIR}/tests/match
 	-DMKFS_EXECUTABLE=$<TARGET_FILE:mkfs.pmemfile>

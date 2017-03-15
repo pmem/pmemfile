@@ -276,6 +276,7 @@ add_dependencies(check-whitespace check-whitespace-main)
 
 add_custom_target(tests)
 
+option(DEVELOPER_MODE "enable developer checks" OFF)
 if(DEVELOPER_MODE)
 	find_program(CLANG_FORMAT NAMES clang-format-3.9 clang-format-3.8 clang-format)
 	if (NOT CLANG_FORMAT)

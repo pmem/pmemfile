@@ -97,6 +97,20 @@ allocate_new_block_array(struct pmemfile_vinode *vinode)
 	vinode->first_free_block.idx = 0;
 }
 
+/*
+ * is_zeroed -- check if given memory range is all zero
+ */
+static inline bool
+is_zeroed(const void *addr, size_t len)
+{
+	/* XXX optimize */
+	const char *a = (const char *)addr;
+	while (len-- > 0)
+		if (*a++)
+			return false;
+	return true;
+}
+
 static struct pmemfile_block *
 acquire_new_entry(struct pmemfile_vinode *vinode)
 {
@@ -104,6 +118,8 @@ acquire_new_entry(struct pmemfile_vinode *vinode)
 
 	struct block_info *binfo = &vinode->first_free_block;
 	struct pmemfile_block *block = binfo->arr->blocks + binfo->idx++;
+
+	ASSERT(is_zeroed(block, sizeof(*block)));
 
 	/* XXX, snapshot separated to let pmemobj use small object cache  */
 	pmemobj_tx_add_range_direct(block, 32);

@@ -44,6 +44,7 @@ set(SOURCES
 	ctree.c
 	consts.c
 	os_thread_pthread.c
+	block_array.c
 )
 
 set(HEADERS

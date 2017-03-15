@@ -195,53 +195,8 @@ create_file(PMEMfilepool *pfp, const char *filename, size_t namelen,
 	return vinode;
 }
 
-bool
-gid_in_list(PMEMfilepool *pfp, gid_t gid)
-{
-	for (size_t i = 0; i < pfp->groupsnum; ++i) {
-		if (pfp->groups[i] == gid)
-			return true;
-	}
-
-	return false;
-}
-
-bool
-can_access(PMEMfilepool *pfp, struct inode_perms *perms, int acc)
-{
-	mode_t perm = perms->flags & PMEMFILE_ACCESSPERMS;
-	mode_t req = 0;
-
-	os_rwlock_rdlock(&pfp->cred_rwlock);
-	if (perms->uid == pfp->fsuid) {
-		if (acc & PFILE_WANT_READ)
-			req |=  PMEMFILE_S_IRUSR;
-		if (acc & PFILE_WANT_WRITE)
-			req |=  PMEMFILE_S_IWUSR;
-		if (acc & PFILE_WANT_EXECUTE)
-			req |=  PMEMFILE_S_IXUSR;
-	} else if (perms->gid == pfp->fsgid || gid_in_list(pfp, perms->gid)) {
-		if (acc & PFILE_WANT_READ)
-			req |=  PMEMFILE_S_IRGRP;
-		if (acc & PFILE_WANT_WRITE)
-			req |=  PMEMFILE_S_IWGRP;
-		if (acc & PFILE_WANT_EXECUTE)
-			req |=  PMEMFILE_S_IXGRP;
-	} else {
-		if (acc & PFILE_WANT_READ)
-			req |=  PMEMFILE_S_IROTH;
-		if (acc & PFILE_WANT_WRITE)
-			req |=  PMEMFILE_S_IWOTH;
-		if (acc & PFILE_WANT_EXECUTE)
-			req |=  PMEMFILE_S_IXOTH;
-	}
-	os_rwlock_unlock(&pfp->cred_rwlock);
-
-	return ((perm & req) == req);
-}
-
 static void
-open_file(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, int flags)
+open_file(struct pmemfile_cred *cred, struct pmemfile_vinode *vinode, int flags)
 {
 	int acc = flags & PMEMFILE_O_ACCMODE;
 
@@ -259,7 +214,7 @@ open_file(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, int flags)
 	else
 		acc2 = PFILE_WANT_WRITE;
 
-	if (!can_access(pfp, &inode_perms, acc2))
+	if (!can_access(cred, &inode_perms, acc2))
 		pmemfile_tx_abort(EACCES);
 
 	if ((flags & PMEMFILE_O_DIRECTORY) && !vinode_is_dir(vinode))
@@ -318,6 +273,9 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	struct pmemfile_vinode *vparent;
 	bool path_info_changed;
 	size_t namelen;
+	struct pmemfile_cred cred;
+	if (get_cred(pfp, &cred))
+		return NULL;
 
 	resolve_pathat(pfp, dir, pathname, &info, 0);
 
@@ -418,7 +376,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 			vinode = create_file(pfp, info.remaining, namelen,
 					vparent, flags, mode);
 		} else {
-			open_file(pfp, vinode, flags);
+			open_file(&cred, vinode, flags);
 		}
 
 		file = calloc(1, sizeof(*file));
@@ -444,6 +402,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 end:
 	path_info_cleanup(pfp, &info);
+	put_cred(&cred);
 
 	if (error) {
 		if (vinode != NULL)
@@ -1410,7 +1369,7 @@ vinode_chmod(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, mode_t mode)
 	uid_t fsuid;
 
 	os_rwlock_rdlock(&pfp->cred_rwlock);
-	fsuid = pfp->fsuid;
+	fsuid = pfp->cred.fsuid;
 	os_rwlock_unlock(&pfp->cred_rwlock);
 
 	os_rwlock_wrlock(&vinode->rwlock);
@@ -1581,8 +1540,8 @@ pmemfile_setfsuid(PMEMfilepool *pfp, uid_t fsuid)
 	}
 
 	os_rwlock_wrlock(&pfp->cred_rwlock);
-	uid_t prev_fsuid = pfp->fsuid;
-	pfp->fsuid = fsuid;
+	uid_t prev_fsuid = pfp->cred.fsuid;
+	pfp->cred.fsuid = fsuid;
 	os_rwlock_unlock(&pfp->cred_rwlock);
 
 	return (int)prev_fsuid;
@@ -1597,8 +1556,8 @@ pmemfile_setfsgid(PMEMfilepool *pfp, uid_t fsgid)
 	}
 
 	os_rwlock_wrlock(&pfp->cred_rwlock);
-	uid_t prev_fsgid = pfp->fsgid;
-	pfp->fsgid = fsgid;
+	uid_t prev_fsgid = pfp->cred.fsgid;
+	pfp->cred.fsgid = fsgid;
 	os_rwlock_unlock(&pfp->cred_rwlock);
 
 	return (int)prev_fsgid;
@@ -1613,14 +1572,15 @@ pmemfile_getgroups(PMEMfilepool *pfp, int size, gid_t list[])
 	}
 
 	os_rwlock_rdlock(&pfp->cred_rwlock);
-	size_t groupsnum = pfp->groupsnum;
+	size_t groupsnum = pfp->cred.groupsnum;
 	if (groupsnum > (size_t)size) {
 		errno = EINVAL;
 		os_rwlock_unlock(&pfp->cred_rwlock);
 		return -1;
 	}
 
-	memcpy(list, pfp->groups, pfp->groupsnum * sizeof(pfp->groups[0]));
+	memcpy(list, pfp->cred.groups,
+			pfp->cred.groupsnum * sizeof(pfp->cred.groups[0]));
 
 	os_rwlock_unlock(&pfp->cred_rwlock);
 	return (int)groupsnum;
@@ -1631,17 +1591,18 @@ pmemfile_setgroups(PMEMfilepool *pfp, size_t size, const gid_t *list)
 {
 	int error = 0;
 	os_rwlock_wrlock(&pfp->cred_rwlock);
-	if (size != pfp->groupsnum) {
-		void *r = realloc(pfp->groups, size * sizeof(pfp->groups[0]));
+	if (size != pfp->cred.groupsnum) {
+		void *r = realloc(pfp->cred.groups,
+				size * sizeof(pfp->cred.groups[0]));
 		if (!r) {
 			error = errno;
 			goto end;
 		}
 
-		pfp->groups = r;
-		pfp->groupsnum = size;
+		pfp->cred.groups = r;
+		pfp->cred.groupsnum = size;
 	}
-	memcpy(pfp->groups, list, size * sizeof(*list));
+	memcpy(pfp->cred.groups, list, size * sizeof(*list));
 
 end:
 	os_rwlock_unlock(&pfp->cred_rwlock);

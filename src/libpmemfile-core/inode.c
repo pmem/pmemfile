@@ -489,8 +489,8 @@ inode_alloc(PMEMfilepool *pfp, uint64_t flags, struct pmemfile_time *t,
 	inode->atime = *t;
 	inode->nlink = 0;
 	os_rwlock_rdlock(&pfp->cred_rwlock);
-	inode->uid = pfp->fsuid;
-	inode->gid = pfp->fsgid;
+	inode->uid = pfp->cred.fsuid;
+	inode->gid = pfp->cred.fsgid;
 	os_rwlock_unlock(&pfp->cred_rwlock);
 
 	if (inode_is_regular_file(inode))

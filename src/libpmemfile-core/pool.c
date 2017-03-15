@@ -65,10 +65,10 @@ initialize_super_block(PMEMfilepool *pfp)
 		return -1;
 	}
 
-	pfp->fsuid = 0;
-	pfp->fsgid = 0;
-	pfp->groupsnum = 0;
-	pfp->groups = NULL;
+	pfp->cred.fsuid = 0;
+	pfp->cred.fsgid = 0;
+	pfp->cred.groupsnum = 0;
+	pfp->cred.groups = NULL;
 
 	os_rwlock_init(&pfp->cred_rwlock);
 	os_rwlock_init(&pfp->rwlock);
@@ -286,8 +286,8 @@ pmemfile_pool_close(PMEMfilepool *pfp)
 {
 	LOG(LDBG, "pfp %p", pfp);
 
-	if (pfp->groups)
-		free(pfp->groups);
+	if (pfp->cred.groups)
+		free(pfp->cred.groups);
 
 	vinode_unref_tx(pfp, pfp->cwd);
 	vinode_unref_tx(pfp, pfp->root);
@@ -301,4 +301,85 @@ pmemfile_pool_close(PMEMfilepool *pfp)
 	memset(pfp, 0, sizeof(*pfp));
 
 	free(pfp);
+}
+
+static bool
+gid_in_list(const struct pmemfile_cred *cred, gid_t gid)
+{
+	for (size_t i = 0; i < cred->groupsnum; ++i) {
+		if (cred->groups[i] == gid)
+			return true;
+	}
+
+	return false;
+}
+
+bool
+can_access(const struct pmemfile_cred *cred, const struct inode_perms *perms,
+		int acc)
+{
+	mode_t perm = perms->flags & PMEMFILE_ACCESSPERMS;
+	mode_t req = 0;
+
+	if (perms->uid == cred->fsuid) {
+		if (acc & PFILE_WANT_READ)
+			req |=  PMEMFILE_S_IRUSR;
+		if (acc & PFILE_WANT_WRITE)
+			req |=  PMEMFILE_S_IWUSR;
+		if (acc & PFILE_WANT_EXECUTE)
+			req |=  PMEMFILE_S_IXUSR;
+	} else if (perms->gid == cred->fsgid || gid_in_list(cred, perms->gid)) {
+		if (acc & PFILE_WANT_READ)
+			req |=  PMEMFILE_S_IRGRP;
+		if (acc & PFILE_WANT_WRITE)
+			req |=  PMEMFILE_S_IWGRP;
+		if (acc & PFILE_WANT_EXECUTE)
+			req |=  PMEMFILE_S_IXGRP;
+	} else {
+		if (acc & PFILE_WANT_READ)
+			req |=  PMEMFILE_S_IROTH;
+		if (acc & PFILE_WANT_WRITE)
+			req |=  PMEMFILE_S_IWOTH;
+		if (acc & PFILE_WANT_EXECUTE)
+			req |=  PMEMFILE_S_IXOTH;
+	}
+
+	return ((perm & req) == req);
+}
+
+static int
+copy_cred(struct pmemfile_cred *dst_cred, struct pmemfile_cred *src_cred)
+{
+	dst_cred->fsuid = src_cred->fsuid;
+	dst_cred->fsgid = src_cred->fsgid;
+	dst_cred->groupsnum = src_cred->groupsnum;
+	if (dst_cred->groupsnum) {
+		dst_cred->groups = malloc(dst_cred->groupsnum *
+				sizeof(dst_cred->groups[0]));
+		if (!dst_cred->groups)
+			return -1;
+		memcpy(dst_cred->groups, src_cred->groups, dst_cred->groupsnum *
+				sizeof(dst_cred->groups[0]));
+	} else {
+		dst_cred->groups = NULL;
+	}
+
+	return 0;
+}
+
+int
+get_cred(PMEMfilepool *pfp, struct pmemfile_cred *cred)
+{
+	int ret;
+	os_rwlock_rdlock(&pfp->cred_rwlock);
+	ret = copy_cred(cred, &pfp->cred);
+	os_rwlock_unlock(&pfp->cred_rwlock);
+	return ret;
+}
+
+void
+put_cred(struct pmemfile_cred *cred)
+{
+	free(cred->groups);
+	memset(cred, 0, sizeof(*cred));
 }

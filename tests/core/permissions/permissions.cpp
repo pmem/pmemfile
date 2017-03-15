@@ -351,6 +351,23 @@ TEST_F(permissions, fchmodat)
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir/"), 0);
 }
 
+TEST_F(permissions, dirs)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_rwx", PMEMFILE_S_IRWXU), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_rw-",
+				 PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR),
+		  0);
+
+	ASSERT_EQ(pmemfile_chdir(pfp, "/dir_rwx"), 0);
+	ASSERT_EQ(pmemfile_chdir(pfp, "/"), 0);
+
+	ASSERT_EQ(pmemfile_chdir(pfp, "/dir_rw-"), -1);
+	EXPECT_EQ(errno, EACCES);
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_rwx"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_rw-"), 0);
+}
+
 int
 main(int argc, char *argv[])
 {

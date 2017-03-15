@@ -353,10 +353,17 @@ TEST_F(permissions, fchmodat)
 
 TEST_F(permissions, dirs)
 {
+	PMEMfile *file;
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_rwx", PMEMFILE_S_IRWXU), 0);
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_rw-",
 				 PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR),
 		  0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_rwx/dir_--x", PMEMFILE_S_IXUSR), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_rwx/dir_r--", PMEMFILE_S_IRUSR), 0);
+	ASSERT_TRUE(test_pmemfile_create(
+		pfp, "/dir_rwx/dir_--x/file", PMEMFILE_O_EXCL,
+		PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR | PMEMFILE_S_IRGRP |
+			PMEMFILE_S_IROTH));
 
 	ASSERT_EQ(pmemfile_chdir(pfp, "/dir_rwx"), 0);
 	ASSERT_EQ(pmemfile_chdir(pfp, "/"), 0);
@@ -364,6 +371,34 @@ TEST_F(permissions, dirs)
 	ASSERT_EQ(pmemfile_chdir(pfp, "/dir_rw-"), -1);
 	EXPECT_EQ(errno, EACCES);
 
+	file = pmemfile_open(pfp, "/dir_rwx/dir_--x/file", PMEMFILE_O_RDONLY);
+	ASSERT_NE(file, nullptr) << strerror(errno);
+	pmemfile_close(pfp, file);
+
+	file = pmemfile_open(pfp, "/dir_rwx/dir_--x",
+			     PMEMFILE_O_DIRECTORY | PMEMFILE_O_RDONLY);
+	ASSERT_EQ(file, nullptr);
+	EXPECT_EQ(errno, EACCES);
+
+	/*
+	 * Just to be sure opening the next path without going into
+	 * non-executable directory works.
+	 */
+	file = pmemfile_open(pfp, "/dir_rwx",
+			     PMEMFILE_O_DIRECTORY | PMEMFILE_O_RDONLY);
+	ASSERT_NE(file, nullptr) << strerror(errno);
+	pmemfile_close(pfp, file);
+
+	file = pmemfile_open(pfp, "/dir_rwx/dir_r--/..",
+			     PMEMFILE_O_DIRECTORY | PMEMFILE_O_RDONLY);
+	ASSERT_EQ(file, nullptr);
+	EXPECT_EQ(errno, EACCES);
+
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir_rwx/dir_--x/file"), 0);
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_rwx/dir_--x"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_rwx/dir_r--"), 0);
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_rwx"), 0);
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_rw-"), 0);
 }

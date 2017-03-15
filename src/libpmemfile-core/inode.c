@@ -692,9 +692,13 @@ _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	LOG(LDBG, "path %s", path);
 
+	struct pmemfile_cred cred;
+	if (get_cred(pfp, &cred))
+		return -1;
+
 	int error = 0;
 	struct pmemfile_path_info info;
-	resolve_pathat(pfp, dir, path, &info, 0);
+	resolve_pathat(pfp, &cred, dir, path, &info, 0);
 
 	struct pmemfile_vinode *vinode = NULL;
 	bool path_info_changed;
@@ -718,7 +722,7 @@ _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 			if (vinode && vinode_is_symlink(vinode) &&
 					!(flags &
 						PMEMFILE_AT_SYMLINK_NOFOLLOW)) {
-				resolve_symlink(pfp, vinode, &info);
+				resolve_symlink(pfp, &cred, vinode, &info);
 				path_info_changed = true;
 			}
 		}
@@ -738,6 +742,7 @@ _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 end:
 	path_info_cleanup(pfp, &info);
+	put_cred(&cred);
 
 	vinode_unref_tx(pfp, vinode);
 

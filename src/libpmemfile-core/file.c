@@ -277,7 +277,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	if (get_cred(pfp, &cred))
 		return NULL;
 
-	resolve_pathat(pfp, dir, pathname, &info, 0);
+	resolve_pathat(pfp, &cred, dir, pathname, &info, 0);
 
 	do {
 		path_info_changed = false;
@@ -319,7 +319,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 					(PMEMFILE_O_CREAT|PMEMFILE_O_EXCL))
 				break;
 
-			resolve_symlink(pfp, vinode, &info);
+			resolve_symlink(pfp, &cred, vinode, &info);
 			path_info_changed = true;
 		}
 	} while (path_info_changed);
@@ -501,10 +501,14 @@ pmemfile_open_parent(PMEMfilepool *pfp, PMEMfile *dir, char *path,
 	bool at_unref;
 	int error = 0;
 
+	struct pmemfile_cred cred;
+	if (get_cred(pfp, &cred))
+		return NULL;
+
 	at = pool_get_dir_for_path(pfp, dir, path, &at_unref);
 
 	struct pmemfile_path_info info;
-	resolve_pathat(pfp, at, path, &info, flags);
+	resolve_pathat(pfp, &cred, at, path, &info, flags);
 
 	struct pmemfile_vinode *vparent;
 	bool path_info_changed;
@@ -533,7 +537,8 @@ pmemfile_open_parent(PMEMfilepool *pfp, PMEMfile *dir, char *path,
 
 			if (vinode) {
 				if (vinode_is_symlink(vinode)) {
-					resolve_symlink(pfp, vinode, &info);
+					resolve_symlink(pfp, &cred, vinode,
+							&info);
 					path_info_changed = true;
 				} else {
 					vinode_unref_tx(pfp, vinode);
@@ -559,6 +564,7 @@ pmemfile_open_parent(PMEMfilepool *pfp, PMEMfile *dir, char *path,
 
 end:
 	path_info_cleanup(pfp, &info);
+	put_cred(&cred);
 
 	if (at_unref)
 		vinode_unref_tx(pfp, at);
@@ -607,10 +613,14 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 		return -1;
 	}
 
+	struct pmemfile_cred cred;
+	if (get_cred(pfp, &cred))
+		return -1;
+
 	struct pmemfile_path_info src, dst = { NULL, NULL, 0 };
 	struct pmemfile_vinode *src_vinode;
 
-	resolve_pathat(pfp, olddir, oldpath, &src, 0);
+	resolve_pathat(pfp, &cred, olddir, oldpath, &src, 0);
 
 	int error = 0;
 	bool src_path_info_changed;
@@ -645,12 +655,12 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 
 		if (vinode_is_symlink(src_vinode) &&
 				(flags & PMEMFILE_AT_SYMLINK_FOLLOW)) {
-			resolve_symlink(pfp, src_vinode, &src);
+			resolve_symlink(pfp, &cred, src_vinode, &src);
 			src_path_info_changed = true;
 		}
 	} while (src_path_info_changed);
 
-	resolve_pathat(pfp, newdir, newpath, &dst, 0);
+	resolve_pathat(pfp, &cred, newdir, newpath, &dst, 0);
 
 	if (dst.error) {
 		error = dst.error;
@@ -683,6 +693,7 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 end:
 	path_info_cleanup(pfp, &dst);
 	path_info_cleanup(pfp, &src);
+	put_cred(&cred);
 
 	if (src_vinode)
 		vinode_unref_tx(pfp, src_vinode);
@@ -772,10 +783,14 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 {
 	LOG(LDBG, "pathname %s", pathname);
 
+	struct pmemfile_cred cred;
+	if (get_cred(pfp, &cred))
+		return -1;
+
 	int error = 0;
 
 	struct pmemfile_path_info info;
-	resolve_pathat(pfp, dir, pathname, &info, 0);
+	resolve_pathat(pfp, &cred, dir, pathname, &info, 0);
 	struct pmemfile_vinode *vparent = info.vinode;
 	struct pmemfile_vinode *volatile vinode = NULL;
 	volatile bool parent_refed = false;
@@ -807,6 +822,7 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 end:
 	path_info_cleanup(pfp, &info);
+	put_cred(&cred);
 
 	if (vinode)
 		vinode_unref_tx(pfp, vinode);
@@ -885,6 +901,10 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 		return -1;
 	}
 
+	struct pmemfile_cred cred;
+	if (get_cred(pfp, &cred))
+		return -1;
+
 	struct pmemfile_vinode *volatile dst_unlinked = NULL;
 	struct pmemfile_vinode *volatile src_unlinked = NULL;
 	volatile bool dst_parent_refed = false;
@@ -892,8 +912,8 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	struct pmemfile_vinode *src_vinode = NULL, *dst_vinode = NULL;
 
 	struct pmemfile_path_info src, dst;
-	resolve_pathat(pfp, olddir, oldpath, &src, 0);
-	resolve_pathat(pfp, newdir, newpath, &dst, 0);
+	resolve_pathat(pfp, &cred, olddir, oldpath, &src, 0);
+	resolve_pathat(pfp, &cred, newdir, newpath, &dst, 0);
 
 	int error = 0;
 
@@ -994,6 +1014,7 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 end:
 	path_info_cleanup(pfp, &dst);
 	path_info_cleanup(pfp, &src);
+	put_cred(&cred);
 
 	if (dst_vinode)
 		vinode_unref_tx(pfp, dst_vinode);
@@ -1092,10 +1113,14 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 {
 	LOG(LDBG, "target %s linkpath %s", target, linkpath);
 
+	struct pmemfile_cred cred;
+	if (get_cred(pfp, &cred))
+		return -1;
+
 	int error = 0;
 
 	struct pmemfile_path_info info;
-	resolve_pathat(pfp, dir, linkpath, &info, 0);
+	resolve_pathat(pfp, &cred, dir, linkpath, &info, 0);
 	struct pmemfile_vinode *vinode = NULL;
 
 	struct pmemfile_vinode *vparent = info.vinode;
@@ -1147,6 +1172,7 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 
 end:
 	path_info_cleanup(pfp, &info);
+	put_cred(&cred);
 
 	if (vinode)
 		vinode_unref_tx(pfp, vinode);
@@ -1199,11 +1225,15 @@ static ssize_t
 _pmemfile_readlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		const char *pathname, char *buf, size_t bufsiz)
 {
+	struct pmemfile_cred cred;
+	if (get_cred(pfp, &cred))
+		return -1;
+
 	int error = 0;
 	ssize_t ret = -1;
 	struct pmemfile_vinode *vinode = NULL;
 	struct pmemfile_path_info info;
-	resolve_pathat(pfp, dir, pathname, &info, 0);
+	resolve_pathat(pfp, &cred, dir, pathname, &info, 0);
 
 	if (info.error) {
 		error = info.error;
@@ -1242,6 +1272,7 @@ _pmemfile_readlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 end:
 	path_info_cleanup(pfp, &info);
+	put_cred(&cred);
 
 	if (vinode)
 		vinode_unref_tx(pfp, vinode);
@@ -1410,9 +1441,13 @@ _pmemfile_fchmodat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	LOG(LDBG, "path %s", path);
 
+	struct pmemfile_cred cred;
+	if (get_cred(pfp, &cred))
+		return -1;
+
 	int error = 0;
 	struct pmemfile_path_info info;
-	resolve_pathat(pfp, dir, path, &info, 0);
+	resolve_pathat(pfp, &cred, dir, path, &info, 0);
 
 	struct pmemfile_vinode *vinode = NULL;
 	bool path_info_changed;
@@ -1434,7 +1469,7 @@ _pmemfile_fchmodat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 			vinode = vinode_lookup_dirent(pfp, info.vinode,
 					info.remaining, namelen, 0);
 			if (vinode && vinode_is_symlink(vinode)) {
-				resolve_symlink(pfp, vinode, &info);
+				resolve_symlink(pfp, &cred, vinode, &info);
 				path_info_changed = true;
 			}
 		}
@@ -1454,6 +1489,7 @@ _pmemfile_fchmodat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 end:
 	path_info_cleanup(pfp, &info);
+	put_cred(&cred);
 
 	vinode_unref_tx(pfp, vinode);
 

@@ -165,11 +165,13 @@ main(int argc, char *argv[])
 
 	size = parse_size(argv[optind + 1]);
 
-	if (pmemfile_mkfs(path, size, PMEMFILE_S_IWUSR | PMEMFILE_S_IRUSR) ==
-			NULL) {
+	PMEMfilepool *pool = pmemfile_mkfs(path, size,
+			PMEMFILE_S_IWUSR | PMEMFILE_S_IRUSR);
+	if (pool == NULL) {
 		perror("pmemfile_mkfs ");
 		return 1;
 	}
+	pmemfile_pool_close(pool);
 
 	return 0;
 }

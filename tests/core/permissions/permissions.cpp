@@ -769,6 +769,69 @@ TEST_F(permissions, unlink)
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_r-x"), 0);
 }
 
+TEST_F(permissions, rename)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_rw-",
+				 PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR),
+		  0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_-w-", PMEMFILE_S_IWUSR), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_--x", PMEMFILE_S_IXUSR), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_-wx",
+				 PMEMFILE_S_IWUSR | PMEMFILE_S_IXUSR),
+		  0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_r-x",
+				 PMEMFILE_S_IRUSR | PMEMFILE_S_IXUSR),
+		  0);
+
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/aaa", PMEMFILE_O_EXCL,
+					 PMEMFILE_S_IRWXU));
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/aaa", "/dir_rw-/aaa"), -1);
+	EXPECT_EQ(errno, EACCES);
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/aaa", "/dir_-w-/aaa"), -1);
+	EXPECT_EQ(errno, EACCES);
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/aaa", "/dir_--x/aaa"), -1);
+	EXPECT_EQ(errno, EACCES);
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/aaa", "/dir_-wx/aaa"), 0)
+		<< strerror(errno);
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir_-wx/aaa", "/aaa"), 0)
+		<< strerror(errno);
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/aaa", "/dir_r-x/aaa"), -1);
+	EXPECT_EQ(errno, EACCES);
+
+/* XXX: rename implementation is not fully functional */
+#if 0
+	ASSERT_EQ(pmemfile_rename(pfp, "/aaa", "/dir_rw-"), -1);
+	EXPECT_EQ(errno, EACCES);
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/aaa", "/dir_-w-"), -1);
+	EXPECT_EQ(errno, EACCES);
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/aaa", "/dir_--x"), -1);
+	EXPECT_EQ(errno, EACCES);
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/aaa", "/dir_-wx"), 0)
+		<< strerror(errno);
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir_-wx", "/aaa"), 0)
+		<< strerror(errno);
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/aaa", "/dir_r-x"), -1);
+	EXPECT_EQ(errno, EACCES);
+#endif
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/aaa"), 0);
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_rw-"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_-w-"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_--x"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_-wx"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_r-x"), 0);
+}
+
 int
 main(int argc, char *argv[])
 {

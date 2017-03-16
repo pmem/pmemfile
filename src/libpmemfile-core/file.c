@@ -974,11 +974,19 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 		os_rwlock_wrlock(&src_parent->rwlock);
 	}
 
-	// XXX: take directory permissions into account
-
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		// XXX, when src dir == dst dir we can just update dirent,
 		// without linking and unlinking
+
+		struct inode_perms perms;
+
+		_vinode_get_perms(src_parent, &perms);
+		if (!can_access(&cred, &perms, PFILE_WANT_WRITE))
+			pmemfile_tx_abort(EACCES);
+
+		_vinode_get_perms(dst_parent, &perms);
+		if (!can_access(&cred, &perms, PFILE_WANT_WRITE))
+			pmemfile_tx_abort(EACCES);
 
 		vinode_unlink_dirent(pfp, dst_parent, dst.remaining,
 				dst_namelen, &dst_unlinked, &dst_parent_refed,

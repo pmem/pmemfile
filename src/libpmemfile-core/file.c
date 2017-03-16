@@ -672,8 +672,13 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 	size_t dst_namelen = component_length(dst.remaining);
 
 	os_rwlock_wrlock(&dst.vinode->rwlock);
+	struct inode_perms dst_perms;
+	_vinode_get_perms(dst.vinode, &dst_perms);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
+		if (!can_access(&cred, &dst_perms, PFILE_WANT_WRITE))
+			pmemfile_tx_abort(EACCES);
+
 		struct pmemfile_time t;
 		file_get_time(&t);
 		vinode_add_dirent(pfp, dst.vinode, dst.remaining, dst_namelen,

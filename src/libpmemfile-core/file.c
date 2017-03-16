@@ -820,9 +820,13 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	os_rwlock_wrlock(&vparent->rwlock);
 
-	// XXX: take directory permissions into account
-
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
+		struct inode_perms perms;
+		_vinode_get_perms(vparent, &perms);
+
+		if (!can_access(&cred, &perms, PFILE_WANT_WRITE))
+			pmemfile_tx_abort(EACCES);
+
 		vinode_unlink_dirent(pfp, vparent, info.remaining, namelen,
 				&vinode, &parent_refed, true);
 	} TX_ONABORT {

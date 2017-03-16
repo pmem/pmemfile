@@ -1112,7 +1112,13 @@ _pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto vparent_end;
 	}
 
-	// XXX: take directory permissions into account
+	struct inode_perms perms;
+	_vinode_get_perms(vparent, &perms);
+
+	if (!can_access(&cred, &perms, PFILE_WANT_WRITE)) {
+		error = EACCES;
+		goto vparent_end;
+	}
 
 	os_rwlock_wrlock(&vdir->rwlock);
 

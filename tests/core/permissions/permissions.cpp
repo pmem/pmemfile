@@ -433,6 +433,84 @@ TEST_F(permissions, mkdir)
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_-wx"), 0);
 }
 
+TEST_F(permissions, rmdir)
+{
+	/* create directories with all permissions */
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_rw-", PMEMFILE_S_IRWXU), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_-w-", PMEMFILE_S_IRWXU), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_--x", PMEMFILE_S_IRWXU), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_-wx", PMEMFILE_S_IRWXU), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_r-x", PMEMFILE_S_IRWXU), 0);
+
+	/* create internal directories */
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_rw-/dir", PMEMFILE_S_IRWXU), 0)
+		<< strerror(errno);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_-w-/dir", PMEMFILE_S_IRWXU), 0)
+		<< strerror(errno);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_--x/dir", PMEMFILE_S_IRWXU), 0)
+		<< strerror(errno);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_-wx/dir", PMEMFILE_S_IRWXU), 0)
+		<< strerror(errno);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_r-x/dir", PMEMFILE_S_IRWXU), 0)
+		<< strerror(errno);
+
+	/* chmod parent directories to what's in the name */
+	ASSERT_EQ(pmemfile_chmod(pfp, "/dir_rw-",
+				 PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR),
+		  0)
+		<< strerror(errno);
+	ASSERT_EQ(pmemfile_chmod(pfp, "/dir_-w-", PMEMFILE_S_IWUSR), 0)
+		<< strerror(errno);
+	ASSERT_EQ(pmemfile_chmod(pfp, "/dir_--x", PMEMFILE_S_IXUSR), 0)
+		<< strerror(errno);
+	ASSERT_EQ(pmemfile_chmod(pfp, "/dir_-wx",
+				 PMEMFILE_S_IWUSR | PMEMFILE_S_IXUSR),
+		  0)
+		<< strerror(errno);
+	ASSERT_EQ(pmemfile_chmod(pfp, "/dir_r-x",
+				 PMEMFILE_S_IRUSR | PMEMFILE_S_IXUSR),
+		  0)
+		<< strerror(errno);
+
+	/* setup done, now do the actual test */
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_rw-/dir"), -1);
+	EXPECT_EQ(errno, EACCES);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_-w-/dir"), -1);
+	EXPECT_EQ(errno, EACCES);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_--x/dir"), -1);
+	EXPECT_EQ(errno, EACCES);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_-wx/dir"), 0) << strerror(errno);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_r-x/dir"), -1);
+	EXPECT_EQ(errno, EACCES);
+
+	/* test done */
+
+	/* chmod directories, so we can remove internal directories */
+	ASSERT_EQ(pmemfile_chmod(pfp, "/dir_rw-", PMEMFILE_S_IRWXU), 0)
+		<< strerror(errno);
+	ASSERT_EQ(pmemfile_chmod(pfp, "/dir_-w-", PMEMFILE_S_IRWXU), 0)
+		<< strerror(errno);
+	ASSERT_EQ(pmemfile_chmod(pfp, "/dir_--x", PMEMFILE_S_IRWXU), 0)
+		<< strerror(errno);
+	ASSERT_EQ(pmemfile_chmod(pfp, "/dir_-wx", PMEMFILE_S_IRWXU), 0)
+		<< strerror(errno);
+	ASSERT_EQ(pmemfile_chmod(pfp, "/dir_r-x", PMEMFILE_S_IRWXU), 0)
+		<< strerror(errno);
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_rw-/dir"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_-w-/dir"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_--x/dir"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_-wx/dir"), -1);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_r-x/dir"), 0);
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_rw-"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_-w-"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_--x"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_-wx"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_r-x"), 0);
+}
+
 int
 main(int argc, char *argv[])
 {

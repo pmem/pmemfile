@@ -39,21 +39,11 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
-#include <limits.h>
 #include <string.h>
 #include <errno.h>
 
-#ifdef DEBUG
-#ifndef _WIN32
-#include <unistd.h>
-#define os_getpid getpid
-#else
-#include <process.h>
-#define os_getpid _getpid
-#endif
-#endif
-
 #include "os_thread.h"
+#include "os_util.h"
 #include "out.h"
 #include "valgrind_internal.h"
 #include "util.h"
@@ -118,67 +108,6 @@ Last_errormsg_get()
 	return errormsg;
 }
 
-#ifdef DEBUG
-/*
- * getexecname -- return name of current executable
- *
- * This function is only used when logging is enabled, to make
- * it more clear in the log which program was running.
- */
-#ifdef _WIN32
-#include <windows.h>
-static const char *
-getexecname(void)
-{
-	static char namepath[MAX_PATH];
-
-	DWORD cc;
-	if ((cc = GetModuleFileNameA(NULL, namepath, MAX_PATH)) == 0)
-		strcpy(namepath, "unknown");
-	else
-		namepath[cc] = '\0';
-
-	return namepath;
-}
-#else
-#include <unistd.h>
-static const char *
-getexecname(void)
-{
-	static char namepath[PATH_MAX];
-	char procpath[PATH_MAX];
-	ssize_t cc;
-
-	snprintf(procpath, PATH_MAX, "/proc/%d/exe", os_getpid());
-
-	if ((cc = readlink(procpath, namepath, PATH_MAX)) < 0)
-		strcpy(namepath, "unknown");
-	else
-		namepath[cc] = '\0';
-
-	return namepath;
-}
-#endif
-#endif	/* DEBUG */
-
-static void
-describe_errno(int errnum, char *buf, size_t buflen)
-{
-#ifdef _WIN32
-	if (strerror_s(buf, buflen, errnum))
-		snprintf(buf, buflen, "Unknown errno %d", errnum);
-#else
-	/*
-	 * There are 2 versions of strerror_r - returning int and char * -
-	 * defined depending on feature macros. We want int variant, so to
-	 * catch accidental change in the definition we use temporary int
-	 * variable.
-	 */
-	int r = strerror_r(errnum, buf, buflen);
-	if (r)
-		snprintf(buf, buflen, "Unknown errno %d", errnum);
-#endif
-}
 /*
  * out_init -- initialize the log
  *
@@ -222,7 +151,7 @@ out_init(const char *log_prefix, const char *log_level_var,
 		}
 		if ((Out_fp = fopen(log_file, "w")) == NULL) {
 			char buff[UTIL_MAX_ERR_MSG];
-			describe_errno(errno, buff, UTIL_MAX_ERR_MSG);
+			os_describe_errno(errno, buff, UTIL_MAX_ERR_MSG);
 			fprintf(stderr, "Error (%s): %s=%s: %s\n",
 					log_prefix, log_file_var,
 					log_file, buff);
@@ -244,7 +173,7 @@ out_init(const char *log_prefix, const char *log_level_var,
 		setvbuf(Out_fp, NULL, _IOLBF, 0);
 
 #ifdef DEBUG
-	LOG(1, "pid %d: program: %s", os_getpid(), getexecname());
+	LOG(1, "pid %d: program: %s", os_getpid(), os_getexecname());
 #endif
 	LOG(1, "%s version %d.%d", log_prefix, major_version, minor_version);
 	LOG(1, "src version %s", nvml_src_version);
@@ -394,7 +323,7 @@ out_common(const char *file, int line, const char *func, int level,
 		if (*fmt == '!') {
 			fmt++;
 			sep = ": ";
-			describe_errno(errno, errstr, UTIL_MAX_ERR_MSG);
+			os_describe_errno(errno, errstr, UTIL_MAX_ERR_MSG);
 		}
 		ret = Vsnprintf(&buf[cc], MAXPRINT - cc, fmt, ap);
 		if (ret < 0) {
@@ -431,7 +360,7 @@ out_error(const char *file, int line, const char *func,
 		if (*fmt == '!') {
 			fmt++;
 			sep = ": ";
-			describe_errno(errno, errstr, UTIL_MAX_ERR_MSG);
+			os_describe_errno(errno, errstr, UTIL_MAX_ERR_MSG);
 		}
 		ret = Vsnprintf(&errormsg[cc], MAXPRINT, fmt, ap);
 		if (ret < 0) {

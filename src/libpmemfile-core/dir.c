@@ -968,20 +968,16 @@ _pmemfile_mkdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto end;
 	}
 
-	/* optimization - vinode_add_dirent handles it in safe way */
-	struct pmemfile_vinode *child = vinode_lookup_dirent(pfp, parent,
-			info.remaining, namelen, 0);
-	if (child) {
-		vinode_unref_tx(pfp, child);
-		error = EEXIST;
-		goto end;
-	}
-
-	child = NULL;
-
 	os_rwlock_wrlock(&parent->rwlock);
 
+	struct pmemfile_vinode *child = NULL;
+	struct inode_perms perms;
+	_vinode_get_perms(parent, &perms);
+
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
+		if (!can_access(&cred, &perms, PFILE_WANT_WRITE))
+			pmemfile_tx_abort(EACCES);
+
 		child = vinode_new_dir(pfp, parent, info.remaining, namelen,
 				mode, true, &parent_refed);
 	} TX_ONABORT {

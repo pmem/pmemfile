@@ -367,12 +367,13 @@ TEST_F(permissions, dirs)
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_rw-",
 				 PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR),
 		  0);
-	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_rwx/dir_--x", PMEMFILE_S_IXUSR), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_rwx/dir_--x", PMEMFILE_S_IRWXU), 0);
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_rwx/dir_r--", PMEMFILE_S_IRUSR), 0);
 	ASSERT_TRUE(test_pmemfile_create(
 		pfp, "/dir_rwx/dir_--x/file", PMEMFILE_O_EXCL,
 		PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR | PMEMFILE_S_IRGRP |
 			PMEMFILE_S_IROTH));
+	ASSERT_EQ(pmemfile_chmod(pfp, "/dir_rwx/dir_--x", PMEMFILE_S_IXUSR), 0);
 
 	ASSERT_EQ(pmemfile_chdir(pfp, "/dir_rwx"), 0);
 	ASSERT_EQ(pmemfile_chdir(pfp, "/"), 0);
@@ -406,6 +407,7 @@ TEST_F(permissions, dirs)
 	ASSERT_EQ(file, nullptr);
 	EXPECT_EQ(errno, EACCES);
 
+	ASSERT_EQ(pmemfile_chmod(pfp, "/dir_rwx/dir_--x", PMEMFILE_S_IRWXU), 0);
 	ASSERT_EQ(pmemfile_unlink(pfp, "/dir_rwx/dir_--x/file"), 0);
 
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_rwx/dir_--x"), 0);
@@ -570,6 +572,63 @@ TEST_F(permissions, link)
 	EXPECT_EQ(errno, EACCES);
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/aaa"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir_-wx/aaa"), 0);
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_rw-"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_-w-"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_--x"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_-wx"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_r-x"), 0);
+}
+
+TEST_F(permissions, create)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_rw-",
+				 PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR),
+		  0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_-w-", PMEMFILE_S_IWUSR), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_--x", PMEMFILE_S_IXUSR), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_-wx",
+				 PMEMFILE_S_IWUSR | PMEMFILE_S_IXUSR),
+		  0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_r-x",
+				 PMEMFILE_S_IRUSR | PMEMFILE_S_IXUSR),
+		  0);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_open(pfp, "/dir_rw-/aaa",
+				PMEMFILE_O_CREAT | PMEMFILE_O_EXCL,
+				PMEMFILE_S_IRWXU),
+		  nullptr);
+	EXPECT_EQ(errno, EACCES);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_open(pfp, "/dir_-w-/aaa",
+				PMEMFILE_O_CREAT | PMEMFILE_O_EXCL,
+				PMEMFILE_S_IRWXU),
+		  nullptr);
+	EXPECT_EQ(errno, EACCES);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_open(pfp, "/dir_--x/aaa",
+				PMEMFILE_O_CREAT | PMEMFILE_O_EXCL,
+				PMEMFILE_S_IRWXU),
+		  nullptr);
+	EXPECT_EQ(errno, EACCES);
+
+	PMEMfile *file = pmemfile_open(pfp, "/dir_-wx/aaa",
+				       PMEMFILE_O_CREAT | PMEMFILE_O_EXCL,
+				       PMEMFILE_S_IRWXU);
+	ASSERT_NE(file, nullptr) << strerror(errno);
+	pmemfile_close(pfp, file);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_open(pfp, "/dir_r-x/aaa",
+				PMEMFILE_O_CREAT | PMEMFILE_O_EXCL,
+				PMEMFILE_S_IRWXU),
+		  nullptr);
+	EXPECT_EQ(errno, EACCES);
+
 	ASSERT_EQ(pmemfile_unlink(pfp, "/dir_-wx/aaa"), 0);
 
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_rw-"), 0);

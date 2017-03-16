@@ -172,13 +172,19 @@ check_flags(int flags)
 }
 
 static struct pmemfile_vinode *
-create_file(PMEMfilepool *pfp, const char *filename, size_t namelen,
-		struct pmemfile_vinode *parent_vinode,
+create_file(PMEMfilepool *pfp, struct pmemfile_cred *cred, const char *filename,
+		size_t namelen, struct pmemfile_vinode *parent_vinode,
 		int flags, mode_t mode)
 {
 	struct pmemfile_time t;
 
 	rwlock_tx_wlock(&parent_vinode->rwlock);
+
+	struct inode_perms inode_perms;
+	_vinode_get_perms(parent_vinode, &inode_perms);
+
+	if (!can_access(cred, &inode_perms, PFILE_WANT_WRITE))
+		pmemfile_tx_abort(EACCES);
 
 	struct pmemfile_vinode *vinode = inode_alloc(pfp,
 			PMEMFILE_S_IFREG | mode, &t,
@@ -373,8 +379,8 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (vinode == NULL) {
-			vinode = create_file(pfp, info.remaining, namelen,
-					vparent, flags, mode);
+			vinode = create_file(pfp, &cred, info.remaining,
+					namelen, vparent, flags, mode);
 		} else {
 			open_file(&cred, vinode, flags);
 		}

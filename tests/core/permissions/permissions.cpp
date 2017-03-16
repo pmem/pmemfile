@@ -57,6 +57,7 @@ TEST_F(permissions, chmod)
 		  (mode_t)(PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR |
 			   PMEMFILE_S_IRGRP | PMEMFILE_S_IROTH));
 
+	errno = 0;
 	ASSERT_EQ(pmemfile_chmod(pfp, "/a_not_exists",
 				 PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR),
 		  -1);
@@ -107,6 +108,7 @@ TEST_F(permissions, chmod)
 			  (mode_t)(PMEMFILE_S_IRUSR | m));
 
 		/* open rw */
+		errno = 0;
 		f = pmemfile_open(pfp, "/aaa", PMEMFILE_O_RDWR);
 		ASSERT_EQ(f, nullptr);
 		EXPECT_EQ(errno, EACCES);
@@ -117,6 +119,7 @@ TEST_F(permissions, chmod)
 		pmemfile_close(pfp, f);
 
 		/* open w */
+		errno = 0;
 		f = pmemfile_open(pfp, "/aaa", PMEMFILE_O_WRONLY);
 		ASSERT_EQ(f, nullptr);
 		EXPECT_EQ(errno, EACCES);
@@ -136,11 +139,13 @@ TEST_F(permissions, chmod)
 			  (mode_t)(PMEMFILE_S_IWUSR | m));
 
 		/* open rw */
+		errno = 0;
 		f = pmemfile_open(pfp, "/aaa", PMEMFILE_O_RDWR);
 		ASSERT_EQ(f, nullptr);
 		EXPECT_EQ(errno, EACCES);
 
 		/* open r */
+		errno = 0;
 		f = pmemfile_open(pfp, "/aaa", PMEMFILE_O_RDONLY);
 		ASSERT_EQ(f, nullptr);
 		EXPECT_EQ(errno, EACCES);
@@ -226,6 +231,7 @@ TEST_F(permissions, fsuid_fsgid_getgroups_setgroups)
 	EXPECT_EQ(statbuf.st_uid, TEST_FSUID);
 	EXPECT_EQ(statbuf.st_gid, TEST_FSGID);
 
+	errno = 0;
 	ASSERT_EQ(pmemfile_chmod(pfp, "/aaa", PMEMFILE_S_IRUSR), -1);
 	EXPECT_EQ(errno, EPERM);
 
@@ -258,9 +264,11 @@ TEST_F(permissions, fsuid_fsgid_getgroups_setgroups)
 	pmemfile_close(pfp, f);
 
 	gid_t l2[2] = {0, 0};
+	errno = 0;
 	ASSERT_EQ(pmemfile_getgroups(pfp, 0, l2), -1);
 	EXPECT_EQ(errno, EINVAL);
 
+	errno = 0;
 	ASSERT_EQ(pmemfile_getgroups(pfp, 1, l2), -1);
 	EXPECT_EQ(errno, EINVAL);
 
@@ -334,6 +342,7 @@ TEST_F(permissions, fchmodat)
 	dir = pmemfile_open(pfp, "/dir", PMEMFILE_O_DIRECTORY);
 	ASSERT_NE(dir, nullptr) << strerror(errno);
 
+	errno = 0;
 	ASSERT_EQ(pmemfile_fchmodat(pfp, dir, "a", PMEMFILE_ACCESSPERMS, 0),
 		  -1);
 	EXPECT_EQ(errno, ENOENT);
@@ -368,6 +377,7 @@ TEST_F(permissions, dirs)
 	ASSERT_EQ(pmemfile_chdir(pfp, "/dir_rwx"), 0);
 	ASSERT_EQ(pmemfile_chdir(pfp, "/"), 0);
 
+	errno = 0;
 	ASSERT_EQ(pmemfile_chdir(pfp, "/dir_rw-"), -1);
 	EXPECT_EQ(errno, EACCES);
 
@@ -375,6 +385,7 @@ TEST_F(permissions, dirs)
 	ASSERT_NE(file, nullptr) << strerror(errno);
 	pmemfile_close(pfp, file);
 
+	errno = 0;
 	file = pmemfile_open(pfp, "/dir_rwx/dir_--x",
 			     PMEMFILE_O_DIRECTORY | PMEMFILE_O_RDONLY);
 	ASSERT_EQ(file, nullptr);
@@ -389,6 +400,7 @@ TEST_F(permissions, dirs)
 	ASSERT_NE(file, nullptr) << strerror(errno);
 	pmemfile_close(pfp, file);
 
+	errno = 0;
 	file = pmemfile_open(pfp, "/dir_rwx/dir_r--/..",
 			     PMEMFILE_O_DIRECTORY | PMEMFILE_O_RDONLY);
 	ASSERT_EQ(file, nullptr);
@@ -413,12 +425,15 @@ TEST_F(permissions, mkdir)
 				 PMEMFILE_S_IWUSR | PMEMFILE_S_IXUSR),
 		  0);
 
+	errno = 0;
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_rw-/dir", PMEMFILE_S_IRWXU), -1);
 	EXPECT_EQ(errno, EACCES);
 
+	errno = 0;
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_-w-/dir", PMEMFILE_S_IRWXU), -1);
 	EXPECT_EQ(errno, EACCES);
 
+	errno = 0;
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_--x/dir", PMEMFILE_S_IRWXU), -1);
 	EXPECT_EQ(errno, EACCES);
 
@@ -474,13 +489,21 @@ TEST_F(permissions, rmdir)
 
 	/* setup done, now do the actual test */
 
+	errno = 0;
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_rw-/dir"), -1);
 	EXPECT_EQ(errno, EACCES);
+
+	errno = 0;
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_-w-/dir"), -1);
 	EXPECT_EQ(errno, EACCES);
+
+	errno = 0;
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_--x/dir"), -1);
 	EXPECT_EQ(errno, EACCES);
+
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_-wx/dir"), 0) << strerror(errno);
+
+	errno = 0;
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_r-x/dir"), -1);
 	EXPECT_EQ(errno, EACCES);
 

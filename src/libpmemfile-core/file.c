@@ -1163,9 +1163,13 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 
 	os_rwlock_wrlock(&vparent->rwlock);
 
-	// XXX: take directory permissions into account
-
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
+		struct inode_perms perms;
+		_vinode_get_perms(vparent, &perms);
+
+		if (!can_access(&cred, &perms, PFILE_WANT_WRITE))
+			pmemfile_tx_abort(EACCES);
+
 		struct pmemfile_time t;
 
 		vinode = inode_alloc(pfp, PMEMFILE_S_IFLNK |

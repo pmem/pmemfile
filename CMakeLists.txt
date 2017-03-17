@@ -171,11 +171,38 @@ add_cxx_flag(-DDEBUG DEBUG)
 add_c_flag("-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2" RELEASE C_CAN_FORTIFY)
 add_cxx_flag("-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2" RELEASE CXX_CAN_FORTIFY)
 
+option(SANITIZERS_ENABLED "enable AddressSanitizer and UndefinedBehaviorSanitizer (debugging)" OFF)
+
+if(SANITIZERS_ENABLED)
+	if(BUILD_LIBPMEMFILE)
+		message(FATAL_ERROR "Sanitizers are incompatible with LIBPMEMFILE. If you want to test LIBPMEMFILE-POSIX with SANITIZERS_ENABLED define BUILD_LIBPMEMFILE to 0/OFF.")
+	endif()
+
+	set(SAVED_CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES})
+	set(CMAKE_REQUIRED_LIBRARIES "${CMAKE_REQUIRED_LIBRARIES} -fsanitize=address,undefined")
+
+	check_c_compiler_flag("-fsanitize=address,undefined" C_HAS_ASAN_UBSAN)
+	if(C_HAS_ASAN_UBSAN)
+		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address,undefined")
+	endif()
+
+	check_cxx_compiler_flag("-fsanitize=address,undefined" CXX_HAS_ASAN_UBSAN)
+	if(CXX_HAS_ASAN_UBSAN)
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined")
+	endif()
+
+	if(C_HAS_ASAN_UBSAN OR CXX_HAS_ASAN_UBSAN)
+		set(CMAKE_LD_FLAGS "${CMAKE_LD_FLAGS} -fsanitize=address,undefined")
+	endif()
+
+	set(CMAKE_REQUIRED_LIBRARIES ${SAVED_CMAKE_REQUIRED_LIBRARIES})
+endif()
+
 if(DEVELOPER_MODE)
 	add_c_flag(-Werror)
 	add_cxx_flag(-Werror)
 
-	check_c_compiler_flag(-Wl,--warn-common LINKER_HAS_FATAL_WARNINGS)
+	check_c_compiler_flag(-Wl,--fatal-warnings LINKER_HAS_FATAL_WARNINGS)
 	if(LINKER_HAS_FATAL_WARNINGS)
 		set(CMAKE_LD_FLAGS  "${CMAKE_LD_FLAGS} -Wl,--fatal-warnings")
 	endif()

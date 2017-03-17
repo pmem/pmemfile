@@ -33,6 +33,8 @@ include(${SRC_DIR}/../posix-helpers.cmake)
 
 setup()
 
+set(ENV{ASAN_OPTIONS} detect_leaks=0)
+
 function(exec_stage name)
         execute(${TEST_EXECUTABLE} ${name})
 endfunction()

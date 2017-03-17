@@ -238,8 +238,8 @@ test_compare_dirs(const std::map<std::string, file_attrs> &files,
 	bool anyerr = false;
 	bool tmp;
 
-	for (auto c : expected) {
-		auto attrs_iter = files.find(c.name);
+	for (const auto &c : expected) {
+		const auto &attrs_iter = files.find(c.name);
 		if (attrs_iter == files.end()) {
 			ADD_FAILURE() << c.name << " not found";
 			return false;

@@ -114,6 +114,10 @@ function(add_test_generic name tracer)
 		endif()
 	endif()
 
+	if (SANITIZERS_ENABLED AND ${tracer} IN_LIST vg_tracers)
+		return()
+	endif()
+
 	add_test(NAME ${name}_${tracer}
 		COMMAND ${CMAKE_COMMAND}
 			${GLOBAL_TEST_ARGS}

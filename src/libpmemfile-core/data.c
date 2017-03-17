@@ -152,8 +152,10 @@ find_block(struct pmemfile_vinode *vinode, uint64_t off)
  * vinode_destroy_data_state -- destroys file state related to data
  */
 void
-vinode_destroy_data_state(struct pmemfile_vinode *vinode)
+vinode_destroy_data_state(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
+	(void) pfp;
+
 	if (vinode->blocks) {
 		ctree_delete(vinode->blocks);
 		vinode->blocks = NULL;
@@ -1046,6 +1048,8 @@ vinode_remove_interval(struct pmemfile_vinode *vinode,
 
 /*
  * vinode_truncate -- changes file size to size
+ *
+ * Should only be called inside pmemobj transactions.
  */
 void
 vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
@@ -1058,6 +1062,10 @@ vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 
 	if (vinode->blocks == NULL)
 		vinode_rebuild_block_tree(vinode);
+
+	cb_push_front(TX_STAGE_ONABORT,
+		(cb_basic)vinode_destroy_data_state,
+		vinode);
 
 	/*
 	 * Might need to handle the special case where size == 0.

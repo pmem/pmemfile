@@ -833,9 +833,8 @@ resolve_pathat_nested(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 			break;
 		}
 
-		struct inode_perms child_perms;
 		os_rwlock_rdlock(&child->rwlock);
-		_vinode_get_perms(child, &child_perms);
+		struct inode_perms child_perms = _vinode_get_perms(child);
 
 		// XXX: handle protected_symlinks (see man 5 proc)
 		if (PMEMFILE_S_ISLNK(child_perms.flags)) {
@@ -971,8 +970,7 @@ _pmemfile_mkdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	os_rwlock_wrlock(&parent->rwlock);
 
 	struct pmemfile_vinode *child = NULL;
-	struct inode_perms perms;
-	_vinode_get_perms(parent, &perms);
+	struct inode_perms perms = _vinode_get_perms(parent);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (!can_access(&cred, &perms, PFILE_WANT_WRITE))
@@ -1112,8 +1110,7 @@ _pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto vparent_end;
 	}
 
-	struct inode_perms perms;
-	_vinode_get_perms(vparent, &perms);
+	struct inode_perms perms = _vinode_get_perms(vparent);
 
 	if (!can_access(&cred, &perms, PFILE_WANT_WRITE)) {
 		error = EACCES;
@@ -1244,8 +1241,7 @@ static int
 _pmemfile_chdir(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 		struct pmemfile_vinode *dir)
 {
-	struct inode_perms dir_perms;
-	vinode_get_perms(dir, &dir_perms);
+	struct inode_perms dir_perms = vinode_get_perms(dir);
 
 	if (!PMEMFILE_S_ISDIR(dir_perms.flags)) {
 		vinode_unref_tx(pfp, dir);

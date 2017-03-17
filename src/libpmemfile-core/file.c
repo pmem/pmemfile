@@ -180,8 +180,7 @@ create_file(PMEMfilepool *pfp, struct pmemfile_cred *cred, const char *filename,
 
 	rwlock_tx_wlock(&parent_vinode->rwlock);
 
-	struct inode_perms inode_perms;
-	_vinode_get_perms(parent_vinode, &inode_perms);
+	struct inode_perms inode_perms = _vinode_get_perms(parent_vinode);
 
 	if (!can_access(cred, &inode_perms, PFILE_WANT_WRITE))
 		pmemfile_tx_abort(EACCES);
@@ -209,8 +208,7 @@ open_file(struct pmemfile_cred *cred, struct pmemfile_vinode *vinode, int flags)
 	if (acc == PMEMFILE_O_ACCMODE)
 		pmemfile_tx_abort(EINVAL);
 
-	struct inode_perms inode_perms;
-	vinode_get_perms(vinode, &inode_perms);
+	struct inode_perms inode_perms = vinode_get_perms(vinode);
 
 	int acc2;
 	if (acc == PMEMFILE_O_RDWR)
@@ -678,8 +676,7 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 	size_t dst_namelen = component_length(dst.remaining);
 
 	os_rwlock_wrlock(&dst.vinode->rwlock);
-	struct inode_perms dst_perms;
-	_vinode_get_perms(dst.vinode, &dst_perms);
+	struct inode_perms dst_perms = _vinode_get_perms(dst.vinode);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (!can_access(&cred, &dst_perms, PFILE_WANT_WRITE))
@@ -821,8 +818,7 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	os_rwlock_wrlock(&vparent->rwlock);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		struct inode_perms perms;
-		_vinode_get_perms(vparent, &perms);
+		struct inode_perms perms = _vinode_get_perms(vparent);
 
 		if (!can_access(&cred, &perms, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);
@@ -978,13 +974,11 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 		// XXX, when src dir == dst dir we can just update dirent,
 		// without linking and unlinking
 
-		struct inode_perms perms;
-
-		_vinode_get_perms(src_parent, &perms);
+		struct inode_perms perms = _vinode_get_perms(src_parent);
 		if (!can_access(&cred, &perms, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);
 
-		_vinode_get_perms(dst_parent, &perms);
+		perms = _vinode_get_perms(dst_parent);
 		if (!can_access(&cred, &perms, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);
 
@@ -1172,8 +1166,7 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 	os_rwlock_wrlock(&vparent->rwlock);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		struct inode_perms perms;
-		_vinode_get_perms(vparent, &perms);
+		struct inode_perms perms = _vinode_get_perms(vparent);
 
 		if (!can_access(&cred, &perms, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);

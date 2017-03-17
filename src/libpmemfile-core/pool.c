@@ -65,11 +65,6 @@ initialize_super_block(PMEMfilepool *pfp)
 		return -1;
 	}
 
-	pfp->cred.fsuid = 0;
-	pfp->cred.fsgid = 0;
-	pfp->cred.groupsnum = 0;
-	pfp->cred.groups = NULL;
-
 	os_rwlock_init(&pfp->cred_rwlock);
 	os_rwlock_init(&pfp->rwlock);
 	os_rwlock_init(&pfp->cwd_rwlock);

@@ -35,6 +35,7 @@
  */
 
 #include <errno.h>
+#include <inttypes.h>
 #include <limits.h>
 
 #include "callbacks.h"
@@ -449,7 +450,7 @@ end:
 	ASSERT(file != NULL);
 	os_mutex_init(&file->mutex);
 
-	LOG(LDBG, "pathname %s opened inode 0x%lx", orig_pathname,
+	LOG(LDBG, "pathname %s opened inode 0x%" PRIx64, orig_pathname,
 			file->vinode->tinode.oid.off);
 	return file;
 }
@@ -609,7 +610,7 @@ end:
 void
 pmemfile_close(PMEMfilepool *pfp, PMEMfile *file)
 {
-	LOG(LDBG, "inode 0x%lx path %s", file->vinode->tinode.oid.off,
+	LOG(LDBG, "inode 0x%" PRIx64 " path %s", file->vinode->tinode.oid.off,
 			pmfi_path(file->vinode));
 
 	vinode_unref_tx(pfp, file->vinode);

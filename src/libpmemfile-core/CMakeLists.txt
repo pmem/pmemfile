@@ -41,6 +41,7 @@ set(SOURCES
 	inode_array.c
 	locks.c
 	os_thread_pthread.c
+	os_util_linux.c
 	out.c
 	pmemfile-posix.c
 	pool.c

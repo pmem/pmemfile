@@ -1,6 +1,5 @@
 /*
  * Copyright 2014-2017, Intel Corporation
- * Copyright (c) 2016, Microsoft Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,53 +29,22 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef OS_UTIL_H
+#define OS_UTIL_H
+
+int os_getpid(void);
+void os_describe_errno(int errnum, char *buf, size_t buflen);
+
+#ifdef DEBUG
 
 /*
- * util.h -- internal definitions for util module
+ * os_getexecname -- return name of current executable
+ *
+ * This function is only used when logging is enabled, to make
+ * it more clear in the log which program was running.
  */
+const char *os_getexecname(void);
 
-#ifndef PMEMFILE_UTIL_H
-#define PMEMFILE_UTIL_H 1
+#endif	/* DEBUG */
 
-#ifdef __cplusplus
-extern "C" {
 #endif
-
-/*
- * Macro calculates number of elements in given table
- */
-#ifndef ARRAY_SIZE
-#define ARRAY_SIZE(x)	(sizeof(x) / sizeof((x)[0]))
-#endif
-
-#if !defined(likely)
-#if defined(__GNUC__)
-#define likely(x) __builtin_expect(!!(x), 1)
-#define unlikely(x) __builtin_expect(!!(x), 0)
-#else
-#define likely(x) (!!(x))
-#define unlikely(x) (!!(x))
-#endif
-#endif
-
-#ifndef _WIN32
-#define DIR_SEPARATOR '/'
-#else
-#define DIR_SEPARATOR '\\'
-#endif
-
-#define COMPILE_ERROR_ON(cond) ((void)sizeof(char[(cond) ? -1 : 1]))
-
-#define pf_always_inline __attribute__((always_inline)) inline
-#define pf_printf_like(fmt_arg_num, arg_num) \
-	__attribute__((format(printf, fmt_arg_num, arg_num)))
-#define pf_noreturn __attribute__((noreturn))
-#define pf_constructor static __attribute__((constructor))
-#define pf_destructor static __attribute__((destructor))
-#define pf_used_var __attribute__((used))
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* util.h */

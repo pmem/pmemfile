@@ -39,12 +39,11 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <limits.h>
 #include <string.h>
 #include <errno.h>
 
 #include "os_thread.h"
+#include "os_util.h"
 #include "out.h"
 #include "valgrind_internal.h"
 #include "util.h"
@@ -109,36 +108,6 @@ Last_errormsg_get()
 	return errormsg;
 }
 
-#ifdef DEBUG
-/*
- * getexecname -- return name of current executable
- *
- * This function is only used when logging is enabled, to make
- * it more clear in the log which program was running.
- */
-static const char *
-getexecname(void)
-{
-	static char namepath[PATH_MAX];
-	ssize_t cc;
-
-#ifndef _WIN32
-	char procpath[PATH_MAX];
-
-	snprintf(procpath, PATH_MAX, "/proc/%d/exe", getpid());
-
-	if ((cc = readlink(procpath, namepath, PATH_MAX)) < 0)
-#else
-	if ((cc = GetModuleFileNameA(NULL, namepath, PATH_MAX)) == 0)
-#endif
-		strcpy(namepath, "unknown");
-	else
-		namepath[cc] = '\0';
-
-	return namepath;
-}
-#endif	/* DEBUG */
-
 /*
  * out_init -- initialize the log
  *
@@ -177,12 +146,12 @@ out_init(const char *log_prefix, const char *log_level_var,
 
 		if (cc > 0 && log_file[cc - 1] == '-') {
 			snprintf(log_file_pid, cc + 30, "%s%d",
-				log_file, getpid());
+				log_file, os_getpid());
 			log_file = log_file_pid;
 		}
 		if ((Out_fp = fopen(log_file, "w")) == NULL) {
 			char buff[UTIL_MAX_ERR_MSG];
-			strerror_r(errno, buff, UTIL_MAX_ERR_MSG);
+			os_describe_errno(errno, buff, UTIL_MAX_ERR_MSG);
 			fprintf(stderr, "Error (%s): %s=%s: %s\n",
 					log_prefix, log_file_var,
 					log_file, buff);
@@ -201,10 +170,10 @@ out_init(const char *log_prefix, const char *log_level_var,
 	if (Out_fp == NULL)
 		Out_fp = stderr;
 	else
-		setlinebuf(Out_fp);
+		setvbuf(Out_fp, NULL, _IOLBF, 0);
 
 #ifdef DEBUG
-	LOG(1, "pid %d: program: %s", getpid(), getexecname());
+	LOG(1, "pid %d: program: %s", os_getpid(), os_getexecname());
 #endif
 	LOG(1, "%s version %d.%d", log_prefix, major_version, minor_version);
 	LOG(1, "src version %s", nvml_src_version);
@@ -213,22 +182,22 @@ out_init(const char *log_prefix, const char *log_level_var,
 	 * Attribute "used" to prevent compiler from optimizing out the variable
 	 * when LOG expands to no code (!DEBUG)
 	 */
-	static __attribute__((used)) const char *pmemcheck_msg =
+	static pf_used_var const char *pmemcheck_msg =
 			"compiled with support for Valgrind pmemcheck";
 	LOG(1, "%s", pmemcheck_msg);
 #endif /* USE_VG_PMEMCHECK */
 #ifdef USE_VG_HELGRIND
-	static __attribute__((used)) const char *helgrind_msg =
+	static pf_used_var const char *helgrind_msg =
 			"compiled with support for Valgrind helgrind";
 	LOG(1, "%s", helgrind_msg);
 #endif /* USE_VG_HELGRIND */
 #ifdef USE_VG_MEMCHECK
-	static __attribute__((used)) const char *memcheck_msg =
+	static pf_used_var const char *memcheck_msg =
 			"compiled with support for Valgrind memcheck";
 	LOG(1, "%s", memcheck_msg);
 #endif /* USE_VG_MEMCHECK */
 #ifdef USE_VG_DRD
-	static __attribute__((used)) const char *drd_msg =
+	static pf_used_var const char *drd_msg =
 			"compiled with support for Valgrind drd";
 	LOG(1, "%s", drd_msg);
 #endif /* USE_VG_DRD */
@@ -305,8 +274,7 @@ out_set_vsnprintf_func(int (*vsnprintf_func)(char *str, size_t size,
 /*
  * out_snprintf -- (internal) custom snprintf implementation
  */
-__attribute__((format(printf, 3, 4)))
-static int
+static pf_printf_like(3, 4) int
 out_snprintf(char *str, size_t size, const char *format, ...)
 {
 	int ret;
@@ -355,7 +323,7 @@ out_common(const char *file, int line, const char *func, int level,
 		if (*fmt == '!') {
 			fmt++;
 			sep = ": ";
-			strerror_r(errno, errstr, UTIL_MAX_ERR_MSG);
+			os_describe_errno(errno, errstr, UTIL_MAX_ERR_MSG);
 		}
 		ret = Vsnprintf(&buf[cc], MAXPRINT - cc, fmt, ap);
 		if (ret < 0) {
@@ -392,7 +360,7 @@ out_error(const char *file, int line, const char *func,
 		if (*fmt == '!') {
 			fmt++;
 			sep = ": ";
-			strerror_r(errno, errstr, UTIL_MAX_ERR_MSG);
+			os_describe_errno(errno, errstr, UTIL_MAX_ERR_MSG);
 		}
 		ret = Vsnprintf(&errormsg[cc], MAXPRINT, fmt, ap);
 		if (ret < 0) {

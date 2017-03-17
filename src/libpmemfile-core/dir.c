@@ -35,6 +35,7 @@
  */
 
 #include <errno.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <stdio.h>
 
@@ -101,6 +102,17 @@ component_length(const char *path)
 	return (uintptr_t)slash - (uintptr_t)path;
 }
 
+#ifdef DEBUG
+static inline char *
+util_strndup(const char *c, size_t len)
+{
+	char *cp = malloc(len + 1);
+	memcpy(cp, c, len);
+	cp[len] = 0;
+	return cp;
+}
+#endif
+
 /*
  * vinode_set_debug_path_locked -- (internal) sets full path in runtime
  * structures of child_inode based on parent inode and name.
@@ -123,7 +135,7 @@ vinode_set_debug_path_locked(PMEMfilepool *pfp,
 		return;
 
 	if (parent_vinode == NULL) {
-		child_vinode->path = strndup(name, namelen);
+		child_vinode->path = util_strndup(name, namelen);
 		return;
 	}
 
@@ -198,9 +210,10 @@ vinode_add_dirent(PMEMfilepool *pfp,
 {
 	(void) pfp;
 
-	LOG(LDBG, "parent 0x%lx ppath %s name %.*s child_inode 0x%lx",
-		parent_vinode->tinode.oid.off, pmfi_path(parent_vinode),
-		(int)namelen, name, child_vinode->tinode.oid.off);
+	LOG(LDBG, "parent 0x%" PRIx64 " ppath %s name %.*s "
+			"child_inode 0x%" PRIx64, parent_vinode->tinode.oid.off,
+			pmfi_path(parent_vinode), (int)namelen, name,
+			child_vinode->tinode.oid.off);
 
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 
@@ -292,7 +305,7 @@ vinode_new_dir(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 		const char *name, size_t namelen, mode_t mode,
 		bool add_to_parent, volatile bool *parent_refed)
 {
-	LOG(LDBG, "parent 0x%lx ppath %s new_name %.*s",
+	LOG(LDBG, "parent 0x%" PRIx64 " ppath %s new_name %.*s",
 			parent ? parent->tinode.oid.off : 0,
 			pmfi_path(parent), (int)namelen, name);
 
@@ -335,8 +348,9 @@ vinode_lookup_dirent_by_name_locked(PMEMfilepool *pfp,
 {
 	(void) pfp;
 
-	LOG(LDBG, "parent 0x%lx ppath %s name %.*s", parent->tinode.oid.off,
-			pmfi_path(parent), (int)namelen, name);
+	LOG(LDBG, "parent 0x%" PRIx64 " ppath %s name %.*s",
+			parent->tinode.oid.off, pmfi_path(parent), (int)namelen,
+			name);
 
 	struct pmemfile_inode *iparent = parent->inode;
 	if (!inode_is_dir(iparent)) {
@@ -376,7 +390,7 @@ vinode_lookup_dirent_by_vinode_locked(PMEMfilepool *pfp,
 {
 	(void) pfp;
 
-	LOG(LDBG, "parent 0x%lx ppath %s", parent->tinode.oid.off,
+	LOG(LDBG, "parent 0x%" PRIx64 " ppath %s", parent->tinode.oid.off,
 			pmfi_path(parent));
 
 	struct pmemfile_inode *iparent = parent->inode;
@@ -412,8 +426,8 @@ struct pmemfile_vinode *
 vinode_lookup_dirent(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 		const char *name, size_t namelen, int flags)
 {
-	LOG(LDBG, "parent 0x%lx ppath %s name %s", parent->tinode.oid.off,
-			pmfi_path(parent), name);
+	LOG(LDBG, "parent 0x%" PRIx64 " ppath %s name %s",
+			parent->tinode.oid.off, pmfi_path(parent), name);
 
 	if (namelen == 0)
 		return NULL;
@@ -461,8 +475,9 @@ vinode_unlink_dirent(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 		struct pmemfile_vinode *volatile *vinode,
 		volatile bool *parent_refed, bool abort_on_ENOENT)
 {
-	LOG(LDBG, "parent 0x%lx ppath %s name %.*s", parent->tinode.oid.off,
-			pmfi_path(parent), (int)namelen, name);
+	LOG(LDBG, "parent 0x%" PRIx64 " ppath %s name %.*s",
+			parent->tinode.oid.off, pmfi_path(parent), (int)namelen,
+			name);
 
 	struct pmemfile_dirent *dirent =
 			vinode_lookup_dirent_by_name_locked(pfp, parent, name,

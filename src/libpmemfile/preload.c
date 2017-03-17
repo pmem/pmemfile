@@ -190,14 +190,13 @@ static __thread bool reenter = false;
 static bool use_stricter_symlink_resolver = PMEMFILE_DEFAULT_USE_SYMLINK_STRICT;
 
 static void log_init(const char *path, const char *trunc);
-static void log_write(const char *fmt, ...)
-	__attribute__((format(printf, 1, 2)));
+static void log_write(const char *fmt, ...) pf_printf_like(1, 2);
 
 static void establish_mount_points(const char *);
 static void setup_strict_symlink_flag(const char *);
 static void init_hooking(void);
 
-static __attribute__((constructor)) void
+pf_constructor void
 pmemfile_preload_constructor(void)
 {
 	if (!libc_hook_in_process_allowed())

@@ -1,6 +1,5 @@
 /*
  * Copyright 2014-2017, Intel Corporation
- * Copyright (c) 2016, Microsoft Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,52 +30,37 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*
- * util.h -- internal definitions for util module
- */
+#include <stdio.h>
+#include <process.h>
+#include <windows.h>
 
-#ifndef PMEMFILE_UTIL_H
-#define PMEMFILE_UTIL_H 1
+#include "os_util.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/*
- * Macro calculates number of elements in given table
- */
-#ifndef ARRAY_SIZE
-#define ARRAY_SIZE(x)	(sizeof(x) / sizeof((x)[0]))
-#endif
-
-#if !defined(likely)
-#if defined(__GNUC__)
-#define likely(x) __builtin_expect(!!(x), 1)
-#define unlikely(x) __builtin_expect(!!(x), 0)
-#else
-#define likely(x) (!!(x))
-#define unlikely(x) (!!(x))
-#endif
-#endif
-
-#ifndef _WIN32
-#define DIR_SEPARATOR '/'
-#else
-#define DIR_SEPARATOR '\\'
-#endif
-
-#define COMPILE_ERROR_ON(cond) ((void)sizeof(char[(cond) ? -1 : 1]))
-
-#define pf_always_inline __attribute__((always_inline)) inline
-#define pf_printf_like(fmt_arg_num, arg_num) \
-	__attribute__((format(printf, fmt_arg_num, arg_num)))
-#define pf_noreturn __attribute__((noreturn))
-#define pf_constructor static __attribute__((constructor))
-#define pf_destructor static __attribute__((destructor))
-#define pf_used_var __attribute__((used))
-
-#ifdef __cplusplus
+int
+os_getpid(void)
+{
+	return _getpid();
 }
-#endif
 
-#endif /* util.h */
+void
+os_describe_errno(int errnum, char *buf, size_t buflen)
+{
+	if (strerror_s(buf, buflen, errnum))
+		snprintf(buf, buflen, "Unknown errno %d", errnum);
+}
+
+#ifdef DEBUG
+const char *
+os_getexecname(void)
+{
+	static char namepath[MAX_PATH];
+
+	DWORD cc;
+	if ((cc = GetModuleFileNameA(NULL, namepath, MAX_PATH)) == 0)
+		strcpy(namepath, "unknown");
+	else
+		namepath[cc] = '\0';
+
+	return namepath;
+}
+#endif	/* DEBUG */

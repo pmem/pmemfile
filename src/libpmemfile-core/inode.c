@@ -247,6 +247,7 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 {
 	struct pmemfile_inode_map *c = pfp->inode_map;
 	int tx = 0;
+	int error = 0;
 
 	if (D_RO(inode)->version != PMEMFILE_INODE_VERSION(1)) {
 		ERR("unknown inode version 0x%x for inode 0x%" PRIx64,
@@ -319,8 +320,10 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 	}
 
 	vinode = calloc(1, sizeof(*vinode));
-	if (!vinode)
+	if (!vinode) {
+		error = errno;
 		goto end;
+	}
 
 	os_rwlock_init(&vinode->rwlock);
 	vinode->tinode = inode;
@@ -351,6 +354,9 @@ end:
 		rwlock_tx_unlock_on_commit(&c->rwlock);
 	else
 		os_rwlock_unlock(&c->rwlock);
+
+	if (error)
+		errno = error;
 
 	return vinode;
 }
@@ -484,8 +490,8 @@ inode_alloc(PMEMfilepool *pfp, uint64_t flags, struct pmemfile_time *t,
 	inode->atime = *t;
 	inode->nlink = 0;
 	os_rwlock_rdlock(&pfp->cred_rwlock);
-	inode->uid = pfp->fsuid;
-	inode->gid = pfp->fsgid;
+	inode->uid = pfp->cred.fsuid;
+	inode->gid = pfp->cred.fsgid;
 	os_rwlock_unlock(&pfp->cred_rwlock);
 
 	if (inode_is_regular_file(inode))
@@ -687,9 +693,13 @@ _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	LOG(LDBG, "path %s", path);
 
+	struct pmemfile_cred cred;
+	if (get_cred(pfp, &cred))
+		return -1;
+
 	int error = 0;
 	struct pmemfile_path_info info;
-	resolve_pathat(pfp, dir, path, &info, 0);
+	resolve_pathat(pfp, &cred, dir, path, &info, 0);
 
 	struct pmemfile_vinode *vinode = NULL;
 	bool path_info_changed;
@@ -697,18 +707,8 @@ _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	do {
 		path_info_changed = false;
 
-		if (info.vinode == NULL) {
-			error = ELOOP;
-			goto end;
-		}
-
-		if (!vinode_is_dir(info.vinode)) {
-			error = ENOTDIR;
-			goto end;
-		}
-
-		if (more_than_1_component(info.remaining)) {
-			error = ENOENT;
+		if (info.error) {
+			error = info.error;
 			goto end;
 		}
 
@@ -723,7 +723,7 @@ _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 			if (vinode && vinode_is_symlink(vinode) &&
 					!(flags &
 						PMEMFILE_AT_SYMLINK_NOFOLLOW)) {
-				resolve_symlink(pfp, vinode, &info);
+				resolve_symlink(pfp, &cred, vinode, &info);
 				path_info_changed = true;
 			}
 		}
@@ -743,6 +743,7 @@ _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 end:
 	path_info_cleanup(pfp, &info);
+	put_cred(&cred);
 
 	vinode_unref_tx(pfp, vinode);
 

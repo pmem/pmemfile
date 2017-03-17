@@ -34,6 +34,7 @@
 
 #include "inode.h"
 #include "internal.h"
+#include "pool.h"
 
 struct pmemfile_path_info {
 	/*
@@ -43,12 +44,15 @@ struct pmemfile_path_info {
 	struct pmemfile_vinode *vinode;
 	/* Remaining part of the path. */
 	char *remaining;
+
+	int error;
 };
 
-void resolve_pathat(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
-		const char *path, struct pmemfile_path_info *path_info,
-		int flags);
-void resolve_symlink(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+void resolve_pathat(PMEMfilepool *pfp, struct pmemfile_cred *cred,
+		struct pmemfile_vinode *parent, const char *path,
+		struct pmemfile_path_info *path_info, int flags);
+void resolve_symlink(PMEMfilepool *pfp, struct pmemfile_cred *cred,
+		struct pmemfile_vinode *vinode,
 		struct pmemfile_path_info *info);
 
 void path_info_cleanup(PMEMfilepool *pfp, struct pmemfile_path_info *path_info);

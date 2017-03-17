@@ -42,6 +42,13 @@
 
 struct pmemfile_inode_map;
 
+struct pmemfile_cred {
+	uid_t fsuid;
+	gid_t fsgid;
+	gid_t *groups;
+	size_t groupsnum;
+};
+
 /* Pool */
 struct pmemfilepool {
 	PMEMobjpool *pop;
@@ -55,11 +62,17 @@ struct pmemfilepool {
 
 	struct pmemfile_inode_map *inode_map;
 
-	uid_t fsuid;
-	gid_t fsgid;
-	gid_t *groups;
-	size_t groupsnum;
+	struct pmemfile_cred cred;
 	os_rwlock_t cred_rwlock;
 };
+
+#define PFILE_WANT_READ (1<<0)
+#define PFILE_WANT_WRITE (1<<1)
+#define PFILE_WANT_EXECUTE (1<<2)
+bool can_access(const struct pmemfile_cred *cred,
+		struct inode_perms perms,
+		int acc);
+int get_cred(PMEMfilepool *pfp, struct pmemfile_cred *cred);
+void put_cred(struct pmemfile_cred *cred);
 
 #endif

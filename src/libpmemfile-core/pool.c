@@ -315,20 +315,19 @@ gid_in_list(const struct pmemfile_cred *cred, gid_t gid)
 }
 
 bool
-can_access(const struct pmemfile_cred *cred, const struct inode_perms *perms,
-		int acc)
+can_access(const struct pmemfile_cred *cred, struct inode_perms perms, int acc)
 {
-	mode_t perm = perms->flags & PMEMFILE_ACCESSPERMS;
+	mode_t perm = perms.flags & PMEMFILE_ACCESSPERMS;
 	mode_t req = 0;
 
-	if (perms->uid == cred->fsuid) {
+	if (perms.uid == cred->fsuid) {
 		if (acc & PFILE_WANT_READ)
 			req |=  PMEMFILE_S_IRUSR;
 		if (acc & PFILE_WANT_WRITE)
 			req |=  PMEMFILE_S_IWUSR;
 		if (acc & PFILE_WANT_EXECUTE)
 			req |=  PMEMFILE_S_IXUSR;
-	} else if (perms->gid == cred->fsgid || gid_in_list(cred, perms->gid)) {
+	} else if (perms.gid == cred->fsgid || gid_in_list(cred, perms.gid)) {
 		if (acc & PFILE_WANT_READ)
 			req |=  PMEMFILE_S_IRGRP;
 		if (acc & PFILE_WANT_WRITE)

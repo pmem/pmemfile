@@ -857,7 +857,7 @@ resolve_pathat_nested(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 		os_rwlock_unlock(&child->rwlock);
 
 		if (PMEMFILE_S_ISDIR(child_perms.flags)) {
-			if (!can_access(cred, &child_perms,
+			if (!can_access(cred, child_perms,
 					PFILE_WANT_EXECUTE)) {
 				vinode_unref_tx(pfp, child);
 				path_info->error = EACCES;
@@ -973,7 +973,7 @@ _pmemfile_mkdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	struct inode_perms perms = _vinode_get_perms(parent);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		if (!can_access(&cred, &perms, PFILE_WANT_WRITE))
+		if (!can_access(&cred, perms, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);
 
 		child = vinode_new_dir(pfp, parent, info.remaining, namelen,
@@ -1112,7 +1112,7 @@ _pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	struct inode_perms perms = _vinode_get_perms(vparent);
 
-	if (!can_access(&cred, &perms, PFILE_WANT_WRITE)) {
+	if (!can_access(&cred, perms, PFILE_WANT_WRITE)) {
 		error = EACCES;
 		goto vparent_end;
 	}
@@ -1249,7 +1249,7 @@ _pmemfile_chdir(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 		return -1;
 	}
 
-	if (!can_access(cred, &dir_perms, PFILE_WANT_EXECUTE)) {
+	if (!can_access(cred, dir_perms, PFILE_WANT_EXECUTE)) {
 		vinode_unref_tx(pfp, dir);
 		errno = EACCES;
 		return -1;

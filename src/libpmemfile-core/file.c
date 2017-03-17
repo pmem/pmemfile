@@ -182,7 +182,7 @@ create_file(PMEMfilepool *pfp, struct pmemfile_cred *cred, const char *filename,
 
 	struct inode_perms inode_perms = _vinode_get_perms(parent_vinode);
 
-	if (!can_access(cred, &inode_perms, PFILE_WANT_WRITE))
+	if (!can_access(cred, inode_perms, PFILE_WANT_WRITE))
 		pmemfile_tx_abort(EACCES);
 
 	struct pmemfile_vinode *vinode = inode_alloc(pfp,
@@ -218,7 +218,7 @@ open_file(struct pmemfile_cred *cred, struct pmemfile_vinode *vinode, int flags)
 	else
 		acc2 = PFILE_WANT_WRITE;
 
-	if (!can_access(cred, &inode_perms, acc2))
+	if (!can_access(cred, inode_perms, acc2))
 		pmemfile_tx_abort(EACCES);
 
 	if ((flags & PMEMFILE_O_DIRECTORY) && !vinode_is_dir(vinode))
@@ -679,7 +679,7 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 	struct inode_perms dst_perms = _vinode_get_perms(dst.vinode);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		if (!can_access(&cred, &dst_perms, PFILE_WANT_WRITE))
+		if (!can_access(&cred, dst_perms, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);
 
 		struct pmemfile_time t;
@@ -820,7 +820,7 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		struct inode_perms perms = _vinode_get_perms(vparent);
 
-		if (!can_access(&cred, &perms, PFILE_WANT_WRITE))
+		if (!can_access(&cred, perms, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);
 
 		vinode_unlink_dirent(pfp, vparent, info.remaining, namelen,
@@ -975,11 +975,11 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 		// without linking and unlinking
 
 		struct inode_perms perms = _vinode_get_perms(src_parent);
-		if (!can_access(&cred, &perms, PFILE_WANT_WRITE))
+		if (!can_access(&cred, perms, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);
 
 		perms = _vinode_get_perms(dst_parent);
-		if (!can_access(&cred, &perms, PFILE_WANT_WRITE))
+		if (!can_access(&cred, perms, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);
 
 		vinode_unlink_dirent(pfp, dst_parent, dst.remaining,
@@ -1168,7 +1168,7 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		struct inode_perms perms = _vinode_get_perms(vparent);
 
-		if (!can_access(&cred, &perms, PFILE_WANT_WRITE))
+		if (!can_access(&cred, perms, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);
 
 		struct pmemfile_time t;

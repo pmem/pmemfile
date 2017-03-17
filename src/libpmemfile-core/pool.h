@@ -70,7 +70,7 @@ struct pmemfilepool {
 #define PFILE_WANT_WRITE (1<<1)
 #define PFILE_WANT_EXECUTE (1<<2)
 bool can_access(const struct pmemfile_cred *cred,
-		const struct inode_perms *perms,
+		struct inode_perms perms,
 		int acc);
 int get_cred(PMEMfilepool *pfp, struct pmemfile_cred *cred);
 void put_cred(struct pmemfile_cred *cred);

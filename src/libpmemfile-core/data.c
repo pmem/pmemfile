@@ -383,7 +383,7 @@ write_block_range(PMEMfilepool *pfp, struct pmemfile_block *block,
 
 	char *data = D_RW(block->data);
 
-	if ((block->flags & BLOCK_INITIALIZED) == 0) {
+	if (!is_block_data_initialized(block)) {
 		char *start_zero = data;
 		size_t count = offset;
 		if (count != 0) {
@@ -1016,7 +1016,7 @@ vinode_remove_interval(struct pmemfile_vinode *vinode,
 			 *                                 intersection
 			 */
 
-			if ((block->flags & BLOCK_INITIALIZED) != 0) {
+			if (is_block_data_initialized(block)) {
 				uint64_t bl_end = block->offset + block->size;
 				uint64_t in_end = offset + len;
 				uint64_t zero_len = bl_end - in_end;
@@ -1037,7 +1037,7 @@ vinode_remove_interval(struct pmemfile_vinode *vinode,
 			 *      intersection
 			 */
 
-			if ((block->flags & BLOCK_INITIALIZED) != 0) {
+			if (is_block_data_initialized(block)) {
 				uint64_t block_offset = offset - block->offset;
 				uint64_t zero_len = block->size - block_offset;
 

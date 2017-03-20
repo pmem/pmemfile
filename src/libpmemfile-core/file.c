@@ -1554,20 +1554,7 @@ pmemfile_fchmod(PMEMfilepool *pfp, PMEMfile *file, mode_t mode)
 		return -1;
 	}
 
-	struct pmemfile_vinode *vinode;
-
-	bool unref = false;
-	if (file == PMEMFILE_AT_CWD) {
-		unref = true;
-		vinode = pool_get_cwd(pfp);
-	} else {
-		vinode = file->vinode;
-	}
-
-	int ret = vinode_chmod(pfp, vinode, mode);
-
-	if (unref)
-		vinode_unref_tx(pfp, vinode);
+	int ret = vinode_chmod(pfp, file->vinode, mode);
 
 	if (ret) {
 		errno = ret;

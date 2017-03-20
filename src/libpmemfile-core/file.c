@@ -181,9 +181,7 @@ create_file(PMEMfilepool *pfp, struct pmemfile_cred *cred, const char *filename,
 
 	rwlock_tx_wlock(&parent_vinode->rwlock);
 
-	struct inode_perms inode_perms = _vinode_get_perms(parent_vinode);
-
-	if (!can_access(cred, inode_perms, PFILE_WANT_WRITE))
+	if (!_vinode_can_access(cred, parent_vinode, PFILE_WANT_WRITE))
 		pmemfile_tx_abort(EACCES);
 
 	struct pmemfile_vinode *vinode = inode_alloc(pfp,
@@ -209,8 +207,6 @@ open_file(struct pmemfile_cred *cred, struct pmemfile_vinode *vinode, int flags)
 	if (acc == PMEMFILE_O_ACCMODE)
 		pmemfile_tx_abort(EINVAL);
 
-	struct inode_perms inode_perms = vinode_get_perms(vinode);
-
 	int acc2;
 	if (acc == PMEMFILE_O_RDWR)
 		acc2 = PFILE_WANT_READ | PFILE_WANT_WRITE;
@@ -219,7 +215,7 @@ open_file(struct pmemfile_cred *cred, struct pmemfile_vinode *vinode, int flags)
 	else
 		acc2 = PFILE_WANT_WRITE;
 
-	if (!can_access(cred, inode_perms, acc2))
+	if (!vinode_can_access(cred, vinode, acc2))
 		pmemfile_tx_abort(EACCES);
 
 	if ((flags & PMEMFILE_O_DIRECTORY) && !vinode_is_dir(vinode))
@@ -677,10 +673,9 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 	size_t dst_namelen = component_length(dst.remaining);
 
 	os_rwlock_wrlock(&dst.vinode->rwlock);
-	struct inode_perms dst_perms = _vinode_get_perms(dst.vinode);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		if (!can_access(&cred, dst_perms, PFILE_WANT_WRITE))
+		if (!_vinode_can_access(&cred, dst.vinode, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);
 
 		struct pmemfile_time t;
@@ -819,9 +814,7 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	os_rwlock_wrlock(&vparent->rwlock);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		struct inode_perms perms = _vinode_get_perms(vparent);
-
-		if (!can_access(&cred, perms, PFILE_WANT_WRITE))
+		if (!_vinode_can_access(&cred, vparent, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);
 
 		vinode_unlink_dirent(pfp, vparent, info.remaining, namelen,
@@ -975,12 +968,10 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 		// XXX, when src dir == dst dir we can just update dirent,
 		// without linking and unlinking
 
-		struct inode_perms perms = _vinode_get_perms(src_parent);
-		if (!can_access(&cred, perms, PFILE_WANT_WRITE))
+		if (!_vinode_can_access(&cred, src_parent, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);
 
-		perms = _vinode_get_perms(dst_parent);
-		if (!can_access(&cred, perms, PFILE_WANT_WRITE))
+		if (!_vinode_can_access(&cred, dst_parent, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);
 
 		vinode_unlink_dirent(pfp, dst_parent, dst.remaining,
@@ -1167,9 +1158,7 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 	os_rwlock_wrlock(&vparent->rwlock);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		struct inode_perms perms = _vinode_get_perms(vparent);
-
-		if (!can_access(&cred, perms, PFILE_WANT_WRITE))
+		if (!_vinode_can_access(&cred, vparent, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);
 
 		struct pmemfile_time t;

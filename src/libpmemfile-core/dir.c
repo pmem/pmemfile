@@ -998,10 +998,9 @@ _pmemfile_mkdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	os_rwlock_wrlock(&parent->rwlock);
 
 	struct pmemfile_vinode *child = NULL;
-	struct inode_perms perms = _vinode_get_perms(parent);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		if (!can_access(&cred, perms, PFILE_WANT_WRITE))
+		if (!_vinode_can_access(&cred, parent, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);
 
 		child = vinode_new_dir(pfp, parent, info.remaining, namelen,
@@ -1138,9 +1137,7 @@ _pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto vparent_end;
 	}
 
-	struct inode_perms perms = _vinode_get_perms(vparent);
-
-	if (!can_access(&cred, perms, PFILE_WANT_WRITE)) {
+	if (!_vinode_can_access(&cred, vparent, PFILE_WANT_WRITE)) {
 		error = EACCES;
 		goto vparent_end;
 	}

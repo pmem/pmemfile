@@ -1016,10 +1016,13 @@ vinode_remove_interval(struct pmemfile_vinode *vinode,
 			 *                                 intersection
 			 */
 
-			uint64_t zero_len = (block->offset + block->size) -
-			    (offset + len);
+			if ((block->flags & BLOCK_INITIALIZED) != 0) {
+				uint64_t bl_end = block->offset + block->size;
+				uint64_t in_end = offset + len;
+				uint64_t zero_len = bl_end - in_end;
 
-			TX_MEMSET(D_RW(block->data), 0, zero_len);
+				TX_MEMSET(D_RW(block->data), 0, zero_len);
+			}
 
 			block = D_RW(block->prev);
 		} else {
@@ -1034,12 +1037,15 @@ vinode_remove_interval(struct pmemfile_vinode *vinode,
 			 *      intersection
 			 */
 
-			uint64_t block_offset = offset - block->offset;
-			uint64_t zero_len = block->size - block_offset;
+			if ((block->flags & BLOCK_INITIALIZED) != 0) {
+				uint64_t block_offset = offset - block->offset;
+				uint64_t zero_len = block->size - block_offset;
 
-			pmemobj_tx_add_range(block->data.oid, block_offset,
-			    zero_len);
-			memset(D_RW(block->data) + block_offset, 0, zero_len);
+				pmemobj_tx_add_range(block->data.oid,
+				    block_offset, zero_len);
+				memset(D_RW(block->data) + block_offset, 0,
+				    zero_len);
+			}
 
 			block = D_RW(block->prev);
 		}

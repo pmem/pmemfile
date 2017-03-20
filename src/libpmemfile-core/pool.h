@@ -47,6 +47,7 @@ struct pmemfile_cred {
 	gid_t fsgid;
 	gid_t *groups;
 	size_t groupsnum;
+	int caps;
 };
 
 /* Pool */

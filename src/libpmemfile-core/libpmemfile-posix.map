@@ -40,6 +40,7 @@
 		pmemfile_chmod;
 		pmemfile_chown;
 		pmemfile_close;
+		pmemfile_clrcap;
 		pmemfile_copy_file_range;
 		pmemfile_create;
 		pmemfile_dup;
@@ -92,6 +93,7 @@
 		pmemfile_renameat;
 		pmemfile_renameat2;
 		pmemfile_rmdir;
+		pmemfile_setcap;
 		pmemfile_setgroups;
 		pmemfile_setfsgid;
 		pmemfile_setfsuid;

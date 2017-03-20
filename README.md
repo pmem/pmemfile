@@ -32,14 +32,13 @@ $ ctest --output-on-failure
 Note that in Debug mode "make install" installs only debug libraries.
 
 Pmemfile-specific cmake variables:
-```
 * BUILD_LIBPMEMFILE=0 - disables building of libpmemfile.so
 * DEVELOPER_MODE=1 - enables coding style, whitespace, license checks and enables fail-on-warning flags
 * LONG_TESTS=1 - enables tests which take much more time
 * TEST_DIR=/mnt/pmem/test_dir - provides directory where tests will create its pools
 * TRACE_TESTS=1 - dumps more info when test fails (requires cmake >= 3.4)
 * TESTS_USE_FORCED_PMEM=1 - allows tests to force enable or force disable use of optimized flush in libpmemobj (to speed them up)
-```
+* SANITIZERS=1 - enables AddressSanitizer and UndefinedBehaviorSanitizer (only for debugging)
 
 # Package for Debian-based distros
 ```sh

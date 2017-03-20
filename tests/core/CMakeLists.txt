@@ -114,7 +114,7 @@ function(add_test_generic name tracer)
 		endif()
 	endif()
 
-	if (SANITIZERS_ENABLED AND ${tracer} IN_LIST vg_tracers)
+	if (SANITIZERS AND ${tracer} IN_LIST vg_tracers)
 		return()
 	endif()
 

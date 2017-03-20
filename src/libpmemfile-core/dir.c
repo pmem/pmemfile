@@ -1029,6 +1029,20 @@ end:
 	return 0;
 }
 
+void
+vinode_cleanup(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+		bool preserve_errno)
+{
+	int error;
+	if (preserve_errno)
+		error = errno;
+
+	vinode_unref_tx(pfp, vinode);
+
+	if (preserve_errno)
+		errno = error;
+}
+
 int
 pmemfile_mkdirat(PMEMfilepool *pfp, PMEMfile *dir, const char *path,
 		mode_t mode)
@@ -1045,16 +1059,8 @@ pmemfile_mkdirat(PMEMfilepool *pfp, PMEMfile *dir, const char *path,
 
 	int ret = _pmemfile_mkdirat(pfp, at, path, mode);
 
-	if (at_unref) {
-		int error;
-		if (ret)
-			error = errno;
-
-		vinode_unref_tx(pfp, at);
-
-		if (ret)
-			errno = error;
-	}
+	if (at_unref)
+		vinode_cleanup(pfp, at, ret != 0);
 
 	return ret;
 }
@@ -1248,16 +1254,8 @@ pmemfile_rmdir(PMEMfilepool *pfp, const char *path)
 
 	int ret = _pmemfile_rmdirat(pfp, at, path);
 
-	if (at_unref) {
-		int error;
-		if (ret)
-			error = errno;
-
-		vinode_unref_tx(pfp, at);
-
-		if (ret)
-			errno = error;
-	}
+	if (at_unref)
+		vinode_cleanup(pfp, at, ret != 0);
 
 	return ret;
 }

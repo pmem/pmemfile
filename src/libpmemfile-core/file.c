@@ -450,16 +450,8 @@ pmemfile_openat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 
 	PMEMfile *ret = _pmemfile_openat(pfp, at, pathname, flags, mode);
 
-	if (at_unref) {
-		int error;
-		if (ret == NULL)
-			error = errno;
-
-		vinode_unref_tx(pfp, at);
-
-		if (ret == NULL)
-			errno = error;
-	}
+	if (at_unref)
+		vinode_cleanup(pfp, at, ret == NULL);
 
 	return ret;
 }
@@ -767,16 +759,8 @@ pmemfile_link(PMEMfilepool *pfp, const char *oldpath, const char *newpath)
 
 	int ret = _pmemfile_linkat(pfp, at, oldpath, at, newpath, 0);
 
-	if (at) {
-		int error;
-		if (ret)
-			error = errno;
-
-		vinode_unref_tx(pfp, at);
-
-		if (ret)
-			errno = error;
-	}
+	if (at)
+		vinode_cleanup(pfp, at, ret != 0);
 
 	return ret;
 }
@@ -869,16 +853,8 @@ pmemfile_unlinkat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 		}
 	}
 
-	if (at_unref) {
-		int error;
-		if (ret)
-			error = errno;
-
-		vinode_unref_tx(pfp, at);
-
-		if (ret)
-			errno = error;
-	}
+	if (at_unref)
+		vinode_cleanup(pfp, at, ret != 0);
 
 	return ret;
 }
@@ -1059,16 +1035,8 @@ pmemfile_rename(PMEMfilepool *pfp, const char *old_path, const char *new_path)
 
 	int ret = _pmemfile_renameat2(pfp, at, old_path, at, new_path, 0);
 
-	if (at) {
-		int error;
-		if (ret)
-			error = errno;
-
-		vinode_unref_tx(pfp, at);
-
-		if (ret)
-			errno = error;
-	}
+	if (at)
+		vinode_cleanup(pfp, at, ret != 0);
 
 	return ret;
 }
@@ -1211,16 +1179,8 @@ pmemfile_symlinkat(PMEMfilepool *pfp, const char *target, PMEMfile *newdir,
 
 	int ret = _pmemfile_symlinkat(pfp, target, at, linkpath);
 
-	if (at_unref) {
-		int error;
-		if (ret)
-			error = errno;
-
-		vinode_unref_tx(pfp, at);
-
-		if (ret)
-			errno = error;
-	}
+	if (at_unref)
+		vinode_cleanup(pfp, at, ret != 0);
 
 	return ret;
 }
@@ -1311,20 +1271,8 @@ pmemfile_readlinkat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 
 	ssize_t ret = _pmemfile_readlinkat(pfp, at, pathname, buf, bufsiz);
 
-	if (at_unref) {
-		/*
-		 * initialized only because gcc 6.2 thinks "error" might not be
-		 * initialized at the time of writing it back to "errno"
-		 */
-		int error = 0;
-		if (ret < 0)
-			error = errno;
-
-		vinode_unref_tx(pfp, at);
-
-		if (ret < 0)
-			errno = error;
-	}
+	if (at_unref)
+		vinode_cleanup(pfp, at, ret < 0);
 
 	return ret;
 }
@@ -1527,15 +1475,8 @@ pmemfile_fchmodat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 
 	int ret = _pmemfile_fchmodat(pfp, at, pathname, mode, flags);
 
-	if (at_unref) {
-		int error;
-		if (ret)
-			error = errno;
-		vinode_unref_tx(pfp, at);
-
-		if (ret)
-			errno = error;
-	}
+	if (at_unref)
+		vinode_cleanup(pfp, at, ret != 0);
 
 	return ret;
 }

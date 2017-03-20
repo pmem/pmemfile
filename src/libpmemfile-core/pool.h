@@ -75,4 +75,10 @@ bool can_access(const struct pmemfile_cred *cred,
 int get_cred(PMEMfilepool *pfp, struct pmemfile_cred *cred);
 void put_cred(struct pmemfile_cred *cred);
 
+bool vinode_can_access(const struct pmemfile_cred *cred,
+		struct pmemfile_vinode *vinode, int acc);
+
+bool _vinode_can_access(const struct pmemfile_cred *cred,
+		struct pmemfile_vinode *vinode, int acc);
+
 #endif

@@ -342,6 +342,24 @@ can_access(const struct pmemfile_cred *cred, struct inode_perms perms, int acc)
 	return ((perm & req) == req);
 }
 
+bool
+_vinode_can_access(const struct pmemfile_cred *cred,
+		struct pmemfile_vinode *vinode, int acc)
+{
+	struct inode_perms inode_perms = _vinode_get_perms(vinode);
+
+	return can_access(cred, inode_perms, acc);
+}
+
+bool
+vinode_can_access(const struct pmemfile_cred *cred,
+		struct pmemfile_vinode *vinode, int acc)
+{
+	struct inode_perms inode_perms = vinode_get_perms(vinode);
+
+	return can_access(cred, inode_perms, acc);
+}
+
 static int
 copy_cred(struct pmemfile_cred *dst_cred, struct pmemfile_cred *src_cred)
 {

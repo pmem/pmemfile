@@ -83,6 +83,7 @@ add_library(pmemfile-posix_static_unscoped STATIC $<TARGET_OBJECTS:pmemfile-posi
 
 target_link_libraries(pmemfile-posix_shared PRIVATE ${PMEMOBJ_LIBRARIES})
 target_link_libraries(pmemfile-posix_shared PRIVATE -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/libpmemfile-posix.map)
+set_target_properties(pmemfile-posix_shared PROPERTIES LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/libpmemfile-posix.map)
 
 set_target_properties(pmemfile-posix_static_unscoped PROPERTIES OUTPUT_NAME pmemfile-posix_unscoped)
 set_target_properties(pmemfile-posix_shared PROPERTIES OUTPUT_NAME pmemfile-posix)
@@ -95,7 +96,8 @@ endif()
 
 add_custom_command(OUTPUT libpmemfile-posix.a
 		COMMAND objcopy --localize-hidden `sed -n "'s/^\\s*\\([a-zA-Z0-9_]*\\);$$/-G \\1/p'" ${CMAKE_CURRENT_SOURCE_DIR}/libpmemfile-posix.map` libpmemfile-posix_unscoped.a libpmemfile-posix.a
-		DEPENDS pmemfile-posix_static_unscoped)
+		DEPENDS pmemfile-posix_static_unscoped
+		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/libpmemfile-posix.map)
 add_custom_target(pmemfile-posix_static ALL DEPENDS libpmemfile-posix.a)
 
 configure_file(libpmemfile-posix.pc.in libpmemfile-posix.pc)

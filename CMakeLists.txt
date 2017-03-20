@@ -173,11 +173,11 @@ add_cxx_flag(-DDEBUG DEBUG)
 add_c_flag("-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2" RELEASE C_CAN_FORTIFY)
 add_cxx_flag("-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2" RELEASE CXX_CAN_FORTIFY)
 
-option(SANITIZERS_ENABLED "enable AddressSanitizer and UndefinedBehaviorSanitizer (debugging)" OFF)
+option(SANITIZERS "enable AddressSanitizer and UndefinedBehaviorSanitizer (debugging)" OFF)
 
-if(SANITIZERS_ENABLED)
+if(SANITIZERS)
 	if(BUILD_LIBPMEMFILE)
-		message(FATAL_ERROR "Sanitizers are incompatible with LIBPMEMFILE. If you want to test LIBPMEMFILE-POSIX with SANITIZERS_ENABLED define BUILD_LIBPMEMFILE to 0/OFF.")
+		message(FATAL_ERROR "Sanitizers are incompatible with LIBPMEMFILE. If you want to test LIBPMEMFILE-POSIX with SANITIZERS define BUILD_LIBPMEMFILE to 0/OFF.")
 	endif()
 
 	set(SAVED_CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES})

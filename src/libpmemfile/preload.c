@@ -172,6 +172,7 @@ fetch_fd(long fd)
 		result.pmem_fda = fd_table[fd];
 	} else {
 		result.pmem_fda.pool = NULL;
+		result.pmem_fda.file = NULL;
 	}
 
 	return result;

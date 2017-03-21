@@ -946,7 +946,7 @@ is_block_at_right_edge(struct pmemfile_block *block,
 }
 
 /*
- * vinode_remove_interval - punch a hole in a file - possible at the end of
+ * vinode_remove_interval - punch a hole in a file - possibly at the end of
  * a file.
  *
  * From the Linux man page fallocate(2):
@@ -1019,13 +1019,9 @@ vinode_remove_interval(struct pmemfile_vinode *vinode,
 			 *                                 intersection
 			 */
 
-			if (is_block_data_initialized(block)) {
-				uint64_t bl_end = block->offset + block->size;
-				uint64_t in_end = offset + len;
-				uint64_t zero_len = bl_end - in_end;
-
-				TX_MEMSET(D_RW(block->data), 0, zero_len);
-			}
+			if (is_block_data_initialized(block))
+				TX_MEMSET(D_RW(block->data), 0,
+				    offset + len - block->offset);
 
 			block = D_RW(block->prev);
 		} else {

@@ -771,15 +771,8 @@ pmemfile_fstatat(PMEMfilepool *pfp, PMEMfile *dir, const char *path,
 
 	int ret = _pmemfile_fstatat(pfp, at, path, buf, flags);
 
-	if (at_unref) {
-		int error;
-		if (ret)
-			error = errno;
-		vinode_unref_tx(pfp, at);
-
-		if (ret)
-			errno = error;
-	}
+	if (at_unref)
+		vinode_cleanup(pfp, at, ret != 0);
 
 	return ret;
 }

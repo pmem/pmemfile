@@ -150,6 +150,9 @@ find_block(struct pmemfile_vinode *vinode, uint64_t off)
 
 /*
  * vinode_destroy_data_state -- destroys file state related to data
+ *
+ * This is used as a callback passed to cb_push_front, that is why the pfp
+ * argument is used.
  */
 void
 vinode_destroy_data_state(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)

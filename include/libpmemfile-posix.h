@@ -247,6 +247,14 @@ int pmemfile_setfsgid(PMEMfilepool *, uid_t fsgid);
 int pmemfile_getgroups(PMEMfilepool *, int size, gid_t list[]);
 int pmemfile_setgroups(PMEMfilepool *, size_t size, const gid_t *list);
 
+int pmemfile_chown(PMEMfilepool *, const char *pathname, uid_t owner,
+		gid_t group);
+int pmemfile_fchown(PMEMfilepool *, PMEMfile *file, uid_t owner, gid_t group);
+int pmemfile_lchown(PMEMfilepool *, const char *pathname, uid_t owner,
+		gid_t group);
+int pmemfile_fchownat(PMEMfilepool *, PMEMfile *dir, const char *pathname,
+		uid_t owner, gid_t group, int flags);
+
 #define PMEMFILE_CAP_CHOWN 0
 #define PMEMFILE_CAP_FOWNER 3
 int pmemfile_setcap(PMEMfilepool *, int cap);

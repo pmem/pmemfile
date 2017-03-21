@@ -1449,7 +1449,8 @@ end:
 	path_info_cleanup(pfp, &info);
 	put_cred(&cred);
 
-	vinode_unref_tx(pfp, vinode);
+	if (vinode)
+		vinode_unref_tx(pfp, vinode);
 
 	if (error) {
 		errno = error;

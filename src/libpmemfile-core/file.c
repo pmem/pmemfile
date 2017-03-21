@@ -612,47 +612,25 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 		return -1;
 
 	struct pmemfile_path_info src, dst = { NULL, NULL, 0 };
-	struct pmemfile_vinode *src_vinode;
-
-	resolve_pathat(pfp, &cred, olddir, oldpath, &src, 0);
+	struct pmemfile_vinode *src_vinode =
+			resolve_pathat_full(pfp, &cred, olddir, oldpath, &src,
+					0, flags & PMEMFILE_AT_SYMLINK_FOLLOW);
 
 	int error = 0;
-	bool src_path_info_changed;
+	if (src.error) {
+		error = src.error;
+		goto end;
+	}
 
-	do {
-		src_path_info_changed = false;
-		src_vinode = NULL;
+	if (vinode_is_dir(src_vinode)) {
+		error = EPERM;
+		goto end;
+	}
 
-		if (src.error) {
-			error = src.error;
-			goto end;
-		}
-
-		size_t src_namelen = component_length(src.remaining);
-
-		src_vinode = vinode_lookup_dirent(pfp, src.vinode,
-				src.remaining, src_namelen, 0);
-		if (!src_vinode) {
-			error = ENOENT;
-			goto end;
-		}
-
-		if (vinode_is_dir(src_vinode)) {
-			error = EPERM;
-			goto end;
-		}
-
-		if (strchr(src.remaining, '/')) {
-			error = ENOTDIR;
-			goto end;
-		}
-
-		if (vinode_is_symlink(src_vinode) &&
-				(flags & PMEMFILE_AT_SYMLINK_FOLLOW)) {
-			resolve_symlink(pfp, &cred, src_vinode, &src);
-			src_path_info_changed = true;
-		}
-	} while (src_path_info_changed);
+	if (strchr(src.remaining, '/')) {
+		error = ENOTDIR;
+		goto end;
+	}
 
 	resolve_pathat(pfp, &cred, newdir, newpath, &dst, 0);
 
@@ -1406,38 +1384,13 @@ _pmemfile_fchmodat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	int error = 0;
 	struct pmemfile_path_info info;
-	resolve_pathat(pfp, &cred, dir, path, &info, 0);
+	struct pmemfile_vinode *vinode =
+		resolve_pathat_full(pfp, &cred, dir, path, &info, 0, true);
 
-	struct pmemfile_vinode *vinode = NULL;
-	bool path_info_changed;
-
-	do {
-		path_info_changed = false;
-
-		if (info.error) {
-			error = info.error;
-			goto end;
-		}
-
-		size_t namelen = component_length(info.remaining);
-
-		if (namelen == 0) {
-			ASSERT(info.vinode == pfp->root);
-			vinode = vinode_ref(pfp, info.vinode);
-		} else {
-			vinode = vinode_lookup_dirent(pfp, info.vinode,
-					info.remaining, namelen, 0);
-			if (vinode && vinode_is_symlink(vinode)) {
-				resolve_symlink(pfp, &cred, vinode, &info);
-				path_info_changed = true;
-			}
-		}
-
-		if (!vinode) {
-			error = ENOENT;
-			goto end;
-		}
-	} while (path_info_changed);
+	if (info.error) {
+		error = info.error;
+		goto end;
+	}
 
 	if (!vinode_is_dir(vinode) && strchr(info.remaining, '/')) {
 		error = ENOTDIR;

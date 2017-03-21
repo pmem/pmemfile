@@ -934,6 +934,46 @@ resolve_pathat(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 	resolve_pathat_nested(pfp, cred, parent, path, path_info, flags, 1);
 }
 
+struct pmemfile_vinode *
+resolve_pathat_full(PMEMfilepool *pfp, struct pmemfile_cred *cred,
+		struct pmemfile_vinode *parent, const char *path,
+		struct pmemfile_path_info *path_info, int flags,
+		bool resolve_last_symlink)
+{
+	resolve_pathat(pfp, cred, parent, path, path_info, flags);
+
+	bool path_info_changed;
+	struct pmemfile_vinode *vinode;
+	do {
+		path_info_changed = false;
+
+		if (path_info->error)
+			return NULL;
+
+		size_t namelen = component_length(path_info->remaining);
+
+		if (namelen == 0) {
+			ASSERT(path_info->vinode == pfp->root);
+			vinode = vinode_ref(pfp, path_info->vinode);
+		} else {
+			vinode = vinode_lookup_dirent(pfp, path_info->vinode,
+					path_info->remaining, namelen, 0);
+			if (vinode && vinode_is_symlink(vinode) &&
+					resolve_last_symlink) {
+				resolve_symlink(pfp, cred, vinode, path_info);
+				path_info_changed = true;
+			}
+		}
+
+		if (!vinode) {
+			path_info->error = ENOENT;
+			return NULL;
+		}
+	} while (path_info_changed);
+
+	return vinode;
+}
+
 void
 resolve_symlink(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 		struct pmemfile_vinode *vinode,
@@ -1306,37 +1346,13 @@ pmemfile_chdir(PMEMfilepool *pfp, const char *path)
 
 	at = pool_get_dir_for_path(pfp, PMEMFILE_AT_CWD, path, &at_unref);
 
-	resolve_pathat(pfp, &cred, at, path, &info, 0);
+	struct pmemfile_vinode *dir =
+		resolve_pathat_full(pfp, &cred, at, path, &info, 0, true);
 
-	bool path_info_changed;
-	struct pmemfile_vinode *dir;
-	do {
-		path_info_changed = false;
-
-		if (info.error) {
-			error = info.error;
-			goto end;
-		}
-
-		size_t namelen = component_length(info.remaining);
-
-		if (namelen == 0) {
-			ASSERT(info.vinode == pfp->root);
-			dir = vinode_ref(pfp, info.vinode);
-		} else {
-			dir = vinode_lookup_dirent(pfp, info.vinode,
-					info.remaining, namelen, 0);
-			if (dir && vinode_is_symlink(dir)) {
-				resolve_symlink(pfp, &cred, dir, &info);
-				path_info_changed = true;
-			}
-		}
-
-		if (!dir) {
-			error = ENOENT;
-			goto end;
-		}
-	} while (path_info_changed);
+	if (info.error) {
+		error = info.error;
+		goto end;
+	}
 
 	ret = _pmemfile_chdir(pfp, &cred, dir);
 	if (ret)

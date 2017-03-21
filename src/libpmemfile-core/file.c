@@ -1674,3 +1674,158 @@ end:
 
 	return 0;
 }
+
+static int
+vinode_chown(PMEMfilepool *pfp, struct pmemfile_cred *cred,
+		struct pmemfile_vinode *vinode, uid_t owner, gid_t group)
+{
+	struct pmemfile_inode *inode = vinode->inode;
+	int error = 0;
+
+	os_rwlock_wrlock(&vinode->rwlock);
+
+	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
+		if (!(cred->caps & (1 << PMEMFILE_CAP_CHOWN))) {
+			if (owner != (uid_t)-1 &&
+					owner != cred->fsuid)
+				pmemfile_tx_abort(EPERM);
+			if (group != (gid_t)-1 &&
+					group != cred->fsgid &&
+					!gid_in_list(cred, group))
+				pmemfile_tx_abort(EPERM);
+		}
+
+		COMPILE_ERROR_ON(offsetof(struct pmemfile_inode, gid) !=
+				offsetof(struct pmemfile_inode, uid) +
+				sizeof(inode->uid));
+
+		pmemobj_tx_add_range_direct(&inode->uid,
+				sizeof(inode->uid) + sizeof(inode->gid));
+
+		if (owner != (uid_t)-1)
+			inode->uid = owner;
+		if (group != (gid_t)-1)
+			inode->gid = group;
+	} TX_ONABORT {
+		error = errno;
+	} TX_END
+
+	os_rwlock_unlock(&vinode->rwlock);
+
+	return error;
+}
+
+static int
+_pmemfile_fchownat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
+		const char *path, uid_t owner, gid_t group, int flags)
+{
+	if (flags & PMEMFILE_AT_EMPTY_PATH) {
+		errno = ENOTSUP;
+		return -1;
+	}
+
+	if (flags & ~(PMEMFILE_AT_EMPTY_PATH | PMEMFILE_AT_SYMLINK_NOFOLLOW)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	LOG(LDBG, "path %s", path);
+
+	struct pmemfile_cred cred;
+	if (get_cred(pfp, &cred))
+		return -1;
+
+	int error = 0;
+	struct pmemfile_path_info info;
+	struct pmemfile_vinode *vinode =
+			resolve_pathat_full(pfp, &cred, dir, path, &info, 0,
+				!(flags & PMEMFILE_AT_SYMLINK_NOFOLLOW));
+
+	if (info.error) {
+		error = info.error;
+		goto end;
+	}
+
+	if (!vinode_is_dir(vinode) && strchr(info.remaining, '/')) {
+		error = ENOTDIR;
+		goto end;
+	}
+
+	error = vinode_chown(pfp, &cred, vinode, owner, group);
+
+end:
+	path_info_cleanup(pfp, &info);
+	put_cred(&cred);
+
+	if (vinode)
+		vinode_unref_tx(pfp, vinode);
+
+	if (error) {
+		errno = error;
+		return -1;
+	}
+
+	return 0;
+}
+
+int
+pmemfile_fchownat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
+		uid_t owner, gid_t group, int flags)
+{
+	struct pmemfile_vinode *at;
+	bool at_unref;
+
+	if (!pathname) {
+		errno = ENOENT;
+		return -1;
+	}
+
+	at = pool_get_dir_for_path(pfp, dir, pathname, &at_unref);
+
+	int ret = _pmemfile_fchownat(pfp, at, pathname, owner, group, flags);
+
+	if (at_unref)
+		vinode_cleanup(pfp, at, ret != 0);
+
+	return ret;
+}
+
+int
+pmemfile_chown(PMEMfilepool *pfp, const char *pathname, uid_t owner,
+		gid_t group)
+{
+	return pmemfile_fchownat(pfp, PMEMFILE_AT_CWD, pathname, owner, group,
+			0);
+}
+
+int
+pmemfile_lchown(PMEMfilepool *pfp, const char *pathname, uid_t owner,
+		gid_t group)
+{
+	return pmemfile_fchownat(pfp, PMEMFILE_AT_CWD, pathname, owner, group,
+			PMEMFILE_AT_SYMLINK_NOFOLLOW);
+}
+
+int
+pmemfile_fchown(PMEMfilepool *pfp, PMEMfile *file, uid_t owner, gid_t group)
+{
+	if (!file) {
+		errno = EBADF;
+		return -1;
+	}
+
+	struct pmemfile_cred cred;
+	if (get_cred(pfp, &cred))
+		return -1;
+
+	int ret = vinode_chown(pfp, &cred, file->vinode, owner, group);
+
+	put_cred(&cred);
+
+	if (ret) {
+		errno = ret;
+		return -1;
+	}
+
+	return 0;
+}

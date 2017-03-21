@@ -299,7 +299,7 @@ pmemfile_pool_close(PMEMfilepool *pfp)
 	free(pfp);
 }
 
-static bool
+bool
 gid_in_list(const struct pmemfile_cred *cred, gid_t gid)
 {
 	for (size_t i = 0; i < cred->groupsnum; ++i) {

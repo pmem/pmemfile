@@ -82,4 +82,6 @@ bool vinode_can_access(const struct pmemfile_cred *cred,
 bool _vinode_can_access(const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *vinode, int acc);
 
+bool gid_in_list(const struct pmemfile_cred *cred, gid_t gid);
+
 #endif

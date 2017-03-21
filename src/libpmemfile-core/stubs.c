@@ -258,63 +258,6 @@ pmemfile_pwritev(PMEMfilepool *pfp, PMEMfile *file, const struct iovec *iov,
 }
 
 int
-pmemfile_chown(PMEMfilepool *pfp, const char *pathname, uid_t owner,
-		gid_t group)
-{
-	check_pfp(pfp);
-
-	(void) pathname;
-	(void) owner;
-	(void) group;
-
-	errno = ENOTSUP;
-	return -1;
-}
-
-int
-pmemfile_fchown(PMEMfilepool *pfp, PMEMfile *file, uid_t owner, gid_t group)
-{
-	check_pfp(pfp);
-
-	(void) file;
-	(void) owner;
-	(void) group;
-
-	errno = ENOTSUP;
-	return -1;
-}
-
-int
-pmemfile_lchown(PMEMfilepool *pfp, const char *pathname, uid_t owner,
-		gid_t group)
-{
-	check_pfp(pfp);
-
-	(void) pathname;
-	(void) owner;
-	(void) group;
-
-	errno = ENOTSUP;
-	return -1;
-}
-
-int
-pmemfile_fchownat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
-		uid_t owner, gid_t group, int flags)
-{
-	check_pfp(pfp);
-
-	(void) dir;
-	(void) pathname;
-	(void) owner;
-	(void) group;
-	(void) flags;
-
-	errno = ENOTSUP;
-	return -1;
-}
-
-int
 pmemfile_utime(PMEMfilepool *pfp, const char *filename,
 		const struct utimbuf *times)
 {

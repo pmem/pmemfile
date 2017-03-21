@@ -226,7 +226,7 @@ vinode_unregister_locked(PMEMfilepool *pfp,
 
 	c->inodes--;
 
-	vinode_destroy_data_state(vinode);
+	vinode_destroy_data_state(pfp, vinode);
 
 #ifdef DEBUG
 	/* "path" field is defined only in DEBUG builds */

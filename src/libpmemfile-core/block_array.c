@@ -246,10 +246,15 @@ block_list_remove(struct pmemfile_vinode *vinode,
 	if (moving_block == prev)
 		prev = block;
 
+	if (vinode->first_block == block)
+		vinode->first_block = D_RW(block->next);
+
 	if (!TOID_IS_NULL(block->data))
 		TX_FREE(block->data);
 
 	if (moving_block != block) {
+		if (vinode->first_block == moving_block)
+			vinode->first_block = block;
 		relocate_block(block, moving_block);
 	}
 

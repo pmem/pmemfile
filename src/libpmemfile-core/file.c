@@ -200,7 +200,8 @@ create_file(PMEMfilepool *pfp, struct pmemfile_cred *cred, const char *filename,
 }
 
 static void
-open_file(struct pmemfile_cred *cred, struct pmemfile_vinode *vinode, int flags)
+open_file(PMEMfilepool *pfp, struct pmemfile_cred *cred,
+		struct pmemfile_vinode *vinode, int flags)
 {
 	int acc = flags & PMEMFILE_O_ACCMODE;
 
@@ -234,7 +235,7 @@ open_file(struct pmemfile_cred *cred, struct pmemfile_vinode *vinode, int flags)
 
 		rwlock_tx_wlock(&vinode->rwlock);
 
-		vinode_truncate(vinode);
+		vinode_truncate(pfp, vinode, 0);
 
 		rwlock_tx_unlock_on_commit(&vinode->rwlock);
 	}
@@ -377,7 +378,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 			vinode = create_file(pfp, &cred, info.remaining,
 					namelen, vparent, flags, mode);
 		} else {
-			open_file(&cred, vinode, flags);
+			open_file(pfp, &cred, vinode, flags);
 		}
 
 		file = calloc(1, sizeof(*file));

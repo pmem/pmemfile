@@ -150,10 +150,15 @@ find_block(struct pmemfile_vinode *vinode, uint64_t off)
 
 /*
  * vinode_destroy_data_state -- destroys file state related to data
+ *
+ * This is used as a callback passed to cb_push_front, that is why the pfp
+ * argument is used.
  */
 void
-vinode_destroy_data_state(struct pmemfile_vinode *vinode)
+vinode_destroy_data_state(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
+	(void) pfp;
+
 	if (vinode->blocks) {
 		ctree_delete(vinode->blocks);
 		vinode->blocks = NULL;
@@ -247,7 +252,7 @@ overallocate_size(uint64_t count)
 }
 
 static void
-file_allocate_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		uint64_t offset, uint64_t size)
 {
 	ASSERT(size > 0);
@@ -381,7 +386,7 @@ write_block_range(PMEMfilepool *pfp, struct pmemfile_block *block,
 
 	char *data = D_RW(block->data);
 
-	if ((block->flags & BLOCK_INITIALIZED) == 0) {
+	if (!is_block_data_initialized(block)) {
 		char *start_zero = data;
 		size_t count = offset;
 		if (count != 0) {
@@ -533,7 +538,7 @@ file_write(PMEMfilepool *pfp, PMEMfile *file, struct pmemfile_inode *inode,
 	 * - Copy the data from the users buffer
 	 */
 
-	file_allocate_range(pfp, file->vinode, file->offset, count);
+	vinode_allocate_interval(pfp, file->vinode, file->offset, count);
 
 	uint64_t original_size = inode->size;
 	uint64_t new_size = inode->size;
@@ -916,31 +921,174 @@ end:
 }
 
 /*
- * vinode_truncate -- changes file size to 0
+ * is_block_contained_by_interval -- see vinode_remove_interval
+ * for explanation.
+ */
+static bool
+is_block_contained_by_interval(struct pmemfile_block *block,
+		uint64_t start, uint64_t len)
+{
+	return block->offset >= start &&
+		(block->offset + block->size) <= (start + len);
+}
+
+/*
+ * is_block_at_right_edge -- see vinode_remove_interval
+ * for explanation.
+ */
+static bool
+is_block_at_right_edge(struct pmemfile_block *block,
+		uint64_t start, uint64_t len)
+{
+	ASSERT(!is_block_contained_by_interval(block, start, len));
+
+	return block->offset + block->size > start + len;
+}
+
+/*
+ * vinode_remove_interval - punch a hole in a file - possibly at the end of
+ * a file.
+ *
+ * From the Linux man page fallocate(2):
+ *
+ * "Deallocating file space
+ *   Specifying the FALLOC_FL_PUNCH_HOLE flag (available since Linux 2.6.38) in
+ *   mode deallocates space (i.e., creates a hole) in the byte range starting at
+ *   offset and continuing for len bytes.  Within the specified range, partial
+ *   filesystem blocks are zeroed, and whole filesystem blocks are removed from
+ *   the file.  After a successful call, subsequent reads from this range will
+ *   return zeroes."
+ *
+ *
+ *
+ *
+ *          _____offset                offset + len____
+ *         |                                           |
+ *         |                                           |
+ * ----+---+--------+------------+------------+--------+----+----
+ *     |   block #1 |  block #2  |   block #3 |   block #4  |
+ *     |   data     |  data      |   data     |   data      |
+ *  ---+---+--------+------------+------------+-------------+---
+ *         | memset | deallocate | deallocate | memset |
+ *         | zero   | block #2   | block #3   | zero   |
+ *         |        |            |            |        |
+ *         +--------+------------+------------+--------+
+ *
+ * Note: The zeroed file contents at the left edge in the above drawing
+ * must be snapshoted. Without doing this, a failed transaction can leave
+ * the file contents in a inconsistent state, e.g.:
+ * 1) pmemfile_ftruncate is called in order to make a file smaller,
+ * 2) a pmemobj transaction is started
+ * 3) some bytes are zeroed at the end of a file
+ * 4) the transaction fails before commit
+ *
+ * At this point, the file size is not changed, but the corresponding file
+ * contents would remain zero bytes, if they were not snapshotted.
+ */
+static void
+vinode_remove_interval(struct pmemfile_vinode *vinode,
+			uint64_t offset, uint64_t len)
+{
+	ASSERT(len > 0);
+
+	struct pmemfile_block *block = find_block(vinode, offset + len - 1);
+
+	while (block != NULL && block->offset + block->size > offset) {
+		if (is_block_contained_by_interval(block, offset, len)) {
+			/*
+			 * Deallocate the whole block, if it is wholly contained
+			 * by the specified interval.
+			 *
+			 *   offset                          offset + len
+			 *   |                                |
+			 * --+-------+-------+----------------+-----
+			 *           | block |
+			 */
+			ctree_remove_unlocked(vinode->blocks, block->offset, 1);
+			block = block_list_remove(vinode, block);
+
+		} else if (is_block_at_right_edge(block, offset, len)) {
+			/*
+			 *  offset                          offset + len
+			 *   |                                |
+			 * --+----------------------------+---+---+
+			 *                                | block |
+			 *                                +---+---+
+			 *                                |   |
+			 *                                +---+
+			 *                                 intersection
+			 */
+
+			if (is_block_data_initialized(block))
+				TX_MEMSET(D_RW(block->data), 0,
+				    offset + len - block->offset);
+
+			block = D_RW(block->prev);
+		} else {
+			/*
+			 *    offset                          offset + len
+			 *     |                                |
+			 * -+--+--------------------------------+----
+			 *  | block |
+			 *  +--+----+
+			 *     |    |
+			 *     +----+
+			 *      intersection
+			 */
+
+			if (is_block_data_initialized(block)) {
+				uint64_t block_offset = offset - block->offset;
+				uint64_t zero_len = block->size - block_offset;
+
+				pmemobj_tx_add_range(block->data.oid,
+				    block_offset, zero_len);
+				memset(D_RW(block->data) + block_offset, 0,
+				    zero_len);
+			}
+
+			block = D_RW(block->prev);
+		}
+	}
+}
+
+/*
+ * vinode_truncate -- changes file size to size
+ *
+ * Should only be called inside pmemobj transactions.
  */
 void
-vinode_truncate(struct pmemfile_vinode *vinode)
+vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+		uint64_t size)
 {
 	struct pmemfile_inode *inode = vinode->inode;
+
+	if (inode->size == size)
+		return;
 
 	if (vinode->blocks == NULL)
 		vinode_rebuild_block_tree(vinode);
 
-	struct pmemfile_block *block = find_last_block(vinode);
+	cb_push_front(TX_STAGE_ONABORT,
+		(cb_basic)vinode_destroy_data_state,
+		vinode);
 
-	while (block != NULL)
-		block = block_list_remove(vinode, block);
+	/*
+	 * Might need to handle the special case where size == 0.
+	 * Setting all the next and prev fields is pointless, when all the
+	 * blocks are removed.
+	 */
+	if (inode->size > size)
+		vinode_remove_interval(vinode, size, UINT64_MAX - size);
+	else
+		vinode_allocate_interval(pfp, vinode,
+		    inode->size, size - inode->size);
 
 	TX_ADD_DIRECT(&inode->size);
-	inode->size = 0;
+	inode->size = size;
 
 	struct pmemfile_time tm;
 	file_get_time(&tm);
 	TX_SET_DIRECT(inode, mtime, tm);
-
-	// we don't have to rollback destroy of data state on abort, because
-	// it will be rebuilded when it's needed
-	vinode_destroy_data_state(vinode);
 }
 
 void

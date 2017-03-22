@@ -699,40 +699,14 @@ _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	int error = 0;
 	struct pmemfile_path_info info;
-	resolve_pathat(pfp, &cred, dir, path, &info, 0);
+	struct pmemfile_vinode *vinode =
+			resolve_pathat_full(pfp, &cred, dir, path, &info, 0,
+				!(flags & PMEMFILE_AT_SYMLINK_NOFOLLOW));
 
-	struct pmemfile_vinode *vinode = NULL;
-	bool path_info_changed;
-
-	do {
-		path_info_changed = false;
-
-		if (info.error) {
-			error = info.error;
-			goto end;
-		}
-
-		size_t namelen = component_length(info.remaining);
-
-		if (namelen == 0) {
-			ASSERT(info.vinode == pfp->root);
-			vinode = vinode_ref(pfp, info.vinode);
-		} else {
-			vinode = vinode_lookup_dirent(pfp, info.vinode,
-					info.remaining, namelen, 0);
-			if (vinode && vinode_is_symlink(vinode) &&
-					!(flags &
-						PMEMFILE_AT_SYMLINK_NOFOLLOW)) {
-				resolve_symlink(pfp, &cred, vinode, &info);
-				path_info_changed = true;
-			}
-		}
-
-		if (!vinode) {
-			error = ENOENT;
-			goto end;
-		}
-	} while (path_info_changed);
+	if (info.error) {
+		error = info.error;
+		goto end;
+	}
 
 	if (!vinode_is_dir(vinode) && strchr(info.remaining, '/')) {
 		error = ENOTDIR;

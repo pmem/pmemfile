@@ -62,7 +62,7 @@ os_describe_errno(int errnum, char *buf, size_t buflen)
 const char *
 os_getexecname(void)
 {
-	static char namepath[PATH_MAX];
+	static char namepath[PATH_MAX + 1];
 	char procpath[PATH_MAX];
 	ssize_t cc;
 

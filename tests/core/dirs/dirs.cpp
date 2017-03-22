@@ -109,6 +109,10 @@ list_files(PMEMfilepool *pfp, const char *dir, size_t expected_files,
 	struct linux_dirent64 *d = (struct linux_dirent64 *)buf;
 	int r = pmemfile_getdents64(pfp, f, d, sizeof(buf));
 	size_t num_files = 0;
+	if (r < 0) {
+		EXPECT_GE(r, 0);
+		return false;
+	}
 
 	while ((uintptr_t)d < (uintptr_t)&buf[r]) {
 		num_files++;

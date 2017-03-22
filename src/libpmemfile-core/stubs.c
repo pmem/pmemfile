@@ -110,29 +110,6 @@ pmemfile_flock(PMEMfilepool *pfp, PMEMfile *file, int operation)
 	return -1;
 }
 
-int
-pmemfile_truncate(PMEMfilepool *pfp, const char *path, off_t length)
-{
-	check_pfp(pfp);
-
-	(void) path;
-	(void) length;
-
-	errno = ENOTSUP;
-	return -1;
-}
-
-int
-pmemfile_ftruncate(PMEMfilepool *pfp, PMEMfile *file, off_t length)
-{
-	check_pfp_file(pfp, file);
-
-	(void) length;
-
-	errno = ENOTSUP;
-	return -1;
-}
-
 PMEMfile *
 pmemfile_dup(PMEMfilepool *pfp, PMEMfile *file)
 {

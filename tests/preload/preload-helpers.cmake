@@ -40,6 +40,8 @@ function(setup)
 endfunction()
 
 function(cleanup)
+	unset(ENV{LD_PRELOAD})
+
 	if(${TESTS_USE_FORCED_PMEM})
 		unset(ENV{PMEM_IS_PMEM_FORCE})
 	endif()

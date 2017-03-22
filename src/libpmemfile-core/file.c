@@ -1335,16 +1335,18 @@ vinode_chmod(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, mode_t mode)
 	struct pmemfile_inode *inode = vinode->inode;
 	int error = 0;
 	uid_t fsuid;
+	int cap;
 
 	os_rwlock_rdlock(&pfp->cred_rwlock);
 	fsuid = pfp->cred.fsuid;
+	cap = pfp->cred.caps;
 	os_rwlock_unlock(&pfp->cred_rwlock);
 
 	os_rwlock_wrlock(&vinode->rwlock);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		// XXX: take CAP_FOWNER into account
-		if (vinode->inode->uid != fsuid)
+		if (vinode->inode->uid != fsuid &&
+				!(cap & (1 << PMEMFILE_CAP_FOWNER)))
 			pmemfile_tx_abort(EPERM);
 
 		TX_ADD_DIRECT(&inode->flags);

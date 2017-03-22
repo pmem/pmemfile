@@ -287,6 +287,28 @@ TEST_F(permissions, fsuid_fsgid_getgroups_setgroups)
 	EXPECT_EQ(l2[1], TEST_FSGID2);
 }
 
+TEST_F(permissions, chmod_and_cap)
+{
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/aaa", PMEMFILE_O_EXCL,
+					 PMEMFILE_S_IRWXU));
+
+	ASSERT_EQ(pmemfile_setfsuid(pfp, 1000), 0);
+
+	ASSERT_EQ(pmemfile_chmod(pfp, "/aaa", PMEMFILE_S_IRUSR), -1);
+	EXPECT_EQ(errno, EPERM);
+
+	ASSERT_EQ(pmemfile_setcap(pfp, PMEMFILE_CAP_FOWNER), 0)
+		<< strerror(errno);
+
+	ASSERT_EQ(pmemfile_chmod(pfp, "/aaa", PMEMFILE_S_IRUSR), 0)
+		<< strerror(errno);
+
+	ASSERT_EQ(pmemfile_clrcap(pfp, PMEMFILE_CAP_FOWNER), 0)
+		<< strerror(errno);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/aaa"), 0);
+}
+
 TEST_F(permissions, fchmod)
 {
 	PMEMfile *f;

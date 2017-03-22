@@ -365,6 +365,7 @@ copy_cred(struct pmemfile_cred *dst_cred, struct pmemfile_cred *src_cred)
 {
 	dst_cred->fsuid = src_cred->fsuid;
 	dst_cred->fsgid = src_cred->fsgid;
+	dst_cred->caps = src_cred->caps;
 	dst_cred->groupsnum = src_cred->groupsnum;
 	if (dst_cred->groupsnum) {
 		dst_cred->groups = malloc(dst_cred->groupsnum *
@@ -395,4 +396,42 @@ put_cred(struct pmemfile_cred *cred)
 {
 	free(cred->groups);
 	memset(cred, 0, sizeof(*cred));
+}
+
+int
+pmemfile_setcap(PMEMfilepool *pfp, int cap)
+{
+	int ret = 0;
+	os_rwlock_wrlock(&pfp->cred_rwlock);
+	switch (cap) {
+		case PMEMFILE_CAP_CHOWN:
+		case PMEMFILE_CAP_FOWNER:
+			pfp->cred.caps |= 1 << cap;
+			break;
+		default:
+			errno = EINVAL;
+			ret = -1;
+			break;
+	}
+	os_rwlock_unlock(&pfp->cred_rwlock);
+	return ret;
+}
+
+int
+pmemfile_clrcap(PMEMfilepool *pfp, int cap)
+{
+	int ret = 0;
+	os_rwlock_wrlock(&pfp->cred_rwlock);
+	switch (cap) {
+		case PMEMFILE_CAP_CHOWN:
+		case PMEMFILE_CAP_FOWNER:
+			pfp->cred.caps &= ~(1 << cap);
+			break;
+		default:
+			errno = EINVAL;
+			ret = -1;
+			break;
+	}
+	os_rwlock_unlock(&pfp->cred_rwlock);
+	return ret;
 }

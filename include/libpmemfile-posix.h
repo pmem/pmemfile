@@ -247,6 +247,11 @@ int pmemfile_setfsgid(PMEMfilepool *, uid_t fsgid);
 int pmemfile_getgroups(PMEMfilepool *, int size, gid_t list[]);
 int pmemfile_setgroups(PMEMfilepool *, size_t size, const gid_t *list);
 
+#define PMEMFILE_CAP_CHOWN 0
+#define PMEMFILE_CAP_FOWNER 3
+int pmemfile_setcap(PMEMfilepool *, int cap);
+int pmemfile_clrcap(PMEMfilepool *, int cap);
+
 struct pmemfile_stats {
 	unsigned inodes;
 	unsigned dirs;

@@ -876,8 +876,7 @@ dispatch_syscall(long syscall_number,
 	    syscall_number == SYS_listxattr ||
 	    syscall_number == SYS_removexattr ||
 	    syscall_number == SYS_utime ||
-	    syscall_number == SYS_utimes ||
-	    syscall_number == SYS_execve)
+	    syscall_number == SYS_utimes)
 		return nosup_syscall_with_path(syscall_number,
 		    arg0, RESOLVE_LAST_SLINK,
 		    arg0, arg1, arg2, arg3, arg4, arg5);

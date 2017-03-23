@@ -198,43 +198,56 @@ TEST_F(permissions, symlink)
 	ASSERT_EQ(pmemfile_unlink(pfp, "/bbb"), 0);
 }
 
-#define TEST_INITIAL_FSUID ((uid_t)0)
-#define TEST_INITIAL_FSGID ((uid_t)0)
-#define TEST_FSUID ((uid_t)1000)
-#define TEST_FSGID ((uid_t)2000)
-#define TEST_FSGID2 ((uid_t)3000)
+#define TEST_EUID ((uid_t)1000)
+#define TEST_EGID ((uid_t)2000)
 
-TEST_F(permissions, fsuid_fsgid_getgroups_setgroups)
+#define TEST_FSUID ((uid_t)5000)
+#define TEST_FSGID ((gid_t)6000)
+
+#define TEST_SUPP_GID ((uid_t)3000)
+
+TEST_F(permissions, reuid_regid_fsuid_fsgid_getgroups_setgroups)
 {
 	PMEMfile *f;
 	struct stat statbuf;
 	int prev_uid;
 	int prev_gid;
 
+	ASSERT_EQ(pmemfile_setreuid(pfp, TEST_EUID, TEST_EUID), 0);
+	ASSERT_EQ(pmemfile_setregid(pfp, TEST_EGID, TEST_EGID), 0);
+
 	prev_uid = pmemfile_setfsuid(pfp, TEST_FSUID);
 	ASSERT_GE(prev_uid, 0) << strerror(errno);
-	ASSERT_EQ((uid_t)prev_uid, TEST_INITIAL_FSUID);
+	ASSERT_EQ((uid_t)prev_uid, TEST_EUID);
 
 	prev_gid = pmemfile_setfsgid(pfp, TEST_FSGID);
 	ASSERT_GE(prev_gid, 0) << strerror(errno);
-	ASSERT_EQ((uid_t)prev_gid, TEST_INITIAL_FSUID);
+	ASSERT_EQ((uid_t)prev_gid, TEST_EGID);
+
+	prev_uid = pmemfile_setfsuid(pfp, TEST_EUID);
+	ASSERT_GE(prev_uid, 0) << strerror(errno);
+	ASSERT_EQ((uid_t)prev_uid, TEST_FSUID);
+
+	prev_gid = pmemfile_setfsgid(pfp, TEST_EGID);
+	ASSERT_GE(prev_gid, 0) << strerror(errno);
+	ASSERT_EQ((uid_t)prev_gid, TEST_FSGID);
 
 	ASSERT_TRUE(test_pmemfile_create(
 		pfp, "/aaa", PMEMFILE_O_EXCL, PMEMFILE_S_IRUSR |
 			PMEMFILE_S_IWUSR | PMEMFILE_S_IRGRP | PMEMFILE_S_IWGRP |
 			PMEMFILE_S_IROTH));
 
-	prev_uid = pmemfile_setfsuid(pfp, TEST_INITIAL_FSUID);
+	prev_uid = pmemfile_setfsuid(pfp, TEST_FSUID);
 	ASSERT_GE(prev_uid, 0) << strerror(errno);
-	ASSERT_EQ((uid_t)prev_uid, TEST_FSUID);
+	ASSERT_EQ((uid_t)prev_uid, TEST_EUID);
 
-	prev_gid = pmemfile_setfsgid(pfp, TEST_INITIAL_FSGID);
+	prev_gid = pmemfile_setfsgid(pfp, TEST_FSGID);
 	ASSERT_GE(prev_gid, 0) << strerror(errno);
-	ASSERT_EQ((uid_t)prev_gid, TEST_FSGID);
+	ASSERT_EQ((uid_t)prev_gid, TEST_EGID);
 
 	ASSERT_EQ(pmemfile_stat(pfp, "/aaa", &statbuf), 0);
-	EXPECT_EQ(statbuf.st_uid, TEST_FSUID);
-	EXPECT_EQ(statbuf.st_gid, TEST_FSGID);
+	EXPECT_EQ(statbuf.st_uid, TEST_EUID);
+	EXPECT_EQ(statbuf.st_gid, TEST_EGID);
 
 	errno = 0;
 	ASSERT_EQ(pmemfile_chmod(pfp, "/aaa", PMEMFILE_S_IRUSR), -1);
@@ -253,14 +266,14 @@ TEST_F(permissions, fsuid_fsgid_getgroups_setgroups)
 	f = pmemfile_open(pfp, "/aaa", PMEMFILE_O_WRONLY);
 	ASSERT_EQ(f, nullptr);
 
-	gid_t l0[1] = {TEST_FSGID2};
+	gid_t l0[1] = {TEST_SUPP_GID};
 	ASSERT_EQ(pmemfile_setgroups(pfp, 1, l0), 0) << strerror(errno);
 
 	/* open rw */
 	f = pmemfile_open(pfp, "/aaa", PMEMFILE_O_RDWR);
 	ASSERT_EQ(f, nullptr);
 
-	gid_t l1[2] = {TEST_FSGID, TEST_FSGID2};
+	gid_t l1[2] = {TEST_EGID, TEST_SUPP_GID};
 	ASSERT_EQ(pmemfile_setgroups(pfp, 2, l1), 0) << strerror(errno);
 
 	/* open rw */
@@ -281,13 +294,14 @@ TEST_F(permissions, fsuid_fsgid_getgroups_setgroups)
 	EXPECT_EQ(l2[1], (gid_t)0);
 
 	ASSERT_EQ(pmemfile_getgroups(pfp, 2, l2), 2);
-	EXPECT_EQ(l2[0], TEST_FSGID);
-	EXPECT_EQ(l2[1], TEST_FSGID2);
+	EXPECT_EQ(l2[0], TEST_EGID);
+	EXPECT_EQ(l2[1], TEST_SUPP_GID);
 
 	memset(l2, 0, sizeof(l2));
 	ASSERT_EQ(pmemfile_getgroups(pfp, 3, l2), 2);
-	EXPECT_EQ(l2[0], TEST_FSGID);
-	EXPECT_EQ(l2[1], TEST_FSGID2);
+
+	EXPECT_EQ(l2[0], TEST_EGID);
+	EXPECT_EQ(l2[1], TEST_SUPP_GID);
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/aaa"), 0);
 }
@@ -910,7 +924,7 @@ TEST_F(permissions, chown)
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/file0", PMEMFILE_O_EXCL,
 					 PMEMFILE_S_IRWXU));
 
-	/* uid=0, gid=0 */
+	/* ruid=euid=fsuid=0, rgid=egid=fsgid=0 */
 
 	ASSERT_TRUE(test_chown(pfp, "/file", 0, 0, 0));
 	ASSERT_TRUE(test_chown(pfp, "/file", (uid_t)-1, 0, 0));
@@ -923,11 +937,11 @@ TEST_F(permissions, chown)
 	ASSERT_TRUE(test_chown(pfp, "/file", (uid_t)-1, 1001, EPERM));
 	ASSERT_TRUE(test_chown(pfp, "/file", 1000, 1002, EPERM));
 
-	ASSERT_EQ(pmemfile_setfsuid(pfp, 1000), 0);
+	ASSERT_EQ(pmemfile_setreuid(pfp, 1000, 1000), 0);
 
+	/* ruid=euid=fsuid=1000, rgid=egid=fsgid=0 */
 	ASSERT_TRUE(test_chown(pfp, "/file", 1000, 0, EPERM));
 
-	/* uid=1000, gid=0 */
 	ASSERT_EQ(pmemfile_setcap(pfp, PMEMFILE_CAP_CHOWN), 0)
 		<< strerror(errno);
 
@@ -944,7 +958,7 @@ TEST_F(permissions, chown)
 
 	ASSERT_EQ(pmemfile_setfsgid(pfp, 1001), 0);
 
-	/* uid=1000, gid=1001 */
+	/* ruid=euid=fsuid=1000, rgid=egid=0, fsgid=1001 */
 
 	ASSERT_TRUE(test_chown(pfp, "/file", 1000, 0, 0));
 	ASSERT_TRUE(test_chown(pfp, "/file", 0, 1001, EPERM));
@@ -956,7 +970,7 @@ TEST_F(permissions, chown)
 	gid_t groups[1] = {1002};
 	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
 
-	/* uid=1000, gid=1001, gids=1002 */
+	/* ruid=euid=fsuid=1000, rgid=egid=0, fsgid=1001, gids=1002 */
 
 	ASSERT_TRUE(test_chown(pfp, "/file", 1000, 1003, EPERM));
 	ASSERT_TRUE(test_chown(pfp, "/file", 1000, 1002, 0));
@@ -974,7 +988,7 @@ TEST_F(permissions, chown)
 
 	memset(&s, 0, sizeof(s));
 	ASSERT_EQ(pmemfile_lstat(pfp, "/symlink", &s), 0);
-	ASSERT_EQ(s.st_gid, (gid_t)1001);
+	ASSERT_EQ(s.st_gid, (gid_t)0);
 
 	ASSERT_EQ(pmemfile_chown(pfp, "/symlink", (uid_t)-1, 1002), 0)
 		<< strerror(errno);
@@ -985,7 +999,7 @@ TEST_F(permissions, chown)
 
 	memset(&s, 0, sizeof(s));
 	ASSERT_EQ(pmemfile_lstat(pfp, "/symlink", &s), 0);
-	ASSERT_EQ(s.st_gid, (gid_t)1001);
+	ASSERT_EQ(s.st_gid, (gid_t)0);
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/symlink"), 0);
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file"), 0);
@@ -1036,7 +1050,7 @@ TEST_F(permissions, fchown)
 
 	PMEMfile *f = pmemfile_open(pfp, "/file", PMEMFILE_O_RDONLY);
 
-	/* uid=0, gid=0 */
+	/* ruid=euid=fsuid=0, rgid=egid=fsgid=0 */
 
 	ASSERT_TRUE(test_fchown(pfp, f, 0, 0, 0));
 	ASSERT_TRUE(test_fchown(pfp, f, (uid_t)-1, 0, 0));
@@ -1053,7 +1067,7 @@ TEST_F(permissions, fchown)
 
 	ASSERT_EQ(pmemfile_setfsuid(pfp, 1000), 0);
 
-	/* uid=1000, gid=0 */
+	/* ruid=euid=0 fsuid=1000, rgid=egid=fsgid=0 */
 	ASSERT_EQ(pmemfile_setcap(pfp, PMEMFILE_CAP_CHOWN), 0)
 		<< strerror(errno);
 
@@ -1070,7 +1084,7 @@ TEST_F(permissions, fchown)
 
 	ASSERT_EQ(pmemfile_setfsgid(pfp, 1001), 0);
 
-	/* uid=1000, gid=1001 */
+	/* ruid=euid=0 fsuid=1000, rgid=egid=0 fsgid=1001 */
 
 	ASSERT_TRUE(test_fchown(pfp, f, 1000, 0, 0));
 	ASSERT_TRUE(test_fchown(pfp, f, 0, 1001, EPERM));
@@ -1082,7 +1096,7 @@ TEST_F(permissions, fchown)
 	gid_t groups[1] = {1002};
 	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
 
-	/* uid=1000, gid=1001, gids=1002 */
+	/* ruid=euid=0 fsuid=1000, rgid=egid=0 fsgid=1001, gids=1002 */
 
 	ASSERT_TRUE(test_fchown(pfp, f, 1000, 1003, EPERM));
 	ASSERT_TRUE(test_fchown(pfp, f, 1000, 1002, 0));
@@ -1098,8 +1112,9 @@ TEST_F(permissions, lchown)
 {
 	struct stat s;
 
-	ASSERT_EQ(pmemfile_setfsuid(pfp, 1000), 0);
-	ASSERT_EQ(pmemfile_setfsgid(pfp, 1001), 0);
+	ASSERT_EQ(pmemfile_setreuid(pfp, 1000, 1000), 0);
+	ASSERT_EQ(pmemfile_setregid(pfp, 1001, 1001), 0);
+
 	gid_t groups[1] = {1002};
 	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
 

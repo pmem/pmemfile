@@ -43,10 +43,26 @@
 struct pmemfile_inode_map;
 
 struct pmemfile_cred {
+	/* real user id */
+	uid_t ruid;
+	/* real group id */
+	gid_t rgid;
+
+	/* effective user id */
+	uid_t euid;
+	/* effective group id */
+	gid_t egid;
+
+	/* filesystem user id */
 	uid_t fsuid;
+	/* filesystem group id */
 	gid_t fsgid;
+
+	/* supplementary group IDs */
 	gid_t *groups;
 	size_t groupsnum;
+
+	/* capabilities */
 	int caps;
 };
 

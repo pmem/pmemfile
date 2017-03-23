@@ -1459,6 +1459,120 @@ pmemfile_fchmod(PMEMfilepool *pfp, PMEMfile *file, mode_t mode)
 }
 
 int
+pmemfile_setreuid(PMEMfilepool *pfp, uid_t ruid, uid_t euid)
+{
+	if (ruid != (uid_t)-1 && ruid > INT_MAX) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (euid != (uid_t)-1 && euid > INT_MAX) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	os_rwlock_wrlock(&pfp->cred_rwlock);
+	if (ruid != (uid_t)-1)
+		pfp->cred.ruid = ruid;
+	if (euid != (uid_t)-1) {
+		pfp->cred.euid = euid;
+		pfp->cred.fsuid = euid;
+	}
+	os_rwlock_unlock(&pfp->cred_rwlock);
+
+	return 0;
+}
+
+int
+pmemfile_setregid(PMEMfilepool *pfp, gid_t rgid, gid_t egid)
+{
+	if (rgid != (gid_t)-1 && rgid > INT_MAX) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (egid != (gid_t)-1 && egid > INT_MAX) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	os_rwlock_wrlock(&pfp->cred_rwlock);
+	if (rgid != (uid_t)-1)
+		pfp->cred.rgid = rgid;
+	if (egid != (uid_t)-1) {
+		pfp->cred.egid = egid;
+		pfp->cred.fsgid = egid;
+	}
+	os_rwlock_unlock(&pfp->cred_rwlock);
+
+	return 0;
+}
+
+int
+pmemfile_setuid(PMEMfilepool *pfp, uid_t uid)
+{
+	return pmemfile_setreuid(pfp, uid, (uid_t)-1);
+}
+
+int
+pmemfile_setgid(PMEMfilepool *pfp, gid_t gid)
+{
+	return pmemfile_setregid(pfp, gid, (gid_t)-1);
+}
+
+uid_t
+pmemfile_getuid(PMEMfilepool *pfp)
+{
+	uid_t ret;
+	os_rwlock_rdlock(&pfp->cred_rwlock);
+	ret = pfp->cred.ruid;
+	os_rwlock_unlock(&pfp->cred_rwlock);
+	return ret;
+}
+
+gid_t
+pmemfile_getgid(PMEMfilepool *pfp)
+{
+	gid_t ret;
+	os_rwlock_rdlock(&pfp->cred_rwlock);
+	ret = pfp->cred.rgid;
+	os_rwlock_unlock(&pfp->cred_rwlock);
+	return ret;
+}
+
+int
+pmemfile_seteuid(PMEMfilepool *pfp, uid_t uid)
+{
+	return pmemfile_setreuid(pfp, (uid_t)-1, uid);
+}
+
+int
+pmemfile_setegid(PMEMfilepool *pfp, gid_t gid)
+{
+	return pmemfile_setregid(pfp, (gid_t)-1, gid);
+}
+
+uid_t
+pmemfile_geteuid(PMEMfilepool *pfp)
+{
+	uid_t ret;
+	os_rwlock_rdlock(&pfp->cred_rwlock);
+	ret = pfp->cred.euid;
+	os_rwlock_unlock(&pfp->cred_rwlock);
+	return ret;
+}
+
+gid_t
+pmemfile_getegid(PMEMfilepool *pfp)
+{
+	gid_t ret;
+	os_rwlock_rdlock(&pfp->cred_rwlock);
+	ret = pfp->cred.egid;
+	os_rwlock_unlock(&pfp->cred_rwlock);
+	return ret;
+}
+
+int
 pmemfile_setfsuid(PMEMfilepool *pfp, uid_t fsuid)
 {
 	if (fsuid > INT_MAX) {

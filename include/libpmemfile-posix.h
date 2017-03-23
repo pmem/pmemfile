@@ -242,8 +242,22 @@ int pmemfile_fchmod(PMEMfilepool *, PMEMfile *, mode_t mode);
 int pmemfile_fchmodat(PMEMfilepool *, PMEMfile *dir, const char *pathname,
 	mode_t mode, int flags);
 
+int pmemfile_setreuid(PMEMfilepool *, uid_t ruid, uid_t euid);
+int pmemfile_setregid(PMEMfilepool *, gid_t rgid, gid_t egid);
+
+int pmemfile_setuid(PMEMfilepool *, uid_t uid);
+int pmemfile_setgid(PMEMfilepool *, gid_t gid);
+uid_t pmemfile_getuid(PMEMfilepool *);
+gid_t pmemfile_getgid(PMEMfilepool *);
+
+int pmemfile_seteuid(PMEMfilepool *, uid_t uid);
+int pmemfile_setegid(PMEMfilepool *, gid_t gid);
+uid_t pmemfile_geteuid(PMEMfilepool *);
+gid_t pmemfile_getegid(PMEMfilepool *);
+
 int pmemfile_setfsuid(PMEMfilepool *, uid_t fsuid);
 int pmemfile_setfsgid(PMEMfilepool *, uid_t fsgid);
+
 int pmemfile_getgroups(PMEMfilepool *, int size, gid_t list[]);
 int pmemfile_setgroups(PMEMfilepool *, size_t size, const gid_t *list);
 

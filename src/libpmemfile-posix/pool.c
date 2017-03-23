@@ -363,8 +363,15 @@ vinode_can_access(const struct pmemfile_cred *cred,
 static int
 copy_cred(struct pmemfile_cred *dst_cred, struct pmemfile_cred *src_cred)
 {
+	dst_cred->ruid = src_cred->ruid;
+	dst_cred->rgid = src_cred->rgid;
+
+	dst_cred->euid = src_cred->euid;
+	dst_cred->egid = src_cred->egid;
+
 	dst_cred->fsuid = src_cred->fsuid;
 	dst_cred->fsgid = src_cred->fsgid;
+
 	dst_cred->caps = src_cred->caps;
 	dst_cred->groupsnum = src_cred->groupsnum;
 	if (dst_cred->groupsnum) {

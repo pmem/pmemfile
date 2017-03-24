@@ -115,6 +115,7 @@
 #define PMEMFILE_AT_SYMLINK_FOLLOW	0x400
 #define PMEMFILE_AT_NO_AUTOMOUNT	0x800
 #define PMEMFILE_AT_EMPTY_PATH		0x1000
+#define PMEMFILE_AT_EACCESS		0x200
 
 #define PMEMFILE_F_DUPFD 0
 #define PMEMFILE_F_GETFD 1
@@ -145,6 +146,11 @@
 #define PMEMFILE_DT_LNK		10
 #define PMEMFILE_DT_SOCK	12
 #define PMEMFILE_DT_WHT		14
+
+#define PMEMFILE_R_OK 4
+#define PMEMFILE_W_OK 2
+#define PMEMFILE_X_OK 1
+#define PMEMFILE_F_OK 0
 
 #define PMEMFILE_MAP_FAILED	((void *) -1)
 
@@ -269,6 +275,11 @@ int pmemfile_lchown(PMEMfilepool *, const char *pathname, uid_t owner,
 int pmemfile_fchownat(PMEMfilepool *, PMEMfile *dir, const char *pathname,
 		uid_t owner, gid_t group, int flags);
 
+int pmemfile_access(PMEMfilepool *, const char *path, int mode);
+int pmemfile_euidaccess(PMEMfilepool *, const char *pathname, int mode);
+int pmemfile_faccessat(PMEMfilepool *, PMEMfile *dir, const char *pathname,
+		int mode, int flags);
+
 #define PMEMFILE_CAP_CHOWN 0
 #define PMEMFILE_CAP_FOWNER 3
 int pmemfile_setcap(PMEMfilepool *, int cap);
@@ -291,6 +302,12 @@ char *pmemfile_get_dir_path(PMEMfilepool *pfp, PMEMfile *dir, char *buf,
 
 #define PMEMFILE_OPEN_PARENT_STOP_AT_ROOT (1<<0)
 #define PMEMFILE_OPEN_PARENT_SYMLINK_FOLLOW (1<<1)
+
+#define PMEMFILE_OPEN_PARENT_USE_FACCESS (0<<2)
+#define PMEMFILE_OPEN_PARENT_USE_EACCESS (1<<2)
+#define PMEMFILE_OPEN_PARENT_USE_RACCESS (2<<2)
+#define PMEMFILE_OPEN_PARANT_ACCESS_MASK (3<<2)
+
 PMEMfile *pmemfile_open_parent(PMEMfilepool *pfp, PMEMfile *at,
 		char *path, size_t path_size, int flags);
 /*

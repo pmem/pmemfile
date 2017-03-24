@@ -1147,6 +1147,471 @@ TEST_F(permissions, lchown)
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file"), 0);
 }
 
+static bool
+_test_acc(PMEMfilepool *pfp, const char *path, int mode, int error)
+{
+	int ret = pmemfile_access(pfp, path, mode);
+	if (error) {
+		EXPECT_EQ(ret, -1);
+		EXPECT_EQ(errno, error);
+
+		if (ret != -1)
+			return false;
+		if (errno != error)
+			return false;
+	} else {
+		EXPECT_EQ(ret, 0) << strerror(errno);
+		if (ret)
+			return false;
+	}
+
+	return true;
+}
+
+static bool
+test_acc(PMEMfilepool *pfp, const char *path, int mode, int error)
+{
+	bool r = _test_acc(pfp, path, mode, error);
+	if (!r)
+		return false;
+
+	static char path2[PMEMFILE_PATH_MAX + 1];
+	sprintf(path2, "%s_sym", path);
+	return _test_acc(pfp, path2, mode, error);
+}
+
+TEST_F(permissions, access)
+{
+	ASSERT_EQ(pmemfile_setreuid(pfp, 1000, 1000), 0);
+	ASSERT_EQ(pmemfile_setregid(pfp, 2000, 2000), 0);
+
+	ASSERT_TRUE(test_pmemfile_create(
+		pfp, "/file_rwxr-x---", PMEMFILE_O_EXCL,
+		PMEMFILE_S_IRWXU | PMEMFILE_S_IRGRP | PMEMFILE_S_IXGRP));
+	ASSERT_TRUE(test_pmemfile_create(
+		pfp, "/file_r---w---x", PMEMFILE_O_EXCL,
+		PMEMFILE_S_IRUSR | PMEMFILE_S_IWGRP | PMEMFILE_S_IXOTH));
+	ASSERT_TRUE(test_pmemfile_create(
+		pfp, "/file_-w-r---w-", PMEMFILE_O_EXCL,
+		PMEMFILE_S_IWUSR | PMEMFILE_S_IRGRP | PMEMFILE_S_IWOTH));
+	ASSERT_TRUE(test_pmemfile_create(
+		pfp, "/file_--x--xr--", PMEMFILE_O_EXCL,
+		PMEMFILE_S_IXUSR | PMEMFILE_S_IXGRP | PMEMFILE_S_IROTH));
+	ASSERT_EQ(
+		pmemfile_symlink(pfp, "/file_rwxr-x---", "/file_rwxr-x---_sym"),
+		0)
+		<< strerror(errno);
+	ASSERT_EQ(
+		pmemfile_symlink(pfp, "/file_r---w---x", "/file_r---w---x_sym"),
+		0)
+		<< strerror(errno);
+	ASSERT_EQ(
+		pmemfile_symlink(pfp, "/file_-w-r---w-", "/file_-w-r---w-_sym"),
+		0)
+		<< strerror(errno);
+	ASSERT_EQ(
+		pmemfile_symlink(pfp, "/file_--x--xr--", "/file_--x--xr--_sym"),
+		0)
+		<< strerror(errno);
+
+	EXPECT_TRUE(test_acc(pfp, "/fileX", PMEMFILE_F_OK, ENOENT));
+
+	EXPECT_TRUE(test_acc(pfp, "/file_rwxr-x---", PMEMFILE_F_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_rwxr-x---", PMEMFILE_R_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_rwxr-x---", PMEMFILE_W_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_rwxr-x---", PMEMFILE_X_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_rwxr-x---",
+			     PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK, 0));
+
+	EXPECT_TRUE(test_acc(pfp, "/file_r---w---x", PMEMFILE_F_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_r---w---x", PMEMFILE_R_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_r---w---x", PMEMFILE_W_OK, EACCES));
+	EXPECT_TRUE(test_acc(pfp, "/file_r---w---x", PMEMFILE_X_OK, EACCES));
+	EXPECT_TRUE(test_acc(pfp, "/file_r---w---x",
+			     PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK,
+			     EACCES));
+
+	EXPECT_TRUE(test_acc(pfp, "/file_-w-r---w-", PMEMFILE_F_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_-w-r---w-", PMEMFILE_R_OK, EACCES));
+	EXPECT_TRUE(test_acc(pfp, "/file_-w-r---w-", PMEMFILE_W_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_-w-r---w-", PMEMFILE_X_OK, EACCES));
+	EXPECT_TRUE(test_acc(pfp, "/file_-w-r---w-",
+			     PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK,
+			     EACCES));
+
+	EXPECT_TRUE(test_acc(pfp, "/file_--x--xr--", PMEMFILE_F_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_--x--xr--", PMEMFILE_R_OK, EACCES));
+	EXPECT_TRUE(test_acc(pfp, "/file_--x--xr--", PMEMFILE_W_OK, EACCES));
+	EXPECT_TRUE(test_acc(pfp, "/file_--x--xr--", PMEMFILE_X_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_--x--xr--",
+			     PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK,
+			     EACCES));
+
+	ASSERT_EQ(pmemfile_seteuid(pfp, 1002), 0);
+	ASSERT_EQ(pmemfile_setfsuid(pfp, 1001), 1002);
+	/* changing euid or fsuid should not change anything for access */
+
+	EXPECT_TRUE(test_acc(pfp, "/file_rwxr-x---", PMEMFILE_F_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_rwxr-x---", PMEMFILE_R_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_rwxr-x---", PMEMFILE_W_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_rwxr-x---", PMEMFILE_X_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_rwxr-x---",
+			     PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK, 0));
+
+	EXPECT_TRUE(test_acc(pfp, "/file_r---w---x", PMEMFILE_F_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_r---w---x", PMEMFILE_R_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_r---w---x", PMEMFILE_W_OK, EACCES));
+	EXPECT_TRUE(test_acc(pfp, "/file_r---w---x", PMEMFILE_X_OK, EACCES));
+	EXPECT_TRUE(test_acc(pfp, "/file_r---w---x",
+			     PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK,
+			     EACCES));
+
+	EXPECT_TRUE(test_acc(pfp, "/file_-w-r---w-", PMEMFILE_F_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_-w-r---w-", PMEMFILE_R_OK, EACCES));
+	EXPECT_TRUE(test_acc(pfp, "/file_-w-r---w-", PMEMFILE_W_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_-w-r---w-", PMEMFILE_X_OK, EACCES));
+	EXPECT_TRUE(test_acc(pfp, "/file_-w-r---w-",
+			     PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK,
+			     EACCES));
+
+	EXPECT_TRUE(test_acc(pfp, "/file_--x--xr--", PMEMFILE_F_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_--x--xr--", PMEMFILE_R_OK, EACCES));
+	EXPECT_TRUE(test_acc(pfp, "/file_--x--xr--", PMEMFILE_W_OK, EACCES));
+	EXPECT_TRUE(test_acc(pfp, "/file_--x--xr--", PMEMFILE_X_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_--x--xr--",
+			     PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK,
+			     EACCES));
+
+	ASSERT_EQ(pmemfile_setegid(pfp, 2002), 0);
+	ASSERT_EQ(pmemfile_setfsgid(pfp, 2001), 2002);
+	/* changing egid or fsgid should not change anything for access */
+
+	EXPECT_TRUE(test_acc(pfp, "/file_rwxr-x---", PMEMFILE_F_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_rwxr-x---", PMEMFILE_R_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_rwxr-x---", PMEMFILE_W_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_rwxr-x---", PMEMFILE_X_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_rwxr-x---",
+			     PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK, 0));
+
+	EXPECT_TRUE(test_acc(pfp, "/file_r---w---x", PMEMFILE_F_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_r---w---x", PMEMFILE_R_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_r---w---x", PMEMFILE_W_OK, EACCES));
+	EXPECT_TRUE(test_acc(pfp, "/file_r---w---x", PMEMFILE_X_OK, EACCES));
+	EXPECT_TRUE(test_acc(pfp, "/file_r---w---x",
+			     PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK,
+			     EACCES));
+
+	EXPECT_TRUE(test_acc(pfp, "/file_-w-r---w-", PMEMFILE_F_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_-w-r---w-", PMEMFILE_R_OK, EACCES));
+	EXPECT_TRUE(test_acc(pfp, "/file_-w-r---w-", PMEMFILE_W_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_-w-r---w-", PMEMFILE_X_OK, EACCES));
+	EXPECT_TRUE(test_acc(pfp, "/file_-w-r---w-",
+			     PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK,
+			     EACCES));
+
+	EXPECT_TRUE(test_acc(pfp, "/file_--x--xr--", PMEMFILE_F_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_--x--xr--", PMEMFILE_R_OK, EACCES));
+	EXPECT_TRUE(test_acc(pfp, "/file_--x--xr--", PMEMFILE_W_OK, EACCES));
+	EXPECT_TRUE(test_acc(pfp, "/file_--x--xr--", PMEMFILE_X_OK, 0));
+	EXPECT_TRUE(test_acc(pfp, "/file_--x--xr--",
+			     PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK,
+			     EACCES));
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file_--x--xr--"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file_--x--xr--_sym"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file_-w-r---w-"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file_-w-r---w-_sym"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file_r---w---x"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file_r---w---x_sym"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file_rwxr-x---"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file_rwxr-x---_sym"), 0);
+}
+
+static bool
+_test_eacc(PMEMfilepool *pfp, const char *path, int mode, int error)
+{
+	int ret = pmemfile_euidaccess(pfp, path, mode);
+	if (error) {
+		EXPECT_EQ(ret, -1);
+		EXPECT_EQ(errno, error);
+
+		if (ret != -1)
+			return false;
+		if (errno != error)
+			return false;
+	} else {
+		EXPECT_EQ(ret, 0) << strerror(errno);
+		if (ret)
+			return false;
+	}
+
+	return true;
+}
+
+static bool
+test_eacc(PMEMfilepool *pfp, const char *path, int mode, int error)
+{
+	bool r = _test_eacc(pfp, path, mode, error);
+	if (!r)
+		return false;
+
+	static char path2[PMEMFILE_PATH_MAX + 1];
+	sprintf(path2, "%s_sym", path);
+	return _test_eacc(pfp, path2, mode, error);
+}
+
+TEST_F(permissions, euidaccess)
+{
+	ASSERT_EQ(pmemfile_setreuid(pfp, 1000, 1000), 0);
+	ASSERT_EQ(pmemfile_setregid(pfp, 2000, 2000), 0);
+
+	ASSERT_TRUE(test_pmemfile_create(
+		pfp, "/file_rwxr-x---", PMEMFILE_O_EXCL,
+		PMEMFILE_S_IRWXU | PMEMFILE_S_IRGRP | PMEMFILE_S_IXGRP));
+	ASSERT_TRUE(test_pmemfile_create(
+		pfp, "/file_r---w---x", PMEMFILE_O_EXCL,
+		PMEMFILE_S_IRUSR | PMEMFILE_S_IWGRP | PMEMFILE_S_IXOTH));
+	ASSERT_TRUE(test_pmemfile_create(
+		pfp, "/file_-w-r---w-", PMEMFILE_O_EXCL,
+		PMEMFILE_S_IWUSR | PMEMFILE_S_IRGRP | PMEMFILE_S_IWOTH));
+	ASSERT_TRUE(test_pmemfile_create(
+		pfp, "/file_--x--xr--", PMEMFILE_O_EXCL,
+		PMEMFILE_S_IXUSR | PMEMFILE_S_IXGRP | PMEMFILE_S_IROTH));
+	ASSERT_EQ(
+		pmemfile_symlink(pfp, "/file_rwxr-x---", "/file_rwxr-x---_sym"),
+		0)
+		<< strerror(errno);
+	ASSERT_EQ(
+		pmemfile_symlink(pfp, "/file_r---w---x", "/file_r---w---x_sym"),
+		0)
+		<< strerror(errno);
+	ASSERT_EQ(
+		pmemfile_symlink(pfp, "/file_-w-r---w-", "/file_-w-r---w-_sym"),
+		0)
+		<< strerror(errno);
+	ASSERT_EQ(
+		pmemfile_symlink(pfp, "/file_--x--xr--", "/file_--x--xr--_sym"),
+		0)
+		<< strerror(errno);
+
+	ASSERT_EQ(pmemfile_seteuid(pfp, 1002), 0);
+
+	EXPECT_TRUE(test_eacc(pfp, "/file_rwxr-x---", PMEMFILE_F_OK, 0));
+	EXPECT_TRUE(test_eacc(pfp, "/file_rwxr-x---", PMEMFILE_R_OK, 0));
+	EXPECT_TRUE(test_eacc(pfp, "/file_rwxr-x---", PMEMFILE_W_OK, EACCES));
+	EXPECT_TRUE(test_eacc(pfp, "/file_rwxr-x---", PMEMFILE_X_OK, 0));
+	EXPECT_TRUE(test_eacc(pfp, "/file_rwxr-x---",
+			      PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK,
+			      EACCES));
+
+	EXPECT_TRUE(test_eacc(pfp, "/file_r---w---x", PMEMFILE_F_OK, 0));
+	EXPECT_TRUE(test_eacc(pfp, "/file_r---w---x", PMEMFILE_R_OK, EACCES));
+	EXPECT_TRUE(test_eacc(pfp, "/file_r---w---x", PMEMFILE_W_OK, 0));
+	EXPECT_TRUE(test_eacc(pfp, "/file_r---w---x", PMEMFILE_X_OK, EACCES));
+	EXPECT_TRUE(test_eacc(pfp, "/file_r---w---x",
+			      PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK,
+			      EACCES));
+
+	EXPECT_TRUE(test_eacc(pfp, "/file_-w-r---w-", PMEMFILE_F_OK, 0));
+	EXPECT_TRUE(test_eacc(pfp, "/file_-w-r---w-", PMEMFILE_R_OK, 0));
+	EXPECT_TRUE(test_eacc(pfp, "/file_-w-r---w-", PMEMFILE_W_OK, EACCES));
+	EXPECT_TRUE(test_eacc(pfp, "/file_-w-r---w-", PMEMFILE_X_OK, EACCES));
+	EXPECT_TRUE(test_eacc(pfp, "/file_-w-r---w-",
+			      PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK,
+			      EACCES));
+
+	EXPECT_TRUE(test_eacc(pfp, "/file_--x--xr--", PMEMFILE_F_OK, 0));
+	EXPECT_TRUE(test_eacc(pfp, "/file_--x--xr--", PMEMFILE_R_OK, EACCES));
+	EXPECT_TRUE(test_eacc(pfp, "/file_--x--xr--", PMEMFILE_W_OK, EACCES));
+	EXPECT_TRUE(test_eacc(pfp, "/file_--x--xr--", PMEMFILE_X_OK, 0));
+	EXPECT_TRUE(test_eacc(pfp, "/file_--x--xr--",
+			      PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK,
+			      EACCES));
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file_--x--xr--"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file_--x--xr--_sym"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file_-w-r---w-"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file_-w-r---w-_sym"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file_r---w---x"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file_r---w---x_sym"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file_rwxr-x---"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file_rwxr-x---_sym"), 0);
+}
+
+static bool
+_test_facc(PMEMfilepool *pfp, PMEMfile *dir, const char *path, int mode,
+	   int flags, int error)
+{
+	int ret = pmemfile_faccessat(pfp, dir, path, mode, flags);
+	if (error) {
+		EXPECT_EQ(ret, -1);
+		EXPECT_EQ(errno, error);
+
+		if (ret != -1)
+			return false;
+		if (errno != error)
+			return false;
+	} else {
+		EXPECT_EQ(ret, 0) << strerror(errno);
+		if (ret)
+			return false;
+	}
+
+	return true;
+}
+
+static bool
+test_facc(PMEMfilepool *pfp, PMEMfile *dir, const char *path, int mode,
+	  int flags, int error)
+{
+	bool r = _test_facc(pfp, dir, path, mode, flags, error);
+	if (!r)
+		return false;
+
+	static char path2[PMEMFILE_PATH_MAX + 1];
+	sprintf(path2, "%s_sym", path);
+	return _test_facc(pfp, dir, path2, mode, flags, error);
+}
+
+TEST_F(permissions, faccessat)
+{
+	ASSERT_EQ(pmemfile_setreuid(pfp, 1000, 1000), 0);
+	ASSERT_EQ(pmemfile_setregid(pfp, 2000, 2000), 0);
+
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", PMEMFILE_ACCESSPERMS), 0);
+	PMEMfile *dir = pmemfile_open(pfp, "/dir", PMEMFILE_O_DIRECTORY);
+
+	ASSERT_TRUE(test_pmemfile_create(
+		pfp, "/dir/file_rwxr-x---", PMEMFILE_O_EXCL,
+		PMEMFILE_S_IRWXU | PMEMFILE_S_IRGRP | PMEMFILE_S_IXGRP));
+	ASSERT_TRUE(test_pmemfile_create(
+		pfp, "/dir/file_r---w---x", PMEMFILE_O_EXCL,
+		PMEMFILE_S_IRUSR | PMEMFILE_S_IWGRP | PMEMFILE_S_IXOTH));
+	ASSERT_TRUE(test_pmemfile_create(
+		pfp, "/dir/file_-w-r---w-", PMEMFILE_O_EXCL,
+		PMEMFILE_S_IWUSR | PMEMFILE_S_IRGRP | PMEMFILE_S_IWOTH));
+	ASSERT_TRUE(test_pmemfile_create(
+		pfp, "/dir/file_--x--xr--", PMEMFILE_O_EXCL,
+		PMEMFILE_S_IXUSR | PMEMFILE_S_IXGRP | PMEMFILE_S_IROTH));
+	ASSERT_EQ(pmemfile_symlink(pfp, "/dir/file_rwxr-x---",
+				   "/dir/file_rwxr-x---_sym"),
+		  0)
+		<< strerror(errno);
+	ASSERT_EQ(pmemfile_symlink(pfp, "/dir/file_r---w---x",
+				   "/dir/file_r---w---x_sym"),
+		  0)
+		<< strerror(errno);
+	ASSERT_EQ(pmemfile_symlink(pfp, "/dir/file_-w-r---w-",
+				   "/dir/file_-w-r---w-_sym"),
+		  0)
+		<< strerror(errno);
+	ASSERT_EQ(pmemfile_symlink(pfp, "/dir/file_--x--xr--",
+				   "/dir/file_--x--xr--_sym"),
+		  0)
+		<< strerror(errno);
+
+	ASSERT_EQ(pmemfile_seteuid(pfp, 1002), 0);
+
+	EXPECT_TRUE(test_facc(pfp, dir, "file_rwxr-x---", PMEMFILE_F_OK, 0, 0));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_rwxr-x---", PMEMFILE_R_OK, 0, 0));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_rwxr-x---", PMEMFILE_W_OK, 0, 0));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_rwxr-x---", PMEMFILE_X_OK, 0, 0));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_rwxr-x---",
+			      PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK, 0,
+			      0));
+
+	EXPECT_TRUE(test_facc(pfp, dir, "file_rwxr-x---", PMEMFILE_F_OK,
+			      PMEMFILE_AT_EACCESS, 0));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_rwxr-x---", PMEMFILE_R_OK,
+			      PMEMFILE_AT_EACCESS, 0));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_rwxr-x---", PMEMFILE_W_OK,
+			      PMEMFILE_AT_EACCESS, EACCES));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_rwxr-x---", PMEMFILE_X_OK,
+			      PMEMFILE_AT_EACCESS, 0));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_rwxr-x---",
+			      PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK,
+			      PMEMFILE_AT_EACCESS, EACCES));
+
+	EXPECT_TRUE(test_facc(pfp, dir, "file_r---w---x", PMEMFILE_F_OK, 0, 0));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_r---w---x", PMEMFILE_R_OK, 0, 0));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_r---w---x", PMEMFILE_W_OK, 0,
+			      EACCES));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_r---w---x", PMEMFILE_X_OK, 0,
+			      EACCES));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_r---w---x",
+			      PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK, 0,
+			      EACCES));
+
+	EXPECT_TRUE(test_facc(pfp, dir, "file_r---w---x", PMEMFILE_F_OK,
+			      PMEMFILE_AT_EACCESS, 0));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_r---w---x", PMEMFILE_R_OK,
+			      PMEMFILE_AT_EACCESS, EACCES));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_r---w---x", PMEMFILE_W_OK,
+			      PMEMFILE_AT_EACCESS, 0));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_r---w---x", PMEMFILE_X_OK,
+			      PMEMFILE_AT_EACCESS, EACCES));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_r---w---x",
+			      PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK, 0,
+			      EACCES));
+
+	EXPECT_TRUE(test_facc(pfp, dir, "file_-w-r---w-", PMEMFILE_F_OK, 0, 0));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_-w-r---w-", PMEMFILE_R_OK, 0,
+			      EACCES));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_-w-r---w-", PMEMFILE_W_OK, 0, 0));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_-w-r---w-", PMEMFILE_X_OK, 0,
+			      EACCES));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_-w-r---w-",
+			      PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK, 0,
+			      EACCES));
+
+	EXPECT_TRUE(test_facc(pfp, dir, "file_-w-r---w-", PMEMFILE_F_OK,
+			      PMEMFILE_AT_EACCESS, 0));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_-w-r---w-", PMEMFILE_R_OK,
+			      PMEMFILE_AT_EACCESS, 0));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_-w-r---w-", PMEMFILE_W_OK,
+			      PMEMFILE_AT_EACCESS, EACCES));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_-w-r---w-", PMEMFILE_X_OK,
+			      PMEMFILE_AT_EACCESS, EACCES));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_-w-r---w-",
+			      PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK, 0,
+			      EACCES));
+
+	EXPECT_TRUE(test_facc(pfp, dir, "file_--x--xr--", PMEMFILE_F_OK, 0, 0));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_--x--xr--", PMEMFILE_R_OK, 0,
+			      EACCES));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_--x--xr--", PMEMFILE_W_OK, 0,
+			      EACCES));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_--x--xr--", PMEMFILE_X_OK, 0, 0));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_--x--xr--",
+			      PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK, 0,
+			      EACCES));
+
+	EXPECT_TRUE(test_facc(pfp, dir, "file_--x--xr--", PMEMFILE_F_OK,
+			      PMEMFILE_AT_EACCESS, 0));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_--x--xr--", PMEMFILE_R_OK,
+			      PMEMFILE_AT_EACCESS, EACCES));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_--x--xr--", PMEMFILE_W_OK,
+			      PMEMFILE_AT_EACCESS, EACCES));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_--x--xr--", PMEMFILE_X_OK,
+			      PMEMFILE_AT_EACCESS, 0));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_--x--xr--",
+			      PMEMFILE_R_OK | PMEMFILE_W_OK | PMEMFILE_X_OK, 0,
+			      EACCES));
+
+	pmemfile_close(pfp, dir);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/file_--x--xr--"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/file_--x--xr--_sym"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/file_-w-r---w-"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/file_-w-r---w-_sym"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/file_r---w---x"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/file_r---w---x_sym"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/file_rwxr-x---"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/file_rwxr-x---_sym"), 0);
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
+}
+
 int
 main(int argc, char *argv[])
 {

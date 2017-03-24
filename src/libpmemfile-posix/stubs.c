@@ -61,45 +61,6 @@ check_pfp_file(PMEMfilepool *pfp, PMEMfile *file)
 }
 
 int
-pmemfile_access(PMEMfilepool *pfp, const char *path, mode_t mode)
-{
-	check_pfp(pfp);
-
-	(void) path;
-	(void) mode;
-
-	errno = ENOTSUP;
-	return -1;
-}
-
-int
-pmemfile_euidaccess(PMEMfilepool *pfp, const char *pathname, int mode)
-{
-	check_pfp(pfp);
-
-	(void) pathname;
-	(void) mode;
-
-	errno = ENOTSUP;
-	return -1;
-}
-
-int
-pmemfile_faccessat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
-		int mode, int flags)
-{
-	check_pfp(pfp);
-
-	(void) dir;
-	(void) pathname;
-	(void) mode;
-	(void) flags;
-
-	errno = ENOTSUP;
-	return -1;
-}
-
-int
 pmemfile_flock(PMEMfilepool *pfp, PMEMfile *file, int operation)
 {
 	check_pfp_file(pfp, file);

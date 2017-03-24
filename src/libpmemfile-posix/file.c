@@ -493,6 +493,19 @@ pmemfile_open_parent(PMEMfilepool *pfp, PMEMfile *dir, char *path,
 	bool at_unref;
 	int error = 0;
 
+	if ((flags & PMEMFILE_OPEN_PARANT_ACCESS_MASK) ==
+			PMEMFILE_OPEN_PARANT_ACCESS_MASK) {
+		errno = EINVAL;
+		return NULL;
+	}
+
+	if (flags & ~(PMEMFILE_OPEN_PARENT_STOP_AT_ROOT |
+			PMEMFILE_OPEN_PARENT_SYMLINK_FOLLOW |
+			PMEMFILE_OPEN_PARANT_ACCESS_MASK)) {
+		errno = EINVAL;
+		return NULL;
+	}
+
 	struct pmemfile_cred cred;
 	if (get_cred(pfp, &cred))
 		return NULL;
@@ -1951,4 +1964,108 @@ pmemfile_fchown(PMEMfilepool *pfp, PMEMfile *file, uid_t owner, gid_t group)
 	}
 
 	return 0;
+}
+
+static int
+_pmemfile_faccessat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
+		const char *path, int mode, int flags)
+{
+	if (flags & ~(PMEMFILE_AT_EACCESS | PMEMFILE_AT_SYMLINK_NOFOLLOW)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	LOG(LDBG, "path %s", path);
+
+	struct pmemfile_cred cred;
+	if (get_cred(pfp, &cred))
+		return -1;
+
+	int resolve_flags = 0;
+	if (flags & PMEMFILE_AT_EACCESS)
+		resolve_flags |= PMEMFILE_OPEN_PARENT_USE_EACCESS;
+	else
+		resolve_flags |= PMEMFILE_OPEN_PARENT_USE_RACCESS;
+
+	int error = 0;
+	struct pmemfile_path_info info;
+	struct pmemfile_vinode *vinode =
+			resolve_pathat_full(pfp, &cred, dir, path, &info,
+				resolve_flags,
+				!(flags & PMEMFILE_AT_SYMLINK_NOFOLLOW));
+
+	if (info.error) {
+		error = info.error;
+		goto end;
+	}
+
+	if (!vinode_is_dir(vinode) && strchr(info.remaining, '/')) {
+		error = ENOTDIR;
+		goto end;
+	}
+
+	int acc = 0;
+	if (mode & PMEMFILE_R_OK)
+		acc |= PFILE_WANT_READ;
+	if (mode & PMEMFILE_W_OK)
+		acc |= PFILE_WANT_WRITE;
+	if (mode & PMEMFILE_X_OK)
+		acc |= PFILE_WANT_EXECUTE;
+
+	if (flags & PMEMFILE_AT_EACCESS)
+		acc |= PFILE_USE_EACCESS;
+	else
+		acc |= PFILE_USE_RACCESS;
+
+	if (!vinode_can_access(&cred, vinode, acc))
+		error = EACCES;
+
+end:
+	path_info_cleanup(pfp, &info);
+	put_cred(&cred);
+
+	if (vinode)
+		vinode_unref_tx(pfp, vinode);
+
+	if (error) {
+		errno = error;
+		return -1;
+	}
+
+	return 0;
+}
+
+int
+pmemfile_faccessat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
+		int mode, int flags)
+{
+	struct pmemfile_vinode *at;
+	bool at_unref;
+
+	if (!pathname) {
+		errno = ENOENT;
+		return -1;
+	}
+
+	at = pool_get_dir_for_path(pfp, dir, pathname, &at_unref);
+
+	int ret = _pmemfile_faccessat(pfp, at, pathname, mode, flags);
+
+	if (at_unref)
+		vinode_cleanup(pfp, at, ret != 0);
+
+	return ret;
+}
+
+int
+pmemfile_access(PMEMfilepool *pfp, const char *path, int mode)
+{
+	return pmemfile_faccessat(pfp, PMEMFILE_AT_CWD, path, mode, 0);
+}
+
+int
+pmemfile_euidaccess(PMEMfilepool *pfp, const char *path, int mode)
+{
+	return pmemfile_faccessat(pfp, PMEMFILE_AT_CWD, path, mode,
+			PMEMFILE_AT_EACCESS);
 }

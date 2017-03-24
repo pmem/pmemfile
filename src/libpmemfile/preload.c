@@ -281,6 +281,8 @@ init_hooking(void)
 	syscall_number_filter[SYS_fchown] = true;
 	syscall_number_filter[SYS_lchown] = true;
 	syscall_number_filter[SYS_fchownat] = true;
+	syscall_number_filter[SYS_truncate] = true;
+	syscall_number_filter[SYS_ftruncate] = true;
 
 	/* Syscalls not handled yet */
 	syscall_number_filter[SYS_mmap] = true;
@@ -349,6 +351,7 @@ init_hooking(void)
 	syscall_needs_fd_rlock[SYS_fchownat] = true;
 	syscall_needs_fd_rlock[SYS_sendfile] = true;
 	syscall_needs_fd_rlock[SYS_readlinkat] = true;
+	syscall_needs_fd_rlock[SYS_ftruncate] = true;
 
 	syscall_needs_fd_wlock[SYS_open] = true;
 	syscall_needs_fd_wlock[SYS_openat] = true;

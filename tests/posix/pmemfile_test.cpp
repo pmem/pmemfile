@@ -264,6 +264,10 @@ test_compare_dirs(const std::map<std::string, file_attrs> &files,
 		}
 	}
 
+	EXPECT_EQ(expected.size(), files.size());
+	if (expected.size() != files.size())
+		anyerr = true;
+
 	if (anyerr)
 		ADD_FAILURE() << files;
 

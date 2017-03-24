@@ -470,9 +470,8 @@ file_get_time(struct pmemfile_time *t)
  * Must be called in transaction.
  */
 struct pmemfile_vinode *
-inode_alloc(PMEMfilepool *pfp, uint64_t flags, struct pmemfile_time *t,
-		struct pmemfile_vinode *parent, volatile bool *parent_refed,
-		const char *name, size_t namelen)
+inode_alloc(PMEMfilepool *pfp, uint64_t flags, struct pmemfile_vinode *parent,
+		volatile bool *parent_refed, const char *name, size_t namelen)
 {
 	LOG(LDBG, "flags 0x%lx", flags);
 
@@ -481,13 +480,14 @@ inode_alloc(PMEMfilepool *pfp, uint64_t flags, struct pmemfile_time *t,
 	TOID(struct pmemfile_inode) tinode = TX_ZNEW(struct pmemfile_inode);
 	struct pmemfile_inode *inode = D_RW(tinode);
 
-	file_get_time(t);
+	struct pmemfile_time t;
+	file_get_time(&t);
 
 	inode->version = PMEMFILE_INODE_VERSION(1);
 	inode->flags = flags;
-	inode->ctime = *t;
-	inode->mtime = *t;
-	inode->atime = *t;
+	inode->ctime = t;
+	inode->mtime = t;
+	inode->atime = t;
 	inode->nlink = 0;
 	os_rwlock_rdlock(&pfp->cred_rwlock);
 	inode->uid = pfp->cred.fsuid;

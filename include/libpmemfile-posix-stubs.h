@@ -57,14 +57,6 @@ int pmemfile_faccessat(PMEMfilepool *, PMEMfile *dir, const char *pathname,
 
 int pmemfile_flock(PMEMfilepool *, PMEMfile *file, int operation);
 
-int pmemfile_chown(PMEMfilepool *, const char *pathname, uid_t owner,
-		gid_t group);
-int pmemfile_fchown(PMEMfilepool *, PMEMfile *file, uid_t owner, gid_t group);
-int pmemfile_lchown(PMEMfilepool *, const char *pathname, uid_t owner,
-		gid_t group);
-int pmemfile_fchownat(PMEMfilepool *, PMEMfile *dir, const char *pathname,
-		uid_t owner, gid_t group, int flags);
-
 // De we need dup, dup2 in libpmemfile-posix? Maybe, dunno...
 PMEMfile *pmemfile_dup(PMEMfilepool *, PMEMfile *);
 PMEMfile *pmemfile_dup2(PMEMfilepool *, PMEMfile *file, PMEMfile *file2);

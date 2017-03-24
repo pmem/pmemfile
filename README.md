@@ -110,4 +110,4 @@ libpmemfile.so:
 
 # Other stuff #
 * strace.ebpf - tool for tracing applications and evaluating whether libpmemfile.so
-  supports them (https://github.com/vitalyvch/strace.ebpf)
+  supports them (https://github.com/ldorau/strace.ebpf)

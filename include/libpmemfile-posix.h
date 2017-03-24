@@ -152,6 +152,12 @@
 #define PMEMFILE_X_OK 1
 #define PMEMFILE_F_OK 0
 
+#define PMEMFILE_FL_KEEP_SIZE       0x01
+#define PMEMFILE_FL_PUNCH_HOLE      0x02
+#define PMEMFILE_FL_COLLAPSE_RANGE  0x08
+#define PMEMFILE_FL_ZERO_RANGE      0x10
+#define PMEMFILE_FL_INSERT_RANGE    0x20
+
 #define PMEMFILE_MAP_FAILED	((void *) -1)
 
 #ifdef __cplusplus
@@ -296,6 +302,14 @@ void pmemfile_stats(PMEMfilepool *pfp, struct pmemfile_stats *stats);
 
 int pmemfile_truncate(PMEMfilepool *, const char *path, off_t length);
 int pmemfile_ftruncate(PMEMfilepool *, PMEMfile *file, off_t length);
+
+/*
+ * Not in POSIX:
+ * The fallocate glibc routine/syscall is Linux/glibc specific,
+ * The pmemfile_fallocate supports allocating, and punching holes.
+ */
+int pmemfile_fallocate(PMEMfilepool *, PMEMfile *file, int mode,
+		off_t offset, off_t length);
 
 char *pmemfile_get_dir_path(PMEMfilepool *pfp, PMEMfile *dir, char *buf,
 		size_t size);

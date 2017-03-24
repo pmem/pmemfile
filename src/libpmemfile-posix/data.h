@@ -41,5 +41,7 @@ void vinode_destroy_data_state(PMEMfilepool *pfp,
 			struct pmemfile_vinode *vinode);
 void vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			uint64_t size);
+int vinode_fallocate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+			int mode, uint64_t offset, uint64_t length);
 
 #endif

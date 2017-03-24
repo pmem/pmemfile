@@ -1799,6 +1799,74 @@ end:
 	return 0;
 }
 
+int
+pmemfile_fallocate(PMEMfilepool *pfp, PMEMfile *file, int mode,
+		off_t offset, off_t length)
+{
+	int error;
+
+	if (length < 0 || offset < 0) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (length > SSIZE_MAX) {
+		errno = EFBIG;
+		return -1;
+	}
+
+	if (mode & PMEMFILE_FL_COLLAPSE_RANGE) {
+		errno = ENOTSUP;
+		return -1;
+	} else if (mode & PMEMFILE_FL_ZERO_RANGE) {
+		errno = ENOTSUP;
+		return -1;
+	} else if (mode & PMEMFILE_FL_PUNCH_HOLE) {
+		/*
+		 * The PMEMFILE_FL_KEEP_SIZE is required when punching a hole.
+		 */
+		if (mode != (PMEMFILE_FL_PUNCH_HOLE | PMEMFILE_FL_KEEP_SIZE)) {
+			errno = EINVAL;
+			return -1;
+		}
+	} else { /* Allocating disk space */
+		/*
+		 * Note: According to 'man 2 fallocate' FALLOC_FL_UNSHARE
+		 * is another possible flag to accept here. No equivalent of
+		 * that flag is supported by pmemfile as of now. Also that man
+		 * page is wrong anyways, the header files only refer to
+		 * FALLOC_FL_UNSHARE_RANGE, so it is suspected that noone is
+		 * using it anyways.
+		 */
+		if ((mode & ~PMEMFILE_FL_KEEP_SIZE) != 0) {
+			errno = EINVAL;
+			return -1;
+		}
+	}
+
+	os_mutex_lock(&file->mutex);
+
+	if ((file->flags & PFILE_WRITE) == 0) {
+		error = EBADF;
+	} else {
+		os_rwlock_wrlock(&file->vinode->rwlock);
+
+		error = vinode_fallocate(pfp, file->vinode,
+		    mode, (uint64_t)offset, (uint64_t)length);
+
+		os_rwlock_unlock(&file->vinode->rwlock);
+	}
+
+	os_mutex_unlock(&file->mutex);
+
+	if (error != 0) {
+		errno = error;
+		return -1;
+	}
+
+	return 0;
+}
+
 static int
 vinode_chown(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 		struct pmemfile_vinode *vinode, uid_t owner, gid_t group)

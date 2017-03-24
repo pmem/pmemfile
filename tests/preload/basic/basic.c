@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Intel Corporation
+ * Copyright 2016-2017, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -51,6 +51,16 @@ main(int argc, char **argv)
 	DIR  *dir_to_list;
 	char buf0[] = "Hello #0 World!\n";
 	char buf1[] = "Hello #1 World!\n";
+	struct stat statbuf;
+
+	/*
+	 * First check if an empty path, or a path containing
+	 * only slash characters trigger any crash in
+	 * the path resolving code.
+	 */
+	(void) stat("", &statbuf);
+	(void) stat("/", &statbuf);
+	(void) stat("///////////", &statbuf);
 
 	if (argc < 6)
 		return 1;

@@ -42,7 +42,7 @@ if(TRACE_TESTS)
 	set(GLOBAL_TEST_ARGS ${GLOBAL_TEST_ARGS} --trace-expand)
 endif()
 
-add_subdirectory(core)
+add_subdirectory(posix)
 
 if(BUILD_LIBPMEMFILE)
 add_subdirectory(preload)

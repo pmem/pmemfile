@@ -31,4 +31,4 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-grep -v -E -e 'src/libpmemfile-core/valgrind/'
+grep -v -E -e 'src/libpmemfile-posix/valgrind/'

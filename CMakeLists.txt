@@ -360,7 +360,7 @@ else()
 	message(WARNING "TEST_DIR is empty - 'make test' will not work")
 endif()
 
-add_subdirectory(src/libpmemfile-core)
+add_subdirectory(src/libpmemfile-posix)
 if(BUILD_LIBPMEMFILE)
 add_subdirectory(src/libpmemfile)
 endif()

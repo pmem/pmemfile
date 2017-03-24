@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Intel Corporation
+ * Copyright 2016-2017, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -99,6 +99,13 @@ main(int argc, char **argv)
 	if (write(fd, buf1, sizeof(buf1)) != sizeof(buf1))
 		err(1, "write into \"%s\" ", relative_path);
 
+	errno = 0;
+	if (ftruncate(fd, 0) != 0)
+		err(1, "ftruncate \"%s\"", relative_path);
+
+	if (truncate(relative_path, 2346) != 0)
+		err(1, "truncate \"%s\"", relative_path);
+
 	if (close(fd) != 0)
 		err(1, "close \"%s\"", relative_path);
 
@@ -121,6 +128,13 @@ main(int argc, char **argv)
 	if ((fd = open(dir_to_list_path, O_RDONLY | O_DIRECTORY)) < 0)
 		err(1, "open \"%s\"", dir_to_list_path);
 
+	if (ftruncate(fd, 123) == 0)
+		err(1, "ftruncate succeding on a directory");
+
+	if (errno != EBADF && errno != EINVAL)
+		err(1, "ftruncate not setting correct errno");
+
+	errno = 0;
 
 	struct stat stat_buf;
 	if (fstatat(fd, inner_file, &stat_buf, 0) != 0)

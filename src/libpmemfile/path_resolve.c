@@ -237,7 +237,7 @@ resolve_path(struct fd_desc at,
 			struct resolved_path *result,
 			int follow_last)
 {
-	if (path == NULL || path[0] == '\0') {
+	if (path == NULL) {
 		result->error_code = -ENOTDIR;
 		return;
 	}
@@ -252,9 +252,14 @@ resolve_path(struct fd_desc at,
 	for (size = 0; path[size] != '\0'; ++size)
 		result->path[size] = path[size];
 
+	if (size == 0) { /* empty string */
+		result->error_code = -ENOTDIR;
+		return;
+	}
+
 	if (result->path[size - 1] == '/') {
 		last_component_is_dir = true;
-		while (result->path[size - 1] == '/')
+		while (size > 1 && result->path[size - 1] == '/')
 			--size;
 	}
 

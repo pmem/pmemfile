@@ -86,6 +86,12 @@ struct pmemfilepool {
 #define PFILE_WANT_READ (1<<0)
 #define PFILE_WANT_WRITE (1<<1)
 #define PFILE_WANT_EXECUTE (1<<2)
+
+#define PFILE_USE_FACCESS (0<<3)
+#define PFILE_USE_EACCESS (1<<3)
+#define PFILE_USE_RACCESS (2<<3)
+#define PFILE_ACCESS_MASK (3<<3)
+
 bool can_access(const struct pmemfile_cred *cred,
 		struct inode_perms perms,
 		int acc);

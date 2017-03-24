@@ -50,11 +50,6 @@
 #ifndef LIBPMEMFILE_POSIX_STUBS_H
 #define LIBPMEMFILE_POSIX_STUBS_H
 
-int pmemfile_access(PMEMfilepool *, const char *path, mode_t mode);
-int pmemfile_euidaccess(PMEMfilepool *, const char *pathname, int mode);
-int pmemfile_faccessat(PMEMfilepool *, PMEMfile *dir, const char *pathname,
-		int mode, int flags);
-
 int pmemfile_flock(PMEMfilepool *, PMEMfile *file, int operation);
 
 // De we need dup, dup2 in libpmemfile-posix? Maybe, dunno...

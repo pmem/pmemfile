@@ -315,15 +315,31 @@ can_access(const struct pmemfile_cred *cred, struct inode_perms perms, int acc)
 {
 	mode_t perm = perms.flags & PMEMFILE_ACCESSPERMS;
 	mode_t req = 0;
+	uid_t uid;
+	gid_t gid;
+	int acctype = acc & PFILE_ACCESS_MASK;
 
-	if (perms.uid == cred->fsuid) {
+	if (acctype == PFILE_USE_FACCESS) {
+		uid = cred->fsuid;
+		gid = cred->fsgid;
+	} else if (acctype == PFILE_USE_EACCESS) {
+		uid = cred->euid;
+		gid = cred->egid;
+	} else if (acctype == PFILE_USE_RACCESS) {
+		uid = cred->ruid;
+		gid = cred->rgid;
+	} else {
+		return false;
+	}
+
+	if (perms.uid == uid) {
 		if (acc & PFILE_WANT_READ)
 			req |=  PMEMFILE_S_IRUSR;
 		if (acc & PFILE_WANT_WRITE)
 			req |=  PMEMFILE_S_IWUSR;
 		if (acc & PFILE_WANT_EXECUTE)
 			req |=  PMEMFILE_S_IXUSR;
-	} else if (perms.gid == cred->fsgid || gid_in_list(cred, perms.gid)) {
+	} else if (perms.gid == gid || gid_in_list(cred, perms.gid)) {
 		if (acc & PFILE_WANT_READ)
 			req |=  PMEMFILE_S_IRGRP;
 		if (acc & PFILE_WANT_WRITE)

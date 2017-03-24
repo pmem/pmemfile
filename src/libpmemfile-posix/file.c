@@ -177,22 +177,20 @@ create_file(PMEMfilepool *pfp, struct pmemfile_cred *cred, const char *filename,
 		size_t namelen, struct pmemfile_vinode *parent_vinode,
 		int flags, mode_t mode)
 {
-	struct pmemfile_time t;
-
 	rwlock_tx_wlock(&parent_vinode->rwlock);
 
 	if (!_vinode_can_access(cred, parent_vinode, PFILE_WANT_WRITE))
 		pmemfile_tx_abort(EACCES);
 
 	struct pmemfile_vinode *vinode = inode_alloc(pfp,
-			PMEMFILE_S_IFREG | mode, &t,
+			PMEMFILE_S_IFREG | mode,
 			parent_vinode, NULL, filename, namelen);
 
 	if (is_tmpfile(flags))
 		vinode_orphan(pfp, vinode);
 	else
 		vinode_add_dirent(pfp, parent_vinode, filename,
-				namelen, vinode, &t);
+				namelen, vinode, vinode->inode->ctime);
 
 	rwlock_tx_unlock_on_commit(&parent_vinode->rwlock);
 
@@ -652,7 +650,7 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 		struct pmemfile_time t;
 		file_get_time(&t);
 		vinode_add_dirent(pfp, dst.vinode, dst.remaining, dst_namelen,
-				src_vinode, &t);
+				src_vinode, t);
 	} TX_ONABORT {
 		error = errno;
 	} TX_END
@@ -936,7 +934,7 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 		struct pmemfile_time t;
 		file_get_time(&t);
 		vinode_add_dirent(pfp, dst_parent, dst.remaining, dst_namelen,
-				src_vinode, &t);
+				src_vinode, t);
 
 		vinode_unlink_dirent(pfp, src_parent, src.remaining,
 				src_namelen, &src_unlinked, &src_parent_refed,
@@ -1108,10 +1106,8 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 		if (!_vinode_can_access(&cred, vparent, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);
 
-		struct pmemfile_time t;
-
 		vinode = inode_alloc(pfp, PMEMFILE_S_IFLNK |
-				PMEMFILE_ACCESSPERMS, &t, vparent, NULL,
+				PMEMFILE_ACCESSPERMS, vparent, NULL,
 				info.remaining, namelen);
 		struct pmemfile_inode *inode = vinode->inode;
 		pmemobj_memcpy_persist(pfp->pop, inode->file_data.data, target,
@@ -1119,7 +1115,7 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 		inode->size = len;
 
 		vinode_add_dirent(pfp, vparent, info.remaining, namelen,
-				vinode, &t);
+				vinode, inode->ctime);
 	} TX_ONABORT {
 		error = errno;
 		vinode = NULL;

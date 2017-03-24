@@ -206,7 +206,7 @@ vinode_add_dirent(PMEMfilepool *pfp,
 		const char *name,
 		size_t namelen,
 		struct pmemfile_vinode *child_vinode,
-		const struct pmemfile_time *tm)
+		struct pmemfile_time tm)
 {
 	(void) pfp;
 
@@ -285,14 +285,14 @@ vinode_add_dirent(PMEMfilepool *pfp,
 	 * "The field st_ctime is changed by writing or by setting inode
 	 * information (i.e., owner, group, link count, mode, etc.)."
 	 */
-	TX_SET_DIRECT(child_vinode->inode, ctime, *tm);
+	TX_SET_DIRECT(child_vinode->inode, ctime, tm);
 
 	/*
 	 * From "stat" man page:
 	 * "st_mtime of a directory is changed by the creation
 	 * or deletion of files in that directory."
 	 */
-	TX_SET_DIRECT(parent_vinode->inode, mtime, *tm);
+	TX_SET_DIRECT(parent_vinode->inode, mtime, tm);
 }
 
 /*
@@ -317,21 +317,21 @@ vinode_new_dir(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 		pmemfile_tx_abort(EINVAL);
 	}
 
-	struct pmemfile_time t;
 	struct pmemfile_vinode *child = inode_alloc(pfp,
-			PMEMFILE_S_IFDIR | mode, &t, parent, parent_refed,
+			PMEMFILE_S_IFDIR | mode, parent, parent_refed,
 			name, namelen);
+	struct pmemfile_time t = child->inode->ctime;
 
 	/* add . and .. to new directory */
-	vinode_add_dirent(pfp, child, ".", 1, child, &t);
+	vinode_add_dirent(pfp, child, ".", 1, child, t);
 
 	if (parent == NULL) /* special case - root directory */
-		vinode_add_dirent(pfp, child, "..", 2, child, &t);
+		vinode_add_dirent(pfp, child, "..", 2, child, t);
 	else
-		vinode_add_dirent(pfp, child, "..", 2, parent, &t);
+		vinode_add_dirent(pfp, child, "..", 2, parent, t);
 
 	if (add_to_parent)
-		vinode_add_dirent(pfp, parent, name, namelen, child, &t);
+		vinode_add_dirent(pfp, parent, name, namelen, child, t);
 
 	return child;
 }

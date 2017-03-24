@@ -139,7 +139,7 @@ static inline bool vinode_is_symlink(struct pmemfile_vinode *vinode)
 void file_get_time(struct pmemfile_time *t);
 
 struct pmemfile_vinode *inode_alloc(PMEMfilepool *pfp,
-		uint64_t flags, struct pmemfile_time *t,
+		uint64_t flags,
 		struct pmemfile_vinode *parent,
 		volatile bool *parent_refed,
 		const char *name,

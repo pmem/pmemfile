@@ -172,6 +172,19 @@ TEST_F(getdents, 1)
 	ASSERT_EQ(r, 0);
 
 	pmemfile_close(pfp, f);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file2with_long_name"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp,
+				  "/file3with_very_long_name"
+				  "_1234567890_1234567890_1234567890_1234567890"
+				  "_1234567890_1234567890_1234567890_1234567890"
+				  "_1234567890_1234567890_1234567890_1234567890"
+				  "_1234567890_1234567890_1234567890_1234567890"
+				  "_1234567890_1234567890_1234567890_1234567890"
+				  "_qwertyuiop"),
+		  0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file4"), 0);
 }
 
 TEST_F(getdents, 2)

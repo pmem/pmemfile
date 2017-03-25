@@ -193,6 +193,9 @@ TEST_F(permissions, symlink)
 	EXPECT_EQ(statbuf.st_mode & PMEMFILE_ALLPERMS,
 		  (mode_t)(PMEMFILE_S_IRWXU | PMEMFILE_S_IRWXG |
 			   PMEMFILE_S_IRWXO));
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/aaa"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/bbb"), 0);
 }
 
 #define TEST_INITIAL_FSUID ((uid_t)0)
@@ -285,6 +288,8 @@ TEST_F(permissions, fsuid_fsgid_getgroups_setgroups)
 	ASSERT_EQ(pmemfile_getgroups(pfp, 3, l2), 2);
 	EXPECT_EQ(l2[0], TEST_FSGID);
 	EXPECT_EQ(l2[1], TEST_FSGID2);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/aaa"), 0);
 }
 
 TEST_F(permissions, chmod_and_cap)
@@ -345,6 +350,8 @@ TEST_F(permissions, fchmod)
 		  (mode_t)(PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR |
 			   PMEMFILE_S_IRGRP | PMEMFILE_S_IWGRP |
 			   PMEMFILE_S_IROTH));
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/aaa"), 0);
 }
 
 TEST_F(permissions, fchmodat)

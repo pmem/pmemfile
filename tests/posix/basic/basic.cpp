@@ -127,6 +127,9 @@ TEST_F(basic, open_create_close)
 						}));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 0, 0));
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/aaa"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/bbb"), 0);
 }
 
 TEST_F(basic, link)
@@ -276,6 +279,12 @@ TEST_F(basic, link)
 				      }));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 1, 0));
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/aaa"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/bbb"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/aaa.link"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/aaa2.link"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/bbb2.link"), 0);
 }
 
 TEST_F(basic, unlink)

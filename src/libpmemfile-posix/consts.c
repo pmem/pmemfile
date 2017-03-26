@@ -151,49 +151,4 @@ verify_consts(void)
 	COMPILE_ERROR_ON(PMEMFILE_F_OK != F_OK);
 
 	COMPILE_ERROR_ON(PMEMFILE_MAP_FAILED != MAP_FAILED);
-
-	COMPILE_ERROR_ON(sizeof(mode_t) != sizeof(pmemfile_mode_t));
-	COMPILE_ERROR_ON(sizeof(uid_t) != sizeof(pmemfile_uid_t));
-	COMPILE_ERROR_ON(sizeof(gid_t) != sizeof(pmemfile_gid_t));
-	COMPILE_ERROR_ON(sizeof(ssize_t) != sizeof(pmemfile_ssize_t));
-	COMPILE_ERROR_ON(sizeof(off_t) != sizeof(pmemfile_off_t));
-	COMPILE_ERROR_ON(sizeof(nlink_t) != sizeof(pmemfile_nlink_t));
-
-	COMPILE_ERROR_ON(sizeof(blksize_t) != sizeof(pmemfile_blksize_t));
-	COMPILE_ERROR_ON(sizeof(blkcnt_t) != sizeof(pmemfile_blkcnt_t));
-	COMPILE_ERROR_ON(sizeof(dev_t) != sizeof(pmemfile_dev_t));
-	COMPILE_ERROR_ON(sizeof(ino_t) != sizeof(pmemfile_ino_t));
-
-	COMPILE_ERROR_ON(sizeof(struct stat) != sizeof(struct pmemfile_stat));
-	COMPILE_ERROR_ON(sizeof(struct timespec) !=
-			sizeof(struct pmemfile_timespec));
-	COMPILE_ERROR_ON(sizeof(struct timeval) !=
-			sizeof(struct pmemfile_timeval));
-	COMPILE_ERROR_ON(sizeof(struct utimbuf) !=
-			sizeof(struct pmemfile_utimbuf));
-
-	struct stat statbuf;
-	struct pmemfile_stat pf_statbuf;
-
-#define CHECK_FIELD(name) \
-		COMPILE_ERROR_ON(offsetof(struct stat, name) !=\
-				offsetof(struct pmemfile_stat, name));\
-		COMPILE_ERROR_ON(sizeof(statbuf.name) !=\
-				sizeof(pf_statbuf.name));
-
-	CHECK_FIELD(st_dev);
-	CHECK_FIELD(st_ino);
-	CHECK_FIELD(st_nlink);
-	CHECK_FIELD(st_mode);
-	CHECK_FIELD(st_uid);
-	CHECK_FIELD(st_gid);
-	CHECK_FIELD(st_rdev);
-	CHECK_FIELD(st_size);
-	CHECK_FIELD(st_blksize);
-	CHECK_FIELD(st_blocks);
-	CHECK_FIELD(st_atim);
-	CHECK_FIELD(st_mtim);
-	CHECK_FIELD(st_ctim);
-	CHECK_FIELD(st_dev);
-	CHECK_FIELD(__glibc_reserved);
 }

@@ -773,7 +773,8 @@ pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t offset,
 {
 	(void) pfp;
 
-	LOG(LDBG, "file %p offset %lld whence %d", file, offset, whence);
+	LOG(LDBG, "file %p offset %lld whence %d", file, (long long)offset,
+			whence);
 
 	if (vinode_is_dir(file->vinode)) {
 		if (whence == PMEMFILE_SEEK_END) {

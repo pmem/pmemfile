@@ -78,7 +78,7 @@ test_pmemfile_create(PMEMfilepool *pfp, const char *path, int flags,
 pmemfile_ssize_t
 test_pmemfile_file_size(PMEMfilepool *pfp, PMEMfile *file)
 {
-	struct pmemfile_stat buf;
+	pmemfile_stat_t buf;
 	int ret = pmemfile_fstat(pfp, file, &buf);
 	EXPECT_EQ(ret, 0) << strerror(errno);
 	if (ret != 0)
@@ -89,7 +89,7 @@ test_pmemfile_file_size(PMEMfilepool *pfp, PMEMfile *file)
 pmemfile_ssize_t
 test_pmemfile_path_size(PMEMfilepool *pfp, const char *path)
 {
-	struct pmemfile_stat buf;
+	pmemfile_stat_t buf;
 	int ret = pmemfile_stat(pfp, path, &buf);
 	EXPECT_EQ(ret, 0) << strerror(errno);
 	if (ret != 0)
@@ -125,7 +125,7 @@ std::map<std::string, file_attrs>
 test_list_files(PMEMfilepool *pfp, PMEMfile *dir, const char *dirp,
 		unsigned length)
 {
-	struct pmemfile_stat statbuf;
+	pmemfile_stat_t statbuf;
 	char symlinkbuf[PMEMFILE_PATH_MAX];
 	std::map<std::string, file_attrs> retmap;
 	bool err = false;

@@ -173,6 +173,14 @@ add_cxx_flag(-DDEBUG DEBUG)
 add_c_flag("-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2" RELEASE C_CAN_FORTIFY)
 add_cxx_flag("-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2" RELEASE CXX_CAN_FORTIFY)
 
+if(NOT WIN32)
+	# XXX detect it
+	add_c_flag(-DON_POSIX_LIKE_PLATFORM)
+	add_cxx_flag(-DON_POSIX_LIKE_PLATFORM)
+	add_c_flag(-D_LARGEFILE64_SOURCE)
+	add_cxx_flag(-D_LARGEFILE64_SOURCE)
+endif()
+
 option(SANITIZERS "enable AddressSanitizer and UndefinedBehaviorSanitizer (debugging)" OFF)
 
 if(SANITIZERS)

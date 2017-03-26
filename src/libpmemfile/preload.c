@@ -1332,7 +1332,7 @@ hook_newfstatat(struct fd_desc at, long arg0, long arg1, long arg2)
 	int r = pmemfile_fstatat(where.at.pmem_fda.pool->pool,
 	    where.at.pmem_fda.file,
 	    where.path,
-		(struct pmemfile_stat *)arg1, (int)arg2);
+		(pmemfile_stat_t *)arg1, (int)arg2);
 
 	if (r != 0)
 		r = -errno;
@@ -1345,7 +1345,7 @@ hook_fstat(long fd, long buf_addr)
 {
 	struct fd_association *file = fd_table + fd;
 	long r = pmemfile_fstat(file->pool->pool, file->file,
-			(struct pmemfile_stat *)buf_addr);
+			(pmemfile_stat_t *)buf_addr);
 
 	if (r < 0)
 		r = -errno;
@@ -1404,7 +1404,7 @@ hook_faccessat(struct fd_desc at, long path_arg, long mode, long flags)
 		    where.at.kernel_fd, where.path, mode, flags);
 	}
 
-	struct pmemfile_stat stat;
+	pmemfile_stat_t stat;
 	/* XXX implement for real! */
 	if (pmemfile_fstatat(where.at.pmem_fda.pool->pool,
 			where.at.pmem_fda.file, where.path, &stat, 0))

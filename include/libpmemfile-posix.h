@@ -163,6 +163,28 @@ extern "C" {
 typedef struct pmemfilepool PMEMfilepool;
 typedef struct pmemfile_file PMEMfile;
 
+#ifdef ON_POSIX_LIKE_PLATFORM
+#include <sys/stat.h>
+#include <sys/types.h>
+#ifndef __off64_t_defined
+#error off64 is not available, on glibc enable _LARGEFILE64_SOURCE, _XOPEN_SOURCE or _GNU_SOURCE to define it
+#endif
+
+typedef mode_t pmemfile_mode_t;
+typedef uid_t pmemfile_uid_t;
+typedef gid_t pmemfile_gid_t;
+typedef ssize_t pmemfile_ssize_t;
+typedef off64_t pmemfile_off_t;
+typedef nlink_t pmemfile_nlink_t;
+typedef blksize_t pmemfile_blksize_t;
+typedef blkcnt_t pmemfile_blkcnt_t;
+typedef dev_t pmemfile_dev_t;
+typedef ino_t pmemfile_ino_t;
+typedef struct timespec pmemfile_timespec_t;
+typedef struct stat pmemfile_stat_t;
+
+#else
+
 typedef unsigned pmemfile_mode_t;
 typedef unsigned pmemfile_uid_t;
 typedef unsigned pmemfile_gid_t;
@@ -174,13 +196,13 @@ typedef long long pmemfile_blkcnt_t;
 typedef unsigned long long pmemfile_dev_t;
 typedef unsigned long long pmemfile_ino_t;
 
-struct pmemfile_timespec
+typedef struct
 {
 	long long tv_sec;
 	long long tv_nsec;
-};
+} pmemfile_timespec_t;
 
-struct pmemfile_stat
+typedef struct
 {
 	pmemfile_dev_t st_dev;
 	pmemfile_ino_t st_ino;
@@ -188,17 +210,16 @@ struct pmemfile_stat
 	pmemfile_mode_t st_mode;
 	pmemfile_uid_t st_uid;
 	pmemfile_gid_t st_gid;
-	int __pad0;
 	pmemfile_dev_t st_rdev;
 	pmemfile_off_t st_size;
 	pmemfile_blksize_t st_blksize;
 	pmemfile_blkcnt_t st_blocks;
-	struct pmemfile_timespec st_atim;
-	struct pmemfile_timespec st_mtim;
-	struct pmemfile_timespec st_ctim;
-	long long __glibc_reserved[3];
-};
+	pmemfile_timespec_t st_atim;
+	pmemfile_timespec_t st_mtim;
+	pmemfile_timespec_t st_ctim;
+} pmemfile_stat_t;
 
+#endif
 
 #define PMEMFILE_AT_CWD ((PMEMfile *)(((unsigned char *)0) - 1))
 
@@ -245,11 +266,11 @@ pmemfile_ssize_t pmemfile_pwrite(PMEMfilepool *pfp, PMEMfile *file,
 pmemfile_ssize_t pmemfile_pread(PMEMfilepool *pfp, PMEMfile *file, void *buf,
 		size_t count, pmemfile_off_t offset);
 
-int pmemfile_stat(PMEMfilepool *, const char *path, struct pmemfile_stat *buf);
-int pmemfile_lstat(PMEMfilepool *, const char *path, struct pmemfile_stat *buf);
-int pmemfile_fstat(PMEMfilepool *, PMEMfile *file, struct pmemfile_stat *buf);
+int pmemfile_stat(PMEMfilepool *, const char *path, pmemfile_stat_t *buf);
+int pmemfile_lstat(PMEMfilepool *, const char *path, pmemfile_stat_t *buf);
+int pmemfile_fstat(PMEMfilepool *, PMEMfile *file, pmemfile_stat_t *buf);
 int pmemfile_fstatat(PMEMfilepool *, PMEMfile *dir, const char *path,
-		struct pmemfile_stat *buf, int flags);
+		pmemfile_stat_t *buf, int flags);
 
 struct linux_dirent;
 struct linux_dirent64;

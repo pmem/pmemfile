@@ -65,46 +65,59 @@ void *pmemfile_mremap(PMEMfilepool *, void *old_addr, size_t old_size,
 int pmemfile_msync(PMEMfilepool *, void *addr, size_t len, int flags);
 int pmemfile_mprotect(PMEMfilepool *, void *addr, size_t len, int prot);
 
-struct pmemfile_iovec
+#ifdef ON_POSIX_LIKE_PLATFORM
+
+typedef struct iovec pmemfile_iovec_t;
+typedef struct utimbuf pmemfile_utimbuf_t;
+typedef struct timeval pmemfile_timeval_t;
+
+#else
+
+typedef struct
 {
     void *iov_base;
     size_t iov_len;
-};
+} pmemfile_iovec_t;
 
-pmemfile_ssize_t pmemfile_readv(PMEMfilepool *, PMEMfile *file,
-	const struct pmemfile_iovec *iov, int iovcnt);
-pmemfile_ssize_t pmemfile_writev(PMEMfilepool *, PMEMfile *file,
-	const struct pmemfile_iovec *iov, int iovcnt);
-pmemfile_ssize_t pmemfile_preadv(PMEMfilepool *, PMEMfile *file,
-	const struct pmemfile_iovec *iov, int iovcnt, pmemfile_off_t offset);
-pmemfile_ssize_t pmemfile_pwritev(PMEMfilepool *, PMEMfile *file,
-	const struct pmemfile_iovec *iov, int iovcnt, pmemfile_off_t offset);
-
-struct pmemfile_utimbuf
+typedef struct
 {
 	long long actime;
 	long long modtime;
-};
+} pmemfile_utimbuf_t;
 
 int pmemfile_utime(PMEMfilepool *, const char *filename,
 		const struct pmemfile_utimbuf *times);
 
-struct pmemfile_timeval
+typedef struct
 {
 	long long tv_sec;
 	long long tv_usec;
-};
+} pmemfile_timeval_t;
+
+#endif
+
+pmemfile_ssize_t pmemfile_readv(PMEMfilepool *, PMEMfile *file,
+	const pmemfile_iovec_t *iov, int iovcnt);
+pmemfile_ssize_t pmemfile_writev(PMEMfilepool *, PMEMfile *file,
+	const pmemfile_iovec_t *iov, int iovcnt);
+pmemfile_ssize_t pmemfile_preadv(PMEMfilepool *, PMEMfile *file,
+	const pmemfile_iovec_t *iov, int iovcnt, pmemfile_off_t offset);
+pmemfile_ssize_t pmemfile_pwritev(PMEMfilepool *, PMEMfile *file,
+	const pmemfile_iovec_t *iov, int iovcnt, pmemfile_off_t offset);
+
+int pmemfile_utime(PMEMfilepool *, const char *filename,
+		const pmemfile_utimbuf_t *times);
 
 int pmemfile_utimes(PMEMfilepool *, const char *filename,
-		const struct pmemfile_timeval times[2]);
+		const pmemfile_timeval_t times[2]);
 int pmemfile_futimes(PMEMfilepool *, PMEMfile *file,
-		const struct pmemfile_timeval tv[2]);
+		const pmemfile_timeval_t tv[2]);
 int pmemfile_lutimes(PMEMfilepool *, const char *filename,
-		const struct pmemfile_timeval tv[2]);
+		const pmemfile_timeval_t tv[2]);
 int pmemfile_utimensat(PMEMfilepool *, PMEMfile *dir, const char *pathname,
-		const struct pmemfile_timespec times[2], int flags);
+		const pmemfile_timespec_t times[2], int flags);
 int pmemfile_futimens(PMEMfilepool *, PMEMfile *file,
-		const struct pmemfile_timespec times[2]);
+		const pmemfile_timespec_t times[2]);
 
 pmemfile_mode_t pmemfile_umask(PMEMfilepool *, pmemfile_mode_t mask);
 

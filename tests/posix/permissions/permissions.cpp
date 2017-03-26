@@ -46,7 +46,7 @@ public:
 TEST_F(permissions, chmod)
 {
 	PMEMfile *f;
-	struct pmemfile_stat statbuf;
+	pmemfile_stat_t statbuf;
 
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/aaa", PMEMFILE_O_EXCL,
 					 PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR |
@@ -165,7 +165,7 @@ TEST_F(permissions, chmod)
 
 TEST_F(permissions, symlink)
 {
-	struct pmemfile_stat statbuf;
+	pmemfile_stat_t statbuf;
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/aaa", PMEMFILE_O_EXCL,
 					 PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR |
 						 PMEMFILE_S_IRGRP |
@@ -211,7 +211,7 @@ TEST_F(permissions, symlink)
 TEST_F(permissions, reuid_regid_fsuid_fsgid_getgroups_setgroups)
 {
 	PMEMfile *f;
-	struct pmemfile_stat statbuf;
+	pmemfile_stat_t statbuf;
 	int prev_uid;
 	int prev_gid;
 
@@ -333,7 +333,7 @@ TEST_F(permissions, chmod_and_cap)
 TEST_F(permissions, fchmod)
 {
 	PMEMfile *f;
-	struct pmemfile_stat statbuf;
+	pmemfile_stat_t statbuf;
 
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/aaa", PMEMFILE_O_EXCL,
 					 PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR |
@@ -373,7 +373,7 @@ TEST_F(permissions, fchmod)
 TEST_F(permissions, fchmodat)
 {
 	PMEMfile *dir;
-	struct pmemfile_stat statbuf;
+	pmemfile_stat_t statbuf;
 
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", PMEMFILE_S_IRWXU), 0);
 
@@ -894,7 +894,7 @@ test_chown(PMEMfilepool *pfp, const char *pathname, pmemfile_uid_t owner,
 		if (r != 0)
 			return false;
 
-		struct pmemfile_stat s;
+		pmemfile_stat_t s;
 		memset(&s, 0, sizeof(s));
 		if (pmemfile_stat(pfp, pathname, &s)) {
 			ADD_FAILURE() << "stat failed " << strerror(errno);
@@ -919,7 +919,7 @@ test_chown(PMEMfilepool *pfp, const char *pathname, pmemfile_uid_t owner,
 
 TEST_F(permissions, chown)
 {
-	struct pmemfile_stat s;
+	pmemfile_stat_t s;
 
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/file", PMEMFILE_O_EXCL,
 					 PMEMFILE_S_IRWXU));
@@ -1024,7 +1024,7 @@ test_fchown(PMEMfilepool *pfp, PMEMfile *f, pmemfile_uid_t owner,
 		if (r != 0)
 			return false;
 
-		struct pmemfile_stat s;
+		pmemfile_stat_t s;
 		memset(&s, 0, sizeof(s));
 		if (pmemfile_fstat(pfp, f, &s)) {
 			ADD_FAILURE() << "stat failed " << strerror(errno);
@@ -1115,7 +1115,7 @@ TEST_F(permissions, fchown)
 
 TEST_F(permissions, lchown)
 {
-	struct pmemfile_stat s;
+	pmemfile_stat_t s;
 
 	ASSERT_EQ(pmemfile_setreuid(pfp, 1000, 1000), 0);
 	ASSERT_EQ(pmemfile_setregid(pfp, 1001, 1001), 0);

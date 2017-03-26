@@ -44,7 +44,7 @@ public:
 };
 
 static const char *
-timespec_to_str(const struct pmemfile_timespec *t)
+timespec_to_str(const pmemfile_timespec_t *t)
 {
 	time_t sec = t->tv_sec;
 	char *s = asctime(localtime(&sec));
@@ -53,32 +53,32 @@ timespec_to_str(const struct pmemfile_timespec *t)
 }
 
 static void
-dump_stat(struct pmemfile_stat *st, const char *path)
+dump_stat(pmemfile_stat_t *st, const char *path)
 {
 	T_OUT("path:       %s\n", path);
-	T_OUT("st_dev:     0x%llx\n", st->st_dev);
-	T_OUT("st_ino:     %lld\n", st->st_ino);
+	T_OUT("st_dev:     0x%llx\n", (unsigned long long)st->st_dev);
+	T_OUT("st_ino:     %llu\n", (unsigned long long)st->st_ino);
 	T_OUT("st_mode:    0%o\n", st->st_mode);
-	T_OUT("st_nlink:   %llu\n", st->st_nlink);
+	T_OUT("st_nlink:   %llu\n", (unsigned long long)st->st_nlink);
 	T_OUT("st_uid:     %u\n", st->st_uid);
 	T_OUT("st_gid:     %u\n", st->st_gid);
-	T_OUT("st_rdev:    0x%llx\n", st->st_rdev);
-	T_OUT("st_size:    %lld\n", st->st_size);
-	T_OUT("st_blksize: %lld\n", st->st_blksize);
-	T_OUT("st_blocks:  %lld\n", st->st_blocks);
-	T_OUT("st_atim:    %lld.%.9lld, %s\n", st->st_atim.tv_sec,
-	      st->st_atim.tv_nsec, timespec_to_str(&st->st_atim));
-	T_OUT("st_mtim:    %lld.%.9lld, %s\n", st->st_mtim.tv_sec,
-	      st->st_mtim.tv_nsec, timespec_to_str(&st->st_mtim));
-	T_OUT("st_ctim:    %lld.%.9lld, %s\n", st->st_ctim.tv_sec,
-	      st->st_ctim.tv_nsec, timespec_to_str(&st->st_ctim));
+	T_OUT("st_rdev:    0x%llx\n", (unsigned long long)st->st_rdev);
+	T_OUT("st_size:    %lld\n", (long long)st->st_size);
+	T_OUT("st_blksize: %lld\n", (long long)st->st_blksize);
+	T_OUT("st_blocks:  %lld\n", (long long)st->st_blocks);
+	T_OUT("st_atim:    %lld.%.9lld, %s\n", (long long)st->st_atim.tv_sec,
+	      (long long)st->st_atim.tv_nsec, timespec_to_str(&st->st_atim));
+	T_OUT("st_mtim:    %lld.%.9lld, %s\n", (long long)st->st_mtim.tv_sec,
+	      (long long)st->st_mtim.tv_nsec, timespec_to_str(&st->st_mtim));
+	T_OUT("st_ctim:    %lld.%.9lld, %s\n", (long long)st->st_ctim.tv_sec,
+	      (long long)st->st_ctim.tv_nsec, timespec_to_str(&st->st_ctim));
 	T_OUT("---\n");
 }
 
 static int
 stat_and_dump(PMEMfilepool *pfp, const char *path)
 {
-	struct pmemfile_stat st;
+	pmemfile_stat_t st;
 	int ret = pmemfile_stat(pfp, path, &st);
 	if (ret)
 		return ret;
@@ -90,7 +90,7 @@ stat_and_dump(PMEMfilepool *pfp, const char *path)
 static int
 fstat_and_dump(PMEMfilepool *pfp, PMEMfile *f)
 {
-	struct pmemfile_stat st;
+	pmemfile_stat_t st;
 	int ret = pmemfile_fstat(pfp, f, &st);
 	if (ret)
 		return ret;

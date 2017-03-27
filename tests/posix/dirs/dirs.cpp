@@ -325,6 +325,48 @@ TEST_F(dirs, mkdir_rmdir_unlink_errors)
 	}
 }
 
+TEST_F(dirs, mkdirat)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", PMEMFILE_S_IRWXU), 0);
+
+	PMEMfile *dir = pmemfile_open(pfp, "/dir", PMEMFILE_O_DIRECTORY);
+	ASSERT_NE(dir, nullptr) << strerror(errno);
+
+	ASSERT_EQ(pmemfile_mkdirat(pfp, dir, "internal", PMEMFILE_S_IRWXU), 0);
+	ASSERT_EQ(pmemfile_mkdirat(pfp, dir, "../external", PMEMFILE_S_IRWXU),
+		  0);
+
+	struct stat statbuf;
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir/internal", &statbuf), 0);
+	ASSERT_EQ(PMEMFILE_S_ISDIR(statbuf.st_mode), 1);
+	ASSERT_EQ(pmemfile_stat(pfp, "/external", &statbuf), 0);
+	ASSERT_EQ(PMEMFILE_S_ISDIR(statbuf.st_mode), 1);
+
+	ASSERT_EQ(pmemfile_chdir(pfp, "dir/internal"), 0);
+
+	ASSERT_EQ(pmemfile_mkdirat(pfp, PMEMFILE_AT_CWD,
+				   "dir-internal-internal", PMEMFILE_S_IRWXU),
+		  0);
+	ASSERT_EQ(pmemfile_mkdirat(pfp, PMEMFILE_AT_CWD, "../dir-internal2",
+				   PMEMFILE_S_IRWXU),
+		  0);
+	ASSERT_EQ(pmemfile_mkdirat(pfp, PMEMFILE_AT_CWD, "../../external2",
+				   PMEMFILE_S_IRWXU),
+		  0);
+
+	ASSERT_EQ(pmemfile_chdir(pfp, "../.."), 0);
+
+	pmemfile_close(pfp, dir);
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir/internal/dir-internal-internal"),
+		  0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir/dir-internal2"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir/internal"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/external"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/external2"), 0);
+}
+
 TEST_F(dirs, rmdir_notempty)
 {
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);

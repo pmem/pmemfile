@@ -63,7 +63,11 @@
 		pmemfile_getcwd;
 		pmemfile_getdents;
 		pmemfile_getdents64;
+		pmemfile_getegid;
+		pmemfile_geteuid;
+		pmemfile_getgid;
 		pmemfile_getgroups;
+		pmemfile_getuid;
 		pmemfile_get_dir_path;
 		pmemfile_lchown;
 		pmemfile_link;
@@ -95,8 +99,14 @@
 		pmemfile_rmdir;
 		pmemfile_setcap;
 		pmemfile_setgroups;
+		pmemfile_setegid;
+		pmemfile_seteuid;
 		pmemfile_setfsgid;
 		pmemfile_setfsuid;
+		pmemfile_setreuid;
+		pmemfile_setregid;
+		pmemfile_setgid;
+		pmemfile_setuid;
 		pmemfile_stat;
 		pmemfile_symlink;
 		pmemfile_symlinkat;

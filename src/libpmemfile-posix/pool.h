@@ -43,10 +43,26 @@
 struct pmemfile_inode_map;
 
 struct pmemfile_cred {
+	/* real user id */
+	uid_t ruid;
+	/* real group id */
+	gid_t rgid;
+
+	/* effective user id */
+	uid_t euid;
+	/* effective group id */
+	gid_t egid;
+
+	/* filesystem user id */
 	uid_t fsuid;
+	/* filesystem group id */
 	gid_t fsgid;
+
+	/* supplementary group IDs */
 	gid_t *groups;
 	size_t groupsnum;
+
+	/* capabilities */
 	int caps;
 };
 
@@ -70,6 +86,12 @@ struct pmemfilepool {
 #define PFILE_WANT_READ (1<<0)
 #define PFILE_WANT_WRITE (1<<1)
 #define PFILE_WANT_EXECUTE (1<<2)
+
+#define PFILE_USE_FACCESS (0<<3)
+#define PFILE_USE_EACCESS (1<<3)
+#define PFILE_USE_RACCESS (2<<3)
+#define PFILE_ACCESS_MASK (3<<3)
+
 bool can_access(const struct pmemfile_cred *cred,
 		struct inode_perms perms,
 		int acc);

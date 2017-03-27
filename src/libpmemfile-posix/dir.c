@@ -885,8 +885,13 @@ resolve_pathat_nested(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 		os_rwlock_unlock(&child->rwlock);
 
 		if (PMEMFILE_S_ISDIR(child_perms.flags)) {
-			if (!can_access(cred, child_perms,
-					PFILE_WANT_EXECUTE)) {
+			int want = PFILE_WANT_EXECUTE;
+			if (flags & PMEMFILE_OPEN_PARENT_USE_EACCESS)
+				want |= PFILE_USE_EACCESS;
+			else if (flags & PMEMFILE_OPEN_PARENT_USE_RACCESS)
+				want |= PFILE_USE_RACCESS;
+
+			if (!can_access(cred, child_perms, want)) {
 				vinode_unref_tx(pfp, child);
 				path_info->error = EACCES;
 				break;

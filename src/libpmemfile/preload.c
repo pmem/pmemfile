@@ -90,11 +90,18 @@
 #define SYS_pwritev2 328
 #endif
 
+static pf_noreturn void
+exit_group_no_intercept(int ret)
+{
+	syscall_no_intercept(SYS_exit_group, ret);
+	__builtin_unreachable();
+}
+
 static inline void
 FATAL(const char *str)
 {
 	syscall_no_intercept(SYS_write, 2, str, strlen(str));
-	syscall_no_intercept(SYS_exit_group, 128 + 7);
+	exit_group_no_intercept(128 + 7);
 }
 
 #include "sys_util.h"
@@ -140,7 +147,7 @@ static long check_errno(long e)
 		const char *str = "ENOTSUP";
 
 		syscall_no_intercept(SYS_write, 2, str, strlen(str));
-		syscall_no_intercept(SYS_exit_group, 95);
+		exit_group_no_intercept(95);
 	}
 
 	return e;
@@ -424,7 +431,7 @@ config_error(void)
 {
 	log_write("invalid config");
 	fputs("Invalid pmemfile config\n", stderr);
-	syscall_no_intercept(SYS_exit_group, 123);
+	exit_group_no_intercept(123);
 }
 
 static const char *parse_mount_point(struct pool_description *pool,
@@ -451,13 +458,13 @@ establish_mount_points(const char *config)
 
 	if (getcwd(cwd, sizeof(cwd)) == NULL) {
 		perror("getcwd");
-		syscall_no_intercept(SYS_exit_group, 124);
+		exit_group_no_intercept(124);
 	}
 
 	struct stat kernel_cwd_stat;
 	if (stat(cwd, &kernel_cwd_stat) != 0) {
 		perror("fstat cwd");
-		syscall_no_intercept(SYS_exit_group, 124);
+		exit_group_no_intercept(124);
 	}
 
 	assert(pool_count == 0);
@@ -490,7 +497,7 @@ establish_mount_points(const char *config)
 			open_new_pool(pool_desc);
 			if (pool_desc->pool == NULL) {
 				perror("opening pmemfile pool");
-				syscall_no_intercept(SYS_exit_group, 124);
+				exit_group_no_intercept(124);
 			}
 			cwd_pool = pool_desc;
 		}
@@ -570,7 +577,7 @@ open_mount_point(struct pool_description *pool)
 	if ((size_t)pool->fd >=
 	    sizeof(mount_point_fds) / sizeof(mount_point_fds[0])) {
 		log_write("fd too large, sorry mate");
-		syscall_no_intercept(SYS_exit_group, 123);
+		exit_group_no_intercept(123);
 	}
 
 	mount_point_fds[pool->fd] = true;

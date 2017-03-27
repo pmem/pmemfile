@@ -86,7 +86,7 @@ resolve_symlink(struct resolved_path *result,
 		size_t *resolved, size_t *end, size_t *size,
 		bool *is_last_component)
 {
-	char link_buf[0x200];
+	char link_buf[sizeof(result->path)];
 	long link_len;
 
 	result->path[*end] = '\0';
@@ -113,7 +113,7 @@ resolve_symlink(struct resolved_path *result,
 	if (! *is_last_component)
 		result->path[*end] = '/';
 
-	if (link_len < 0 || (size_t)link_len >= sizeof(result->path)) {
+	if (link_len < 0 || (size_t)link_len >= sizeof(link_buf)) {
 		result->error_code = -ENOMEM;
 		return;
 	}

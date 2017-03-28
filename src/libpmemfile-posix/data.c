@@ -326,15 +326,18 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			if (hole_count > size)
 				hole_count = size;
 
-			/* create a new block between previous and next */
+			if (hole_count > 0) { /* Is there any hole at all? */
+				block = block_list_insert_after(vinode, block);
+				block->offset = offset;
+				file_allocate_block_data(pfp, block, hole_count,
+				    false);
+				block_cache_insert_block(vinode->blocks, block);
 
-			block = block_list_insert_after(vinode, block);
-			block->offset = offset;
-			file_allocate_block_data(pfp, block, hole_count, false);
-			block_cache_insert_block(vinode->blocks, block);
-
-			if (block->size > hole_count)
-				block->size = (uint32_t)hole_count;
+				if (block->size > hole_count)
+					block->size = (uint32_t)hole_count;
+			} else {
+				block = next;
+			}
 		}
 	} while (size > 0);
 }

@@ -65,7 +65,7 @@ static int
 check_flags(int flags)
 {
 	if (flags & PMEMFILE_O_APPEND) {
-		LOG(LSUP, "O_APPEND");
+		LOG(LTRC, "O_APPEND");
 		flags &= ~PMEMFILE_O_APPEND;
 	}
 
@@ -98,7 +98,7 @@ check_flags(int flags)
 	}
 
 	if (flags & PMEMFILE_O_DIRECTORY) {
-		LOG(LSUP, "O_DIRECTORY");
+		LOG(LTRC, "O_DIRECTORY");
 		flags &= ~PMEMFILE_O_DIRECTORY;
 	}
 

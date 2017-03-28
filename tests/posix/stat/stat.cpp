@@ -82,6 +82,7 @@ test_stat(PMEMfilepool *pfp, const char *path, mode_t mode = 0,
 	  blkcnt_t blocks = 0)
 {
 	struct stat st;
+	memset(&st, 0, sizeof(st));
 	int ret = pmemfile_stat(pfp, path, &st);
 	if (ret)
 		return ret;
@@ -105,7 +106,33 @@ test_fstat(PMEMfilepool *pfp, PMEMfile *f, mode_t mode = 0, nlink_t nlink = 0,
 	   off_t size = 0, blksize_t blksize = 0, blkcnt_t blocks = 0)
 {
 	struct stat st;
+	memset(&st, 0, sizeof(st));
 	int ret = pmemfile_fstat(pfp, f, &st);
+	if (ret)
+		return ret;
+	EXPECT_EQ(mode, st.st_mode);
+	EXPECT_EQ(nlink, st.st_nlink);
+	EXPECT_EQ(size, st.st_size);
+	EXPECT_EQ(blksize, st.st_blksize);
+	EXPECT_EQ(blocks, st.st_blocks);
+
+	if (mode != st.st_mode || nlink != st.st_nlink || size != st.st_size ||
+	    blksize != st.st_blksize || blocks != st.st_blocks)
+		return -1;
+
+	if (verbose)
+		dump_stat(&st, NULL);
+	return 0;
+}
+
+static int
+test_fstatat(PMEMfilepool *pfp, PMEMfile *dir, const char *path, int flags,
+	     mode_t mode = 0, nlink_t nlink = 0, off_t size = 0,
+	     blksize_t blksize = 0, blkcnt_t blocks = 0)
+{
+	struct stat st;
+	memset(&st, 0, sizeof(st));
+	int ret = pmemfile_fstatat(pfp, dir, path, &st, flags);
 	if (ret)
 		return ret;
 	EXPECT_EQ(mode, st.st_mode);
@@ -179,6 +206,42 @@ TEST_F(stat_test, stat_file_in_dir)
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/file1"), 0);
 
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
+}
+
+TEST_F(stat_test, fstatat)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", 0755), 0);
+
+	ASSERT_TRUE(
+		test_pmemfile_create(pfp, "/dir/file1", PMEMFILE_O_EXCL, 0644));
+
+	ASSERT_EQ(pmemfile_symlink(pfp, "/dir/file1", "/file2"), 0);
+
+	PMEMfile *dir = pmemfile_open(pfp, "/dir", PMEMFILE_O_DIRECTORY);
+	ASSERT_NE(dir, nullptr);
+
+	EXPECT_EQ(test_fstatat(pfp, dir, "file1", 0, 0100644, 1, 0, 1, 0), 0);
+
+	EXPECT_EQ(test_fstatat(pfp, dir, "../file2", 0, 0100644, 1, 0, 1, 0),
+		  0);
+
+	EXPECT_EQ(test_fstatat(pfp, dir, "../file2",
+			       PMEMFILE_AT_SYMLINK_NOFOLLOW, 0120777, 1, 10, 1,
+			       0),
+		  0);
+
+	EXPECT_EQ(test_fstatat(pfp, dir, "", 0), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	EXPECT_EQ(test_fstatat(pfp, dir, "", PMEMFILE_AT_EMPTY_PATH, 040755, 2,
+			       4008, 1, 0),
+		  0);
+
+	pmemfile_close(pfp, dir);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file2"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/file1"), 0);
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
 }
 

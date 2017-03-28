@@ -832,6 +832,11 @@ resolve_pathat_nested(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 		return;
 	}
 
+	if (path[0] == 0) {
+		path_info->error = ENOENT;
+		return;
+	}
+
 	if (path[0] == '/') {
 		while (path[0] == '/')
 			path++;

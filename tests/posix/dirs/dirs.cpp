@@ -699,6 +699,76 @@ TEST_F(dirs, file_renames)
 	EXPECT_EQ(errno, EBUSY);
 }
 
+TEST_F(dirs, openat)
+{
+	PMEMfile *dir, *f;
+
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", PMEMFILE_S_IRWXU), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir2", PMEMFILE_S_IRWXU), 0);
+	ASSERT_TRUE(
+		test_pmemfile_create(pfp, "/dir/file1", 0, PMEMFILE_S_IRWXU));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/file2", 0, PMEMFILE_S_IRWXU));
+
+	dir = pmemfile_open(pfp, "/dir", PMEMFILE_O_DIRECTORY);
+	ASSERT_NE(dir, nullptr) << strerror(errno);
+
+	f = pmemfile_openat(pfp, dir, "file1", PMEMFILE_O_RDONLY);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+	pmemfile_close(pfp, f);
+
+	f = pmemfile_openat(pfp, dir, "file2", PMEMFILE_O_RDONLY);
+	ASSERT_EQ(f, nullptr);
+	EXPECT_EQ(errno, ENOENT);
+
+	f = pmemfile_openat(pfp, dir, "../file2", PMEMFILE_O_RDONLY);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+	pmemfile_close(pfp, f);
+
+	f = pmemfile_openat(pfp, PMEMFILE_AT_CWD, "file1", PMEMFILE_O_RDONLY);
+	ASSERT_EQ(f, nullptr);
+	EXPECT_EQ(errno, ENOENT);
+
+	f = pmemfile_openat(pfp, PMEMFILE_AT_CWD, "dir/file1",
+			    PMEMFILE_O_RDONLY);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+	pmemfile_close(pfp, f);
+
+	f = pmemfile_openat(pfp, PMEMFILE_AT_CWD, "file2", PMEMFILE_O_RDONLY);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+	pmemfile_close(pfp, f);
+
+	ASSERT_EQ(pmemfile_chdir(pfp, "dir2"), 0);
+
+	f = pmemfile_openat(pfp, PMEMFILE_AT_CWD, "file1", PMEMFILE_O_RDONLY);
+	ASSERT_EQ(f, nullptr);
+	EXPECT_EQ(errno, ENOENT);
+
+	f = pmemfile_openat(pfp, PMEMFILE_AT_CWD, "dir/file1",
+			    PMEMFILE_O_RDONLY);
+	ASSERT_EQ(f, nullptr);
+	EXPECT_EQ(errno, ENOENT);
+
+	f = pmemfile_openat(pfp, PMEMFILE_AT_CWD, "file2", PMEMFILE_O_RDONLY);
+	ASSERT_EQ(f, nullptr);
+	EXPECT_EQ(errno, ENOENT);
+
+	f = pmemfile_openat(pfp, PMEMFILE_AT_CWD, "/dir/file1",
+			    PMEMFILE_O_RDONLY);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+	pmemfile_close(pfp, f);
+
+	f = pmemfile_openat(pfp, PMEMFILE_AT_CWD, "/file2", PMEMFILE_O_RDONLY);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+	pmemfile_close(pfp, f);
+
+	pmemfile_close(pfp, dir);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file2"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/file1"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir2"), 0);
+}
+
 int
 main(int argc, char *argv[])
 {

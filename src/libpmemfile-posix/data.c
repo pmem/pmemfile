@@ -936,6 +936,19 @@ is_block_contained_by_interval(struct pmemfile_block *block,
 }
 
 /*
+ * is_interval_contained_by_block -- see vinode_remove_interval
+ * for explanation.
+ */
+static bool
+is_interval_contained_by_block(struct pmemfile_block *block,
+		uint64_t start, uint64_t len)
+{
+	return block->offset < start &&
+		(block->offset + block->size) > (start + len);
+}
+
+
+/*
  * is_block_at_right_edge -- see vinode_remove_interval
  * for explanation.
  */
@@ -1009,6 +1022,28 @@ vinode_remove_interval(struct pmemfile_vinode *vinode,
 			 */
 			ctree_remove_unlocked(vinode->blocks, block->offset, 1);
 			block = block_list_remove(vinode, block);
+
+		} else if (is_interval_contained_by_block(block, offset, len)) {
+			/*
+			 * No block is deallocated, but the corresponding
+			 * interval in block->data is should be cleared.
+			 *
+			 *          offset    offset + len
+			 *          |         |
+			 * -----+---+---------+--+-----
+			 *      |    block       |
+			 */
+			if (is_block_data_initialized(block)) {
+				uint64_t block_offset = offset - block->offset;
+
+				pmemobj_tx_add_range(block->data.oid,
+				    block_offset, len);
+				memset(D_RW(block->data) + block_offset, 0,
+				    len);
+			}
+
+			/* definitely handled the whole interval already */
+			break;
 
 		} else if (is_block_at_right_edge(block, offset, len)) {
 			/*

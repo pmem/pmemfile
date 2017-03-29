@@ -769,6 +769,115 @@ TEST_F(dirs, openat)
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir2"), 0);
 }
 
+static bool
+test_file_info(PMEMfilepool *pfp, const char *path, nlink_t nlink, ino_t ino)
+{
+	struct stat st;
+	memset(&st, 0, sizeof(st));
+
+	int r = pmemfile_lstat(pfp, path, &st);
+
+	EXPECT_EQ(r, 0) << strerror(errno);
+	if (r)
+		return false;
+
+	EXPECT_EQ(st.st_nlink, nlink);
+	EXPECT_EQ(st.st_ino, ino);
+	if (st.st_nlink != nlink || st.st_ino != ino)
+		return false;
+
+	return true;
+}
+
+TEST_F(dirs, linkat)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", PMEMFILE_S_IRWXU), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir2", PMEMFILE_S_IRWXU), 0);
+
+	ASSERT_TRUE(
+		test_pmemfile_create(pfp, "/dir1/file1", 0, PMEMFILE_S_IRWXU));
+	ASSERT_TRUE(
+		test_pmemfile_create(pfp, "/dir2/file2", 0, PMEMFILE_S_IRWXU));
+
+	struct stat st_file1, st_file2, st_file1_sym;
+	ASSERT_EQ(pmemfile_lstat(pfp, "/dir1/file1", &st_file1), 0);
+	ASSERT_EQ(pmemfile_lstat(pfp, "/dir2/file2", &st_file2), 0);
+
+	ASSERT_TRUE(test_file_info(pfp, "/dir1/file1", 1, st_file1.st_ino));
+	ASSERT_TRUE(test_file_info(pfp, "/dir2/file2", 1, st_file2.st_ino));
+
+	ASSERT_EQ(pmemfile_symlink(pfp, "/dir1/file1", "/dir2/file1-sym"), 0);
+
+	ASSERT_EQ(pmemfile_lstat(pfp, "/dir2/file1-sym", &st_file1_sym), 0);
+
+	PMEMfile *dir1 = pmemfile_open(pfp, "/dir1", PMEMFILE_O_DIRECTORY);
+	ASSERT_NE(dir1, nullptr) << strerror(errno);
+
+	PMEMfile *dir2 = pmemfile_open(pfp, "/dir2", PMEMFILE_O_DIRECTORY);
+	ASSERT_NE(dir2, nullptr) << strerror(errno);
+
+	ASSERT_EQ(pmemfile_linkat(pfp, dir1, "file1", dir2, "file1", 0), 0);
+	ASSERT_TRUE(test_file_info(pfp, "/dir1/file1", 2, st_file1.st_ino));
+	ASSERT_TRUE(test_file_info(pfp, "/dir2/file1", 2, st_file1.st_ino));
+
+	ASSERT_EQ(pmemfile_linkat(pfp, dir1, "file1", PMEMFILE_AT_CWD, "file1",
+				  0),
+		  0);
+	ASSERT_TRUE(test_file_info(pfp, "/dir1/file1", 3, st_file1.st_ino));
+	ASSERT_TRUE(test_file_info(pfp, "/dir2/file1", 3, st_file1.st_ino));
+	ASSERT_TRUE(test_file_info(pfp, "/file1", 3, st_file1.st_ino));
+
+	ASSERT_TRUE(
+		test_file_info(pfp, "/dir2/file1-sym", 1, st_file1_sym.st_ino));
+	ASSERT_EQ(pmemfile_linkat(pfp, dir2, "file1-sym", dir1,
+				  "file1-link-to-symlink", 0),
+		  0);
+	ASSERT_TRUE(
+		test_file_info(pfp, "/dir2/file1-sym", 2, st_file1_sym.st_ino));
+
+	ASSERT_EQ(pmemfile_linkat(pfp, dir2, "file1-sym", dir1,
+				  "file1-link-to-deref-symlink",
+				  PMEMFILE_AT_SYMLINK_FOLLOW),
+		  0);
+	ASSERT_TRUE(
+		test_file_info(pfp, "/dir2/file1-sym", 2, st_file1_sym.st_ino));
+	ASSERT_TRUE(test_file_info(pfp, "/dir1/file1-link-to-deref-symlink", 4,
+				   st_file1.st_ino));
+	ASSERT_TRUE(test_file_info(pfp, "/dir1/file1", 4, st_file1.st_ino));
+
+	ASSERT_EQ(pmemfile_linkat(pfp, dir1, "", dir2, "XXX",
+				  PMEMFILE_AT_EMPTY_PATH),
+		  -1);
+	EXPECT_EQ(errno, EPERM);
+
+	PMEMfile *file1 = pmemfile_open(pfp, "/dir1/file1", PMEMFILE_O_RDONLY);
+	ASSERT_NE(file1, nullptr) << strerror(errno);
+
+	ASSERT_EQ(pmemfile_linkat(pfp, file1, "", dir2,
+				  "file1-linked-at-empty-path",
+				  PMEMFILE_AT_EMPTY_PATH),
+		  0);
+
+	ASSERT_TRUE(test_file_info(pfp, "/dir1/file1", 5, st_file1.st_ino));
+	ASSERT_TRUE(test_file_info(pfp, "/dir2/file1-linked-at-empty-path", 5,
+				   st_file1.st_ino));
+
+	pmemfile_close(pfp, file1);
+	pmemfile_close(pfp, dir1);
+	pmemfile_close(pfp, dir2);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir1/file1-link-to-deref-symlink"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir1/file1-link-to-symlink"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir1/file1"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir2/file2"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir2/file1-linked-at-empty-path"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir2/file1"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir2/file1-sym"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir2"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
+}
+
 int
 main(int argc, char *argv[])
 {

@@ -699,6 +699,79 @@ TEST_F(dirs, file_renames)
 	EXPECT_EQ(errno, EBUSY);
 }
 
+static bool
+is_owned(PMEMfilepool *pfp, const char *path, uid_t owner)
+{
+	struct stat st;
+	memset(&st, 0xff, sizeof(st));
+
+	int r = pmemfile_lstat(pfp, path, &st);
+	EXPECT_EQ(r, 0) << strerror(errno);
+	if (r)
+		return false;
+
+	EXPECT_EQ(st.st_uid, owner);
+	if (st.st_uid != owner)
+		return false;
+
+	return true;
+}
+
+TEST_F(dirs, fchownat)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", PMEMFILE_ACCESSPERMS), 0);
+	ASSERT_TRUE(
+		test_pmemfile_create(pfp, "/dir/file1", 0, PMEMFILE_S_IRWXU));
+	ASSERT_EQ(pmemfile_symlink(pfp, "/dir/file1", "/symlink"), 0);
+
+	PMEMfile *dir = pmemfile_open(pfp, "/dir", PMEMFILE_O_DIRECTORY);
+	ASSERT_NE(dir, nullptr) << strerror(errno);
+
+	ASSERT_EQ(pmemfile_setuid(pfp, 1000), 0);
+	ASSERT_EQ(pmemfile_setcap(pfp, PMEMFILE_CAP_CHOWN), 0)
+		<< strerror(errno);
+
+	ASSERT_TRUE(is_owned(pfp, "/dir", 0));
+	ASSERT_TRUE(is_owned(pfp, "/dir/file1", 0));
+
+	ASSERT_EQ(pmemfile_fchownat(pfp, PMEMFILE_AT_CWD, "dir", 2000, 2000, 0),
+		  0);
+	ASSERT_TRUE(is_owned(pfp, "/dir", 2000));
+
+	ASSERT_EQ(pmemfile_fchownat(pfp, dir, "", 1000, 1000, 0), -1);
+	EXPECT_EQ(errno, ENOENT);
+	ASSERT_TRUE(is_owned(pfp, "/dir", 2000));
+
+	ASSERT_EQ(pmemfile_fchownat(pfp, dir, "", 1000, 1000,
+				    PMEMFILE_AT_EMPTY_PATH),
+		  0);
+	ASSERT_TRUE(is_owned(pfp, "/dir", 1000));
+
+	ASSERT_EQ(pmemfile_fchownat(pfp, dir, "file1", 1000, 1000, 0), 0);
+	ASSERT_TRUE(is_owned(pfp, "/dir/file1", 1000));
+
+	ASSERT_EQ(pmemfile_fchownat(pfp, PMEMFILE_AT_CWD, "symlink", 1001, 1001,
+				    0),
+		  0);
+	ASSERT_TRUE(is_owned(pfp, "/symlink", 0));
+	ASSERT_TRUE(is_owned(pfp, "/dir/file1", 1001));
+
+	ASSERT_EQ(pmemfile_fchownat(pfp, PMEMFILE_AT_CWD, "symlink", 1002, 1002,
+				    PMEMFILE_AT_SYMLINK_NOFOLLOW),
+		  0);
+	ASSERT_TRUE(is_owned(pfp, "/symlink", 1002));
+	ASSERT_TRUE(is_owned(pfp, "/dir/file1", 1001));
+
+	ASSERT_EQ(pmemfile_clrcap(pfp, PMEMFILE_CAP_CHOWN), 0)
+		<< strerror(errno);
+
+	pmemfile_close(pfp, dir);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/symlink"), 0) << strerror(errno);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/file1"), 0) << strerror(errno);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
+}
+
 TEST_F(dirs, openat)
 {
 	PMEMfile *dir, *f;

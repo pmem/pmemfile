@@ -1525,13 +1525,13 @@ pmemfile_setregid(PMEMfilepool *pfp, gid_t rgid, gid_t egid)
 int
 pmemfile_setuid(PMEMfilepool *pfp, uid_t uid)
 {
-	return pmemfile_setreuid(pfp, uid, (uid_t)-1);
+	return pmemfile_setreuid(pfp, (uid_t)-1, uid);
 }
 
 int
 pmemfile_setgid(PMEMfilepool *pfp, gid_t gid)
 {
-	return pmemfile_setregid(pfp, gid, (gid_t)-1);
+	return pmemfile_setregid(pfp, (gid_t)-1, gid);
 }
 
 uid_t

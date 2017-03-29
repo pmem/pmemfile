@@ -30,6 +30,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "ctree.h"
 #include "layout.h"
 #include "inode.h"
 #include "internal.h"
@@ -255,7 +256,10 @@ block_list_remove(struct pmemfile_vinode *vinode,
 	if (moving_block != block) {
 		if (vinode->first_block == moving_block)
 			vinode->first_block = block;
+		ctree_remove_unlocked(vinode->blocks, moving_block->offset, 1);
 		relocate_block(block, moving_block);
+		ctree_insert_unlocked(vinode->blocks, block->offset,
+		    (uint64_t)block);
 	}
 
 	TX_MEMSET(moving_block, 0, sizeof(*moving_block));

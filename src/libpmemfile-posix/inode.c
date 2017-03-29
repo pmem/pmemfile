@@ -674,33 +674,35 @@ static int
 _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		const char *path, struct stat *buf, int flags)
 {
+	int error = 0;
+	struct pmemfile_cred cred;
+	struct pmemfile_path_info info;
+	struct pmemfile_vinode *vinode;
+
+	LOG(LDBG, "path %s", path);
+
 	if (!buf) {
-		errno = EFAULT;
-		return -1;
+		error = EFAULT;
+		goto ret;
 	}
 
 	if (path[0] == 0 && (flags & PMEMFILE_AT_EMPTY_PATH)) {
-		LOG(LSUP, "AT_EMPTY_PATH not supported yet");
-		errno = EINVAL;
-		return -1;
+		error = vinode_stat(dir, buf);
+		goto ret;
 	}
 
 	if (flags & ~(PMEMFILE_AT_NO_AUTOMOUNT | PMEMFILE_AT_SYMLINK_NOFOLLOW |
 			PMEMFILE_AT_EMPTY_PATH)) {
-		errno = EINVAL;
-		return -1;
+		error = EINVAL;
+		goto ret;
 	}
 
-	LOG(LDBG, "path %s", path);
+	if (get_cred(pfp, &cred)) {
+		error = errno;
+		goto ret;
+	}
 
-	struct pmemfile_cred cred;
-	if (get_cred(pfp, &cred))
-		return -1;
-
-	int error = 0;
-	struct pmemfile_path_info info;
-	struct pmemfile_vinode *vinode =
-			resolve_pathat_full(pfp, &cred, dir, path, &info, 0,
+	vinode = resolve_pathat_full(pfp, &cred, dir, path, &info, 0,
 				!(flags & PMEMFILE_AT_SYMLINK_NOFOLLOW));
 
 	if (info.error) {
@@ -721,7 +723,7 @@ end:
 
 	if (vinode)
 		vinode_unref_tx(pfp, vinode);
-
+ret:
 	if (error) {
 		errno = error;
 		return -1;

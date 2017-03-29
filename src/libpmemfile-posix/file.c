@@ -606,12 +606,6 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 {
 	LOG(LDBG, "oldpath %s newpath %s", oldpath, newpath);
 
-	if (oldpath[0] == 0 && (flags & PMEMFILE_AT_EMPTY_PATH)) {
-		LOG(LSUP, "AT_EMPTY_PATH not supported yet");
-		errno = EINVAL;
-		return -1;
-	}
-
 	if ((flags & ~(PMEMFILE_AT_SYMLINK_FOLLOW | PMEMFILE_AT_EMPTY_PATH))
 			!= 0) {
 		errno = EINVAL;
@@ -623,23 +617,30 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 		return -1;
 
 	struct pmemfile_path_info src, dst = { NULL, NULL, 0 };
-	struct pmemfile_vinode *src_vinode =
-			resolve_pathat_full(pfp, &cred, olddir, oldpath, &src,
-					0, flags & PMEMFILE_AT_SYMLINK_FOLLOW);
+	struct pmemfile_vinode *src_vinode;
 
 	int error = 0;
-	if (src.error) {
-		error = src.error;
-		goto end;
+
+	if (oldpath[0] == 0 && (flags & PMEMFILE_AT_EMPTY_PATH)) {
+		memset(&src, 0, sizeof(src));
+
+		src_vinode = vinode_ref(pfp, olddir);
+	} else {
+		src_vinode = resolve_pathat_full(pfp, &cred, olddir, oldpath,
+				&src, 0, flags & PMEMFILE_AT_SYMLINK_FOLLOW);
+		if (src.error) {
+			error = src.error;
+			goto end;
+		}
+
+		if (strchr(src.remaining, '/')) {
+			error = ENOTDIR;
+			goto end;
+		}
 	}
 
 	if (vinode_is_dir(src_vinode)) {
 		error = EPERM;
-		goto end;
-	}
-
-	if (strchr(src.remaining, '/')) {
-		error = ENOTDIR;
 		goto end;
 	}
 

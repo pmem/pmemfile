@@ -854,6 +854,9 @@ dispatch_syscall(long syscall_number,
 		return hook_fchownat(fetch_fd(arg0), (const char *)arg1,
 					(uid_t)arg2, (gid_t)arg3, (int)arg4);
 
+	if (syscall_number == SYS_fadvise64)
+		return 0;
+
 	if (syscall_number == SYS_mmap ||
 	    syscall_number == SYS_readv ||
 	    syscall_number == SYS_writev ||
@@ -862,7 +865,6 @@ dispatch_syscall(long syscall_number,
 	    syscall_number == SYS_dup3 ||
 	    syscall_number == SYS_flistxattr ||
 	    syscall_number == SYS_fremovexattr ||
-	    syscall_number == SYS_fadvise64 ||
 	    syscall_number == SYS_fallocate ||
 	    syscall_number == SYS_preadv2 ||
 	    syscall_number == SYS_pwritev2 ||

@@ -710,7 +710,7 @@ TEST_F(rw, fallocate)
 	/*
 	 * Now remove an interval, that overlaps with the previously
 	 * allocated interval.
-	 * This should be rounded to the interval: [0 - 0x4000[ - thus
+	 * This should be rounded to the interval: [0 - 0x4000) - thus
 	 * removing 3 pieces of 4K blocks, or just zeroing out some data.
 	 */
 
@@ -753,8 +753,8 @@ TEST_F(rw, fallocate)
 	ASSERT_EQ(memcmp(buf + 1 + l0, buf00, sizeof(buf) - 1 - l0), 0);
 
 	/*
-	 * Punch a hole at [0x1fff, 0x4777[ interval, which should be
-	 * internally translated to the [0x2000, 0x4000[ interval.
+	 * Punch a hole at [0x1fff, 0x4777) interval, which should be
+	 * internally translated to the [0x2000, 0x4000) interval.
 	 * With fix 4K blocksize, this should remove one of the previously
 	 * allocated blocks.
 	 */

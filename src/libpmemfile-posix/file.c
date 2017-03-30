@@ -1833,14 +1833,20 @@ fallocate_check_arguments(int mode, off_t offset, off_t length)
 	 * As of now, pmemfile_fallocate supports allocating disk space, and
 	 * punching holes.
 	 */
-	if (mode & PMEMFILE_FL_COLLAPSE_RANGE)
+	if (mode & PMEMFILE_FL_COLLAPSE_RANGE) {
+		LOG(LSUP, "PMEMFILE_FL_COLLAPSE_RANGE is not supported");
 		return EOPNOTSUPP;
+	}
 
-	if (mode & PMEMFILE_FL_ZERO_RANGE)
+	if (mode & PMEMFILE_FL_ZERO_RANGE) {
+		LOG(LSUP, "PMEMFILE_FL_ZERO_RANGE is not supported");
 		return EOPNOTSUPP;
+	}
 
-	if (mode & PMEMFILE_FL_INSERT_RANGE)
+	if (mode & PMEMFILE_FL_INSERT_RANGE) {
+		LOG(LSUP, "PMEMFILE_FL_INSERT_RANGE is not supported");
 		return EOPNOTSUPP;
+	}
 
 	if (mode & PMEMFILE_FL_PUNCH_HOLE) {
 		/*
@@ -1879,7 +1885,7 @@ fallocate_check_arguments(int mode, off_t offset, off_t length)
  */
 static int
 file_fallocate(PMEMfilepool *pfp, PMEMfile *file, int mode,
-		off_t offset, off_t length)
+		uint64_t offset, uint64_t length)
 {
 	int error;
 
@@ -1894,8 +1900,7 @@ file_fallocate(PMEMfilepool *pfp, PMEMfile *file, int mode,
 
 	os_rwlock_wrlock(&file->vinode->rwlock);
 
-	error = vinode_fallocate(pfp, file->vinode,
-	    mode, (uint64_t)offset, (uint64_t)length);
+	error = vinode_fallocate(pfp, file->vinode, mode, offset, length);
 
 	os_rwlock_unlock(&file->vinode->rwlock);
 
@@ -1916,7 +1921,8 @@ pmemfile_fallocate(PMEMfilepool *pfp, PMEMfile *file, int mode,
 
 		os_mutex_lock(&file->mutex);
 
-		error = file_fallocate(pfp, file, mode, offset, length);
+		error = file_fallocate(pfp, file, mode,
+		    (uint64_t)offset, (uint64_t)length);
 
 		os_mutex_unlock(&file->mutex);
 	}

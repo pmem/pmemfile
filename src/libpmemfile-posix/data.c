@@ -47,7 +47,7 @@
 #include "ctree.h"
 
 static void
-adjust_to_containing_interval(uint64_t *offset, uint64_t *length)
+expand_to_full_pages(uint64_t *offset, uint64_t *length)
 {
 	/* align the offset */
 	*length += *offset % FILE_PAGE_SIZE;
@@ -58,7 +58,7 @@ adjust_to_containing_interval(uint64_t *offset, uint64_t *length)
 }
 
 static void
-adjust_to_contained_interval(uint64_t *offset, uint64_t *length)
+narrow_to_full_pages(uint64_t *offset, uint64_t *length)
 {
 	uint64_t end = page_rounddown(*offset + *length);
 	*offset = page_roundup(*offset);
@@ -288,7 +288,7 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	if (over)
 		size = overallocate_size(size);
 
-	adjust_to_containing_interval(&offset, &size);
+	expand_to_full_pages(&offset, &size);
 
 	struct pmemfile_block *block = find_block(vinode, offset);
 
@@ -1154,9 +1154,9 @@ vinode_fallocate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, int mode,
 		return EBADF;
 
 	if (mode & PMEMFILE_FL_PUNCH_HOLE)
-		adjust_to_contained_interval(&offset, &length);
+		narrow_to_full_pages(&offset, &length);
 	else
-		adjust_to_containing_interval(&offset, &length);
+		expand_to_full_pages(&offset, &length);
 
 	if (length == 0)
 		return 0;

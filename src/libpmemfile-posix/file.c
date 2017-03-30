@@ -1525,13 +1525,13 @@ pmemfile_setregid(PMEMfilepool *pfp, gid_t rgid, gid_t egid)
 int
 pmemfile_setuid(PMEMfilepool *pfp, uid_t uid)
 {
-	return pmemfile_setreuid(pfp, uid, (uid_t)-1);
+	return pmemfile_setreuid(pfp, (uid_t)-1, uid);
 }
 
 int
 pmemfile_setgid(PMEMfilepool *pfp, gid_t gid)
 {
-	return pmemfile_setregid(pfp, gid, (gid_t)-1);
+	return pmemfile_setregid(pfp, (gid_t)-1, gid);
 }
 
 uid_t
@@ -1856,11 +1856,6 @@ static int
 _pmemfile_fchownat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		const char *path, uid_t owner, gid_t group, int flags)
 {
-	if (flags & PMEMFILE_AT_EMPTY_PATH) {
-		errno = ENOTSUP;
-		return -1;
-	}
-
 	if (flags & ~(PMEMFILE_AT_EMPTY_PATH | PMEMFILE_AT_SYMLINK_NOFOLLOW)) {
 		errno = EINVAL;
 		return -1;
@@ -1874,18 +1869,23 @@ _pmemfile_fchownat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	int error = 0;
 	struct pmemfile_path_info info;
-	struct pmemfile_vinode *vinode =
-			resolve_pathat_full(pfp, &cred, dir, path, &info, 0,
+	struct pmemfile_vinode *vinode;
+
+	if (path[0] == 0 && (flags & PMEMFILE_AT_EMPTY_PATH)) {
+		memset(&info, 0, sizeof(info));
+		vinode = vinode_ref(pfp, dir);
+	} else {
+		vinode = resolve_pathat_full(pfp, &cred, dir, path, &info, 0,
 				!(flags & PMEMFILE_AT_SYMLINK_NOFOLLOW));
+		if (info.error) {
+			error = info.error;
+			goto end;
+		}
 
-	if (info.error) {
-		error = info.error;
-		goto end;
-	}
-
-	if (!vinode_is_dir(vinode) && strchr(info.remaining, '/')) {
-		error = ENOTDIR;
-		goto end;
+		if (!vinode_is_dir(vinode) && strchr(info.remaining, '/')) {
+			error = ENOTDIR;
+			goto end;
+		}
 	}
 
 	error = vinode_chown(pfp, &cred, vinode, owner, group);

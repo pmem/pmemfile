@@ -686,13 +686,19 @@ TEST_F(rw, fallocate)
 
 	/* Allocate a range, file size is expected to remain zero */
 	r = pmemfile_fallocate(pfp, f, PMEMFILE_FL_KEEP_SIZE, 0x1000, 0x10000);
-	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(r, 0);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 0);
 
 	/*
 	 * Allocated a 64K range, expecting a large block, or 16 pieces
 	 * of 4K blocks
 	 */
+	if (env_block_size == 0x1000) {
+		struct stat stat_buf;
+		r = pmemfile_stat(pfp, "/file1", &stat_buf);
+		ASSERT_EQ(r, 0) << COND_ERROR(r);
+		ASSERT_EQ(stat_buf.st_blocks, (0x10000 / 512));
+	}
 	EXPECT_TRUE(test_pmemfile_stats_match(
 		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? 16 : 1));
 
@@ -701,7 +707,7 @@ TEST_F(rw, fallocate)
 	 * but no new allocation should happen.
 	 */
 	r = pmemfile_fallocate(pfp, f, 0, 0x1000, 0x10000);
-	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(r, 0);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 0x1000 + 0x10000);
 
 	EXPECT_TRUE(test_pmemfile_stats_match(
@@ -710,7 +716,7 @@ TEST_F(rw, fallocate)
 	/*
 	 * Now remove an interval, that overlaps with the previously
 	 * allocated interval.
-	 * This should be rounded to the interval: [0 - 0x4000) - thus
+	 * This should be rounded to the interval: [0, 0x4000) - thus
 	 * removing 3 pieces of 4K blocks, or just zeroing out some data.
 	 */
 
@@ -722,7 +728,7 @@ TEST_F(rw, fallocate)
 	r = pmemfile_fallocate(pfp, f,
 			       PMEMFILE_FL_PUNCH_HOLE | PMEMFILE_FL_KEEP_SIZE,
 			       0x0007, 0x4123);
-	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(r, 0);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 0x1000 + 0x10000);
 
 	EXPECT_TRUE(test_pmemfile_stats_match(
@@ -761,7 +767,7 @@ TEST_F(rw, fallocate)
 	r = pmemfile_fallocate(pfp, f,
 			       PMEMFILE_FL_PUNCH_HOLE | PMEMFILE_FL_KEEP_SIZE,
 			       0x1fff, 0x3000);
-	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(r, 0);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 0x1000 + 0x10000);
 
 	EXPECT_TRUE(test_pmemfile_stats_match(
@@ -782,14 +788,14 @@ TEST_F(rw, fallocate)
 
 	/*
 	 * Allocate an interval well beyond current filesize.
-	 * The file has 14 pieces of 4K blocks (or one large block) before
+	 * The file has 14 pieces of 4K blocks (or one large block)
 	 * before this operation.
 	 * This is expected to allocate at least one new block, or in the
 	 * case of 4K fixed size blocks, 4 new 4K blocks.
 	 * Thus, the result should be 14 + 4 blocks, or 2 blocks.
 	 */
 	r = pmemfile_fallocate(pfp, f, PMEMFILE_FL_KEEP_SIZE, 0x80000, 0x4000);
-	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(r, 0);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 0x1000 + 0x10000);
 	EXPECT_TRUE(test_pmemfile_stats_match(
 		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? 14 + 4 : 1 + 1));
@@ -801,7 +807,7 @@ TEST_F(rw, fallocate)
 	 * The block counts are expected to be 14 or 1 again.
 	 */
 	r = pmemfile_ftruncate(pfp, f, 0x1000 + 0x10000);
-	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(r, 0);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 0x1000 + 0x10000);
 	EXPECT_TRUE(test_pmemfile_stats_match(
 		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? 14 : 1));
@@ -810,16 +816,15 @@ TEST_F(rw, fallocate)
 	 * Allocate the same new blocks beyond current file size again.
 	 * Altering the file size as well this time.
 	 */
-	r = pmemfile_fallocate(pfp, f, 0, 0x80000, 0x4000);
-	ASSERT_EQ(r, 0) << COND_ERROR(r);
-	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 0x80000 + 0x4000);
-	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? 14 + 4 : 1 + 1));
-
 	/* Remember the the expected size and block counts at this point */
 	static constexpr ssize_t size = 0x80000 + 0x4000;
 	static constexpr unsigned bc_4k = 14 + 4;
 	static constexpr unsigned bc = 2;
+	r = pmemfile_fallocate(pfp, f, 0, 0x80000, 0x4000);
+	ASSERT_EQ(r, 0);
+	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), size);
+	EXPECT_TRUE(test_pmemfile_stats_match(
+		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? bc_4k : bc));
 
 	/*
 	 * There should be a hole somewhere between offsets 0x10000 and 0x80000.
@@ -829,7 +834,7 @@ TEST_F(rw, fallocate)
 	r = pmemfile_fallocate(pfp, f,
 			       PMEMFILE_FL_PUNCH_HOLE | PMEMFILE_FL_KEEP_SIZE,
 			       0x73000, 0x2234);
-	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(r, 0);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), size);
 	EXPECT_TRUE(test_pmemfile_stats_match(
 		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? bc_4k : bc));
@@ -840,7 +845,7 @@ TEST_F(rw, fallocate)
 	for (ssize_t offset = 77; offset < size; offset += 0x1000) {
 		r = pmemfile_fallocate(pfp, f, PMEMFILE_FL_KEEP_SIZE, offset,
 				       1);
-		ASSERT_EQ(r, 0) << COND_ERROR(r);
+		ASSERT_EQ(r, 0);
 	}
 
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), size);
@@ -862,7 +867,7 @@ TEST_F(rw, fallocate)
 	r = pmemfile_fallocate(pfp, f,
 			       PMEMFILE_FL_PUNCH_HOLE | PMEMFILE_FL_KEEP_SIZE,
 			       0x14000, INT64_C(0x10000000));
-	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(r, 0);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), size);
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 1));
 
@@ -872,7 +877,7 @@ TEST_F(rw, fallocate)
 	r = pmemfile_fallocate(pfp, f,
 			       PMEMFILE_FL_PUNCH_HOLE | PMEMFILE_FL_KEEP_SIZE,
 			       0, INT64_C(0x10000000));
-	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(r, 0);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), size);
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 0));
 
@@ -883,7 +888,7 @@ TEST_F(rw, fallocate)
 	r = pmemfile_fallocate(pfp, f,
 			       PMEMFILE_FL_PUNCH_HOLE | PMEMFILE_FL_KEEP_SIZE,
 			       1, INT64_C(0x1000000));
-	ASSERT_EQ(r, 0) << COND_ERROR(r);
+	ASSERT_EQ(r, 0);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), size);
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 0));
 

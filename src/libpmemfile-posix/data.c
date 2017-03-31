@@ -1153,6 +1153,8 @@ vinode_fallocate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, int mode,
 	if (!vinode_is_regular_file(vinode))
 		return EBADF;
 
+	uint64_t off_plus_len = offset + length;
+
 	if (mode & PMEMFILE_FL_PUNCH_HOLE)
 		narrow_to_full_pages(&offset, &length);
 	else
@@ -1173,9 +1175,9 @@ vinode_fallocate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, int mode,
 		} else {
 			vinode_allocate_interval(pfp, vinode, offset, length);
 			if ((mode & PMEMFILE_FL_KEEP_SIZE) == 0) {
-				if (vinode->inode->size < offset + length) {
+				if (vinode->inode->size < off_plus_len) {
 					TX_ADD_DIRECT(&vinode->inode->size);
-					vinode->inode->size = offset + length;
+					vinode->inode->size = off_plus_len;
 				}
 			}
 		}

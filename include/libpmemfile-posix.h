@@ -311,6 +311,9 @@ int pmemfile_ftruncate(PMEMfilepool *, PMEMfile *file, off_t length);
 int pmemfile_fallocate(PMEMfilepool *, PMEMfile *file, int mode,
 		off_t offset, off_t length);
 
+int pmemfile_posix_fallocate(PMEMfilepool *pfp, PMEMfile *file,
+		off_t offset, off_t length);
+
 char *pmemfile_get_dir_path(PMEMfilepool *pfp, PMEMfile *dir, char *buf,
 		size_t size);
 

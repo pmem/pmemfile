@@ -926,6 +926,16 @@ TEST_F(rw, fallocate)
 	ASSERT_EQ(stat_block_count(f), 0);
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 0));
 
+	r = pmemfile_posix_fallocate(pfp, f, size - 1, 2);
+	ASSERT_EQ(r, 0) << strerror(errno);
+	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), size + 1);
+	if (env_block_size == 0x1000) {
+		ASSERT_EQ(stat_block_count(f), (0x2000 / 512));
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 2));
+	} else {
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 1));
+	}
+
 	pmemfile_close(pfp, f);
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);

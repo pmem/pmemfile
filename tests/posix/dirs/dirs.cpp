@@ -951,6 +951,161 @@ TEST_F(dirs, linkat)
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
 }
 
+/*
+ * Test file handles created with O_PATH for all functions that accept
+ * PMEMfile*. O_PATH allows to create file handles for files user does
+ * not have read or write permissions. Such handles are supposed to be
+ * used only as a path reference, but if we won't enforce that it may
+ * become a security issue.
+ */
+TEST_F(dirs, O_PATH)
+{
+	char buf[4096];
+	memset(buf, 0, sizeof(buf));
+
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", PMEMFILE_S_IRWXU), 0);
+
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir/file", 0, 0));
+	ASSERT_EQ(pmemfile_symlink(pfp, "/dir/file", "/dir/symlink"), 0);
+
+	ASSERT_EQ(pmemfile_chmod(pfp, "/dir", PMEMFILE_S_IXUSR), 0);
+
+	ASSERT_EQ(pmemfile_open(pfp, "/dir", 0), nullptr);
+	EXPECT_EQ(errno, EACCES);
+
+	PMEMfile *dir = pmemfile_open(
+		pfp, "/dir", PMEMFILE_O_DIRECTORY /*ignored*/ |
+			PMEMFILE_O_RDWR /*ignored*/ | PMEMFILE_O_PATH);
+	ASSERT_NE(dir, nullptr);
+
+	ASSERT_EQ(pmemfile_getdents(pfp, dir, (struct linux_dirent *)buf,
+				    sizeof(buf)),
+		  -1);
+	EXPECT_EQ(errno, EBADF);
+
+	ASSERT_EQ(pmemfile_getdents64(pfp, dir, (struct linux_dirent64 *)buf,
+				      sizeof(buf)),
+		  -1);
+	EXPECT_EQ(errno, EBADF);
+
+	PMEMfile *file =
+		pmemfile_open(pfp, "/dir/file",
+			      PMEMFILE_O_RDWR /*ignored*/ | PMEMFILE_O_PATH);
+	ASSERT_NE(file, nullptr);
+
+	ASSERT_EQ(pmemfile_read(pfp, file, buf, 10), -1);
+	EXPECT_EQ(errno, EBADF);
+
+	ASSERT_EQ(pmemfile_pread(pfp, file, buf, 10, 0), -1);
+	EXPECT_EQ(errno, EBADF);
+
+	ASSERT_EQ(pmemfile_write(pfp, file, buf, 10), -1);
+	EXPECT_EQ(errno, EBADF);
+
+	ASSERT_EQ(pmemfile_pwrite(pfp, file, buf, 10, 0), -1);
+	EXPECT_EQ(errno, EBADF);
+
+	ASSERT_EQ(pmemfile_lseek(pfp, file, 1, PMEMFILE_SEEK_SET), -1);
+	EXPECT_EQ(errno, EBADF);
+
+	ASSERT_EQ(pmemfile_fchmodat(pfp, dir, "file",
+				    PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR, 0),
+		  0);
+
+	PMEMfile *file2 = pmemfile_openat(pfp, dir, "file", PMEMFILE_O_RDWR);
+	ASSERT_NE(file2, nullptr) << strerror(errno);
+
+	memset(buf, 0xff, 10);
+	ASSERT_EQ(pmemfile_write(pfp, file2, buf, 10), 10);
+	ASSERT_EQ(pmemfile_lseek(pfp, file2, 0, PMEMFILE_SEEK_SET), 0);
+	ASSERT_EQ(pmemfile_read(pfp, file2, &buf[100], 10), 10);
+	EXPECT_EQ(memcmp(&buf[0], &buf[100], 10), 0);
+
+	pmemfile_close(pfp, file2);
+
+	struct stat st;
+
+	memset(&st, 0xff, sizeof(st));
+	ASSERT_EQ(pmemfile_fstat(pfp, file, &st), 0);
+	EXPECT_EQ(st.st_size, 10);
+
+	memset(&st, 0xff, sizeof(st));
+	ASSERT_EQ(pmemfile_fstatat(pfp, dir, "file", &st, 0), 0);
+	EXPECT_EQ(st.st_size, 10);
+
+	memset(&st, 0xff, sizeof(st));
+	ASSERT_EQ(pmemfile_fstatat(pfp, file, "", &st, PMEMFILE_AT_EMPTY_PATH),
+		  0);
+	EXPECT_EQ(st.st_size, 10);
+
+	ASSERT_EQ(
+		pmemfile_linkat(pfp, dir, "file", PMEMFILE_AT_CWD, "file1", 0),
+		0);
+	ASSERT_EQ(pmemfile_linkat(pfp, file, "", PMEMFILE_AT_CWD, "file2",
+				  PMEMFILE_AT_EMPTY_PATH),
+		  0);
+
+	ASSERT_EQ(pmemfile_unlinkat(pfp, dir, "file", 0), -1);
+	EXPECT_EQ(errno, EACCES);
+
+	ASSERT_EQ(pmemfile_mkdirat(pfp, dir, "dir2", 0), -1);
+	EXPECT_EQ(errno, EACCES);
+
+	ASSERT_EQ(pmemfile_fchmod(pfp, file, PMEMFILE_S_IRWXU), -1);
+	EXPECT_EQ(errno, EBADF);
+
+	ASSERT_EQ(pmemfile_fchmodat(pfp, dir, "file", PMEMFILE_S_IRWXU, 0), 0);
+
+	ASSERT_EQ(pmemfile_fchown(pfp, file, 0, 0), -1);
+	EXPECT_EQ(errno, EBADF);
+
+	ASSERT_EQ(pmemfile_fchownat(pfp, dir, "file", 0, 0, 0), 0);
+
+	ASSERT_EQ(
+		pmemfile_fchownat(pfp, file, "", 0, 0, PMEMFILE_AT_EMPTY_PATH),
+		0);
+
+	ASSERT_EQ(pmemfile_faccessat(pfp, dir, "file", PMEMFILE_W_OK, 0), 0);
+
+	ASSERT_EQ(pmemfile_ftruncate(pfp, file, 0), -1);
+	EXPECT_EQ(errno, EBADF);
+
+	ASSERT_EQ(pmemfile_fallocate(pfp, file, 0, 0, 1), -1);
+	EXPECT_EQ(errno, EBADF);
+
+	ASSERT_EQ(pmemfile_symlinkat(pfp, "/file1", dir, "fileXXX"), -1);
+	EXPECT_EQ(errno, EACCES);
+
+	ssize_t r = pmemfile_readlinkat(pfp, dir, "symlink", buf, sizeof(buf));
+	EXPECT_GT(r, 0);
+	if (r > 0)
+		EXPECT_EQ((size_t)r, strlen("/dir/file"));
+
+	EXPECT_EQ(pmemfile_fcntl(pfp, dir, PMEMFILE_F_GETFL), PMEMFILE_O_PATH);
+	EXPECT_EQ(pmemfile_fcntl(pfp, file, PMEMFILE_F_GETFL), PMEMFILE_O_PATH);
+
+	EXPECT_EQ(pmemfile_fcntl(pfp, file, PMEMFILE_F_SETLK), -1);
+	EXPECT_EQ(errno, EBADF);
+
+	EXPECT_EQ(pmemfile_fcntl(pfp, file, PMEMFILE_F_UNLCK), -1);
+	EXPECT_EQ(errno, EBADF);
+
+	ASSERT_EQ(pmemfile_fchdir(pfp, dir), 0);
+	ASSERT_EQ(pmemfile_access(pfp, "file", PMEMFILE_R_OK), 0);
+
+	ASSERT_EQ(pmemfile_chdir(pfp, ".."), 0);
+
+	pmemfile_close(pfp, dir);
+	pmemfile_close(pfp, file);
+
+	ASSERT_EQ(pmemfile_chmod(pfp, "/dir", PMEMFILE_S_IRWXU), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/file"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/symlink"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file2"), 0);
+}
+
 int
 main(int argc, char *argv[])
 {

@@ -795,6 +795,11 @@ pmemfile_lseek64_locked(PMEMfilepool *pfp, PMEMfile *file, off64_t offset,
 
 	LOG(LDBG, "file %p offset %lu whence %d", file, offset, whence);
 
+	if (file->flags & PFILE_PATH) {
+		errno = EBADF;
+		return -1;
+	}
+
 	if (vinode_is_dir(file->vinode)) {
 		if (whence == PMEMFILE_SEEK_END) {
 			errno = EINVAL;

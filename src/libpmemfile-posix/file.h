@@ -47,6 +47,7 @@ struct ctree;
 #define PFILE_WRITE (1ULL << 1)
 #define PFILE_NOATIME (1ULL << 2)
 #define PFILE_APPEND (1ULL << 3)
+#define PFILE_PATH (1ULL << 4)
 
 /* File */
 struct pmemfile_file {

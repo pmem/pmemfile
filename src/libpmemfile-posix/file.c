@@ -1799,6 +1799,142 @@ end:
 	return 0;
 }
 
+/*
+ * fallocate_check_arguments - part of pmemfile_fallocate implementation
+ * Perform some checks that are independent of the file being operated on.
+ */
+static int
+fallocate_check_arguments(int mode, off_t offset, off_t length)
+{
+	/*
+	 * from man 2 fallocate:
+	 *
+	 * "EINVAL - offset was less than 0, or len was less
+	 * than or equal to 0."
+	 */
+	if (length <= 0 || offset < 0)
+		return EINVAL;
+
+	/*
+	 * from man 2 fallocate:
+	 *
+	 * "EFBIG - offset+len exceeds the maximum file size."
+	 */
+	if (offset + length > SSIZE_MAX || offset + length < offset)
+		return EFBIG;
+
+	/*
+	 * from man 2 fallocate:
+	 *
+	 * "EOPNOTSUPP -  The  filesystem containing the file referred to by
+	 * fd does not support this operation; or the mode is not supported by
+	 * the filesystem containing the file referred to by fd."
+	 *
+	 * As of now, pmemfile_fallocate supports allocating disk space, and
+	 * punching holes.
+	 */
+	if (mode & PMEMFILE_FL_COLLAPSE_RANGE) {
+		LOG(LSUP, "PMEMFILE_FL_COLLAPSE_RANGE is not supported");
+		return EOPNOTSUPP;
+	}
+
+	if (mode & PMEMFILE_FL_ZERO_RANGE) {
+		LOG(LSUP, "PMEMFILE_FL_ZERO_RANGE is not supported");
+		return EOPNOTSUPP;
+	}
+
+	if (mode & PMEMFILE_FL_INSERT_RANGE) {
+		LOG(LSUP, "PMEMFILE_FL_INSERT_RANGE is not supported");
+		return EOPNOTSUPP;
+	}
+
+	if (mode & PMEMFILE_FL_PUNCH_HOLE) {
+		/*
+		 * from man 2 fallocate:
+		 *
+		 * "The FALLOC_FL_PUNCH_HOLE flag must be ORed
+		 * with FALLOC_FL_KEEP_SIZE in mode; in other words,
+		 * even when punching off the end of the file, the file size
+		 * (as reported by stat(2)) does not change."
+		 */
+		if (mode != (PMEMFILE_FL_PUNCH_HOLE | PMEMFILE_FL_KEEP_SIZE))
+			return EINVAL;
+	} else { /* Allocating disk space */
+		/*
+		 * Note: According to 'man 2 fallocate' FALLOC_FL_UNSHARE
+		 * is another possible flag to accept here. No equivalent of
+		 * that flag is supported by pmemfile as of now. Also that man
+		 * page is wrong anyways, the header files only refer to
+		 * FALLOC_FL_UNSHARE_RANGE, so it is suspected that noone is
+		 * using it anyways.
+		 */
+		if ((mode & ~PMEMFILE_FL_KEEP_SIZE) != 0)
+			return EINVAL;
+	}
+
+	return 0;
+}
+
+/*
+ * file_fallocate - part of pmemfile_fallocate implementation
+ * Operates on a PMEMfile, and calls vinode_fallocate, which
+ * does the actual fallocate operation on the inode.
+ *
+ * This function expected the file to locked while being called,
+ * and makes sure the vinode is locked while calling vinode_fallocate.
+ */
+static int
+file_fallocate(PMEMfilepool *pfp, PMEMfile *file, int mode,
+		uint64_t offset, uint64_t length)
+{
+	int error;
+
+	/*
+	 * from man 2 fallocate:
+	 *
+	 * "EBADF  fd is not a valid file descriptor, or is not opened for
+	 * writing."
+	 */
+	if ((file->flags & PFILE_WRITE) == 0)
+		return EBADF;
+
+	os_rwlock_wrlock(&file->vinode->rwlock);
+
+	error = vinode_fallocate(pfp, file->vinode, mode, offset, length);
+
+	os_rwlock_unlock(&file->vinode->rwlock);
+
+	return error;
+}
+
+int
+pmemfile_fallocate(PMEMfilepool *pfp, PMEMfile *file, int mode,
+		off_t offset, off_t length)
+{
+	int error;
+
+	error = fallocate_check_arguments(mode, offset, length);
+
+	if (error == 0) {
+		ASSERT(offset >= 0);
+		ASSERT(length > 0);
+
+		os_mutex_lock(&file->mutex);
+
+		error = file_fallocate(pfp, file, mode,
+		    (uint64_t)offset, (uint64_t)length);
+
+		os_mutex_unlock(&file->mutex);
+	}
+
+	if (error != 0) {
+		errno = error;
+		return -1;
+	}
+
+	return 0;
+}
+
 static int
 vinode_chown(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 		struct pmemfile_vinode *vinode, uid_t owner, gid_t group)

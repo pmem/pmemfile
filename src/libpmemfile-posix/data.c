@@ -46,6 +46,28 @@
 #include "valgrind_internal.h"
 #include "ctree.h"
 
+static void
+expand_to_full_pages(uint64_t *offset, uint64_t *length)
+{
+	/* align the offset */
+	*length += *offset % FILE_PAGE_SIZE;
+	*offset -= *offset % FILE_PAGE_SIZE;
+
+	/* align the length */
+	*length = page_roundup(*length);
+}
+
+static void
+narrow_to_full_pages(uint64_t *offset, uint64_t *length)
+{
+	uint64_t end = page_rounddown(*offset + *length);
+	*offset = page_roundup(*offset);
+	if (end > *offset)
+		*length = end - *offset;
+	else
+		*length = 0;
+}
+
 /*
  * block_cache_insert_block -- inserts block into the tree
  */
@@ -266,12 +288,7 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	if (over)
 		size = overallocate_size(size);
 
-	/* align the offset */
-	size += offset % FILE_PAGE_SIZE;
-	offset -= offset % FILE_PAGE_SIZE;
-
-	/* align the size */
-	size = page_roundup(size);
+	expand_to_full_pages(&offset, &size);
 
 	struct pmemfile_block *block = find_block(vinode, offset);
 
@@ -1125,6 +1142,49 @@ vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		file_get_time(&tm);
 		TX_SET_DIRECT(inode, mtime, tm);
 	}
+}
+
+int
+vinode_fallocate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, int mode,
+		uint64_t offset, uint64_t length)
+{
+	int error = 0;
+
+	if (!vinode_is_regular_file(vinode))
+		return EBADF;
+
+	if (mode & PMEMFILE_FL_PUNCH_HOLE)
+		narrow_to_full_pages(&offset, &length);
+	else
+		expand_to_full_pages(&offset, &length);
+
+	if (length == 0)
+		return 0;
+
+	vinode_snapshot(vinode);
+
+	if (vinode->blocks == NULL)
+		vinode_rebuild_block_tree(vinode);
+
+	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
+		if (mode & PMEMFILE_FL_PUNCH_HOLE) {
+			ASSERT(mode & PMEMFILE_FL_KEEP_SIZE);
+			vinode_remove_interval(vinode, offset, length);
+		} else {
+			vinode_allocate_interval(pfp, vinode, offset, length);
+			if ((mode & PMEMFILE_FL_KEEP_SIZE) == 0) {
+				if (vinode->inode->size < offset + length) {
+					TX_ADD_DIRECT(&vinode->inode->size);
+					vinode->inode->size = offset + length;
+				}
+			}
+		}
+	} TX_ONABORT {
+		error = errno;
+		vinode_restore_on_abort(vinode);
+	} TX_END
+
+	return error;
 }
 
 void

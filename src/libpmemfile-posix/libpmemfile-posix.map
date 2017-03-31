@@ -48,6 +48,7 @@
 		pmemfile_errormsg;
 		pmemfile_euidaccess;
 		pmemfile_faccessat;
+		pmemfile_fallocate;
 		pmemfile_fchdir;
 		pmemfile_fchmod;
 		pmemfile_fchmodat;

@@ -1935,6 +1935,13 @@ pmemfile_fallocate(PMEMfilepool *pfp, PMEMfile *file, int mode,
 	return 0;
 }
 
+int
+pmemfile_posix_fallocate(PMEMfilepool *pfp, PMEMfile *file,
+			off_t offset, off_t length)
+{
+	return pmemfile_fallocate(pfp, file, 0, offset, length);
+}
+
 static int
 vinode_chown(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 		struct pmemfile_vinode *vinode, uid_t owner, gid_t group)

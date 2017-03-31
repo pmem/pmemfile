@@ -86,6 +86,7 @@
 		pmemfile_openat;
 		pmemfile_pool_close;
 		pmemfile_pool_open;
+		pmemfile_posix_fallocate;
 		pmemfile_pread;
 		pmemfile_preadv;
 		pmemfile_pwrite;

@@ -34,6 +34,7 @@
  * basic.c - a dummy prog using pmemfile, checking each return value
  */
 
+#define _GNU_SOURCE
 #include <err.h>
 #include <errno.h>
 #include <stdio.h>
@@ -86,6 +87,9 @@ main(int argc, char **argv)
 
 	if (write(fd, buf0, sizeof(buf0)) != sizeof(buf0))
 		err(1, "write into \"%s\" ", full_path);
+
+	if (fallocate(fd, FALLOC_FL_KEEP_SIZE, 1, 0x1111) != 0)
+		err(1, "fallocate \"%s\" ", full_path);
 
 	if (close(fd) != 0)
 		err(1, "close \"%s\"", full_path);

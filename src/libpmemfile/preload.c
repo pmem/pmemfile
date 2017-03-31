@@ -638,6 +638,7 @@ static long hook_fchmodat(struct fd_desc at, const char *path,
 static long hook_fchown(long fd, uid_t owner, gid_t group);
 static long hook_fchownat(struct fd_desc at, const char *path,
 				uid_t owner, gid_t group, int flags);
+static long hook_fallocate(long fd, int mode, off_t offset, off_t len);
 static long hook_fcntl(long fd, int cmd, long arg);
 
 static long hook_sendfile(long out_fd, long in_fd, off_t *offset, size_t count);
@@ -854,6 +855,10 @@ dispatch_syscall(long syscall_number,
 		return hook_fchownat(fetch_fd(arg0), (const char *)arg1,
 					(uid_t)arg2, (gid_t)arg3, (int)arg4);
 
+	if (syscall_number == SYS_fallocate)
+		return hook_fallocate(arg0, (int)arg1,
+					(off_t)arg2, (off_t)arg3);
+
 	if (syscall_number == SYS_fadvise64)
 		return 0;
 
@@ -865,7 +870,6 @@ dispatch_syscall(long syscall_number,
 	    syscall_number == SYS_dup3 ||
 	    syscall_number == SYS_flistxattr ||
 	    syscall_number == SYS_fremovexattr ||
-	    syscall_number == SYS_fallocate ||
 	    syscall_number == SYS_preadv2 ||
 	    syscall_number == SYS_pwritev2 ||
 	    syscall_number == SYS_readahead)
@@ -1980,4 +1984,22 @@ hook_copy_file_range(long fd_in, loff_t *off_in, long fd_out,
 
 	return syscall_no_intercept(SYS_copy_file_range,
 	    fd_in, off_in, fd_out, off_out, len, flags);
+}
+
+static long
+hook_fallocate(long fd, int mode, off_t offset, off_t len)
+{
+	struct fd_association *file = fd_table + fd;
+	int r = pmemfile_fallocate(file->pool->pool, file->file, mode,
+					offset, len);
+
+	if (r < 0)
+		r = -errno;
+
+	log_write(
+	    "pmemfile_fallocate(%p, %p, %d, %" PRId64 ", %" PRId64 ") = %d",
+	    (void *)file->pool->pool, (void *)file->file, mode,
+	    (int64_t)offset, (int64_t)len, r);
+
+	return check_errno(r);
 }

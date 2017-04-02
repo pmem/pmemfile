@@ -45,11 +45,24 @@ function(generate_manpage name)
 	add_dependencies(manpages manpage-${name})
 endfunction()
 
+add_custom_target(man2txts)
+
+function(generate_man2txt name)
+	add_custom_target(man2txt-${name}
+			COMMAND "/usr/bin/man" 
+			${CMAKE_CURRENT_SOURCE_DIR}/generated/${name} > ${CMAKE_CURRENT_SOURCE_DIR}/generated/${name}.txt)
+	add_dependencies(man2txts man2txt-${name})
+endfunction()
+
 generate_manpage(libpmemfile-posix.3)
+generate_man2txt(libpmemfile-posix.3)
 if(BUILD_LIBPMEMFILE)
 generate_manpage(libpmemfile.1)
+generate_man2txt(libpmemfile.1)
 endif()
 generate_manpage(mkfs.pmemfile.1)
+generate_man2txt(mkfs.pmemfile.1)
+
 
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/generated/libpmemfile-posix.3
 	DESTINATION ${CMAKE_INSTALL_MANDIR}/man3

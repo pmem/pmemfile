@@ -133,9 +133,8 @@ check_flags(int flags)
 	}
 
 	if (flags & PMEMFILE_O_PATH) {
-		LOG(LSUP, "O_PATH is not supported (yet)");
-		errno = EINVAL;
-		return -1;
+		LOG(LTRC, "O_PATH");
+		flags &= ~PMEMFILE_O_PATH;
 	}
 
 	if (flags & PMEMFILE_O_SYNC) {
@@ -201,21 +200,23 @@ static void
 open_file(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 		struct pmemfile_vinode *vinode, int flags)
 {
-	int acc = flags & PMEMFILE_O_ACCMODE;
+	if (!(flags & PMEMFILE_O_PATH)) {
+		int acc = flags & PMEMFILE_O_ACCMODE;
 
-	if (acc == PMEMFILE_O_ACCMODE)
-		pmemfile_tx_abort(EINVAL);
+		if (acc == PMEMFILE_O_ACCMODE)
+			pmemfile_tx_abort(EINVAL);
 
-	int acc2;
-	if (acc == PMEMFILE_O_RDWR)
-		acc2 = PFILE_WANT_READ | PFILE_WANT_WRITE;
-	else if (acc == PMEMFILE_O_RDONLY)
-		acc2 = PFILE_WANT_READ;
-	else
-		acc2 = PFILE_WANT_WRITE;
+		int acc2;
+		if (acc == PMEMFILE_O_RDWR)
+			acc2 = PFILE_WANT_READ | PFILE_WANT_WRITE;
+		else if (acc == PMEMFILE_O_RDONLY)
+			acc2 = PFILE_WANT_READ;
+		else
+			acc2 = PFILE_WANT_WRITE;
 
-	if (!vinode_can_access(cred, vinode, acc2))
-		pmemfile_tx_abort(EACCES);
+		if (!vinode_can_access(cred, vinode, acc2))
+			pmemfile_tx_abort(EACCES);
+	}
 
 	if ((flags & PMEMFILE_O_DIRECTORY) && !vinode_is_dir(vinode))
 		pmemfile_tx_abort(ENOTDIR);
@@ -249,6 +250,11 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	LOG(LDBG, "pathname %s flags 0x%x", pathname, flags);
 
 	const char *orig_pathname = pathname;
+
+	if (flags & PMEMFILE_O_PATH) {
+		flags &= PMEMFILE_O_PATH | PMEMFILE_O_NOFOLLOW |
+				PMEMFILE_O_CLOEXEC;
+	}
 
 	if (check_flags(flags))
 		return NULL;
@@ -385,7 +391,9 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 		file->vinode = vinode;
 
-		if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_RDONLY)
+		if (flags & PMEMFILE_O_PATH)
+			file->flags = PFILE_PATH;
+		else if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_RDONLY)
 			file->flags = PFILE_READ;
 		else if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_WRONLY)
 			file->flags = PFILE_WRITE;
@@ -1284,9 +1292,17 @@ pmemfile_fcntl(PMEMfilepool *pfp, PMEMfile *file, int cmd, ...)
 	switch (cmd) {
 		case PMEMFILE_F_SETLK:
 		case PMEMFILE_F_UNLCK:
+			if (file->flags & PFILE_PATH) {
+				errno = EBADF;
+				return -1;
+			}
+
 			// XXX
 			return 0;
 		case PMEMFILE_F_GETFL:
+			if (file->flags & PFILE_PATH)
+				return PMEMFILE_O_PATH;
+
 			ret |= PMEMFILE_O_LARGEFILE;
 			if (file->flags & PFILE_APPEND)
 				ret |= PMEMFILE_O_APPEND;
@@ -1458,6 +1474,11 @@ int
 pmemfile_fchmod(PMEMfilepool *pfp, PMEMfile *file, mode_t mode)
 {
 	if (!file) {
+		errno = EBADF;
+		return -1;
+	}
+
+	if (file->flags & PFILE_PATH) {
 		errno = EBADF;
 		return -1;
 	}
@@ -2090,6 +2111,11 @@ int
 pmemfile_fchown(PMEMfilepool *pfp, PMEMfile *file, uid_t owner, gid_t group)
 {
 	if (!file) {
+		errno = EBADF;
+		return -1;
+	}
+
+	if (file->flags & PFILE_PATH) {
 		errno = EBADF;
 		return -1;
 	}

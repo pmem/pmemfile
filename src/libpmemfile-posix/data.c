@@ -785,6 +785,99 @@ pmemfile_read(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count)
 }
 
 /*
+ * lseek64_seek_data -- part of the lseek implementation
+ * Looks for data (not a hole), starting at the specified offset.
+ */
+static off64_t
+lseek64_seek_data(struct pmemfile_vinode *vinode, off64_t offset, off64_t fsize)
+{
+	if (vinode->blocks == NULL)
+		vinode_rebuild_block_tree(vinode);
+
+	struct pmemfile_block *block = find_block(vinode, (uint64_t)offset);
+	if (block == NULL) {
+		/* offset is before the first block */
+		if (vinode->first_block == NULL)
+			return fsize; /* No data in the whole file */
+		else
+			return (off64_t)vinode->first_block->offset;
+	}
+
+	if (is_offset_in_block(block, (uint64_t)offset))
+		return offset;
+
+	block = D_RW(block->next);
+
+	if (block == NULL)
+		return fsize; /* No more data in file */
+
+	return (off64_t)block->offset;
+}
+
+/*
+ * lseek64_seek_hole -- part of the lseek implementation
+ * Looks for a hole, starting at the specified offset.
+ */
+static off64_t
+lseek64_seek_hole(struct pmemfile_vinode *vinode, off64_t offset, off64_t fsize)
+{
+	if (vinode->blocks == NULL)
+		vinode_rebuild_block_tree(vinode);
+
+	struct pmemfile_block *block = find_block(vinode, (uint64_t)offset);
+
+	while (block != NULL && offset < fsize) {
+		off64_t block_end = (off64_t)block->offset + block->size;
+
+		struct pmemfile_block *next = D_RW(block->next);
+
+		if (block_end >= offset)
+			offset = block_end; /* seek to the end of block */
+
+		if (next == NULL)
+			break; /* the rest of the file is treated as a hole */
+		else if (offset < (off64_t)next->offset)
+			break; /* offset is in a hole between two blocks */
+
+		block = next;
+	}
+
+	return offset;
+}
+
+/*
+ * lseek64_seek_data_or_hole -- part of the lseek implementation
+ * Expects the vinode to be locked while being called.
+ */
+static off64_t
+lseek64_seek_data_or_hole(struct pmemfile_vinode *vinode, off64_t offset,
+			int whence)
+{
+	ssize_t fsize = (off64_t)vinode->inode->size;
+
+	if (!vinode_is_regular_file(vinode))
+		return -EBADF; /* XXX directories are not supported here yet */
+
+	if (offset > fsize)
+		return -ENXIO;
+
+	if (offset < 0) /* this seems to be allowed by POSIX and Linux */
+		offset = 0;
+
+	if (whence == PMEMFILE_SEEK_DATA) {
+		offset = lseek64_seek_data(vinode, offset, fsize);
+	} else {
+		ASSERT(whence == PMEMFILE_SEEK_HOLE);
+		offset = lseek64_seek_hole(vinode, offset, fsize);
+	}
+
+	if (offset > fsize)
+		offset = fsize;
+
+	return offset;
+}
+
+/*
  * pmemfile_lseek64 -- changes file current offset
  */
 static off64_t
@@ -830,24 +923,12 @@ pmemfile_lseek64_locked(PMEMfilepool *pfp, PMEMfile *file, off64_t offset,
 			os_rwlock_unlock(&vinode->rwlock);
 			break;
 		case PMEMFILE_SEEK_DATA:
-			os_rwlock_rdlock(&vinode->rwlock);
-			if (offset < 0) {
-				ret = 0;
-			} else if ((uint64_t)offset > inode->size) {
-				ret = -1;
-				new_errno = ENXIO;
-			} else {
-				ret = offset;
-			}
-			os_rwlock_unlock(&vinode->rwlock);
-			break;
 		case PMEMFILE_SEEK_HOLE:
 			os_rwlock_rdlock(&vinode->rwlock);
-			if ((uint64_t)offset > inode->size) {
+			ret = lseek64_seek_data_or_hole(vinode, offset, whence);
+			if (ret < 0) {
+				new_errno = (int)-ret;
 				ret = -1;
-				new_errno = ENXIO;
-			} else {
-				ret = (off64_t)inode->size;
 			}
 			os_rwlock_unlock(&vinode->rwlock);
 			break;

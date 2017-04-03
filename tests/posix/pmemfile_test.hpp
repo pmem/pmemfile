@@ -82,7 +82,7 @@ public:
 
 bool test_pmemfile_stats_match(PMEMfilepool *pfp, unsigned inodes,
 			       unsigned dirs, unsigned block_arrays,
-			       unsigned inode_arrays, unsigned blocks);
+			       unsigned blocks);
 ssize_t test_pmemfile_file_size(PMEMfilepool *pfp, PMEMfile *file);
 ssize_t test_pmemfile_path_size(PMEMfilepool *pfp, const char *path);
 
@@ -169,7 +169,7 @@ public:
 
 		assert(test_empty_dir(pfp, "/"));
 
-		assert(test_pmemfile_stats_match(pfp, 1, 0, 0, 0, 0));
+		assert(test_pmemfile_stats_match(pfp, 1, 0, 0, 0));
 	}
 
 	void

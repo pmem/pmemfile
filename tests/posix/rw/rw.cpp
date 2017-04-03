@@ -73,7 +73,7 @@ TEST_F(rw, 1)
 						    {0100644, 1, 0, "file1"},
 					    }));
 
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 0));
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0));
 
 	const char *data = "Marcin S";
 	char data2[4096];
@@ -92,7 +92,7 @@ TEST_F(rw, 1)
 						    {0100644, 1, 9, "file1"},
 					    }));
 
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 1));
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 1));
 
 	/* try to read write-only file */
 	ssize_t r = pmemfile_read(pfp, f, data2, len);
@@ -121,7 +121,7 @@ TEST_F(rw, 1)
 	ASSERT_EQ(r, 0);
 	pmemfile_close(pfp, f);
 
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 1));
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 1));
 
 	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
@@ -176,7 +176,7 @@ TEST_F(rw, 1)
 						    {0100644, 1, 9, "file1"},
 					    }));
 
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 1));
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 1));
 
 	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDWR);
 	ASSERT_NE(f, nullptr) << strerror(errno);
@@ -232,7 +232,7 @@ TEST_F(rw, 1)
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_CUR), 9 + 100 + 4);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_SET), 0);
 
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 1));
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 1));
 
 	/* validate the whole file contents */
 	memset(data2, 0xff, sizeof(data2));
@@ -260,7 +260,7 @@ TEST_F(rw, 1)
 	pmemfile_close(pfp, f);
 
 	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? 2 : 1));
+		pfp, 2, 0, 0, (env_block_size == 4096) ? 2 : 1));
 
 	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
@@ -279,11 +279,11 @@ TEST_F(rw, 1)
 					    }));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? 2 : 1));
+		pfp, 2, 0, 0, (env_block_size == 4096) ? 2 : 1));
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
 
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 0, 0, 1, 0));
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 0, 0, 0));
 
 	f = pmemfile_open(pfp, "/file1",
 			  PMEMFILE_O_CREAT | PMEMFILE_O_EXCL | PMEMFILE_O_RDWR,
@@ -315,7 +315,7 @@ TEST_F(rw, 1)
 					    }));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 2, 0, 0, 1, (env_block_size == 4096) ? 2 : 1));
+		pfp, 2, 0, 0, (env_block_size == 4096) ? 2 : 1));
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
 }
@@ -353,10 +353,9 @@ TEST_F(rw, 2)
 				      }));
 
 	if (env_block_size == 4096)
-		EXPECT_TRUE(
-			test_pmemfile_stats_match(pfp, 2, 0, 0x32c, 0, 51200));
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0x32c, 51200));
 	else
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 10, 0, 633));
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 10, 633));
 
 	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
@@ -414,7 +413,7 @@ TEST_F(rw, trunc)
 				      }));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 3, 0, 0, 0, (env_block_size == 4096) ? 14 : 4));
+		pfp, 3, 0, 0, (env_block_size == 4096) ? 14 : 4));
 
 	f1 = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDWR | PMEMFILE_O_TRUNC,
 			   0);
@@ -440,7 +439,7 @@ TEST_F(rw, trunc)
 						    {0100644, 1, 128, "file2"},
 					    }));
 
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 0, 1));
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 1));
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file2"), 0);
@@ -466,13 +465,13 @@ TEST_F(rw, ftruncate)
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 10240);
 
 	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? 3 : 1));
+		pfp, 2, 0, 0, (env_block_size == 4096) ? 3 : 1));
 
 	r = pmemfile_ftruncate(pfp, f, 0);
 	ASSERT_EQ(r, 0) << COND_ERROR(r);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 0);
 
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 0));
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0));
 
 	static const ssize_t large = 0x100000;
 
@@ -481,7 +480,7 @@ TEST_F(rw, ftruncate)
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), (large / 32));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? 8 : 1));
+		pfp, 2, 0, 0, (env_block_size == 4096) ? 8 : 1));
 
 	r = pmemfile_ftruncate(pfp, f, large + 4);
 	ASSERT_EQ(r, 0) << COND_ERROR(r);
@@ -510,9 +509,9 @@ TEST_F(rw, ftruncate)
 	ASSERT_EQ(memcmp(buf + l1, bufFF, sizeof(buf) - l1), 0);
 
 	if (env_block_size == 4096)
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 4, 0, 257));
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 4, 257));
 	else
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 2));
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 2));
 
 	static constexpr char data2[] = "\0\0\0te";
 	static constexpr ssize_t l2 = sizeof(data2) - 1;
@@ -529,9 +528,9 @@ TEST_F(rw, ftruncate)
 	ASSERT_EQ(memcmp(buf + l2, bufFF, sizeof(buf) - l2), 0);
 
 	if (env_block_size == 4096)
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 4, 0, 257));
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 4, 257));
 	else
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 2));
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 2));
 
 	static constexpr char data3[] = "\0\0\0te\0\0\0\0\0\0";
 	static constexpr ssize_t l3 = sizeof(data3) - 1;
@@ -548,15 +547,15 @@ TEST_F(rw, ftruncate)
 	ASSERT_EQ(memcmp(buf + l3, bufFF, sizeof(buf) - l3), 0);
 
 	if (env_block_size == 4096)
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 4, 0, 257));
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 4, 257));
 	else
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 2));
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 2));
 
 	r = pmemfile_ftruncate(pfp, f, 0x100);
 	ASSERT_EQ(r, 0) << COND_ERROR(r);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 0x100);
 
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 1));
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 1));
 
 	pmemfile_close(pfp, f);
 
@@ -584,13 +583,13 @@ TEST_F(rw, truncate)
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 10240);
 
 	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? 3 : 1));
+		pfp, 2, 0, 0, (env_block_size == 4096) ? 3 : 1));
 
 	r = pmemfile_truncate(pfp, "/file1", 0);
 	ASSERT_EQ(r, 0) << COND_ERROR(r);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 0);
 
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 0));
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0));
 
 	static const ssize_t large = 0x100000;
 
@@ -599,7 +598,7 @@ TEST_F(rw, truncate)
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), (large / 32));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? 8 : 1));
+		pfp, 2, 0, 0, (env_block_size == 4096) ? 8 : 1));
 
 	r = pmemfile_truncate(pfp, "/file1", large + 4);
 	ASSERT_EQ(r, 0) << COND_ERROR(r);
@@ -628,9 +627,9 @@ TEST_F(rw, truncate)
 	ASSERT_EQ(memcmp(buf + l1, bufFF, sizeof(buf) - l1), 0);
 
 	if (env_block_size == 4096)
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 4, 0, 257));
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 4, 257));
 	else
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 2));
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 2));
 
 	static constexpr char data2[] = "\0\0\0te";
 	static constexpr ssize_t l2 = sizeof(data2) - 1;
@@ -647,9 +646,9 @@ TEST_F(rw, truncate)
 	ASSERT_EQ(memcmp(buf + l2, bufFF, sizeof(buf) - l2), 0);
 
 	if (env_block_size == 4096)
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 4, 0, 257));
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 4, 257));
 	else
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 2));
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 2));
 
 	static constexpr char data3[] = "\0\0\0te\0\0\0\0\0\0";
 	static constexpr ssize_t l3 = sizeof(data3) - 1;
@@ -666,15 +665,15 @@ TEST_F(rw, truncate)
 	ASSERT_EQ(memcmp(buf + l3, bufFF, sizeof(buf) - l3), 0);
 
 	if (env_block_size == 4096)
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 4, 0, 257));
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 4, 257));
 	else
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 2));
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 2));
 
 	r = pmemfile_truncate(pfp, "/file1", 0x100);
 	ASSERT_EQ(r, 0) << COND_ERROR(r);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 0x100);
 
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 1));
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 1));
 
 	pmemfile_close(pfp, f);
 
@@ -696,7 +695,7 @@ TEST_F(rw, fallocate)
 			  PMEMFILE_S_IRWXU);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 0));
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0));
 
 	/* Allocate a range, file size is expected to remain zero */
 	r = pmemfile_fallocate(pfp, f, PMEMFILE_FL_KEEP_SIZE, 0x1000, 0x10000);
@@ -711,7 +710,7 @@ TEST_F(rw, fallocate)
 		ASSERT_EQ(stat_block_count(f), (0x10000 / 512));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? 16 : 1));
+		pfp, 2, 0, 0, (env_block_size == 4096) ? 16 : 1));
 
 	/*
 	 * Allocate the same range, file size is expected to change,
@@ -724,7 +723,7 @@ TEST_F(rw, fallocate)
 	if (env_block_size == 0x1000)
 		ASSERT_EQ(stat_block_count(f), (0x10000 / 512));
 	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? 16 : 1));
+		pfp, 2, 0, 0, (env_block_size == 4096) ? 16 : 1));
 
 	/*
 	 * Now remove an interval, that overlaps with the previously
@@ -747,7 +746,7 @@ TEST_F(rw, fallocate)
 	if (env_block_size == 0x1000)
 		ASSERT_EQ(stat_block_count(f), (0xd000 / 512));
 	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? 13 : 1));
+		pfp, 2, 0, 0, (env_block_size == 4096) ? 13 : 1));
 
 	/*
 	 * Writing some bytes -- this should allocate two new blocks when
@@ -762,7 +761,7 @@ TEST_F(rw, fallocate)
 	if (env_block_size == 0x1000)
 		ASSERT_EQ(stat_block_count(f), (0xf000 / 512));
 	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? 13 + 2 : 1));
+		pfp, 2, 0, 0, (env_block_size == 4096) ? 13 + 2 : 1));
 
 	/*
 	 * Try to read the test data, there should be zeroes around it.
@@ -790,7 +789,7 @@ TEST_F(rw, fallocate)
 	if (env_block_size == 0x1000)
 		ASSERT_EQ(stat_block_count(f), (0xe000 / 512));
 	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? 13 + 1 : 1));
+		pfp, 2, 0, 0, (env_block_size == 4096) ? 13 + 1 : 1));
 
 	/*
 	 * Try to read the test data, there should be only the first two
@@ -819,7 +818,7 @@ TEST_F(rw, fallocate)
 	if (env_block_size == 0x1000)
 		ASSERT_EQ(stat_block_count(f), (0x12000 / 512));
 	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? 14 + 4 : 1 + 1));
+		pfp, 2, 0, 0, (env_block_size == 4096) ? 14 + 4 : 1 + 1));
 
 	/*
 	 * So, the file size should remain as it was.
@@ -833,7 +832,7 @@ TEST_F(rw, fallocate)
 	if (env_block_size == 0x1000)
 		ASSERT_EQ(stat_block_count(f), (0xe000 / 512));
 	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? 14 : 1));
+		pfp, 2, 0, 0, (env_block_size == 4096) ? 14 : 1));
 
 	/*
 	 * Allocate the same new blocks beyond current file size again.
@@ -849,7 +848,7 @@ TEST_F(rw, fallocate)
 	if (env_block_size == 0x1000)
 		ASSERT_EQ(stat_block_count(f), (bc_4k * 0x1000 / 512));
 	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? bc_4k : bc));
+		pfp, 2, 0, 0, (env_block_size == 4096) ? bc_4k : bc));
 
 	/*
 	 * There should be a hole somewhere between offsets 0x10000 and 0x80000.
@@ -864,7 +863,7 @@ TEST_F(rw, fallocate)
 	if (env_block_size == 0x1000)
 		ASSERT_EQ(stat_block_count(f), (bc_4k * 0x1000 / 512));
 	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 2, 0, 0, 0, (env_block_size == 4096) ? bc_4k : bc));
+		pfp, 2, 0, 0, (env_block_size == 4096) ? bc_4k : bc));
 
 	/*
 	 * How about allocating a lot of single byte intervals?
@@ -878,8 +877,8 @@ TEST_F(rw, fallocate)
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), size);
 	if (env_block_size == 0x1000) {
 		ASSERT_EQ(stat_block_count(f), (size / 512));
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 2, 0,
-						      size / 0x1000));
+		EXPECT_TRUE(
+			test_pmemfile_stats_match(pfp, 2, 0, 2, size / 0x1000));
 	}
 
 	/*
@@ -901,7 +900,7 @@ TEST_F(rw, fallocate)
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), size);
 	if (env_block_size == 0x1000)
 		ASSERT_EQ(stat_block_count(f), (0x1000 / 512));
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 1));
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 1));
 
 	/*
 	 * Remove that one block left.
@@ -912,7 +911,7 @@ TEST_F(rw, fallocate)
 	ASSERT_EQ(r, 0) << strerror(errno);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), size);
 	ASSERT_EQ(stat_block_count(f), 0);
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 0));
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0));
 
 	/*
 	 * Punching a hole in a file with no blocks should no
@@ -924,16 +923,16 @@ TEST_F(rw, fallocate)
 	ASSERT_EQ(r, 0) << strerror(errno);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), size);
 	ASSERT_EQ(stat_block_count(f), 0);
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 0));
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0));
 
 	r = pmemfile_posix_fallocate(pfp, f, size - 1, 2);
 	ASSERT_EQ(r, 0) << strerror(errno);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), size + 1);
 	if (env_block_size == 0x1000) {
 		ASSERT_EQ(stat_block_count(f), (0x2000 / 512));
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 2));
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 2));
 	} else {
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0, 1));
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 1));
 	}
 
 	pmemfile_close(pfp, f);

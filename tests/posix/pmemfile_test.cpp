@@ -45,8 +45,7 @@ std::string global_path;
 
 bool
 test_pmemfile_stats_match(PMEMfilepool *pfp, unsigned inodes, unsigned dirs,
-			  unsigned block_arrays, unsigned inode_arrays,
-			  unsigned blocks)
+			  unsigned block_arrays, unsigned blocks)
 {
 	struct pmemfile_stats stats;
 	pmemfile_stats(pfp, &stats);
@@ -54,12 +53,12 @@ test_pmemfile_stats_match(PMEMfilepool *pfp, unsigned inodes, unsigned dirs,
 	EXPECT_EQ(stats.inodes, inodes);
 	EXPECT_EQ(stats.dirs, dirs);
 	EXPECT_EQ(stats.block_arrays, block_arrays);
-	EXPECT_EQ(stats.inode_arrays, inode_arrays);
+	EXPECT_EQ(stats.inode_arrays, (unsigned)1);
 	EXPECT_EQ(stats.blocks, blocks);
 
 	return stats.inodes == inodes && stats.dirs == dirs &&
-		stats.block_arrays == block_arrays &&
-		stats.inode_arrays == inode_arrays && stats.blocks == blocks;
+		stats.block_arrays == block_arrays && stats.inode_arrays == 1 &&
+		stats.blocks == blocks;
 }
 
 bool

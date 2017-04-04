@@ -68,17 +68,24 @@ struct pmemfile_cred {
 
 /* Pool */
 struct pmemfilepool {
+	/* pmemobj pool pointer */
 	PMEMobjpool *pop;
+
+	/* root directory */
 	struct pmemfile_vinode *root;
 
+	/* current working directory */
 	struct pmemfile_vinode *cwd;
 	os_rwlock_t cwd_rwlock;
 
+	/* superblock */
 	struct pmemfile_super *super;
 	os_rwlock_t rwlock;
 
+	/* map between inodes and vinodes */
 	struct pmemfile_inode_map *inode_map;
 
+	/* current credentials */
 	struct pmemfile_cred cred;
 	os_rwlock_t cred_rwlock;
 };

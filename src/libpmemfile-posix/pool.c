@@ -31,7 +31,7 @@
  */
 
 /*
- * pool.c -- pool file operations
+ * pool.c -- pool file/global operations
  */
 
 #include <errno.h>
@@ -49,7 +49,7 @@
 #include "util.h"
 
 /*
- * initialize_super_block -- (internal) initializes super block
+ * initialize_super_block -- initializes super block
  */
 static int
 initialize_super_block(PMEMfilepool *pfp)
@@ -118,7 +118,7 @@ inode_map_alloc_fail:
 }
 
 /*
- * cleanup_orphanded_inodes_single -- (internal) cleans up one batch of inodes
+ * cleanup_orphanded_inodes_single -- cleans up one batch of inodes
  */
 static void
 cleanup_orphanded_inodes_single(PMEMfilepool *pfp,
@@ -145,7 +145,7 @@ cleanup_orphanded_inodes_single(PMEMfilepool *pfp,
 }
 
 /*
- * cleanup_orphanded_inodes -- (internal) removes inodes (and frees if there are
+ * cleanup_orphanded_inodes -- removes inodes (and frees if there are
  * no dirents referencing it) from specified list
  */
 static void
@@ -304,6 +304,9 @@ pmemfile_pool_close(PMEMfilepool *pfp)
 	free(pfp);
 }
 
+/*
+ * gid_in_list -- return true when gid is in supplementary groups list
+ */
 bool
 gid_in_list(const struct pmemfile_cred *cred, gid_t gid)
 {
@@ -315,6 +318,10 @@ gid_in_list(const struct pmemfile_cred *cred, gid_t gid)
 	return false;
 }
 
+/*
+ * can_access -- answers question: "can I access this inode with these
+ * credentials to do specified action?"
+ */
 bool
 can_access(const struct pmemfile_cred *cred, struct inode_perms perms, int acc)
 {
@@ -363,6 +370,10 @@ can_access(const struct pmemfile_cred *cred, struct inode_perms perms, int acc)
 	return ((perm & req) == req);
 }
 
+/*
+ * vinode_can_access -- wrapper around "can_access" that deals with locked
+ * vinode
+ */
 bool
 _vinode_can_access(const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *vinode, int acc)
@@ -372,6 +383,10 @@ _vinode_can_access(const struct pmemfile_cred *cred,
 	return can_access(cred, inode_perms, acc);
 }
 
+/*
+ * vinode_can_access -- wrapper around "can_access" that deals with unlocked
+ * vinode
+ */
 bool
 vinode_can_access(const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *vinode, int acc)
@@ -381,6 +396,9 @@ vinode_can_access(const struct pmemfile_cred *cred,
 	return can_access(cred, inode_perms, acc);
 }
 
+/*
+ * copy_cred -- copies credentials
+ */
 static int
 copy_cred(struct pmemfile_cred *dst_cred, struct pmemfile_cred *src_cred)
 {
@@ -409,6 +427,9 @@ copy_cred(struct pmemfile_cred *dst_cred, struct pmemfile_cred *src_cred)
 	return 0;
 }
 
+/*
+ * get_cred -- gets current credentials in a safe way
+ */
 int
 get_cred(PMEMfilepool *pfp, struct pmemfile_cred *cred)
 {
@@ -419,6 +440,9 @@ get_cred(PMEMfilepool *pfp, struct pmemfile_cred *cred)
 	return ret;
 }
 
+/*
+ * put_cred -- frees credentials obtained with "get_cred"
+ */
 void
 put_cred(struct pmemfile_cred *cred)
 {
@@ -426,6 +450,9 @@ put_cred(struct pmemfile_cred *cred)
 	memset(cred, 0, sizeof(*cred));
 }
 
+/*
+ * pmemfile_setcap -- sets current user capability
+ */
 int
 pmemfile_setcap(PMEMfilepool *pfp, int cap)
 {
@@ -445,6 +472,9 @@ pmemfile_setcap(PMEMfilepool *pfp, int cap)
 	return ret;
 }
 
+/*
+ * pmemfile_clrcap -- clears current user capability
+ */
 int
 pmemfile_clrcap(PMEMfilepool *pfp, int cap)
 {

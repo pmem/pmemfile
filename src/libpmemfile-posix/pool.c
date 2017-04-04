@@ -57,7 +57,7 @@ initialize_super_block(PMEMfilepool *pfp)
 	LOG(LDBG, "pfp %p", pfp);
 
 	int error = 0;
-	struct pmemfile_super *super = D_RW(pfp->super);
+	struct pmemfile_super *super = pfp->super;
 
 	if (!TOID_IS_NULL(super->root_inode) &&
 			super->version != PMEMFILE_SUPER_VERSION(0, 1)) {
@@ -85,7 +85,7 @@ initialize_super_block(PMEMfilepool *pfp)
 			pfp->root = vinode_new_dir(pfp, NULL, "/", 1,
 					PMEMFILE_ACCESSPERMS, false, NULL);
 
-			TX_ADD(pfp->super);
+			TX_ADD_DIRECT(super);
 			super->version = PMEMFILE_SUPER_VERSION(0, 1);
 			super->root_inode = pfp->root->tinode;
 			super->orphaned_inodes =
@@ -208,12 +208,14 @@ pmemfile_mkfs(const char *pathname, size_t poolsize, mode_t mode)
 		goto pool_create;
 	}
 
-	pfp->super = POBJ_ROOT(pfp->pop, struct pmemfile_super);
-	if (TOID_IS_NULL(pfp->super)) {
+	TOID(struct pmemfile_super) super =
+			POBJ_ROOT(pfp->pop, struct pmemfile_super);
+	if (TOID_IS_NULL(super)) {
 		error = ENODEV;
 		ERR("cannot initialize super block");
 		goto no_super;
 	}
+	pfp->super = D_RW(super);
 
 	if (initialize_super_block(pfp)) {
 		error = errno;
@@ -251,19 +253,20 @@ pmemfile_pool_open(const char *pathname)
 		goto pool_open;
 	}
 
-	pfp->super = (TOID(struct pmemfile_super))pmemobj_root(pfp->pop, 0);
+	PMEMoid super = pmemobj_root(pfp->pop, 0);
 	if (pmemobj_root_size(pfp->pop) != sizeof(struct pmemfile_super)) {
 		error = ENODEV;
 		ERR("pool in file %s is not initialized", pathname);
 		goto no_super;
 	}
+	pfp->super = pmemobj_direct(super);
 
 	if (initialize_super_block(pfp)) {
 		error = errno;
 		goto init_failed;
 	}
 
-	cleanup_orphanded_inodes(pfp, D_RO(pfp->super)->orphaned_inodes);
+	cleanup_orphanded_inodes(pfp, pfp->super->orphaned_inodes);
 
 	return pfp;
 

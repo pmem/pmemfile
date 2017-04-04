@@ -74,7 +74,7 @@ struct pmemfilepool {
 	struct pmemfile_vinode *cwd;
 	os_rwlock_t cwd_rwlock;
 
-	TOID(struct pmemfile_super) super;
+	struct pmemfile_super *super;
 	os_rwlock_t rwlock;
 
 	struct pmemfile_inode_map *inode_map;

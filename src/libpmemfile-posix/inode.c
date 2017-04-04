@@ -528,7 +528,7 @@ vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 	rwlock_tx_wlock(&pfp->rwlock);
 
 	TOID(struct pmemfile_inode_array) orphaned =
-			D_RW(pfp->super)->orphaned_inodes;
+			pfp->super->orphaned_inodes;
 
 	inode_array_add(pfp, orphaned, vinode,
 			&vinode->orphaned.arr, &vinode->orphaned.idx);

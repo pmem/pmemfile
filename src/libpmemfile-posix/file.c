@@ -325,6 +325,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 					(PMEMFILE_O_CREAT|PMEMFILE_O_EXCL))
 				break;
 
+			/* XXX handle infinite symlink loop */
 			resolve_symlink(pfp, &cred, vinode, &info);
 			path_info_changed = true;
 		}

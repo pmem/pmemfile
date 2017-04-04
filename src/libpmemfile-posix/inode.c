@@ -245,7 +245,7 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 		volatile bool *parent_refed,
 		const char *name, size_t namelen)
 {
-	struct pmemfile_inode_map *c = pfp->inode_map;
+	struct pmemfile_inode_map *map = pfp->inode_map;
 	int tx = 0;
 	int error = 0;
 
@@ -260,10 +260,10 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 		}
 	}
 
-	os_rwlock_rdlock(&c->rwlock);
-	size_t idx = inode_hash(c, inode) % c->sz;
+	os_rwlock_rdlock(&map->rwlock);
+	size_t idx = inode_hash(map, inode) % map->sz;
 
-	struct inode_map_bucket *b = &c->buckets[idx];
+	struct inode_map_bucket *b = &map->buckets[idx];
 	struct pmemfile_vinode *vinode;
 	for (unsigned j = 0; j < BUCKET_SIZE; ++j) {
 		if (TOID_EQUALS(b->arr[j].pinode, inode)) {
@@ -271,19 +271,19 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 			goto end;
 		}
 	}
-	os_rwlock_unlock(&c->rwlock);
+	os_rwlock_unlock(&map->rwlock);
 
 	if (is_new) {
-		rwlock_tx_wlock(&c->rwlock);
+		rwlock_tx_wlock(&map->rwlock);
 		tx = 1;
 	} else
-		os_rwlock_wrlock(&c->rwlock);
+		os_rwlock_wrlock(&map->rwlock);
 
-	/* recalculate slot, someone could rebuild the hashmap */
-	idx = inode_hash(c, inode) % c->sz;
+	/* recalculate slot, someone could rebuild the hash map */
+	idx = inode_hash(map, inode) % map->sz;
 
 	/* check again */
-	b = &c->buckets[idx];
+	b = &map->buckets[idx];
 	unsigned empty_slot = UINT32_MAX;
 	for (unsigned j = 0; j < BUCKET_SIZE; ++j) {
 		if (TOID_EQUALS(b->arr[j].pinode, inode)) {
@@ -296,20 +296,20 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 
 	int tries = 0;
 	while (empty_slot == UINT32_MAX) {
-		size_t new_sz = c->sz;
+		size_t new_sz = map->sz;
 
 		do {
-			if (c->inodes > 2 * new_sz || tries == 2) {
+			if (map->inodes > 2 * new_sz || tries == 2) {
 				new_sz *= 2;
 				tries = 0;
 			} else {
-				inode_map_rand_params(c);
+				inode_map_rand_params(map);
 				tries++;
 			}
-		} while (!inode_map_rebuild(c, new_sz));
+		} while (!inode_map_rebuild(map, new_sz));
 
-		idx = inode_hash(c, inode) % c->sz;
-		b = &c->buckets[idx];
+		idx = inode_hash(map, inode) % map->sz;
+		b = &map->buckets[idx];
 
 		for (unsigned j = 0; j < BUCKET_SIZE; ++j) {
 			if (b->arr[j].pinode.oid.off == 0) {
@@ -341,7 +341,7 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 
 	b->arr[empty_slot].pinode = inode;
 	b->arr[empty_slot].vinode = vinode;
-	c->inodes++;
+	map->inodes++;
 
 	if (is_new)
 		cb_push_front(TX_STAGE_ONABORT,
@@ -351,9 +351,9 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 end:
 	__sync_fetch_and_add(&vinode->ref, 1);
 	if (is_new && tx)
-		rwlock_tx_unlock_on_commit(&c->rwlock);
+		rwlock_tx_unlock_on_commit(&map->rwlock);
 	else
-		os_rwlock_unlock(&c->rwlock);
+		os_rwlock_unlock(&map->rwlock);
 
 	if (error)
 		errno = error;

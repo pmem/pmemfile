@@ -327,17 +327,6 @@ char *pmemfile_get_dir_path(PMEMfilepool *pfp, PMEMfile *dir, char *buf,
 
 PMEMfile *pmemfile_open_parent(PMEMfilepool *pfp, PMEMfile *at,
 		char *path, size_t path_size, int flags);
-/*
- * PMEMFILE_MAJOR_VERSION and PMEMFILE_MINOR_VERSION provide the current version
- * of the libpmemfile API as provided by this header file.  Applications can
- * verify that the version available at run-time is compatible with the version
- * used at compile-time by passing these defines to pmemfile_check_version().
- */
-#define PMEMFILE_MAJOR_VERSION 0
-#define PMEMFILE_MINOR_VERSION 1
-const char *pmemfile_check_version(
-		unsigned major_required,
-		unsigned minor_required);
 
 const char *pmemfile_errormsg(void);
 

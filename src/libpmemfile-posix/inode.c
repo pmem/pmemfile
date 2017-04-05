@@ -525,10 +525,6 @@ vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 
 	TOID(struct pmemfile_inode_array) orphaned =
 			D_RW(pfp->super)->orphaned_inodes;
-	if (TOID_IS_NULL(orphaned)) {
-		orphaned = TX_ZNEW(struct pmemfile_inode_array);
-		TX_SET(pfp->super, orphaned_inodes, orphaned);
-	}
 
 	inode_array_add(pfp, orphaned, vinode,
 			&vinode->orphaned.arr, &vinode->orphaned.idx);

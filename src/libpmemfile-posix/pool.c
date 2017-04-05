@@ -88,6 +88,8 @@ initialize_super_block(PMEMfilepool *pfp)
 			TX_ADD(pfp->super);
 			super->version = PMEMFILE_SUPER_VERSION(0, 1);
 			super->root_inode = pfp->root->tinode;
+			super->orphaned_inodes =
+					TX_ZNEW(struct pmemfile_inode_array);
 		}
 		pfp->root->parent = pfp->root;
 #ifdef DEBUG

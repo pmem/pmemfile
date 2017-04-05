@@ -405,13 +405,8 @@ inode_ref(PMEMfilepool *pfp,
 static bool
 vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
-	struct pmemfile_inode_map *c = pfp->inode_map;
-
-	rwlock_tx_wlock(&c->rwlock);
-	if (__sync_sub_and_fetch(&vinode->ref, 1) > 0) {
-		rwlock_tx_unlock_on_commit(&c->rwlock);
+	if (__sync_sub_and_fetch(&vinode->ref, 1) > 0)
 		return false;
-	}
 
 	if (vinode->inode->nlink == 0) {
 		inode_array_unregister(pfp, vinode->orphaned.arr,
@@ -420,11 +415,6 @@ vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 		inode_free(pfp, vinode->tinode);
 	}
 
-	cb_push_back(TX_STAGE_ONCOMMIT,
-		(cb_basic)vinode_unregister_locked,
-		vinode);
-
-	rwlock_tx_unlock_on_commit(&c->rwlock);
 	return true;
 }
 
@@ -436,17 +426,31 @@ vinode_unref_tx(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
 
+	struct pmemfile_inode_map *c = pfp->inode_map;
+
+	os_rwlock_wrlock(&c->rwlock);
+
 	while (vinode) {
+		struct pmemfile_vinode *to_unregister = NULL;
 		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 			struct pmemfile_vinode *parent = vinode->parent;
-			if (vinode_unref(pfp, vinode) && vinode != pfp->root)
+
+			if (vinode_unref(pfp, vinode))
+				to_unregister = vinode;
+
+			if (to_unregister && vinode != pfp->root)
 				vinode = parent;
 			else
 				vinode = NULL;
+		} TX_ONCOMMIT {
+			if (to_unregister)
+				vinode_unregister_locked(pfp, to_unregister);
 		} TX_ONABORT {
 			FATAL("!");
 		} TX_END
 	}
+
+	os_rwlock_unlock(&c->rwlock);
 }
 
 /*

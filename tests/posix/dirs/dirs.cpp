@@ -1009,7 +1009,7 @@ TEST_F(dirs, O_PATH)
 	EXPECT_EQ(errno, EBADF);
 
 	ASSERT_EQ(pmemfile_fchmodat(pfp, dir, "file",
-				    PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR, 0),
+				    PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR),
 		  0);
 
 	PMEMfile *file2 = pmemfile_openat(pfp, dir, "file", PMEMFILE_O_RDWR);
@@ -1054,7 +1054,7 @@ TEST_F(dirs, O_PATH)
 	ASSERT_EQ(pmemfile_fchmod(pfp, file, PMEMFILE_S_IRWXU), -1);
 	EXPECT_EQ(errno, EBADF);
 
-	ASSERT_EQ(pmemfile_fchmodat(pfp, dir, "file", PMEMFILE_S_IRWXU, 0), 0);
+	ASSERT_EQ(pmemfile_fchmodat(pfp, dir, "file", PMEMFILE_S_IRWXU), 0);
 
 	ASSERT_EQ(pmemfile_fchown(pfp, file, 0, 0), -1);
 	EXPECT_EQ(errno, EBADF);

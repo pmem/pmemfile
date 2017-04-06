@@ -1390,19 +1390,9 @@ vinode_chmod(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, mode_t mode)
 
 static int
 _pmemfile_fchmodat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
-		const char *path, mode_t mode, int flags)
+		const char *path, mode_t mode)
 {
 	mode &= PMEMFILE_ALLPERMS;
-
-	if (flags & PMEMFILE_AT_SYMLINK_NOFOLLOW) {
-		errno = ENOTSUP;
-		return -1;
-	}
-
-	if (flags & ~(PMEMFILE_AT_SYMLINK_NOFOLLOW)) {
-		errno = EINVAL;
-		return -1;
-	}
 
 	LOG(LDBG, "path %s", path);
 
@@ -1444,7 +1434,7 @@ end:
 
 int
 pmemfile_fchmodat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
-	mode_t mode, int flags)
+	mode_t mode)
 {
 	struct pmemfile_vinode *at;
 	bool at_unref;
@@ -1456,7 +1446,7 @@ pmemfile_fchmodat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 
 	at = pool_get_dir_for_path(pfp, dir, pathname, &at_unref);
 
-	int ret = _pmemfile_fchmodat(pfp, at, pathname, mode, flags);
+	int ret = _pmemfile_fchmodat(pfp, at, pathname, mode);
 
 	if (at_unref)
 		vinode_cleanup(pfp, at, ret != 0);
@@ -1467,7 +1457,7 @@ pmemfile_fchmodat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 int
 pmemfile_chmod(PMEMfilepool *pfp, const char *path, mode_t mode)
 {
-	return pmemfile_fchmodat(pfp, PMEMFILE_AT_CWD, path, mode, 0);
+	return pmemfile_fchmodat(pfp, PMEMFILE_AT_CWD, path, mode);
 }
 
 int

@@ -252,7 +252,7 @@ ssize_t pmemfile_readlinkat(PMEMfilepool *, PMEMfile *dir, const char *pathname,
 int pmemfile_chmod(PMEMfilepool *, const char *path, mode_t mode);
 int pmemfile_fchmod(PMEMfilepool *, PMEMfile *, mode_t mode);
 int pmemfile_fchmodat(PMEMfilepool *, PMEMfile *dir, const char *pathname,
-	mode_t mode, int flags);
+	mode_t mode);
 
 int pmemfile_setreuid(PMEMfilepool *, uid_t ruid, uid_t euid);
 int pmemfile_setregid(PMEMfilepool *, gid_t rgid, gid_t egid);

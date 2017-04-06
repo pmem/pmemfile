@@ -388,12 +388,10 @@ TEST_F(permissions, fchmodat)
 	ASSERT_NE(dir, nullptr) << strerror(errno);
 
 	errno = 0;
-	ASSERT_EQ(pmemfile_fchmodat(pfp, dir, "a", PMEMFILE_ACCESSPERMS, 0),
-		  -1);
+	ASSERT_EQ(pmemfile_fchmodat(pfp, dir, "a", PMEMFILE_ACCESSPERMS), -1);
 	EXPECT_EQ(errno, ENOENT);
 
-	ASSERT_EQ(pmemfile_fchmodat(pfp, dir, "aaa", PMEMFILE_ACCESSPERMS, 0),
-		  0)
+	ASSERT_EQ(pmemfile_fchmodat(pfp, dir, "aaa", PMEMFILE_ACCESSPERMS), 0)
 		<< strerror(errno);
 
 	ASSERT_EQ(pmemfile_stat(pfp, "/dir/aaa", &statbuf), 0);

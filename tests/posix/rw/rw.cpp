@@ -805,7 +805,7 @@ TEST_F(rw, fallocate)
 	ASSERT_EQ(memcmp(buf + 1 + 2, buf00, sizeof(buf) - 1 - 2), 0);
 
 	/*
-	 * Allocate an interval well beyond current filesize.
+	 * Allocate an interval well beyond current file size.
 	 * The file has 14 pieces of 4K blocks (or one large block)
 	 * before this operation.
 	 * This is expected to allocate at least one new block, or in the
@@ -978,29 +978,95 @@ TEST_F(rw, o_append)
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
 }
 
-TEST_F(rw, sparse_files)
+TEST_F(rw, sparse_files_using_lseek)
 {
+	ssize_t size;
+	ssize_t r;
+	ssize_t hole;
+	ssize_t hole_end;
 	unsigned char buf[8192];
-	PMEMfile *f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT |
-					    PMEMFILE_O_EXCL | PMEMFILE_O_RDWR,
-				    0644);
+	PMEMfile *f;
+
+	f = pmemfile_open(pfp, "/", PMEMFILE_O_DIRECTORY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
+	/* Using these two flags with direcotries is not supported (yet?) */
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_HOLE), -1);
+	ASSERT_EQ(errno, EBADF);
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_DATA), -1);
+	ASSERT_EQ(errno, EBADF);
+
+	pmemfile_close(pfp, f);
+
+	f = pmemfile_open(pfp, "/file1",
+			  PMEMFILE_O_CREAT | PMEMFILE_O_EXCL | PMEMFILE_O_RDWR,
+			  0644);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_HOLE), 0);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_DATA), 0);
+
+	/*
+	 * Seeking to hole, or to data should fail with offset
+	 * greater than the file size.
+	 */
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_HOLE), -1);
+	ASSERT_EQ(errno, ENXIO);
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_DATA), -1);
+	ASSERT_EQ(errno, ENXIO);
+
+	/* creating a sparse file using seek + write */
+	size = 4096 + 5;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 4096, PMEMFILE_SEEK_SET), 4096);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 0);
 	ASSERT_EQ(pmemfile_write(pfp, f, "test", 5), 5);
-	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 4096 + 5);
+	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), size);
 
+	/* Expecting a 4K hole followed by a single block containing the data */
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 1));
+
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_HOLE), 1);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_HOLE), 0);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4095, PMEMFILE_SEEK_HOLE), 4095);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4096, PMEMFILE_SEEK_HOLE), size);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4097, PMEMFILE_SEEK_HOLE), size);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_HOLE), size);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size + 1, PMEMFILE_SEEK_HOLE), -1);
+	ASSERT_EQ(errno, ENXIO);
+
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_DATA), 4096);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_DATA), 4096);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4094, PMEMFILE_SEEK_DATA), 4096);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4095, PMEMFILE_SEEK_DATA), 4096);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4096, PMEMFILE_SEEK_DATA), 4096);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4097, PMEMFILE_SEEK_DATA), 4097);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4098, PMEMFILE_SEEK_DATA), 4098);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_DATA), size);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size + 1, PMEMFILE_SEEK_DATA), -1);
+	ASSERT_EQ(errno, ENXIO);
+
+	/* Read the whole file */
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_SET), 0);
 	memset(buf, 0xff, sizeof(buf));
-	ssize_t r = pmemfile_read(pfp, f, buf, 8192);
+	r = pmemfile_read(pfp, f, buf, 8192);
 	ASSERT_EQ(r, 4096 + 5) << COND_ERROR(r);
 
+	/* The 4K hole at the beginning should read as zero */
 	ASSERT_EQ(is_zeroed(buf, 4096), 1);
 	ASSERT_EQ(memcmp(buf + 4096, "test", 5), 0);
 	ASSERT_EQ(buf[4096 + 5], 0xff);
 
-	/* Partially fill the whole */
+	/* Fill the whole */
+	/*
+	 * After thise write, expecting a 4K block at the beginning of the
+	 * file, with the old block following it immediately.
+	 * Thus, no holes left in the file.
+	 */
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 1));
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, SEEK_SET), 1);
 	ASSERT_EQ(pmemfile_write(pfp, f, "test", 5), 5);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, SEEK_SET), 0);
@@ -1011,7 +1077,169 @@ TEST_F(rw, sparse_files)
 	ASSERT_EQ(memcmp(buf + 1, "test", 5), 0);
 	ASSERT_EQ(is_zeroed(buf + 6, 4096 - 6), 1);
 	ASSERT_EQ(memcmp(buf + 4096, "test", 5), 0);
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 2));
 
+	/*
+	 * Now that there are no holes, seeking to data should simply just set
+	 * the offset to the given argument, and seeking to hole should seek to
+	 * the end of the file.
+	 */
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_HOLE), size);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_HOLE), size);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4095, PMEMFILE_SEEK_HOLE), size);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4096, PMEMFILE_SEEK_HOLE), size);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4097, PMEMFILE_SEEK_HOLE), size);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_HOLE), size);
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size + 1, PMEMFILE_SEEK_HOLE), -1);
+	ASSERT_EQ(errno, ENXIO);
+
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_DATA), 1);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_DATA), 0);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4094, PMEMFILE_SEEK_DATA), 4094);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4095, PMEMFILE_SEEK_DATA), 4095);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4096, PMEMFILE_SEEK_DATA), 4096);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4097, PMEMFILE_SEEK_DATA), 4097);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4098, PMEMFILE_SEEK_DATA), 4098);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_DATA), size);
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size + 1, PMEMFILE_SEEK_DATA), -1);
+	ASSERT_EQ(errno, ENXIO);
+
+	/*
+	 * The following tests would become too complicated without assuming
+	 * a fixed block size. Punching holes in files might zero out some
+	 * parts of some blocks, and deallocate some other blocks, while
+	 * seeking to hole/data only seeks to block boundaries.
+	 */
+	if (env_block_size != 0x1000)
+		goto end;
+
+	/*
+	 * Making a hole at the end of the file. The only interface in the API
+	 * that can achieve this is fallocate.
+	 */
+	size = 0x40000;
+	hole = size / 2; /* The hole starts at this offset */
+	r = pmemfile_ftruncate(pfp, f, size);
+	ASSERT_EQ(r, 0) << strerror(errno);
+	r = pmemfile_fallocate(pfp, f,
+			       PMEMFILE_FL_PUNCH_HOLE | PMEMFILE_FL_KEEP_SIZE,
+			       hole, size);
+	ASSERT_EQ(r, 0) << strerror(errno);
+
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_HOLE), hole);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_HOLE), hole);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4095, PMEMFILE_SEEK_HOLE), hole);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole - 1, PMEMFILE_SEEK_HOLE), hole);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole, PMEMFILE_SEEK_HOLE), hole);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole + 1, PMEMFILE_SEEK_HOLE),
+		  hole + 1);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size - 1, PMEMFILE_SEEK_HOLE),
+		  size - 1);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_HOLE), size);
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size + 1, PMEMFILE_SEEK_HOLE), -1);
+	ASSERT_EQ(errno, ENXIO);
+
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_DATA), 1);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_DATA), 0);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4094, PMEMFILE_SEEK_DATA), 4094);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole - 1, PMEMFILE_SEEK_DATA),
+		  hole - 1);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole, PMEMFILE_SEEK_DATA), size);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole + 1, PMEMFILE_SEEK_DATA), size);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size - 1, PMEMFILE_SEEK_DATA), size);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_DATA), size);
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size + 1, PMEMFILE_SEEK_DATA), -1);
+	ASSERT_EQ(errno, ENXIO);
+
+	/*
+	 * Now try the same thing, but with some blocks allocated at offset
+	 * greater than file size. Seeking should always ignore such data,
+	 * and not seek further than the file size.
+	 */
+	r = pmemfile_fallocate(pfp, f, PMEMFILE_FL_KEEP_SIZE, 4 * size, 0x2000);
+	ASSERT_EQ(r, 0) << strerror(errno);
+
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_HOLE), hole);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_HOLE), hole);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4095, PMEMFILE_SEEK_HOLE), hole);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole - 1, PMEMFILE_SEEK_HOLE), hole);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole, PMEMFILE_SEEK_HOLE), hole);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole + 1, PMEMFILE_SEEK_HOLE),
+		  hole + 1);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size - 1, PMEMFILE_SEEK_HOLE),
+		  size - 1);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_HOLE), size);
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size + 1, PMEMFILE_SEEK_HOLE), -1);
+	ASSERT_EQ(errno, ENXIO);
+
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_DATA), 1);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_DATA), 0);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4094, PMEMFILE_SEEK_DATA), 4094);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole - 1, PMEMFILE_SEEK_DATA),
+		  hole - 1);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole, PMEMFILE_SEEK_DATA), size);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole + 1, PMEMFILE_SEEK_DATA), size);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size - 1, PMEMFILE_SEEK_DATA), size);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_DATA), size);
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size + 1, PMEMFILE_SEEK_DATA), -1);
+	ASSERT_EQ(errno, ENXIO);
+
+	/*
+	 * Increasing file size, to include to new blocks previously allocated.
+	 * This time, there is a hole in the middle of the file.
+	 */
+	r = pmemfile_fallocate(pfp, f, 0, 4 * size, 0x1000);
+	ASSERT_EQ(r, 0) << strerror(errno);
+
+	hole_end = 4 * size;
+	size = 4 * size + 0x1000;
+
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_HOLE), hole);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_HOLE), hole);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4095, PMEMFILE_SEEK_HOLE), hole);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole - 1, PMEMFILE_SEEK_HOLE), hole);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole, PMEMFILE_SEEK_HOLE), hole);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole + 1, PMEMFILE_SEEK_HOLE),
+		  hole + 1);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size - 1, PMEMFILE_SEEK_HOLE), size);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_HOLE), size);
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size + 1, PMEMFILE_SEEK_HOLE), -1);
+	ASSERT_EQ(errno, ENXIO);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole_end - 1, PMEMFILE_SEEK_HOLE),
+		  hole_end - 1);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole_end, PMEMFILE_SEEK_HOLE), size);
+
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_DATA), 1);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_DATA), 0);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 4094, PMEMFILE_SEEK_DATA), 4094);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole - 1, PMEMFILE_SEEK_DATA),
+		  hole - 1);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole, PMEMFILE_SEEK_DATA), hole_end);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole + 1, PMEMFILE_SEEK_DATA),
+		  hole_end);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole - 1, PMEMFILE_SEEK_DATA),
+		  hole - 1);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole_end, PMEMFILE_SEEK_DATA),
+		  hole_end);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole_end + 1, PMEMFILE_SEEK_DATA),
+		  hole_end + 1);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole_end - 1, PMEMFILE_SEEK_DATA),
+		  hole_end);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size - 1, PMEMFILE_SEEK_DATA),
+		  size - 1);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_DATA), size);
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size + 1, PMEMFILE_SEEK_DATA), -1);
+	ASSERT_EQ(errno, ENXIO);
+
+end:
 	pmemfile_close(pfp, f);
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);

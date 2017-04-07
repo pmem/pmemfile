@@ -634,7 +634,7 @@ static long hook_symlinkat(const char *target,
 				struct fd_desc at, const char *linkpath);
 static long hook_fchmod(long fd, mode_t mode);
 static long hook_fchmodat(struct fd_desc at, const char *path,
-				mode_t mode, int flags);
+				mode_t mode);
 static long hook_fchown(long fd, uid_t owner, gid_t group);
 static long hook_fchownat(struct fd_desc at, const char *path,
 				uid_t owner, gid_t group, int flags);
@@ -830,14 +830,14 @@ dispatch_syscall(long syscall_number,
 
 	if (syscall_number == SYS_chmod)
 		return hook_fchmodat(cwd_desc(), (const char *)arg0,
-					(mode_t)arg1, 0);
+					(mode_t)arg1);
 
 	if (syscall_number == SYS_fchmod)
 		return hook_fchmod(arg0, (mode_t)arg1);
 
 	if (syscall_number == SYS_fchmodat)
 		return hook_fchmodat(fetch_fd(arg0), (const char *)arg1,
-					(mode_t)arg2, (int)arg3);
+					(mode_t)arg2);
 
 	if (syscall_number == SYS_chown)
 		return hook_fchownat(cwd_desc(), (const char *)arg0,
@@ -1754,8 +1754,7 @@ hook_fchmod(long fd, mode_t mode)
 }
 
 static long
-hook_fchmodat(struct fd_desc at, const char *path,
-				mode_t mode, int flags)
+hook_fchmodat(struct fd_desc at, const char *path, mode_t mode)
 {
 	struct resolved_path where;
 
@@ -1765,18 +1764,18 @@ hook_fchmodat(struct fd_desc at, const char *path,
 
 	if (where.at.pmem_fda.pool == NULL)
 		return syscall_no_intercept(SYS_fchmodat,
-		    where.at.kernel_fd, where.path, mode, flags);
+		    where.at.kernel_fd, where.path, mode);
 
 	int r = pmemfile_fchmodat(where.at.pmem_fda.pool->pool,
-			where.at.pmem_fda.file, where.path, mode, flags);
+			where.at.pmem_fda.file, where.path, mode, 0);
 
 	if (r != 0)
 		r = -errno;
 
-	log_write("pmemfile_fchmodat(%p, %p, \"%s\", 0%o, %d) = %d",
+	log_write("pmemfile_fchmodat(%p, %p, \"%s\", 0%o, 0) = %d",
 	    (void *)where.at.pmem_fda.pool->pool,
 	    (void *)where.at.pmem_fda.file,
-	    where.path, mode, flags, r);
+	    where.path, mode, r);
 
 	return check_errno(r);
 }

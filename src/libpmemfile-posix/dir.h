@@ -36,15 +36,18 @@
 #include "internal.h"
 #include "pool.h"
 
+/* path resolution information */
 struct pmemfile_path_info {
 	/*
 	 * Vinode of the last reachable component in the path, except for
 	 * the last part.
 	 */
 	struct pmemfile_vinode *vinode;
-	/* Remaining part of the path. */
+
+	/* remaining part of the path */
 	char *remaining;
 
+	/* error code */
 	int error;
 };
 

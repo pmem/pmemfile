@@ -82,27 +82,38 @@ vinode_ref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 
 #define BUCKET_SIZE 2
 
+/* hash map bucket */
 struct inode_map_bucket {
 	struct {
+		/* persistent inode */
 		TOID(struct pmemfile_inode) pinode;
+
+		/* volatile inode */
 		struct pmemfile_vinode *vinode;
 	} arr[BUCKET_SIZE];
 };
 
-/* First impl */
+/* inode->vinode hash map */
 struct pmemfile_inode_map {
 	os_rwlock_t rwlock;
-	uint32_t hash_fun_a; /* fun */
-	uint32_t hash_fun_b; /* even more fun */
-	uint64_t hash_fun_p; /* party! */
 
+	/* hash function coefficients */
+	uint32_t hash_fun_a;
+	uint32_t hash_fun_b;
+	uint64_t hash_fun_p;
+
+	/* number of elements in "buckets" */
 	size_t sz;
+
+	/* buckets */
 	struct inode_map_bucket *buckets;
+
+	/* number of used slots */
 	size_t inodes;
 };
 
 /*
- * inode_map_rand_params -- randomizes coefficients of the hashmap function
+ * inode_map_rand_params -- randomizes coefficients of the hashing function
  */
 static void
 inode_map_rand_params(struct pmemfile_inode_map *c)
@@ -115,7 +126,7 @@ inode_map_rand_params(struct pmemfile_inode_map *c)
 }
 
 /*
- * inode_map_alloc -- allocates inode hashmap
+ * inode_map_alloc -- allocates inode hash map
  */
 struct pmemfile_inode_map *
 inode_map_alloc()
@@ -134,7 +145,7 @@ inode_map_alloc()
 }
 
 /*
- * inode_map_free -- destroys inode hashmap
+ * inode_map_free -- destroys inode hash map
  */
 void
 inode_map_free(struct pmemfile_inode_map *c)
@@ -162,7 +173,7 @@ inode_hash(struct pmemfile_inode_map *c, TOID(struct pmemfile_inode) inode)
 }
 
 /*
- * inode_map_rebuild -- rebuilds the whole inode hashmap
+ * inode_map_rebuild -- rebuilds the whole inode hash map
  */
 static bool
 inode_map_rebuild(struct pmemfile_inode_map *c, size_t new_sz)
@@ -203,7 +214,7 @@ inode_map_rebuild(struct pmemfile_inode_map *c, size_t new_sz)
 }
 
 /*
- * vinode_unregister_locked -- removes vinode from  inode map
+ * vinode_unregister_locked -- removes vinode from inode map
  */
 static void
 vinode_unregister_locked(PMEMfilepool *pfp,
@@ -237,7 +248,7 @@ vinode_unregister_locked(PMEMfilepool *pfp,
 }
 
 /*
- * _inode_get -- (internal) deals with vinode life time related to inode
+ * _inode_get -- deals with vinode life time related to inode
  */
 static struct pmemfile_vinode *
 _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
@@ -245,7 +256,7 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 		volatile bool *parent_refed,
 		const char *name, size_t namelen)
 {
-	struct pmemfile_inode_map *c = pfp->inode_map;
+	struct pmemfile_inode_map *map = pfp->inode_map;
 	int tx = 0;
 	int error = 0;
 
@@ -260,10 +271,10 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 		}
 	}
 
-	os_rwlock_rdlock(&c->rwlock);
-	size_t idx = inode_hash(c, inode) % c->sz;
+	os_rwlock_rdlock(&map->rwlock);
+	size_t idx = inode_hash(map, inode) % map->sz;
 
-	struct inode_map_bucket *b = &c->buckets[idx];
+	struct inode_map_bucket *b = &map->buckets[idx];
 	struct pmemfile_vinode *vinode;
 	for (unsigned j = 0; j < BUCKET_SIZE; ++j) {
 		if (TOID_EQUALS(b->arr[j].pinode, inode)) {
@@ -271,19 +282,19 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 			goto end;
 		}
 	}
-	os_rwlock_unlock(&c->rwlock);
+	os_rwlock_unlock(&map->rwlock);
 
 	if (is_new) {
-		rwlock_tx_wlock(&c->rwlock);
+		rwlock_tx_wlock(&map->rwlock);
 		tx = 1;
 	} else
-		os_rwlock_wrlock(&c->rwlock);
+		os_rwlock_wrlock(&map->rwlock);
 
-	/* recalculate slot, someone could rebuild the hashmap */
-	idx = inode_hash(c, inode) % c->sz;
+	/* recalculate slot, someone could rebuild the hash map */
+	idx = inode_hash(map, inode) % map->sz;
 
 	/* check again */
-	b = &c->buckets[idx];
+	b = &map->buckets[idx];
 	unsigned empty_slot = UINT32_MAX;
 	for (unsigned j = 0; j < BUCKET_SIZE; ++j) {
 		if (TOID_EQUALS(b->arr[j].pinode, inode)) {
@@ -296,20 +307,20 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 
 	int tries = 0;
 	while (empty_slot == UINT32_MAX) {
-		size_t new_sz = c->sz;
+		size_t new_sz = map->sz;
 
 		do {
-			if (c->inodes > 2 * new_sz || tries == 2) {
+			if (map->inodes > 2 * new_sz || tries == 2) {
 				new_sz *= 2;
 				tries = 0;
 			} else {
-				inode_map_rand_params(c);
+				inode_map_rand_params(map);
 				tries++;
 			}
-		} while (!inode_map_rebuild(c, new_sz));
+		} while (!inode_map_rebuild(map, new_sz));
 
-		idx = inode_hash(c, inode) % c->sz;
-		b = &c->buckets[idx];
+		idx = inode_hash(map, inode) % map->sz;
+		b = &map->buckets[idx];
 
 		for (unsigned j = 0; j < BUCKET_SIZE; ++j) {
 			if (b->arr[j].pinode.oid.off == 0) {
@@ -341,7 +352,7 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 
 	b->arr[empty_slot].pinode = inode;
 	b->arr[empty_slot].vinode = vinode;
-	c->inodes++;
+	map->inodes++;
 
 	if (is_new)
 		cb_push_front(TX_STAGE_ONABORT,
@@ -351,9 +362,9 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 end:
 	__sync_fetch_and_add(&vinode->ref, 1);
 	if (is_new && tx)
-		rwlock_tx_unlock_on_commit(&c->rwlock);
+		rwlock_tx_unlock_on_commit(&map->rwlock);
 	else
-		os_rwlock_unlock(&c->rwlock);
+		os_rwlock_unlock(&map->rwlock);
 
 	if (error)
 		errno = error;
@@ -515,7 +526,7 @@ inode_alloc(PMEMfilepool *pfp, uint64_t flags, struct pmemfile_vinode *parent,
 }
 
 /*
- * vinode_orphan -- (internal) register specified inode in orphaned_inodes array
+ * vinode_orphan -- register specified inode in orphaned_inodes array
  */
 void
 vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
@@ -528,7 +539,7 @@ vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 	rwlock_tx_wlock(&pfp->rwlock);
 
 	TOID(struct pmemfile_inode_array) orphaned =
-			D_RW(pfp->super)->orphaned_inodes;
+			pfp->super->orphaned_inodes;
 
 	inode_array_add(pfp, orphaned, vinode,
 			&vinode->orphaned.arr, &vinode->orphaned.idx);
@@ -597,6 +608,9 @@ inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 	TX_FREE(tinode);
 }
 
+/*
+ * pmemfile_time_to_timespec -- convert between pmemfile_time and timespec
+ */
 static inline struct timespec
 pmemfile_time_to_timespec(const struct pmemfile_time *t)
 {
@@ -607,7 +621,7 @@ pmemfile_time_to_timespec(const struct pmemfile_time *t)
 }
 
 /*
- * vinode_stat
+ * vinode_stat -- fill struct stat using information from vinode
  */
 static int
 vinode_stat(struct pmemfile_vinode *vinode, struct stat *buf)

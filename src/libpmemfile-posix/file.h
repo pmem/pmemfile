@@ -49,9 +49,9 @@ struct ctree;
 #define PFILE_APPEND (1ULL << 3)
 #define PFILE_PATH (1ULL << 4)
 
-/* File */
+/* file handle */
 struct pmemfile_file {
-	/* File inode. */
+	/* volatile inode */
 	struct pmemfile_vinode *vinode;
 
 	/*
@@ -60,20 +60,21 @@ struct pmemfile_file {
 	 */
 	os_mutex_t mutex;
 
-	/* Flags */
+	/* flags */
 	uint64_t flags;
 
-	/* Requested/current position. */
+	/* requested/current position */
 	size_t offset;
 
-	/* Current position cache, the latest block used. */
+	/* current position cache, the latest block used */
 	struct pmemfile_block *block_pointer_cache;
 
+	/* current position cache if directory */
 	struct pmemfile_dir_pos {
-		/* Current directory list */
+		/* current directory list */
 		struct pmemfile_dir *dir;
 
-		/* Id of the current directory list */
+		/* id of the current directory list */
 		unsigned dir_id;
 	} dir_pos;
 };

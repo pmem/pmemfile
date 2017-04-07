@@ -62,48 +62,72 @@ POBJ_LAYOUT_TOID(pmemfile, char);
 POBJ_LAYOUT_END(pmemfile);
 
 struct pmemfile_block {
+	/* block data pointer */
 	TOID(char) data;
+
+	/* usable size of the block */
 	uint32_t size;
+
+	/* additional information about block */
 	uint32_t flags;
+
+	/* offset in file */
 	uint64_t offset;
+
+	/* next block, with offset bigger than offset+size */
 	TOID(struct pmemfile_block) next;
+
+	/* previous block, with smaller offset */
 	TOID(struct pmemfile_block) prev;
 };
 
 #define BLOCK_INITIALIZED 1
 
-/* File */
+/* single block array */
 struct pmemfile_block_array {
+	/* next block array */
 	TOID(struct pmemfile_block_array) next;
 
-	/* size of the blocks array */
+	/* number of entries in "blocks" */
 	uint32_t length;
 
+	/* padding / unused */
 	uint32_t padding;
 
+	/* blocks */
 	struct pmemfile_block blocks[];
 };
 
 #define PMEMFILE_MAX_FILE_NAME 255
-/* Directory entry */
+/* directory entry */
 struct pmemfile_dirent {
+	/* inode */
 	TOID(struct pmemfile_inode) inode;
+
+	/* name */
 	char name[PMEMFILE_MAX_FILE_NAME + 1];
 };
 
 /* Directory */
 struct pmemfile_dir {
+	/* number of entries in "dirents" */
 	uint32_t num_elements;
+
+	/* padding / unused */
 	uint32_t padding;
+
+	/* next batch of entries */
 	TOID(struct pmemfile_dir) next;
+
+	/* directory entries */
 	struct pmemfile_dirent dirents[];
 };
 
 struct pmemfile_time {
-	/* Seconds */
+	/* seconds */
 	int64_t sec;
 
-	/* Nanoseconds */
+	/* nanoseconds */
 	int64_t nsec;
 };
 
@@ -124,41 +148,42 @@ struct pmemfile_time {
 
 /* Inode */
 struct pmemfile_inode {
-	/* Layout version */
+	/* layout version */
 	uint32_t version;
 
-	/* Owner */
+	/* owner */
 	uint32_t uid;
 
-	/* Group */
+	/* group */
 	uint32_t gid;
 
+	/* unused / padding */
 	uint32_t reserved;
 
-	/* Time of last access. */
+	/* time of last access */
 	struct pmemfile_time atime;
 
-	/* Time of last status change. */
+	/* time of last status change */
 	struct pmemfile_time ctime;
 
-	/* Time of last modification. */
+	/* time of last modification */
 	struct pmemfile_time mtime;
 
-	/* Hard link counter. */
+	/* hard link counter */
 	uint64_t nlink;
 
-	/* Size of file. */
+	/* size of file */
 	uint64_t size;
 
-	/* File flags. */
+	/* file flags */
 	uint64_t flags;
 
-	/* Data! */
+	/* data! */
 	union {
-		/* File specific data. */
+		/* file specific data */
 		struct pmemfile_block_array blocks;
 
-		/* Directory specific data. */
+		/* directory specific data */
 		struct pmemfile_dir dir;
 
 		char data[PMEMFILE_IN_INODE_STORAGE];
@@ -172,7 +197,7 @@ struct pmemfile_inode_array {
 	TOID(struct pmemfile_inode_array) prev;
 	TOID(struct pmemfile_inode_array) next;
 
-	/* Number of used entries, <0, NUMINODES_PER_ENTRY>. */
+	/* number of used entries, <0, NUMINODES_PER_ENTRY> */
 	uint32_t used;
 
 	char padding[12];
@@ -183,15 +208,15 @@ struct pmemfile_inode_array {
 #define PMEMFILE_SUPER_VERSION(a, b) ((uint64_t)0x000056454C494650 | \
 		((uint64_t)(a + '0') << 48) | ((uint64_t)(b + '0') << 56))
 
-/* Superblock */
+/* superblock */
 struct pmemfile_super {
-	/* Superblock version */
+	/* superblock version */
 	uint64_t version;
 
-	/* Root directory inode */
+	/* root directory inode */
 	TOID(struct pmemfile_inode) root_inode;
 
-	/* List of arrays of inodes that were deleted, but are still opened. */
+	/* list of arrays of inodes that were deleted, but are still opened */
 	TOID(struct pmemfile_inode_array) orphaned_inodes;
 
 	char padding[4096

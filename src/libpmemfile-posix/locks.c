@@ -38,8 +38,11 @@
 #include "os_thread.h"
 #include "out.h"
 
+/*
+ * rwlock_unlock_cb -- wrapper around os_rwlock_unlock to be used as a callback
+ */
 static void
-file_util_rwlock_unlock(PMEMfilepool *pfp, os_rwlock_t *arg)
+rwlock_unlock_cb(PMEMfilepool *pfp, os_rwlock_t *arg)
 {
 	(void) pfp;
 
@@ -47,39 +50,41 @@ file_util_rwlock_unlock(PMEMfilepool *pfp, os_rwlock_t *arg)
 }
 
 /*
- * file_tx_rwlock_wrlock -- transactional read-write lock
+ * rwlock_tx_wlock -- transactional read-write lock
  */
 void
 rwlock_tx_wlock(os_rwlock_t *l)
 {
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 
-	cb_push_front(TX_STAGE_ONABORT,
-			(cb_basic)file_util_rwlock_unlock, l);
+	cb_push_front(TX_STAGE_ONABORT, (cb_basic)rwlock_unlock_cb, l);
 
 	os_rwlock_wrlock(l);
 }
 
 /*
- * file_tx_rwlock_unlock_on_commit -- transactional read-write unlock
+ * rwlock_tx_unlock_on_commit -- transactional read-write unlock
  */
 void
 rwlock_tx_unlock_on_commit(os_rwlock_t *l)
 {
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 
-	cb_push_back(TX_STAGE_ONCOMMIT,
-			(cb_basic)file_util_rwlock_unlock, l);
+	cb_push_back(TX_STAGE_ONCOMMIT, (cb_basic)rwlock_unlock_cb, l);
 }
 
+/*
+ * mutex_unlock_cb -- wrapper around pmemobj_mutex_unlock to be used as
+ * a callback
+ */
 static void
-file_mutex_unlock_nofail(PMEMfilepool *pfp, PMEMmutex *mutexp)
+mutex_unlock_cb(PMEMfilepool *pfp, PMEMmutex *mutexp)
 {
 	pmemobj_mutex_unlock_nofail(pfp->pop, mutexp);
 }
 
 /*
- * file_tx_pmemobj_mutex_unlock_on_abort -- postpones pmemobj_mutex_unlock on
+ * mutex_tx_unlock_on_abort -- postpones pmemobj_mutex_unlock to
  * transaction abort
  */
 void
@@ -87,26 +92,22 @@ mutex_tx_unlock_on_abort(PMEMmutex *mutexp)
 {
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 
-	cb_push_front(TX_STAGE_ONABORT,
-			(cb_basic)file_mutex_unlock_nofail,
-			mutexp);
+	cb_push_front(TX_STAGE_ONABORT, (cb_basic)mutex_unlock_cb, mutexp);
 }
 
 /*
- * file_tx_pmemobj_mutex_lock -- transactional pmemobj_mutex_lock
+ * mutex_tx_lock -- transactional pmemobj_mutex_lock
  */
 void
 mutex_tx_lock(PMEMfilepool *pfp, PMEMmutex *mutexp)
 {
-	cb_push_front(TX_STAGE_ONABORT,
-			(cb_basic)file_mutex_unlock_nofail,
-			mutexp);
+	cb_push_front(TX_STAGE_ONABORT, (cb_basic)mutex_unlock_cb, mutexp);
 
 	pmemobj_mutex_lock_nofail(pfp->pop, mutexp);
 }
 
 /*
- * file_tx_pmemobj_mutex_unlock_on_commit -- postpones pmemobj_mutex_unlock on
+ * mutex_tx_unlock_on_commit -- postpones pmemobj_mutex_unlock to
  * transaction commit
  */
 void
@@ -114,7 +115,5 @@ mutex_tx_unlock_on_commit(PMEMmutex *mutexp)
 {
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 
-	cb_push_back(TX_STAGE_ONCOMMIT,
-			(cb_basic)file_mutex_unlock_nofail,
-			mutexp);
+	cb_push_back(TX_STAGE_ONCOMMIT, (cb_basic)mutex_unlock_cb, mutexp);
 }

@@ -40,12 +40,18 @@
 #include "layout.h"
 #include "os_thread.h"
 
-/* Inode */
+/* volatile inode */
 struct pmemfile_vinode {
+	/* reference counter */
 	uint32_t ref;
 
+	/* read-write lock, also protects inode read/writes */
 	os_rwlock_t rwlock;
+
+	/* persistent inode */
 	struct pmemfile_inode *inode;
+
+	/* persistent inode oid */
 	TOID(struct pmemfile_inode) tinode;
 
 #ifdef DEBUG
@@ -56,32 +62,43 @@ struct pmemfile_vinode {
 	char *path;
 #endif
 
-	/* Valid only for directories. */
+	/* parent directory, valid only for directories */
 	struct pmemfile_vinode *parent;
 
-	/* Pointer to the array of opened inodes. */
+	/* pointer to the array of opened inodes */
 	struct {
 		struct pmemfile_inode_array *arr;
 		unsigned idx;
 	} orphaned;
 
+	/* first free block */
 	struct block_info {
 		struct pmemfile_block_array *arr;
 		uint32_t idx;
 	} first_free_block;
 
+	/* first used block */
 	struct pmemfile_block *first_block;
+
+	/* tree mapping offsets to blocks */
 	struct ctree *blocks;
 
+	/* space for volatile snapshots */
 	struct {
 		struct block_info first_free_block;
 		struct pmemfile_block *first_block;
 	} snapshot;
 };
 
+/* inode permission information */
 struct inode_perms {
+	/* file flags (contains mode) */
 	uint64_t flags;
+
+	/* owner */
 	uint32_t uid;
+
+	/* group */
 	uint32_t gid;
 };
 

@@ -42,6 +42,56 @@ os_getpid(void)
 	return _getpid();
 }
 
+#define NSEC_IN_SEC 1000000000ull
+/* number of useconds between 1970-01-01T00:00:00Z and 1601-01-01T00:00:00Z */
+#define DELTA_WIN2UNIX (11644473600000000ull)
+
+/*
+ * os_clock_gettime -- returns elapsed time since the system was restarted
+ * or since Epoch, depending on the mode id
+ */
+int
+os_clock_gettime(int id, pmemfile_timespec_t *ts)
+{
+	switch (id) {
+	case OS_CLOCK_MONOTONIC:
+		{
+			LARGE_INTEGER time;
+			LARGE_INTEGER frequency;
+
+			QueryPerformanceFrequency(&frequency);
+			QueryPerformanceCounter(&time);
+
+			ts->tv_sec = time.QuadPart / frequency.QuadPart;
+			ts->tv_nsec = (long)(
+				(time.QuadPart % frequency.QuadPart) *
+				NSEC_IN_SEC / frequency.QuadPart);
+		}
+		break;
+
+	case OS_CLOCK_REALTIME:
+		{
+			FILETIME ctime_ft;
+			GetSystemTimeAsFileTime(&ctime_ft);
+			ULARGE_INTEGER ctime = {
+				.HighPart = ctime_ft.dwHighDateTime,
+				.LowPart = ctime_ft.dwLowDateTime,
+			};
+			ts->tv_sec = (ctime.QuadPart - DELTA_WIN2UNIX * 10)
+				/ 10000000;
+			ts->tv_nsec = ((ctime.QuadPart - DELTA_WIN2UNIX * 10)
+				% 10000000) * 100;
+		}
+		break;
+
+	default:
+		SetLastError(EINVAL);
+		return -1;
+	}
+
+	return 0;
+}
+
 void
 os_describe_errno(int errnum, char *buf, size_t buflen)
 {

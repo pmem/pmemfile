@@ -30,18 +30,42 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <errno.h>
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "os_util.h"
+#include "util.h"
 
 int
 os_getpid(void)
 {
 	return getpid();
+}
+
+/*
+ * os_clock_gettime -- clock_gettime abstraction layer
+ */
+int
+os_clock_gettime(int id, pmemfile_timespec_t *ts)
+{
+	COMPILE_ERROR_ON(sizeof(*ts) != sizeof(struct timespec));
+	COMPILE_ERROR_ON(OS_CLOCK_REALTIME != CLOCK_REALTIME);
+	COMPILE_ERROR_ON(OS_CLOCK_MONOTONIC != CLOCK_MONOTONIC);
+
+	switch (id) {
+	/* handle only the modes we have on all systems */
+	case CLOCK_MONOTONIC:
+	case CLOCK_REALTIME:
+		return clock_gettime(id, ts);
+	default:
+		errno = EINVAL;
+		return -1;
+	}
 }
 
 void

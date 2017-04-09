@@ -45,6 +45,7 @@
 #include "internal.h"
 #include "locks.h"
 #include "os_thread.h"
+#include "os_util.h"
 #include "out.h"
 
 /*
@@ -472,7 +473,7 @@ void
 file_get_time(struct pmemfile_time *t)
 {
 	pmemfile_timespec_t tm;
-	if (clock_gettime(CLOCK_REALTIME, &tm)) {
+	if (os_clock_gettime(OS_CLOCK_REALTIME, &tm)) {
 		ERR("!clock_gettime");
 		pmemfile_tx_abort(errno);
 	}

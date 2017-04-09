@@ -47,6 +47,7 @@
 #include "internal.h"
 #include "locks.h"
 #include "os_thread.h"
+#include "os_util.h"
 #include "out.h"
 #include "utils.h"
 

@@ -35,6 +35,7 @@
 #include <time.h>
 
 #include "internal.h"
+#include "os_util.h"
 #include "out.h"
 #include "utils.h"
 #include "libpmemfile-posix.h"
@@ -46,7 +47,7 @@ void
 get_current_time(struct pmemfile_time *t)
 {
 	pmemfile_timespec_t tm;
-	if (clock_gettime(CLOCK_REALTIME, &tm)) {
+	if (os_clock_gettime(OS_CLOCK_REALTIME, &tm)) {
 		ERR("!clock_gettime");
 		pmemfile_tx_abort(errno);
 	}

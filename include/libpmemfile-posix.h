@@ -208,6 +208,8 @@ typedef struct stat pmemfile_stat_t;
 typedef struct utimbuf pmemfile_utimbuf_t;
 typedef struct timeval pmemfile_timeval_t;
 
+#define PMEMFILE_SSIZE_MAX SSIZE_MAX
+
 #elif PMEMFILE_NATIVE_TYPES == -1
 
 typedef uint32_t pmemfile_mode_t;
@@ -261,6 +263,8 @@ typedef struct
 	int64_t tv_sec;
 	int64_t tv_usec;
 } pmemfile_timeval_t;
+
+#define PMEMFILE_SSIZE_MAX LLONG_MAX
 
 #else
 

@@ -135,10 +135,10 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 			size_t len = iov[i].iov_len;
 
 			if ((pmemfile_ssize_t)len < 0)
-				len = SSIZE_MAX;
+				len = PMEMFILE_SSIZE_MAX;
 
 			if ((pmemfile_ssize_t)(sum_len + len) < 0)
-				len = SSIZE_MAX - ret;
+				len = PMEMFILE_SSIZE_MAX - ret;
 
 			/* overflow check */
 			if (offset + sum_len + len < offset)
@@ -157,10 +157,10 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 			size_t len = iov[i].iov_len;
 
 			if ((pmemfile_ssize_t)len < 0)
-				len = SSIZE_MAX;
+				len = PMEMFILE_SSIZE_MAX;
 
 			if ((pmemfile_ssize_t)(ret + len) < 0)
-				len = SSIZE_MAX - ret;
+				len = PMEMFILE_SSIZE_MAX - ret;
 
 			if (offset + len < offset) /* overflow check */
 				len = SIZE_MAX - offset;

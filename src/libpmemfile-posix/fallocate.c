@@ -115,7 +115,7 @@ fallocate_check_arguments(int mode, pmemfile_off_t offset,
 	 *
 	 * "EFBIG - offset+len exceeds the maximum file size."
 	 */
-	if (offset + length > SSIZE_MAX || offset + length < offset)
+	if (offset + length > PMEMFILE_SSIZE_MAX || offset + length < offset)
 		return EFBIG;
 
 	/*

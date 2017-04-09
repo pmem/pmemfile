@@ -133,6 +133,8 @@ bool test_compare_dirs(PMEMfilepool *pfp, const char *path,
 		       bool check_attrs = false);
 bool test_empty_dir(PMEMfilepool *pfp, const char *path);
 
+void test_dump_stat_info(pmemfile_stat_t *st, const char *path);
+
 extern std::string global_path;
 
 class pmemfile_test : public testing::Test {

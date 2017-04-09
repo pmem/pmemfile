@@ -299,3 +299,35 @@ test_empty_dir(PMEMfilepool *pfp, const char *path)
 		},
 		false, false);
 }
+
+static const char *
+timespec_to_str(const pmemfile_timespec_t *t)
+{
+	time_t sec = t->tv_sec;
+	char *s = asctime(localtime(&sec));
+	s[strlen(s) - 1] = 0;
+	return s;
+}
+
+void
+test_dump_stat_info(pmemfile_stat_t *st, const char *path)
+{
+	T_OUT("path:       %s\n", path);
+	T_OUT("st_dev:     0x%lx\n", st->st_dev);
+	T_OUT("st_ino:     %ld\n", st->st_ino);
+	T_OUT("st_mode:    0%o\n", st->st_mode);
+	T_OUT("st_nlink:   %lu\n", st->st_nlink);
+	T_OUT("st_uid:     %u\n", st->st_uid);
+	T_OUT("st_gid:     %u\n", st->st_gid);
+	T_OUT("st_rdev:    0x%lx\n", st->st_rdev);
+	T_OUT("st_size:    %ld\n", st->st_size);
+	T_OUT("st_blksize: %ld\n", st->st_blksize);
+	T_OUT("st_blocks:  %ld\n", st->st_blocks);
+	T_OUT("st_atim:    %ld.%.9ld, %s\n", st->st_atim.tv_sec,
+	      st->st_atim.tv_nsec, timespec_to_str(&st->st_atim));
+	T_OUT("st_mtim:    %ld.%.9ld, %s\n", st->st_mtim.tv_sec,
+	      st->st_mtim.tv_nsec, timespec_to_str(&st->st_mtim));
+	T_OUT("st_ctim:    %ld.%.9ld, %s\n", st->st_ctim.tv_sec,
+	      st->st_ctim.tv_nsec, timespec_to_str(&st->st_ctim));
+	T_OUT("---");
+}

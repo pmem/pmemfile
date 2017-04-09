@@ -112,6 +112,12 @@ build_test(file_rw rw/rw.cpp)
 build_test(file_stat stat/stat.cpp)
 build_test(file_symlinks symlinks/symlinks.cpp)
 
+if(WIN32)
+	set(SUCCESS rundll32)
+else()
+	set(SUCCESS true)
+endif()
+
 # Configures test ${name} using tracer ${tracer} and gtest filter ${filter}
 # Optional next argument is passed as is to test.
 # Optional next argument is appended to environment variables.
@@ -127,14 +133,14 @@ function(add_test_with_filter name filter tracer)
 
 	if ((NOT VALGRIND_FOUND) AND ${tracer} IN_LIST vg_tracers)
 		add_test(NAME ${name}${filter_postfix}_${tracer}_SKIPPED_BECAUSE_OF_MISSING_VALGRIND
-			COMMAND true)
+			COMMAND ${SUCCESS})
 		return()
 	endif()
 
 	if(${tracer} STREQUAL pmemcheck)
 		if (VALGRIND_PMEMCHECK_NOT_FOUND)
 			add_test(NAME ${name}${filter_postfix}_${tracer}_SKIPPED_BECAUSE_OF_MISSING_PMEMCHECK
-				COMMAND true)
+				COMMAND ${SUCCESS})
 			return()
 		endif()
 	endif()
@@ -224,5 +230,5 @@ add_test_generic(symlinks memcheck)
 
 if(NOT LONG_TESTS)
 	add_test(NAME SOME_TESTS_WERE_SKIPPED_BECAUSE_LONG_TESTS_ARE_DISABLED
-		COMMAND true)
+		COMMAND ${SUCCESS})
 endif()

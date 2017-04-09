@@ -595,7 +595,7 @@ pmemfile_write_locked(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 	}
 
 	if ((pmemfile_ssize_t)count < 0)    /* Normally this will still   */
-		count = SSIZE_MAX; /* try to write 2^63 bytes... */
+		count = PMEMFILE_SSIZE_MAX; /* try to write 2^63 bytes... */
 
 	if (file->offset + count < file->offset) /* overflow check */
 		count = SIZE_MAX - file->offset;
@@ -715,7 +715,7 @@ pmemfile_read_locked(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count)
 	}
 
 	if ((pmemfile_ssize_t)count < 0)
-		count = SSIZE_MAX;
+		count = PMEMFILE_SSIZE_MAX;
 
 	size_t bytes_read = 0;
 

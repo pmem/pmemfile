@@ -1728,7 +1728,7 @@ pmemfile_ftruncate(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t length)
 		return -1;
 	}
 
-	if (length > SSIZE_MAX) {
+	if (length > PMEMFILE_SSIZE_MAX) {
 		errno = EFBIG;
 		return -1;
 	}
@@ -1763,7 +1763,7 @@ pmemfile_truncate(PMEMfilepool *pfp, const char *path, pmemfile_off_t length)
 		return -1;
 	}
 
-	if (length > SSIZE_MAX) {
+	if (length > PMEMFILE_SSIZE_MAX) {
 		errno = EFBIG;
 		return -1;
 	}
@@ -1845,7 +1845,7 @@ fallocate_check_arguments(int mode, pmemfile_off_t offset,
 	 *
 	 * "EFBIG - offset+len exceeds the maximum file size."
 	 */
-	if (offset + length > SSIZE_MAX || offset + length < offset)
+	if (offset + length > PMEMFILE_SSIZE_MAX || offset + length < offset)
 		return EFBIG;
 
 	/*

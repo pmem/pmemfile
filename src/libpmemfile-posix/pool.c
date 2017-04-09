@@ -66,7 +66,7 @@ initialize_super_block(PMEMfilepool *pfp)
 
 	if (!TOID_IS_NULL(super->root_inode) &&
 			super->version != PMEMFILE_SUPER_VERSION(0, 1)) {
-		ERR("unknown superblock version: 0x%lx", super->version);
+		ERR("unknown superblock version: 0x%" PRIx64, super->version);
 		errno = EINVAL;
 		return -1;
 	}

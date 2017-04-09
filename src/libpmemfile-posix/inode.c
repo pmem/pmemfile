@@ -250,7 +250,7 @@ vinode_cleanup(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 TOID(struct pmemfile_inode)
 inode_alloc(PMEMfilepool *pfp, struct pmemfile_cred *cred, uint64_t flags)
 {
-	LOG(LDBG, "flags 0x%lx", flags);
+	LOG(LDBG, "flags 0x%" PRIx64, flags);
 
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 
@@ -416,7 +416,7 @@ inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 	else if (inode_is_symlink(inode))
 		inode_free_symlink(inode);
 	else
-		FATAL("unknown inode type 0x%lx", inode->flags);
+		FATAL("unknown inode type 0x%" PRIx64, inode->flags);
 
 	TX_FREE(tinode);
 }

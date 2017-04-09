@@ -35,6 +35,7 @@
  */
 
 #include "pmemfile_test.hpp"
+#include <inttypes.h>
 
 static size_t ops = 100;
 
@@ -90,8 +91,8 @@ list_files(PMEMfilepool *pfp, const char *dir, size_t expected_files,
 	while ((uintptr_t)d < (uintptr_t)&buf[r]) {
 		num_files++;
 		if (!just_count) {
-			T_OUT("ino: 0x%lx, off: 0x%lx, len: %d, type: %d, "
-			      "name: \"%s\"\n",
+			T_OUT("ino: 0x%" PRIx64 ", off: 0x%" PRIx64
+			      ", len: %d, type: %d, name: \"%s\"\n",
 			      d->d_ino, d->d_off, d->d_reclen, d->d_type,
 			      d->d_name);
 			sprintf(path, "/%s/%s", dir, d->d_name);
@@ -187,7 +188,7 @@ TEST_F(dirs, lots_of_files)
 	memset(buf, 0xff, sizeof(buf));
 
 	for (size_t i = 0; i < ops; ++i) {
-		sprintf(buf, "/file%04zu", i);
+		sprintf(buf, "/file%04" PRIu64, i);
 
 		f = pmemfile_open(pfp, buf, PMEMFILE_O_CREAT | PMEMFILE_O_EXCL |
 					  PMEMFILE_O_WRONLY,
@@ -228,7 +229,7 @@ TEST_F(dirs, mkdir_rmdir_unlink_errors)
 	char buf[1001];
 
 	for (size_t i = 0; i < ops; ++i) {
-		sprintf(buf, "/dir%04zu", i);
+		sprintf(buf, "/dir%04" PRIu64, i);
 
 		ASSERT_EQ(pmemfile_mkdir(pfp, buf, 0755), 0);
 

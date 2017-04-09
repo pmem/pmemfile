@@ -31,6 +31,7 @@
  */
 
 #include <errno.h>
+#include <inttypes.h>
 #include <time.h>
 
 #include "internal.h"
@@ -159,7 +160,8 @@ pmfi_path(struct pmemfile_vinode *vinode)
 	if (!vinode)
 		return NULL;
 	if (!vinode->path)
-		LOG(LTRC, "0x%lx: no vinode->path", vinode->tinode.oid.off);
+		LOG(LTRC, "0x%" PRIx64 ": no vinode->path",
+			vinode->tinode.oid.off);
 	return vinode->path;
 }
 #endif

@@ -34,6 +34,7 @@
  * lseek.c -- pmemfile_lseek implementation
  */
 
+#include <inttypes.h>
 #include "data.h"
 #include "file.h"
 #include "inode.h"
@@ -160,7 +161,7 @@ pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t offset,
 {
 	(void) pfp;
 
-	LOG(LDBG, "file %p offset %ld whence %d", file, offset, whence);
+	LOG(LDBG, "file %p offset %" PRId64 " whence %d", file, offset, whence);
 
 	if (file->flags & PFILE_PATH) {
 		errno = EBADF;
@@ -249,8 +250,8 @@ pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t offset,
 		errno = new_errno;
 	} else {
 		if (file->offset != (size_t)ret)
-			LOG(LDBG, "off diff: old %lu != new %lu", file->offset,
-					(size_t)ret);
+			LOG(LDBG, "off diff: old %" PRIu64 " != new %" PRIu64,
+				file->offset, (size_t)ret);
 		file->offset = (size_t)ret;
 	}
 

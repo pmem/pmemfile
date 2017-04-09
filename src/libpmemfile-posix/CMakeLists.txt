@@ -32,7 +32,6 @@
 set(SOURCES
 	block_array.c
 	callbacks.c
-	consts.c
 	ctree.c
 	data.c
 	dir.c
@@ -53,6 +52,7 @@ if(WIN32)
 	)
 else()
 	set(SOURCES ${SOURCES}
+		consts.c
 		os_thread_pthread.c
 		os_util_linux.c
 	)

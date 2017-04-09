@@ -91,7 +91,7 @@ set_target_properties(pmemfile-posix_shared PROPERTIES VERSION ${VERSION} SOVERS
 
 if(NOT ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 	set_target_properties(pmemfile-posix_shared PROPERTIES
-		PUBLIC_HEADER "${CMAKE_SOURCE_DIR}/include/libpmemfile-posix.h;${CMAKE_SOURCE_DIR}/include/libpmemfile-posix-stubs.h")
+		PUBLIC_HEADER "${CMAKE_BINARY_DIR}/include/libpmemfile-posix.h;${CMAKE_SOURCE_DIR}/include/libpmemfile-posix-stubs.h")
 endif()
 
 add_custom_command(OUTPUT libpmemfile-posix.a

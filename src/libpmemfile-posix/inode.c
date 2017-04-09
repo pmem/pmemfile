@@ -59,7 +59,8 @@ pmfi_path(struct pmemfile_vinode *vinode)
 	if (!vinode)
 		return NULL;
 	if (!vinode->path)
-		LOG(LTRC, "0x%lx: no vinode->path", vinode->tinode.oid.off);
+		LOG(LTRC, "0x%" PRIx64 ": no vinode->path",
+				vinode->tinode.oid.off);
 	return vinode->path;
 #else
 	return NULL;
@@ -488,7 +489,7 @@ struct pmemfile_vinode *
 inode_alloc(PMEMfilepool *pfp, uint64_t flags, struct pmemfile_vinode *parent,
 		volatile bool *parent_refed, const char *name, size_t namelen)
 {
-	LOG(LDBG, "flags 0x%lx", flags);
+	LOG(LDBG, "flags 0x%" PRIx64, flags);
 
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 
@@ -603,7 +604,7 @@ inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 	} else if (inode_is_symlink(inode)) {
 		/* nothing to be done */
 	} else {
-		FATAL("unknown inode type 0x%lx", inode->flags);
+		FATAL("unknown inode type 0x%" PRIx64, inode->flags);
 	}
 	TX_FREE(tinode);
 }

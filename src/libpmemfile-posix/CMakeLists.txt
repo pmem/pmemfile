@@ -54,8 +54,6 @@ set(SOURCES
 	lseek.c
 	mkdir.c
 	mmap.c
-	os_thread_pthread.c
-	os_util_linux.c
 	out.c
 	pmemfile-posix.c
 	pool.c
@@ -72,6 +70,18 @@ set(SOURCES
 	utils.c
 	write.c
 )
+
+if(WIN32)
+	set(SOURCES ${SOURCES}
+		os_thread_windows.c
+		os_util_windows.c
+	)
+else()
+	set(SOURCES ${SOURCES}
+		os_thread_pthread.c
+		os_util_linux.c
+	)
+endif()
 
 set(HEADERS
 	callbacks.h

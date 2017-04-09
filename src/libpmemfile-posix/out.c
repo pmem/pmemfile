@@ -36,6 +36,9 @@
  * Macros like LOG(), OUT, ASSERT(), etc. end up here.
  */
 
+/* alloca is in malloc.h on Windows */
+#include <malloc.h>
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>

@@ -89,6 +89,15 @@ find_package(PkgConfig QUIET)
 
 include_directories(include)
 
+if(WIN32)
+	set(PMEMFILE_NATIVE_TYPES 0)
+else()
+	set(PMEMFILE_NATIVE_TYPES 1)
+endif()
+
+configure_file(include/libpmemfile-posix.h.in include/libpmemfile-posix.h)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/include)
+
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 11)
 

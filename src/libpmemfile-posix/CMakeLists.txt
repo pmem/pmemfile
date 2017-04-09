@@ -40,13 +40,23 @@ set(SOURCES
 	inode.c
 	inode_array.c
 	locks.c
-	os_thread_pthread.c
-	os_util_linux.c
 	out.c
 	pmemfile-posix.c
 	pool.c
 	stubs.c
 )
+
+if(WIN32)
+	set(SOURCES ${SOURCES}
+		os_thread_windows.c
+		os_util_windows.c
+	)
+else()
+	set(SOURCES ${SOURCES}
+		os_thread_pthread.c
+		os_util_linux.c
+	)
+endif()
 
 set(HEADERS
 	callbacks.h

@@ -98,6 +98,12 @@ find_package(PkgConfig QUIET)
 
 include_directories(include)
 
+if(WIN32)
+	add_definitions(-DPMEMFILE_NATIVE_TYPES=-1)
+else()
+	add_definitions(-DPMEMFILE_NATIVE_TYPES=1)
+endif()
+
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 11)
 

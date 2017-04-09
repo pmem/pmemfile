@@ -9,4 +9,4 @@ Version: @VERSION@
 URL: http://github.com/pmem/pmemfile
 Requires.private: libpmemobj
 Libs: -L@CMAKE_INSTALL_PREFIX@/lib -lpmemfile-posix
-Cflags: -I@CMAKE_INSTALL_PREFIX@/include
+Cflags: -I@CMAKE_INSTALL_PREFIX@/include -DPMEMFILE_NATIVE_TYPES=1

@@ -40,6 +40,15 @@
 #ifndef LIBPMEMFILE_POSIX_H
 #define LIBPMEMFILE_POSIX_H 1
 
+#ifndef PMEMFILE_NATIVE_TYPES
+#error PMEMFILE_NATIVE_TYPES not set. If you are seeing this message it means \
+	your build system is not set up correctly. On Linux it probably means \
+	you are not using libpmemfile-posix pkg-config file correctly. This \
+	is NOT a configuration variable. Its value must match ABI exposed by \
+	libpmemfile-posix library binary.
+#else
+
+#include <stdint.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/uio.h>
@@ -177,6 +186,8 @@ extern "C" {
 typedef struct pmemfilepool PMEMfilepool;
 typedef struct pmemfile_file PMEMfile;
 
+#if PMEMFILE_NATIVE_TYPES == 1
+
 typedef mode_t pmemfile_mode_t;
 typedef uid_t pmemfile_uid_t;
 typedef gid_t pmemfile_gid_t;
@@ -194,6 +205,68 @@ typedef struct iovec pmemfile_iovec_t;
 
 typedef struct timespec pmemfile_timespec_t;
 typedef struct stat pmemfile_stat_t;
+typedef struct utimbuf pmemfile_utimbuf_t;
+typedef struct timeval pmemfile_timeval_t;
+
+#elif PMEMFILE_NATIVE_TYPES == -1
+
+typedef uint32_t pmemfile_mode_t;
+typedef uint32_t pmemfile_uid_t;
+typedef uint32_t pmemfile_gid_t;
+typedef int64_t pmemfile_ssize_t;
+typedef int64_t pmemfile_off_t;
+typedef uint64_t pmemfile_nlink_t;
+typedef int64_t pmemfile_blksize_t;
+typedef int64_t pmemfile_blkcnt_t;
+typedef uint64_t pmemfile_dev_t;
+typedef uint64_t pmemfile_ino_t;
+
+typedef struct
+{
+	int64_t tv_sec;
+	int64_t tv_nsec;
+} pmemfile_timespec_t;
+
+typedef struct
+{
+	pmemfile_dev_t st_dev;
+	pmemfile_ino_t st_ino;
+	pmemfile_nlink_t st_nlink;
+	pmemfile_mode_t st_mode;
+	pmemfile_uid_t st_uid;
+	pmemfile_gid_t st_gid;
+	pmemfile_dev_t st_rdev;
+	pmemfile_off_t st_size;
+	pmemfile_blksize_t st_blksize;
+	pmemfile_blkcnt_t st_blocks;
+	pmemfile_timespec_t st_atim;
+	pmemfile_timespec_t st_mtim;
+	pmemfile_timespec_t st_ctim;
+} pmemfile_stat_t;
+
+typedef struct
+{
+	void *iov_base;
+	size_t iov_len;
+} pmemfile_iovec_t;
+
+typedef struct
+{
+	int64_t actime;
+	int64_t modtime;
+} pmemfile_utimbuf_t;
+
+typedef struct
+{
+	int64_t tv_sec;
+	int64_t tv_usec;
+} pmemfile_timeval_t;
+
+#else
+
+#error invalid value of PMEMFILE_NATIVE_TYPES
+
+#endif
 
 #define PMEMFILE_AT_CWD ((PMEMfile *)(((unsigned char *)0) - 1))
 
@@ -363,5 +436,6 @@ const char *pmemfile_errormsg(void);
 
 #ifdef __cplusplus
 }
+#endif
 #endif
 #endif	/* libpmemfile-posix.h */

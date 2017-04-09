@@ -65,33 +65,33 @@ is_zeroed(const void *addr, size_t len)
 
 /* pmemfile stuff */
 bool test_pmemfile_create(PMEMfilepool *pfp, const char *path, int flags,
-			  mode_t mode);
+			  pmemfile_mode_t mode);
 /* utilities */
 
 class pmemfile_ls {
 public:
-	mode_t mode;
-	nlink_t nlink;
-	off_t size;
+	pmemfile_mode_t mode;
+	pmemfile_nlink_t nlink;
+	pmemfile_off_t size;
 	const char *name;
 	const char *link;
 
-	uid_t uid;
-	gid_t gid;
+	pmemfile_uid_t uid;
+	pmemfile_gid_t gid;
 };
 
 bool test_pmemfile_stats_match(PMEMfilepool *pfp, unsigned inodes,
 			       unsigned dirs, unsigned block_arrays,
 			       unsigned blocks);
-ssize_t test_pmemfile_file_size(PMEMfilepool *pfp, PMEMfile *file);
-ssize_t test_pmemfile_path_size(PMEMfilepool *pfp, const char *path);
+pmemfile_ssize_t test_pmemfile_file_size(PMEMfilepool *pfp, PMEMfile *file);
+pmemfile_ssize_t test_pmemfile_path_size(PMEMfilepool *pfp, const char *path);
 
 class file_attrs {
 public:
-	struct stat stat;
+	pmemfile_stat_t stat;
 	std::string link;
 
-	file_attrs(const struct stat &stat, const char *link = nullptr)
+	file_attrs(const pmemfile_stat_t &stat, const char *link = nullptr)
 	    : stat(stat), link(link)
 	{
 	}

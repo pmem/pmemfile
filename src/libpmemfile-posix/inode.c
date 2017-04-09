@@ -470,7 +470,7 @@ vinode_unref_tx(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 void
 file_get_time(struct pmemfile_time *t)
 {
-	struct timespec tm;
+	pmemfile_timespec_t tm;
 	if (clock_gettime(CLOCK_REALTIME, &tm)) {
 		ERR("!clock_gettime");
 		pmemfile_tx_abort(errno);
@@ -611,10 +611,10 @@ inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 /*
  * pmemfile_time_to_timespec -- convert between pmemfile_time and timespec
  */
-static inline struct timespec
+static inline pmemfile_timespec_t
 pmemfile_time_to_timespec(const struct pmemfile_time *t)
 {
-	struct timespec tm;
+	pmemfile_timespec_t tm;
 	tm.tv_sec = t->sec;
 	tm.tv_nsec = t->nsec;
 	return tm;
@@ -624,7 +624,7 @@ pmemfile_time_to_timespec(const struct pmemfile_time *t)
  * vinode_stat -- fill struct stat using information from vinode
  */
 static int
-vinode_stat(struct pmemfile_vinode *vinode, struct stat *buf)
+vinode_stat(struct pmemfile_vinode *vinode, pmemfile_stat_t *buf)
 {
 	struct pmemfile_inode *inode = vinode->inode;
 
@@ -636,14 +636,14 @@ vinode_stat(struct pmemfile_vinode *vinode, struct stat *buf)
 	buf->st_uid = inode->uid;
 	buf->st_gid = inode->gid;
 	buf->st_rdev = 0;
-	if ((off_t)inode->size < 0)
+	if ((pmemfile_off_t)inode->size < 0)
 		return EOVERFLOW;
-	buf->st_size = (off_t)inode->size;
+	buf->st_size = (pmemfile_off_t)inode->size;
 	buf->st_blksize = 1;
-	if ((blkcnt_t)inode->size < 0)
+	if ((pmemfile_blkcnt_t)inode->size < 0)
 		return EOVERFLOW;
 
-	blkcnt_t blks = 0;
+	pmemfile_blkcnt_t blks = 0;
 	if (inode_is_regular_file(inode)) {
 		const struct pmemfile_block_array *arr =
 				&inode->file_data.blocks;
@@ -658,7 +658,7 @@ vinode_stat(struct pmemfile_vinode *vinode, struct stat *buf)
 		 * XXX This doesn't match reality. It will match once we start
 		 * getting 4k-aligned blocks from pmemobj allocator.
 		 */
-		blks = (blkcnt_t)((sz + 511) / 512);
+		blks = (pmemfile_blkcnt_t)((sz + 511) / 512);
 	} else if (inode_is_dir(inode)) {
 		const struct pmemfile_dir *arr = &inode->file_data.dir;
 		size_t sz = 0;
@@ -671,7 +671,7 @@ vinode_stat(struct pmemfile_vinode *vinode, struct stat *buf)
 		 * XXX This doesn't match reality. It will match once we start
 		 * getting 4k-aligned blocks from pmemobj allocator.
 		 */
-		blks = (blkcnt_t)((sz + 511) / 512);
+		blks = (pmemfile_blkcnt_t)((sz + 511) / 512);
 	} else if (inode_is_symlink(inode)) {
 		blks = 0;
 	} else
@@ -686,7 +686,7 @@ vinode_stat(struct pmemfile_vinode *vinode, struct stat *buf)
 
 static int
 _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
-		const char *path, struct stat *buf, int flags)
+		const char *path, pmemfile_stat_t *buf, int flags)
 {
 	int error = 0;
 	struct pmemfile_cred cred;
@@ -748,7 +748,7 @@ ret:
 
 int
 pmemfile_fstatat(PMEMfilepool *pfp, PMEMfile *dir, const char *path,
-		struct stat *buf, int flags)
+		pmemfile_stat_t *buf, int flags)
 {
 	struct pmemfile_vinode *at;
 	bool at_unref;
@@ -772,7 +772,7 @@ pmemfile_fstatat(PMEMfilepool *pfp, PMEMfile *dir, const char *path,
  * pmemfile_stat
  */
 int
-pmemfile_stat(PMEMfilepool *pfp, const char *path, struct stat *buf)
+pmemfile_stat(PMEMfilepool *pfp, const char *path, pmemfile_stat_t *buf)
 {
 	return pmemfile_fstatat(pfp, PMEMFILE_AT_CWD, path, buf, 0);
 }
@@ -781,7 +781,7 @@ pmemfile_stat(PMEMfilepool *pfp, const char *path, struct stat *buf)
  * pmemfile_fstat
  */
 int
-pmemfile_fstat(PMEMfilepool *pfp, PMEMfile *file, struct stat *buf)
+pmemfile_fstat(PMEMfilepool *pfp, PMEMfile *file, pmemfile_stat_t *buf)
 {
 	if (!file) {
 		errno = EBADF;
@@ -807,7 +807,7 @@ pmemfile_fstat(PMEMfilepool *pfp, PMEMfile *file, struct stat *buf)
  * pmemfile_lstat
  */
 int
-pmemfile_lstat(PMEMfilepool *pfp, const char *path, struct stat *buf)
+pmemfile_lstat(PMEMfilepool *pfp, const char *path, pmemfile_stat_t *buf)
 {
 	return pmemfile_fstatat(pfp, PMEMFILE_AT_CWD, path, buf,
 			PMEMFILE_AT_SYMLINK_NOFOLLOW);

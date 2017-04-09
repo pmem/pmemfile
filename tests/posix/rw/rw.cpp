@@ -45,10 +45,10 @@ public:
 	}
 
 protected:
-	blkcnt_t
+	pmemfile_blkcnt_t
 	stat_block_count(PMEMfile *f)
 	{
-		struct stat stat_buf;
+		pmemfile_stat_t stat_buf;
 
 		if (pmemfile_fstat(pfp, f, &stat_buf) != 0) {
 			perror("stat_block_count");
@@ -82,8 +82,8 @@ TEST_F(rw, 1)
 	memset(bufFF, 0xff, sizeof(bufFF));
 	memset(buf00, 0x00, sizeof(buf00));
 
-	ssize_t written = pmemfile_write(pfp, f, data, len);
-	ASSERT_EQ(written, (ssize_t)len) << COND_ERROR(written);
+	pmemfile_ssize_t written = pmemfile_write(pfp, f, data, len);
+	ASSERT_EQ(written, (pmemfile_ssize_t)len) << COND_ERROR(written);
 
 	EXPECT_TRUE(
 		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
@@ -95,7 +95,7 @@ TEST_F(rw, 1)
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 1));
 
 	/* try to read write-only file */
-	ssize_t r = pmemfile_read(pfp, f, data2, len);
+	pmemfile_ssize_t r = pmemfile_read(pfp, f, data2, len);
 	ASSERT_EQ(r, -1);
 	EXPECT_EQ(errno, EBADF);
 	pmemfile_close(pfp, f);
@@ -106,7 +106,7 @@ TEST_F(rw, 1)
 	/* read only what we wrote and check nothing else was read */
 	memset(data2, 0xff, sizeof(data2));
 	r = pmemfile_read(pfp, f, data2, len);
-	ASSERT_EQ(r, (ssize_t)len) << COND_ERROR(r);
+	ASSERT_EQ(r, (pmemfile_ssize_t)len) << COND_ERROR(r);
 	ASSERT_EQ(memcmp(data, data2, len), 0);
 	ASSERT_EQ(memcmp(data2 + len, bufFF, sizeof(data2) - len), 0);
 
@@ -129,7 +129,7 @@ TEST_F(rw, 1)
 	/* read as much as possible and check that we read only what we wrote */
 	memset(data2, 0xff, sizeof(data2));
 	r = pmemfile_read(pfp, f, data2, sizeof(data2));
-	ASSERT_EQ(r, (ssize_t)len);
+	ASSERT_EQ(r, (pmemfile_ssize_t)len);
 	ASSERT_EQ(memcmp(data, data2, len), 0);
 	ASSERT_EQ(memcmp(data2 + len, bufFF, sizeof(data2) - len), 0);
 
@@ -339,8 +339,9 @@ TEST_F(rw, 2)
 #define LEN (sizeof(bufd) - 1000)
 #define LOOPS ((200 * 1024 * 1024) / LEN)
 	for (size_t i = 0; i < LOOPS; ++i) {
-		ssize_t written = pmemfile_write(pfp, f, bufd, LEN);
-		ASSERT_EQ(written, (ssize_t)LEN) << COND_ERROR(written);
+		pmemfile_ssize_t written = pmemfile_write(pfp, f, bufd, LEN);
+		ASSERT_EQ(written, (pmemfile_ssize_t)LEN)
+			<< COND_ERROR(written);
 	}
 
 	pmemfile_close(pfp, f);
@@ -359,12 +360,12 @@ TEST_F(rw, 2)
 
 	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
-	ssize_t r;
+	pmemfile_ssize_t r;
 
 	for (size_t i = 0; i < LOOPS; ++i) {
 		memset(buftmp, 0, sizeof(buftmp));
 		r = pmemfile_read(pfp, f, buftmp, LEN);
-		ASSERT_EQ(r, (ssize_t)LEN) << COND_ERROR(r);
+		ASSERT_EQ(r, (pmemfile_ssize_t)LEN) << COND_ERROR(r);
 		ASSERT_EQ(memcmp(buftmp, bufd, LEN), 0);
 	}
 #undef LEN
@@ -423,7 +424,7 @@ TEST_F(rw, trunc)
 			   0);
 	ASSERT_NE(f2, nullptr) << strerror(errno);
 
-	ssize_t r = pmemfile_read(pfp, f1, buftmp, 128);
+	pmemfile_ssize_t r = pmemfile_read(pfp, f1, buftmp, 128);
 	ASSERT_EQ(r, 0) << COND_ERROR(r);
 
 	ASSERT_EQ(pmemfile_write(pfp, f2, bufDD, 128), 128);
@@ -450,7 +451,7 @@ TEST_F(rw, ftruncate)
 	char buf[0x1000];
 	char bufFF[sizeof(buf)];
 	PMEMfile *f;
-	ssize_t r;
+	pmemfile_ssize_t r;
 
 	memset(bufFF, 0xff, sizeof(bufFF));
 
@@ -473,7 +474,7 @@ TEST_F(rw, ftruncate)
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0));
 
-	static const ssize_t large = 0x100000;
+	static const pmemfile_ssize_t large = 0x100000;
 
 	r = pmemfile_ftruncate(pfp, f, large / 32);
 	ASSERT_EQ(r, 0) << COND_ERROR(r);
@@ -487,7 +488,7 @@ TEST_F(rw, ftruncate)
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), large + 4);
 
 	static constexpr char data0[] = "testtest";
-	static constexpr ssize_t l0 = sizeof(data0) - 1;
+	static constexpr pmemfile_ssize_t l0 = sizeof(data0) - 1;
 
 	ASSERT_EQ(pmemfile_lseek(pfp, f, large, PMEMFILE_SEEK_SET), large);
 	ASSERT_EQ(pmemfile_write(pfp, f, data0, l0), l0);
@@ -498,7 +499,7 @@ TEST_F(rw, ftruncate)
 	ASSERT_EQ(memcmp(buf, bufFF, sizeof(buf)), 0);
 
 	static constexpr char data1[] = "\0\0\0testtest";
-	static constexpr ssize_t l1 = sizeof(data1) - 1;
+	static constexpr pmemfile_ssize_t l1 = sizeof(data1) - 1;
 
 	ASSERT_EQ(pmemfile_lseek(pfp, f, large, PMEMFILE_SEEK_SET), large);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, -3, PMEMFILE_SEEK_CUR), large - 3);
@@ -514,7 +515,7 @@ TEST_F(rw, ftruncate)
 		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 2));
 
 	static constexpr char data2[] = "\0\0\0te";
-	static constexpr ssize_t l2 = sizeof(data2) - 1;
+	static constexpr pmemfile_ssize_t l2 = sizeof(data2) - 1;
 
 	r = pmemfile_ftruncate(pfp, f, large + 2);
 	ASSERT_EQ(r, 0) << COND_ERROR(r);
@@ -533,7 +534,7 @@ TEST_F(rw, ftruncate)
 		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 2));
 
 	static constexpr char data3[] = "\0\0\0te\0\0\0\0\0\0";
-	static constexpr ssize_t l3 = sizeof(data3) - 1;
+	static constexpr pmemfile_ssize_t l3 = sizeof(data3) - 1;
 
 	r = pmemfile_ftruncate(pfp, f, large + 8);
 	ASSERT_EQ(r, 0) << COND_ERROR(r);
@@ -567,7 +568,7 @@ TEST_F(rw, truncate)
 	char buf[0x1000];
 	char bufFF[sizeof(buf)];
 	PMEMfile *f;
-	ssize_t r;
+	pmemfile_ssize_t r;
 
 	memset(bufFF, 0xff, sizeof(bufFF));
 
@@ -591,7 +592,7 @@ TEST_F(rw, truncate)
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0));
 
-	static const ssize_t large = 0x100000;
+	static const pmemfile_ssize_t large = 0x100000;
 
 	r = pmemfile_truncate(pfp, "/file1", large / 32);
 	ASSERT_EQ(r, 0) << COND_ERROR(r);
@@ -605,7 +606,7 @@ TEST_F(rw, truncate)
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), large + 4);
 
 	static constexpr char data0[] = "testtest";
-	static constexpr ssize_t l0 = sizeof(data0) - 1;
+	static constexpr pmemfile_ssize_t l0 = sizeof(data0) - 1;
 
 	ASSERT_EQ(pmemfile_lseek(pfp, f, large, PMEMFILE_SEEK_SET), large);
 	ASSERT_EQ(pmemfile_write(pfp, f, data0, l0), l0);
@@ -616,7 +617,7 @@ TEST_F(rw, truncate)
 	ASSERT_EQ(memcmp(buf, bufFF, sizeof(buf)), 0);
 
 	static constexpr char data1[] = "\0\0\0testtest";
-	static constexpr ssize_t l1 = sizeof(data1) - 1;
+	static constexpr pmemfile_ssize_t l1 = sizeof(data1) - 1;
 
 	ASSERT_EQ(pmemfile_lseek(pfp, f, large, PMEMFILE_SEEK_SET), large);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, -3, PMEMFILE_SEEK_CUR), large - 3);
@@ -632,7 +633,7 @@ TEST_F(rw, truncate)
 		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 2));
 
 	static constexpr char data2[] = "\0\0\0te";
-	static constexpr ssize_t l2 = sizeof(data2) - 1;
+	static constexpr pmemfile_ssize_t l2 = sizeof(data2) - 1;
 
 	r = pmemfile_truncate(pfp, "/file1", large + 2);
 	ASSERT_EQ(r, 0) << COND_ERROR(r);
@@ -651,7 +652,7 @@ TEST_F(rw, truncate)
 		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 2));
 
 	static constexpr char data3[] = "\0\0\0te\0\0\0\0\0\0";
-	static constexpr ssize_t l3 = sizeof(data3) - 1;
+	static constexpr pmemfile_ssize_t l3 = sizeof(data3) - 1;
 
 	r = pmemfile_truncate(pfp, "/file1", large + 8);
 	ASSERT_EQ(r, 0) << COND_ERROR(r);
@@ -686,7 +687,7 @@ TEST_F(rw, fallocate)
 	char buf00[sizeof(buf)];
 	char bufFF[sizeof(buf)];
 	PMEMfile *f;
-	ssize_t r;
+	pmemfile_ssize_t r;
 
 	memset(buf00, 0x00, sizeof(buf00));
 	memset(bufFF, 0xff, sizeof(bufFF));
@@ -753,7 +754,7 @@ TEST_F(rw, fallocate)
 	 * the block size is fixed to 4K bytes.
 	 */
 	static constexpr char data0[] = "testing testy tested tests";
-	static constexpr ssize_t l0 = sizeof(data0) - 1;
+	static constexpr pmemfile_ssize_t l0 = sizeof(data0) - 1;
 
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0x1ffe, PMEMFILE_SEEK_SET), 0x1ffe);
 	ASSERT_EQ(pmemfile_write(pfp, f, data0, l0), l0);
@@ -769,7 +770,7 @@ TEST_F(rw, fallocate)
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0x1ffd, PMEMFILE_SEEK_SET), 0x1ffd);
 	memset(buf, 0xff, sizeof(buf));
 	r = pmemfile_read(pfp, f, buf, sizeof(buf));
-	ASSERT_EQ(r, (ssize_t)sizeof(buf)) << COND_ERROR(r);
+	ASSERT_EQ(r, (pmemfile_ssize_t)sizeof(buf)) << COND_ERROR(r);
 	ASSERT_EQ(buf[0], '\0');
 	ASSERT_EQ(memcmp(buf + 1, data0, l0), 0);
 	ASSERT_EQ(memcmp(buf + 1 + l0, buf00, sizeof(buf) - 1 - l0), 0);
@@ -799,7 +800,7 @@ TEST_F(rw, fallocate)
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0x1ffd, PMEMFILE_SEEK_SET), 0x1ffd);
 	memset(buf, 0xff, sizeof(buf));
 	r = pmemfile_read(pfp, f, buf, sizeof(buf));
-	ASSERT_EQ(r, (ssize_t)sizeof(buf)) << COND_ERROR(r);
+	ASSERT_EQ(r, (pmemfile_ssize_t)sizeof(buf)) << COND_ERROR(r);
 	ASSERT_EQ(buf[0], '\0');
 	ASSERT_EQ(memcmp(buf + 1, data0, 2), 0);
 	ASSERT_EQ(memcmp(buf + 1 + 2, buf00, sizeof(buf) - 1 - 2), 0);
@@ -839,7 +840,7 @@ TEST_F(rw, fallocate)
 	 * Altering the file size as well this time.
 	 */
 	/* Remember the the expected size and block counts at this point */
-	static constexpr ssize_t size = 0x80000 + 0x4000;
+	static constexpr pmemfile_ssize_t size = 0x80000 + 0x4000;
 	static constexpr unsigned bc_4k = 14 + 4;
 	static constexpr unsigned bc = 2;
 	r = pmemfile_fallocate(pfp, f, 0, 0x80000, 0x4000);
@@ -868,7 +869,7 @@ TEST_F(rw, fallocate)
 	/*
 	 * How about allocating a lot of single byte intervals?
 	 */
-	for (ssize_t offset = 77; offset < size; offset += 0x1000) {
+	for (pmemfile_ssize_t offset = 77; offset < size; offset += 0x1000) {
 		r = pmemfile_fallocate(pfp, f, PMEMFILE_FL_KEEP_SIZE, offset,
 				       1);
 		ASSERT_EQ(r, 0) << strerror(errno);
@@ -980,10 +981,10 @@ TEST_F(rw, o_append)
 
 TEST_F(rw, sparse_files_using_lseek)
 {
-	ssize_t size;
-	ssize_t r;
-	ssize_t hole;
-	ssize_t hole_end;
+	pmemfile_ssize_t size;
+	pmemfile_ssize_t r;
+	pmemfile_ssize_t hole;
+	pmemfile_ssize_t hole_end;
 	unsigned char buf[8192];
 	PMEMfile *f;
 
@@ -1248,7 +1249,7 @@ end:
 TEST_F(rw, failed_write)
 {
 	char buf[256];
-	ssize_t r;
+	pmemfile_ssize_t r;
 
 	PMEMfile *f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT |
 					    PMEMFILE_O_EXCL | PMEMFILE_O_RDWR,

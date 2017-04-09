@@ -46,15 +46,16 @@ public:
 static bool verbose;
 
 static const char *
-timespec_to_str(const struct timespec *t)
+timespec_to_str(const pmemfile_timespec_t *t)
 {
-	char *s = asctime(localtime(&t->tv_sec));
+	time_t sec = t->tv_sec;
+	char *s = asctime(localtime(&sec));
 	s[strlen(s) - 1] = 0;
 	return s;
 }
 
 static void
-dump_stat(struct stat *st, const char *path)
+dump_stat(pmemfile_stat_t *st, const char *path)
 {
 	T_OUT("path:       %s\n", path);
 	T_OUT("st_dev:     0x%lx\n", st->st_dev);
@@ -77,11 +78,11 @@ dump_stat(struct stat *st, const char *path)
 }
 
 static int
-test_stat(PMEMfilepool *pfp, const char *path, mode_t mode = 0,
-	  nlink_t nlink = 0, off_t size = 0, blksize_t blksize = 0,
-	  blkcnt_t blocks = 0)
+test_stat(PMEMfilepool *pfp, const char *path, pmemfile_mode_t mode = 0,
+	  pmemfile_nlink_t nlink = 0, pmemfile_off_t size = 0,
+	  pmemfile_blksize_t blksize = 0, pmemfile_blkcnt_t blocks = 0)
 {
-	struct stat st;
+	pmemfile_stat_t st;
 	memset(&st, 0, sizeof(st));
 	int ret = pmemfile_stat(pfp, path, &st);
 	if (ret)
@@ -102,10 +103,11 @@ test_stat(PMEMfilepool *pfp, const char *path, mode_t mode = 0,
 }
 
 static int
-test_fstat(PMEMfilepool *pfp, PMEMfile *f, mode_t mode = 0, nlink_t nlink = 0,
-	   off_t size = 0, blksize_t blksize = 0, blkcnt_t blocks = 0)
+test_fstat(PMEMfilepool *pfp, PMEMfile *f, pmemfile_mode_t mode = 0,
+	   pmemfile_nlink_t nlink = 0, pmemfile_off_t size = 0,
+	   pmemfile_blksize_t blksize = 0, pmemfile_blkcnt_t blocks = 0)
 {
-	struct stat st;
+	pmemfile_stat_t st;
 	memset(&st, 0, sizeof(st));
 	int ret = pmemfile_fstat(pfp, f, &st);
 	if (ret)
@@ -127,10 +129,11 @@ test_fstat(PMEMfilepool *pfp, PMEMfile *f, mode_t mode = 0, nlink_t nlink = 0,
 
 static int
 test_fstatat(PMEMfilepool *pfp, PMEMfile *dir, const char *path, int flags,
-	     mode_t mode = 0, nlink_t nlink = 0, off_t size = 0,
-	     blksize_t blksize = 0, blkcnt_t blocks = 0)
+	     pmemfile_mode_t mode = 0, pmemfile_nlink_t nlink = 0,
+	     pmemfile_off_t size = 0, pmemfile_blksize_t blksize = 0,
+	     pmemfile_blkcnt_t blocks = 0)
 {
-	struct stat st;
+	pmemfile_stat_t st;
 	memset(&st, 0, sizeof(st));
 	int ret = pmemfile_fstatat(pfp, dir, path, &st, flags);
 	if (ret)
@@ -172,7 +175,7 @@ TEST_F(stat_test, stat_big_file)
 	memset(buf, 0xdd, 1024);
 
 	for (int i = 0; i < 100; ++i) {
-		ssize_t written = pmemfile_write(pfp, f, buf, 1024);
+		pmemfile_ssize_t written = pmemfile_write(pfp, f, buf, 1024);
 		ASSERT_EQ(written, 1024) << COND_ERROR(written);
 	}
 

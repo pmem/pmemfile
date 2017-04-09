@@ -191,7 +191,7 @@ cleanup_orphanded_inodes(PMEMfilepool *pfp,
  * pmemfile_mkfs -- create pmem file system on specified file
  */
 PMEMfilepool *
-pmemfile_mkfs(const char *pathname, size_t poolsize, mode_t mode)
+pmemfile_mkfs(const char *pathname, size_t poolsize, pmemfile_mode_t mode)
 {
 	LOG(LDBG, "pathname %s poolsize %zu mode %o", pathname, poolsize, mode);
 
@@ -308,7 +308,7 @@ pmemfile_pool_close(PMEMfilepool *pfp)
  * gid_in_list -- return true when gid is in supplementary groups list
  */
 bool
-gid_in_list(const struct pmemfile_cred *cred, gid_t gid)
+gid_in_list(const struct pmemfile_cred *cred, pmemfile_gid_t gid)
 {
 	for (size_t i = 0; i < cred->groupsnum; ++i) {
 		if (cred->groups[i] == gid)
@@ -325,10 +325,10 @@ gid_in_list(const struct pmemfile_cred *cred, gid_t gid)
 bool
 can_access(const struct pmemfile_cred *cred, struct inode_perms perms, int acc)
 {
-	mode_t perm = perms.flags & PMEMFILE_ACCESSPERMS;
-	mode_t req = 0;
-	uid_t uid;
-	gid_t gid;
+	pmemfile_mode_t perm = perms.flags & PMEMFILE_ACCESSPERMS;
+	pmemfile_mode_t req = 0;
+	pmemfile_uid_t uid;
+	pmemfile_gid_t gid;
 	int acctype = acc & PFILE_ACCESS_MASK;
 
 	if (acctype == PFILE_USE_FACCESS) {

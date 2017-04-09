@@ -175,6 +175,9 @@ add_cxx_flag(-DDEBUG DEBUG)
 add_c_flag("-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2" RELEASE C_CAN_FORTIFY)
 add_cxx_flag("-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2" RELEASE CXX_CAN_FORTIFY)
 
+add_c_flag(-D_LARGEFILE64_SOURCE)
+add_cxx_flag(-D_LARGEFILE64_SOURCE)
+
 option(SANITIZERS "enable AddressSanitizer and UndefinedBehaviorSanitizer (debugging)" OFF)
 
 if(SANITIZERS)

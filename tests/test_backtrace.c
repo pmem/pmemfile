@@ -117,7 +117,7 @@ test_dump_backtrace(void)
 }
 #else /* USE_LIBUNWIND */
 
-#define SIZE 100
+#define BT_SIZE 100
 
 #ifndef _WIN32
 
@@ -130,10 +130,10 @@ void
 test_dump_backtrace(void)
 {
 	int j, nptrs;
-	void *buffer[SIZE];
+	void *buffer[BT_SIZE];
 	char **strings;
 
-	nptrs = backtrace(buffer, SIZE);
+	nptrs = backtrace(buffer, BT_SIZE);
 
 	strings = backtrace_symbols(buffer, nptrs);
 	if (strings == NULL) {
@@ -149,6 +149,7 @@ test_dump_backtrace(void)
 
 #else /* _WIN32 */
 
+#include <windows.h>
 #include <DbgHelp.h>
 
 /*
@@ -157,14 +158,14 @@ test_dump_backtrace(void)
 void
 test_dump_backtrace(void)
 {
-	void *buffer[SIZE];
+	void *buffer[BT_SIZE];
 	unsigned nptrs;
 	SYMBOL_INFO *symbol;
 
 	HANDLE proc_hndl = GetCurrentProcess();
 	SymInitialize(proc_hndl, NULL, TRUE);
 
-	nptrs = CaptureStackBackTrace(0, SIZE, buffer, NULL);
+	nptrs = CaptureStackBackTrace(0, BT_SIZE, buffer, NULL);
 	symbol = calloc(sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(CHAR), 1);
 	symbol->MaxNameLen = MAX_SYM_NAME - 1;
 	symbol->SizeOfStruct = sizeof(SYMBOL_INFO);

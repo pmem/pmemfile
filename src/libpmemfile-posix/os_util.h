@@ -32,7 +32,13 @@
 #ifndef OS_UTIL_H
 #define OS_UTIL_H
 
+#include "libpmemfile-posix.h"
+
+#define OS_CLOCK_REALTIME 0
+#define OS_CLOCK_MONOTONIC 1
+
 int os_getpid(void);
+int os_clock_gettime(int id, pmemfile_timespec_t *ts);
 void os_describe_errno(int errnum, char *buf, size_t buflen);
 
 #ifdef DEBUG

@@ -80,7 +80,7 @@ struct pmemfilepool {
 
 	/* superblock */
 	struct pmemfile_super *super;
-	os_rwlock_t rwlock;
+	os_rwlock_t super_rwlock;
 
 	/* map between inodes and vinodes */
 	struct pmemfile_inode_map *inode_map;

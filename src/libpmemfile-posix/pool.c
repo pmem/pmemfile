@@ -69,7 +69,7 @@ initialize_super_block(PMEMfilepool *pfp)
 	}
 
 	os_rwlock_init(&pfp->cred_rwlock);
-	os_rwlock_init(&pfp->rwlock);
+	os_rwlock_init(&pfp->super_rwlock);
 	os_rwlock_init(&pfp->cwd_rwlock);
 
 	pfp->inode_map = inode_map_alloc();
@@ -112,7 +112,7 @@ initialize_super_block(PMEMfilepool *pfp)
 tx_err:
 	inode_map_free(pfp->inode_map);
 inode_map_alloc_fail:
-	os_rwlock_destroy(&pfp->rwlock);
+	os_rwlock_destroy(&pfp->super_rwlock);
 	os_rwlock_destroy(&pfp->cwd_rwlock);
 	os_rwlock_destroy(&pfp->cred_rwlock);
 	errno = error;
@@ -300,7 +300,7 @@ pmemfile_pool_close(PMEMfilepool *pfp)
 	vinode_unref(pfp, pfp->root);
 	inode_map_free(pfp->inode_map);
 	os_rwlock_destroy(&pfp->cred_rwlock);
-	os_rwlock_destroy(&pfp->rwlock);
+	os_rwlock_destroy(&pfp->super_rwlock);
 	os_rwlock_destroy(&pfp->cwd_rwlock);
 
 	pmemobj_close(pfp->pop);

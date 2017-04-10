@@ -84,6 +84,8 @@ mkdir(${DIR}/mount_point/test_dir/a/b/c/d/e/f/g/h/i/j/k/l)
 mkdir(${DIR}/mount_point/test_dir/a/b/c/d/e/f/g/h/i/j/k/l/m)
 mkdir(${DIR}/mount_point/test_dir/a/b/c/d/e/f/g/h/i/j/k/l/m/n)
 
+# XXX add VERY deep rm -r test
+
 foreach(dir_index RANGE 0 64)
         mkdir(${DIR}/mount_point/test_dir/a/b/c/d/e/f/g/x${dir_index})
 endforeach()

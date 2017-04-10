@@ -400,7 +400,7 @@ vinode_can_access(const struct pmemfile_cred *cred,
  * copy_cred -- copies credentials
  */
 static int
-copy_cred(struct pmemfile_cred *dst_cred, struct pmemfile_cred *src_cred)
+copy_cred(struct pmemfile_cred *dst_cred, const struct pmemfile_cred *src_cred)
 {
 	dst_cred->ruid = src_cred->ruid;
 	dst_cred->rgid = src_cred->rgid;

@@ -861,8 +861,14 @@ lseek_seek_data_or_hole(struct pmemfile_vinode *vinode, pmemfile_off_t offset,
 	if (!vinode_is_regular_file(vinode))
 		return -EBADF; /* XXX directories are not supported here yet */
 
-	if (offset > fsize)
+	if (offset > fsize) {
+		/*
+		 * From GNU man page: ENXIO if
+		 * "...ENXIO  whence is SEEK_DATA or SEEK_HOLE, and the file
+		 * offset is beyond the end of the file..."
+		 */
 		return -ENXIO;
+	}
 
 	if (offset < 0) /* this seems to be allowed by POSIX and Linux */
 		offset = 0;
@@ -916,14 +922,43 @@ pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t offset,
 	switch (whence) {
 		case PMEMFILE_SEEK_SET:
 			ret = offset;
+			if (ret < 0) {
+				/*
+				 * From POSIX: EINVAL if
+				 * "...the resulting file offset would be
+				 * negative for a regular file..."
+				 */
+				new_errno = EINVAL;
+			}
 			break;
 		case PMEMFILE_SEEK_CUR:
 			ret = (pmemfile_off_t)file->offset + offset;
+			if (ret < 0) {
+				if (offset < 0) {
+					new_errno = EINVAL;
+				} else {
+					/*
+					 * From POSIX: EOVERFLOW if
+					 * "...The resulting file offset would
+					 * be a value which cannot be
+					 * represented correctly in an object
+					 * of type off_t..."
+					 */
+					new_errno = EOVERFLOW;
+				}
+			}
 			break;
 		case PMEMFILE_SEEK_END:
 			os_rwlock_rdlock(&vinode->rwlock);
 			ret = (pmemfile_off_t)inode->size + offset;
 			os_rwlock_unlock(&vinode->rwlock);
+			if (ret < 0) {
+				/* Errors as in SEEK_CUR */
+				if (offset < 0)
+					new_errno = EINVAL;
+				else
+					new_errno = EOVERFLOW;
+			}
 			break;
 		case PMEMFILE_SEEK_DATA:
 		case PMEMFILE_SEEK_HOLE:

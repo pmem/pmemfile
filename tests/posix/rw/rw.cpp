@@ -36,6 +36,8 @@
 
 #include "pmemfile_test.hpp"
 
+#include <cstdint>
+
 static unsigned env_block_size;
 
 class rw : public pmemfile_test {
@@ -196,6 +198,26 @@ TEST_F(rw, 1)
 	ASSERT_NE(f, nullptr) << strerror(errno);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_CUR), 0);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 3, PMEMFILE_SEEK_CUR), 3);
+
+	/* validate some lseek argument checking */
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, -0x1000, PMEMFILE_SEEK_CUR), -1);
+	ASSERT_EQ(errno, EINVAL);
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, -1, PMEMFILE_SEEK_SET), -1);
+	ASSERT_EQ(errno, EINVAL);
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, INT64_MAX, PMEMFILE_SEEK_CUR), -1);
+	ASSERT_EQ(errno, EOVERFLOW);
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, INT64_MAX - 1, PMEMFILE_SEEK_CUR), -1);
+	ASSERT_EQ(errno, EOVERFLOW);
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, INT64_MAX - 1, PMEMFILE_SEEK_END), -1);
+	ASSERT_EQ(errno, EOVERFLOW);
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, INT64_MIN, PMEMFILE_SEEK_END), -1);
+	ASSERT_EQ(errno, EINVAL);
 
 	/* check that after "seek" "read" reads correct data */
 	memset(data2, 0xff, sizeof(data2));

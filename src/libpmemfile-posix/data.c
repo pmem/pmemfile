@@ -499,7 +499,7 @@ iterate_on_file_range(PMEMfilepool *pfp, PMEMfile *file,
 
 		/*
 		 * Multiple blocks might be used, but the first and last
-		 * blocks are special, in the sense that not necesseraly
+		 * blocks are special, in the sense that not necessarily
 		 * all of their content is copied.
 		 */
 

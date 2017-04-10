@@ -576,7 +576,7 @@ inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 		TOID(struct pmemfile_dir) tdir = TOID_NULL(struct pmemfile_dir);
 
 		while (dir != NULL) {
-			/* should have been catched earlier */
+			/* should have been caught earlier */
 			dir_assert_no_dirents(dir);
 
 			TOID(struct pmemfile_dir) next = dir->next;

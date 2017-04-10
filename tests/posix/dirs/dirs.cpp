@@ -1109,6 +1109,8 @@ TEST_F(dirs, O_PATH)
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file2"), 0);
 }
 
+/* XXX add multithreaded rename test */
+
 int
 main(int argc, char *argv[])
 {

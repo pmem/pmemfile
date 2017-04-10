@@ -539,7 +539,7 @@ vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 	ASSERTeq(vinode->orphaned.arr, NULL);
 
-	rwlock_tx_wlock(&pfp->rwlock);
+	rwlock_tx_wlock(&pfp->super_rwlock);
 
 	TOID(struct pmemfile_inode_array) orphaned =
 			pfp->super->orphaned_inodes;
@@ -547,7 +547,7 @@ vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 	inode_array_add(pfp, orphaned, vinode,
 			&vinode->orphaned.arr, &vinode->orphaned.idx);
 
-	rwlock_tx_unlock_on_commit(&pfp->rwlock);
+	rwlock_tx_unlock_on_commit(&pfp->super_rwlock);
 }
 
 /*

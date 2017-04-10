@@ -71,7 +71,7 @@ struct pmemfile_vinode {
 		unsigned idx;
 	} orphaned;
 
-	/* first free block */
+	/* first free block slot */
 	struct block_info {
 		struct pmemfile_block_array *arr;
 		uint32_t idx;

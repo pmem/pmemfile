@@ -52,6 +52,11 @@
 #include "pool.h"
 #include "util.h"
 
+/*
+ * is_tmpfile -- returns true if "flags" contains O_TMPFILE flag
+ *
+ * It's needed because O_TMPFILE contains O_DIRECTORY.
+ */
 static bool
 is_tmpfile(int flags)
 {
@@ -59,7 +64,7 @@ is_tmpfile(int flags)
 }
 
 /*
- * check_flags -- (internal) open(2) flags tester
+ * check_flags -- open(2) flags tester
  */
 static int
 check_flags(int flags)
@@ -1508,6 +1513,9 @@ pmemfile_fchmod(PMEMfilepool *pfp, PMEMfile *file, pmemfile_mode_t mode)
 	return 0;
 }
 
+/*
+ * pmemfile_setreuid -- sets real and effective user id
+ */
 int
 pmemfile_setreuid(PMEMfilepool *pfp, pmemfile_uid_t ruid, pmemfile_uid_t euid)
 {
@@ -1533,6 +1541,9 @@ pmemfile_setreuid(PMEMfilepool *pfp, pmemfile_uid_t ruid, pmemfile_uid_t euid)
 	return 0;
 }
 
+/*
+ * pmemfile_setregid -- sets real and effective group id
+ */
 int
 pmemfile_setregid(PMEMfilepool *pfp, pmemfile_gid_t rgid, pmemfile_gid_t egid)
 {
@@ -1558,18 +1569,27 @@ pmemfile_setregid(PMEMfilepool *pfp, pmemfile_gid_t rgid, pmemfile_gid_t egid)
 	return 0;
 }
 
+/*
+ * pmemfile_setuid -- sets effective user id
+ */
 int
 pmemfile_setuid(PMEMfilepool *pfp, pmemfile_uid_t uid)
 {
 	return pmemfile_setreuid(pfp, (pmemfile_uid_t)-1, uid);
 }
 
+/*
+ * pmemfile_setgid -- sets effective group id
+ */
 int
 pmemfile_setgid(PMEMfilepool *pfp, pmemfile_gid_t gid)
 {
 	return pmemfile_setregid(pfp, (pmemfile_gid_t)-1, gid);
 }
 
+/*
+ * pmemfile_getuid -- returns real user id
+ */
 pmemfile_uid_t
 pmemfile_getuid(PMEMfilepool *pfp)
 {
@@ -1580,6 +1600,9 @@ pmemfile_getuid(PMEMfilepool *pfp)
 	return ret;
 }
 
+/*
+ * pmemfile_getgid -- returns real group id
+ */
 pmemfile_gid_t
 pmemfile_getgid(PMEMfilepool *pfp)
 {
@@ -1590,18 +1613,27 @@ pmemfile_getgid(PMEMfilepool *pfp)
 	return ret;
 }
 
+/*
+ * pmemfile_seteuid -- sets effective user id
+ */
 int
 pmemfile_seteuid(PMEMfilepool *pfp, pmemfile_uid_t uid)
 {
 	return pmemfile_setreuid(pfp, (pmemfile_uid_t)-1, uid);
 }
 
+/*
+ * pmemfile_setegid -- sets effective group id
+ */
 int
 pmemfile_setegid(PMEMfilepool *pfp, pmemfile_gid_t gid)
 {
 	return pmemfile_setregid(pfp, (pmemfile_gid_t)-1, gid);
 }
 
+/*
+ * pmemfile_geteuid -- returns effective user id
+ */
 pmemfile_uid_t
 pmemfile_geteuid(PMEMfilepool *pfp)
 {
@@ -1612,6 +1644,9 @@ pmemfile_geteuid(PMEMfilepool *pfp)
 	return ret;
 }
 
+/*
+ * pmemfile_getegid -- returns effective group id
+ */
 pmemfile_gid_t
 pmemfile_getegid(PMEMfilepool *pfp)
 {
@@ -1622,6 +1657,9 @@ pmemfile_getegid(PMEMfilepool *pfp)
 	return ret;
 }
 
+/*
+ * pmemfile_setfsuid -- sets filesystem user id
+ */
 int
 pmemfile_setfsuid(PMEMfilepool *pfp, pmemfile_uid_t fsuid)
 {
@@ -1638,6 +1676,9 @@ pmemfile_setfsuid(PMEMfilepool *pfp, pmemfile_uid_t fsuid)
 	return (int)prev_fsuid;
 }
 
+/*
+ * pmemfile_setfsgid -- sets filesystem group id
+ */
 int
 pmemfile_setfsgid(PMEMfilepool *pfp, pmemfile_gid_t fsgid)
 {
@@ -1654,6 +1695,9 @@ pmemfile_setfsgid(PMEMfilepool *pfp, pmemfile_gid_t fsgid)
 	return (int)prev_fsgid;
 }
 
+/*
+ * pmemfile_getgroups -- fills "list" with supplementary group ids
+ */
 int
 pmemfile_getgroups(PMEMfilepool *pfp, int size, pmemfile_gid_t list[])
 {
@@ -1677,6 +1721,9 @@ pmemfile_getgroups(PMEMfilepool *pfp, int size, pmemfile_gid_t list[])
 	return (int)groupsnum;
 }
 
+/*
+ * pmemfile_getgroups -- sets supplementary group ids
+ */
 int
 pmemfile_setgroups(PMEMfilepool *pfp, size_t size, const pmemfile_gid_t *list)
 {

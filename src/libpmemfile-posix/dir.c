@@ -484,6 +484,8 @@ vinode_unlink_dirent(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 			parent->tinode.oid.off, pmfi_path(parent), (int)namelen,
 			name);
 
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
 	struct pmemfile_dirent *dirent =
 			vinode_lookup_dirent_by_name_locked(pfp, parent, name,
 					namelen);

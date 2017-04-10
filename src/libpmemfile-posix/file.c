@@ -177,6 +177,8 @@ create_file(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *parent_vinode, int flags,
 		pmemfile_mode_t mode)
 {
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
 	rwlock_tx_wlock(&parent_vinode->rwlock);
 
 	if (!_vinode_can_access(cred, parent_vinode, PFILE_WANT_WRITE))
@@ -201,6 +203,8 @@ static void
 open_file(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *vinode, int flags)
 {
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
 	if (!(flags & PMEMFILE_O_PATH)) {
 		int acc = flags & PMEMFILE_O_ACCMODE;
 
@@ -1367,6 +1371,8 @@ vinode_chmod(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	pmemfile_uid_t fsuid;
 	int cap;
 
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+
 	os_rwlock_rdlock(&pfp->cred_rwlock);
 	fsuid = pfp->cred.fsuid;
 	cap = pfp->cred.caps;
@@ -1975,6 +1981,8 @@ vinode_chown(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 {
 	struct pmemfile_inode *inode = vinode->inode;
 	int error = 0;
+
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
 
 	if (owner == (pmemfile_uid_t)-1 && group == (pmemfile_gid_t)-1)
 		return 0;

@@ -1234,6 +1234,8 @@ vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 {
 	struct pmemfile_inode *inode = vinode->inode;
 
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
 	if (vinode->blocks == NULL)
 		vinode_rebuild_block_tree(vinode);
 

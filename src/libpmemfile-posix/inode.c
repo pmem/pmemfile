@@ -416,6 +416,8 @@ inode_ref(PMEMfilepool *pfp,
 static bool
 vinode_tx_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
 	if (__sync_sub_and_fetch(&vinode->ref, 1) > 0)
 		return false;
 
@@ -534,6 +536,7 @@ vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 	LOG(LDBG, "inode 0x%" PRIx64 " path %s", vinode->tinode.oid.off,
 			pmfi_path(vinode));
 
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 	ASSERTeq(vinode->orphaned.arr, NULL);
 
 	rwlock_tx_wlock(&pfp->rwlock);
@@ -569,6 +572,8 @@ inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 	(void) pfp;
 
 	LOG(LDBG, "inode 0x%" PRIx64, tinode.oid.off);
+
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 
 	struct pmemfile_inode *inode = D_RW(tinode);
 	if (inode_is_dir(inode)) {

@@ -409,12 +409,12 @@ inode_ref(PMEMfilepool *pfp,
 }
 
 /*
- * vinode_unref -- decreases inode reference counter
+ * vinode_tx_unref -- decreases inode reference counter
  *
  * Must be called in transaction.
  */
 static bool
-vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
+vinode_tx_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
 	if (__sync_sub_and_fetch(&vinode->ref, 1) > 0)
 		return false;
@@ -430,10 +430,10 @@ vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 }
 
 /*
- * vinode_unref_tx -- decreases inode reference counter
+ * vinode_unref -- decreases inode reference counter
  */
 void
-vinode_unref_tx(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
+vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
 
@@ -446,7 +446,7 @@ vinode_unref_tx(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 			struct pmemfile_vinode *parent = vinode->parent;
 
-			if (vinode_unref(pfp, vinode))
+			if (vinode_tx_unref(pfp, vinode))
 				to_unregister = vinode;
 
 			if (to_unregister && vinode != pfp->root)
@@ -736,7 +736,7 @@ end:
 	put_cred(&cred);
 
 	if (vinode)
-		vinode_unref_tx(pfp, vinode);
+		vinode_unref(pfp, vinode);
 ret:
 	if (error) {
 		errno = error;

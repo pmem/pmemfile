@@ -1,0 +1,7 @@
+/.cproject
+/.project
+/.settings
+/build
+/build-deb
+tags
+/googletest-1.8.0.zip

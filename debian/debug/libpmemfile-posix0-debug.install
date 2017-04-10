@@ -1,0 +1,3 @@
+usr/lib/*/pmemfile_debug/libpmemfile-posix.so.*
+usr/lib/*/pmemfile_debug/libpmemfile-posix.so
+usr/lib/*/pmemfile_debug/libpmemfile-posix.a

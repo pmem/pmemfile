@@ -145,11 +145,11 @@ cleanup_orphanded_inodes_single(PMEMfilepool *pfp,
 }
 
 /*
- * cleanup_orphanded_inodes -- removes inodes (and frees if there are
+ * cleanup_orphaned_inodes -- removes inodes (and frees if there are
  * no dirents referencing it) from specified list
  */
 static void
-cleanup_orphanded_inodes(PMEMfilepool *pfp,
+cleanup_orphaned_inodes(PMEMfilepool *pfp,
 		TOID(struct pmemfile_inode_array) single)
 {
 	LOG(LDBG, "pfp %p", pfp);
@@ -266,7 +266,7 @@ pmemfile_pool_open(const char *pathname)
 		goto init_failed;
 	}
 
-	cleanup_orphanded_inodes(pfp, pfp->super->orphaned_inodes);
+	cleanup_orphaned_inodes(pfp, pfp->super->orphaned_inodes);
 
 	return pfp;
 

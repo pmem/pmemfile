@@ -56,6 +56,8 @@ initialize_super_block(PMEMfilepool *pfp)
 {
 	LOG(LDBG, "pfp %p", pfp);
 
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+
 	int error = 0;
 	struct pmemfile_super *super = pfp->super;
 
@@ -126,6 +128,8 @@ cleanup_orphanded_inodes_single(PMEMfilepool *pfp,
 {
 	LOG(LDBG, "pfp %p arr 0x%" PRIx64, pfp, single.oid.off);
 
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
 	struct pmemfile_inode_array *op = D_RW(single);
 	for (unsigned i = 0; op->used && i < NUMINODES_PER_ENTRY; ++i) {
 		if (TOID_IS_NULL(op->inodes[i]))
@@ -153,6 +157,8 @@ cleanup_orphaned_inodes(PMEMfilepool *pfp,
 		TOID(struct pmemfile_inode_array) single)
 {
 	LOG(LDBG, "pfp %p", pfp);
+
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		TOID(struct pmemfile_inode_array) last = single;

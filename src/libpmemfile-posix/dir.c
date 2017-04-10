@@ -824,7 +824,7 @@ pmemfile_getdents64(PMEMfilepool *pfp, PMEMfile *file,
 }
 
 static void
-resolve_pathat_nested(PMEMfilepool *pfp, struct pmemfile_cred *cred,
+resolve_pathat_nested(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *parent, const char *path,
 		struct pmemfile_path_info *path_info, int flags, int nest_level)
 {
@@ -936,7 +936,7 @@ resolve_pathat_nested(PMEMfilepool *pfp, struct pmemfile_cred *cred,
  * Takes reference on path_info->vinode.
  */
 void
-resolve_pathat(PMEMfilepool *pfp, struct pmemfile_cred *cred,
+resolve_pathat(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *parent, const char *path,
 		struct pmemfile_path_info *path_info, int flags)
 {
@@ -946,7 +946,7 @@ resolve_pathat(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 }
 
 struct pmemfile_vinode *
-resolve_pathat_full(PMEMfilepool *pfp, struct pmemfile_cred *cred,
+resolve_pathat_full(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *parent, const char *path,
 		struct pmemfile_path_info *path_info, int flags,
 		bool resolve_last_symlink)
@@ -986,7 +986,7 @@ resolve_pathat_full(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 }
 
 void
-resolve_symlink(PMEMfilepool *pfp, struct pmemfile_cred *cred,
+resolve_symlink(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *vinode,
 		struct pmemfile_path_info *info)
 {
@@ -1312,7 +1312,7 @@ pmemfile_rmdir(PMEMfilepool *pfp, const char *path)
 }
 
 static int
-_pmemfile_chdir(PMEMfilepool *pfp, struct pmemfile_cred *cred,
+_pmemfile_chdir(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *dir)
 {
 	struct inode_perms dir_perms = vinode_get_perms(dir);

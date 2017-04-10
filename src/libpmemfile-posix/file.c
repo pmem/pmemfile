@@ -172,9 +172,10 @@ check_flags(int flags)
 }
 
 static struct pmemfile_vinode *
-create_file(PMEMfilepool *pfp, struct pmemfile_cred *cred, const char *filename,
-		size_t namelen, struct pmemfile_vinode *parent_vinode,
-		int flags, pmemfile_mode_t mode)
+create_file(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
+		const char *filename, size_t namelen,
+		struct pmemfile_vinode *parent_vinode, int flags,
+		pmemfile_mode_t mode)
 {
 	rwlock_tx_wlock(&parent_vinode->rwlock);
 
@@ -197,7 +198,7 @@ create_file(PMEMfilepool *pfp, struct pmemfile_cred *cred, const char *filename,
 }
 
 static void
-open_file(PMEMfilepool *pfp, struct pmemfile_cred *cred,
+open_file(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *vinode, int flags)
 {
 	if (!(flags & PMEMFILE_O_PATH)) {
@@ -1968,7 +1969,7 @@ pmemfile_posix_fallocate(PMEMfilepool *pfp, PMEMfile *file,
 }
 
 static int
-vinode_chown(PMEMfilepool *pfp, struct pmemfile_cred *cred,
+vinode_chown(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *vinode, pmemfile_uid_t owner,
 		pmemfile_gid_t group)
 {

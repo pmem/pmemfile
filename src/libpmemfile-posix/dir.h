@@ -51,17 +51,17 @@ struct pmemfile_path_info {
 	int error;
 };
 
-void resolve_pathat(PMEMfilepool *pfp, struct pmemfile_cred *cred,
+void resolve_pathat(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *parent, const char *path,
 		struct pmemfile_path_info *path_info, int flags);
 
 struct pmemfile_vinode *
-resolve_pathat_full(PMEMfilepool *pfp, struct pmemfile_cred *cred,
+resolve_pathat_full(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *parent, const char *path,
 		struct pmemfile_path_info *path_info, int flags,
 		bool resolve_last_symlink);
 
-void resolve_symlink(PMEMfilepool *pfp, struct pmemfile_cred *cred,
+void resolve_symlink(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *vinode,
 		struct pmemfile_path_info *info);
 

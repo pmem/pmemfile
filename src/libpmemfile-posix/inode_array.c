@@ -41,6 +41,8 @@
 /*
  * inode_array_add_single -- finds space for 1 inode in specified
  * array, inserts it there and returns success status
+ *
+ * Must be called in a transaction.
  */
 static bool
 inode_array_add_single(struct pmemfile_inode_array *cur,
@@ -76,7 +78,7 @@ inode_array_add_single(struct pmemfile_inode_array *cur,
 /*
  * inode_array_add -- adds inode to array, returns its position
  *
- * Must be called in transaction.
+ * Must be called in a transaction.
  */
 void
 inode_array_add(PMEMfilepool *pfp,
@@ -125,7 +127,7 @@ inode_array_add(PMEMfilepool *pfp,
  * inode_array_unregister -- removes inode from specified place in
  * array
  *
- * Must be called in transaction.
+ * Must be called in a transaction.
  */
 void
 inode_array_unregister(PMEMfilepool *pfp,

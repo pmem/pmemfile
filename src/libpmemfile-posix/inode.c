@@ -411,7 +411,7 @@ inode_ref(PMEMfilepool *pfp,
 /*
  * vinode_tx_unref -- decreases inode reference counter
  *
- * Must be called in transaction.
+ * Must be called in a transaction.
  */
 static bool
 vinode_tx_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
@@ -433,6 +433,8 @@ vinode_tx_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 
 /*
  * vinode_unref -- decreases inode reference counter
+ *
+ * Can't be called in a transaction.
  */
 void
 vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
@@ -484,7 +486,7 @@ file_get_time(struct pmemfile_time *t)
 /*
  * inode_alloc -- allocates inode
  *
- * Must be called in transaction.
+ * Must be called in a transaction.
  */
 struct pmemfile_vinode *
 inode_alloc(PMEMfilepool *pfp, uint64_t flags, struct pmemfile_vinode *parent,
@@ -529,6 +531,8 @@ inode_alloc(PMEMfilepool *pfp, uint64_t flags, struct pmemfile_vinode *parent,
 
 /*
  * vinode_orphan -- register specified inode in orphaned_inodes array
+ *
+ * Must be called in a transaction.
  */
 void
 vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
@@ -564,7 +568,7 @@ dir_assert_no_dirents(struct pmemfile_dir *dir)
 /*
  * file_inode_free -- frees inode
  *
- * Must be called in transaction.
+ * Must be called in a transaction.
  */
 void
 inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)

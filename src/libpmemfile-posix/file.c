@@ -1362,6 +1362,11 @@ pmemfile_stats(PMEMfilepool *pfp, struct pmemfile_stats *stats)
 	stats->blocks = blocks;
 }
 
+/*
+ * vinode_chmod
+ *
+ * Can't be called in a transaction.
+ */
 static int
 vinode_chmod(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		pmemfile_mode_t mode)
@@ -1974,6 +1979,11 @@ pmemfile_posix_fallocate(PMEMfilepool *pfp, PMEMfile *file,
 	return pmemfile_fallocate(pfp, file, 0, offset, length);
 }
 
+/*
+ * vinode_chown
+ *
+ * Can't be called in a transaction.
+ */
 static int
 vinode_chown(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *vinode, pmemfile_uid_t owner,

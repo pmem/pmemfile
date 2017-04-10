@@ -197,7 +197,7 @@ vinode_clear_debug_path(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 /*
  * vinode_add_dirent -- adds child inode to parent directory
  *
- * Must be called in transaction. Caller must have exclusive access to parent
+ * Must be called in a transaction. Caller must have exclusive access to parent
  * inode, by locking parent in WRITE mode.
  */
 void
@@ -300,6 +300,7 @@ vinode_add_dirent(PMEMfilepool *pfp,
  * vinode_new_dir -- creates new directory relative to parent
  *
  * Note: caller must hold WRITE lock on parent.
+ * Must be called in a transaction.
  */
 struct pmemfile_vinode *
 vinode_new_dir(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
@@ -471,7 +472,7 @@ end:
 /*
  * vinode_unlink_dirent -- removes dirent from directory
  *
- * Must be called in transaction. Caller must have exclusive access to parent
+ * Must be called in a transaction. Caller must have exclusive access to parent
  * inode, eg by locking parent in WRITE mode.
  */
 void

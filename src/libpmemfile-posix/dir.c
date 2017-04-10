@@ -67,6 +67,10 @@ str_compare(const char *s1, const char *s2, size_t s2n)
 	return 0;
 }
 
+/*
+ * str_contains -- returns true if string contains specified character in first
+ * len bytes
+ */
 bool
 str_contains(const char *str, size_t len, char c)
 {
@@ -77,6 +81,12 @@ str_contains(const char *str, size_t len, char c)
 	return false;
 }
 
+/*
+ * more_than_1_component -- returns true if path contains more than one
+ * component
+ *
+ * Deals with slashes at the end of path.
+ */
 bool
 more_than_1_component(const char *path)
 {
@@ -93,6 +103,10 @@ more_than_1_component(const char *path)
 	return true;
 }
 
+/*
+ * component_length -- returns number of characters till the end of path
+ * component
+ */
 size_t
 component_length(const char *path)
 {
@@ -103,6 +117,9 @@ component_length(const char *path)
 }
 
 #ifdef DEBUG
+/*
+ * util_strndup -- strndup (GNU extension) replacement
+ */
 static inline char *
 util_strndup(const char *c, size_t len)
 {
@@ -948,6 +965,9 @@ resolve_pathat(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 	resolve_pathat_nested(pfp, cred, parent, path, path_info, flags, 1);
 }
 
+/*
+ * resolve_pathat_full -- resolves full path
+ */
 struct pmemfile_vinode *
 resolve_pathat_full(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *parent, const char *path,
@@ -1010,6 +1030,9 @@ resolve_symlink(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 	memcpy(info, &info2, sizeof(*info));
 }
 
+/*
+ * path_info_cleanup -- clean up pmemfile_path_info object
+ */
 void
 path_info_cleanup(PMEMfilepool *pfp, struct pmemfile_path_info *path_info)
 {

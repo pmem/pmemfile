@@ -433,6 +433,8 @@ vinode_tx_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 
 /*
  * vinode_unref -- decreases inode reference counter
+ *
+ * Can't be called in transaction.
  */
 void
 vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
@@ -529,6 +531,8 @@ inode_alloc(PMEMfilepool *pfp, uint64_t flags, struct pmemfile_vinode *parent,
 
 /*
  * vinode_orphan -- register specified inode in orphaned_inodes array
+ *
+ * Must be called in transaction.
  */
 void
 vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)

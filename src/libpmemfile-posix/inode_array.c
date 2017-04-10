@@ -41,6 +41,8 @@
 /*
  * inode_array_add_single -- finds space for 1 inode in specified
  * array, inserts it there and returns success status
+ *
+ * Must be called in transaction.
  */
 static bool
 inode_array_add_single(struct pmemfile_inode_array *cur,

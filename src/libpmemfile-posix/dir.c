@@ -298,6 +298,7 @@ vinode_add_dirent(PMEMfilepool *pfp,
  * vinode_new_dir -- creates new directory relative to parent
  *
  * Note: caller must hold WRITE lock on parent.
+ * Must be called in transaction.
  */
 struct pmemfile_vinode *
 vinode_new_dir(PMEMfilepool *pfp, struct pmemfile_vinode *parent,

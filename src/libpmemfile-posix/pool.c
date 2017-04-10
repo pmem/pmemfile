@@ -50,6 +50,8 @@
 
 /*
  * initialize_super_block -- initializes super block
+ *
+ * Can't be called in transaction.
  */
 static int
 initialize_super_block(PMEMfilepool *pfp)
@@ -121,6 +123,8 @@ inode_map_alloc_fail:
 
 /*
  * cleanup_orphanded_inodes_single -- cleans up one batch of inodes
+ *
+ * Must be called in transaction.
  */
 static void
 cleanup_orphanded_inodes_single(PMEMfilepool *pfp,
@@ -151,6 +155,8 @@ cleanup_orphanded_inodes_single(PMEMfilepool *pfp,
 /*
  * cleanup_orphaned_inodes -- removes inodes (and frees if there are
  * no dirents referencing it) from specified list
+ *
+ * Can't be called in transaction.
  */
 static void
 cleanup_orphaned_inodes(PMEMfilepool *pfp,

@@ -374,7 +374,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	}
 
 	if (is_tmpfile(flags)) {
-		vinode_unref_tx(pfp, vparent);
+		vinode_unref(pfp, vparent);
 		vparent = vinode;
 		vinode = NULL;
 	}
@@ -416,7 +416,7 @@ end:
 
 	if (error) {
 		if (vinode != NULL)
-			vinode_unref_tx(pfp, vinode);
+			vinode_unref(pfp, vinode);
 
 		errno = error;
 		LOG(LDBG, "!");
@@ -556,7 +556,7 @@ pmemfile_open_parent(PMEMfilepool *pfp, PMEMfile *dir, char *path,
 							&info);
 					path_info_changed = true;
 				} else {
-					vinode_unref_tx(pfp, vinode);
+					vinode_unref(pfp, vinode);
 				}
 			}
 		}
@@ -582,7 +582,7 @@ end:
 	put_cred(&cred);
 
 	if (at_unref)
-		vinode_unref_tx(pfp, at);
+		vinode_unref(pfp, at);
 
 	if (error) {
 		errno = error;
@@ -601,7 +601,7 @@ pmemfile_close(PMEMfilepool *pfp, PMEMfile *file)
 	LOG(LDBG, "inode 0x%" PRIx64 " path %s", file->vinode->tinode.oid.off,
 			pmfi_path(file->vinode));
 
-	vinode_unref_tx(pfp, file->vinode);
+	vinode_unref(pfp, file->vinode);
 
 	os_mutex_destroy(&file->mutex);
 
@@ -693,7 +693,7 @@ end:
 	put_cred(&cred);
 
 	if (src_vinode)
-		vinode_unref_tx(pfp, src_vinode);
+		vinode_unref(pfp, src_vinode);
 
 	if (error) {
 		errno = error;
@@ -728,10 +728,10 @@ pmemfile_linkat(PMEMfilepool *pfp, PMEMfile *olddir, const char *oldpath,
 		error = errno;
 
 	if (olddir_at_unref)
-		vinode_unref_tx(pfp, olddir_at);
+		vinode_unref(pfp, olddir_at);
 
 	if (newdir_at_unref)
-		vinode_unref_tx(pfp, newdir_at);
+		vinode_unref(pfp, newdir_at);
 
 	if (ret)
 		errno = error;
@@ -815,11 +815,11 @@ end:
 	put_cred(&cred);
 
 	if (vinode)
-		vinode_unref_tx(pfp, vinode);
+		vinode_unref(pfp, vinode);
 
 	if (error) {
 		if (parent_refed)
-			vinode_unref_tx(pfp, vparent);
+			vinode_unref(pfp, vparent);
 		errno = error;
 		return -1;
 	}
@@ -980,16 +980,16 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	}
 
 	if (dst_parent_refed)
-		vinode_unref_tx(pfp, dst_parent);
+		vinode_unref(pfp, dst_parent);
 
 	if (src_parent_refed)
-		vinode_unref_tx(pfp, src_parent);
+		vinode_unref(pfp, src_parent);
 
 	if (dst_unlinked)
-		vinode_unref_tx(pfp, dst_unlinked);
+		vinode_unref(pfp, dst_unlinked);
 
 	if (src_unlinked)
-		vinode_unref_tx(pfp, src_unlinked);
+		vinode_unref(pfp, src_unlinked);
 
 	if (error == 0) {
 		vinode_clear_debug_path(pfp, src_vinode);
@@ -1003,13 +1003,13 @@ end:
 	put_cred(&cred);
 
 	if (dst_vinode)
-		vinode_unref_tx(pfp, dst_vinode);
+		vinode_unref(pfp, dst_vinode);
 	if (src_vinode)
-		vinode_unref_tx(pfp, src_vinode);
+		vinode_unref(pfp, src_vinode);
 
 	if (error) {
 		if (dst_parent_refed)
-			vinode_unref_tx(pfp, dst.vinode);
+			vinode_unref(pfp, dst.vinode);
 
 		errno = error;
 		return -1;
@@ -1067,10 +1067,10 @@ pmemfile_renameat2(PMEMfilepool *pfp, PMEMfile *old_at, const char *old_path,
 		error = errno;
 
 	if (olddir_at_unref)
-		vinode_unref_tx(pfp, olddir_at);
+		vinode_unref(pfp, olddir_at);
 
 	if (newdir_at_unref)
-		vinode_unref_tx(pfp, newdir_at);
+		vinode_unref(pfp, newdir_at);
 
 	if (ret)
 		errno = error;
@@ -1152,7 +1152,7 @@ end:
 	put_cred(&cred);
 
 	if (vinode)
-		vinode_unref_tx(pfp, vinode);
+		vinode_unref(pfp, vinode);
 
 	if (error) {
 		errno = error;
@@ -1244,7 +1244,7 @@ end:
 	put_cred(&cred);
 
 	if (vinode)
-		vinode_unref_tx(pfp, vinode);
+		vinode_unref(pfp, vinode);
 
 	if (error) {
 		errno = error;
@@ -1436,7 +1436,7 @@ end:
 	put_cred(&cred);
 
 	if (vinode)
-		vinode_unref_tx(pfp, vinode);
+		vinode_unref(pfp, vinode);
 
 	if (error) {
 		errno = error;
@@ -1811,10 +1811,10 @@ end:
 	put_cred(cred);
 
 	if (vinode)
-		vinode_unref_tx(pfp, vinode);
+		vinode_unref(pfp, vinode);
 
 	if (unref_vparent)
-		vinode_unref_tx(pfp, vparent);
+		vinode_unref(pfp, vparent);
 
 	if (error) {
 		errno = error;
@@ -2066,7 +2066,7 @@ end:
 	put_cred(&cred);
 
 	if (vinode)
-		vinode_unref_tx(pfp, vinode);
+		vinode_unref(pfp, vinode);
 
 	if (error) {
 		errno = error;
@@ -2203,7 +2203,7 @@ end:
 	put_cred(&cred);
 
 	if (vinode)
-		vinode_unref_tx(pfp, vinode);
+		vinode_unref(pfp, vinode);
 
 	if (error) {
 		errno = error;

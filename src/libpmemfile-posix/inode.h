@@ -187,7 +187,7 @@ struct pmemfile_vinode *inode_ref_new(PMEMfilepool *pfp,
 		const char *name,
 		size_t namelen);
 
-void vinode_unref_tx(PMEMfilepool *pfp, struct pmemfile_vinode *vinode);
+void vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode);
 void vinode_cleanup(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		bool preserve_errno);
 

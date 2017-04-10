@@ -459,7 +459,7 @@ vinode_lookup_dirent(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 				name, namelen);
 
 		if (!vinode && parent_refed)
-			vinode_unref_tx(pfp, parent);
+			vinode_unref(pfp, parent);
 	}
 
 end:
@@ -878,12 +878,12 @@ resolve_pathat_nested(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 					strlen(slash + 1) + 1);
 			sprintf(new_path, "%s/%s", symlink_target, slash + 1);
 			os_rwlock_unlock(&child->rwlock);
-			vinode_unref_tx(pfp, child);
+			vinode_unref(pfp, child);
 
 			resolve_pathat_nested(pfp, cred, parent, new_path,
 					path_info, flags, nest_level + 1);
 
-			vinode_unref_tx(pfp, parent);
+			vinode_unref(pfp, parent);
 			free(new_path);
 			return;
 		}
@@ -898,13 +898,13 @@ resolve_pathat_nested(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 				want |= PFILE_USE_RACCESS;
 
 			if (!can_access(cred, child_perms, want)) {
-				vinode_unref_tx(pfp, child);
+				vinode_unref(pfp, child);
 				path_info->error = EACCES;
 				break;
 			}
 		}
 
-		vinode_unref_tx(pfp, parent);
+		vinode_unref(pfp, parent);
 		parent = child;
 		path = slash + 1;
 
@@ -999,7 +999,7 @@ resolve_symlink(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 	strcpy(symlink_target, vinode->inode->file_data.data);
 	os_rwlock_unlock(&vinode->rwlock);
 
-	vinode_unref_tx(pfp, vinode);
+	vinode_unref(pfp, vinode);
 
 	struct pmemfile_path_info info2;
 	resolve_pathat(pfp, cred, info->vinode, symlink_target, &info2, 0);
@@ -1011,7 +1011,7 @@ void
 path_info_cleanup(PMEMfilepool *pfp, struct pmemfile_path_info *path_info)
 {
 	if (path_info->vinode)
-		vinode_unref_tx(pfp, path_info->vinode);
+		vinode_unref(pfp, path_info->vinode);
 	if (path_info->remaining)
 		free(path_info->remaining);
 	memset(path_info, 0, sizeof(*path_info));
@@ -1063,7 +1063,7 @@ _pmemfile_mkdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	os_rwlock_unlock(&parent->rwlock);
 
 	if (!error)
-		vinode_unref_tx(pfp, child);
+		vinode_unref(pfp, child);
 
 end:
 	path_info_cleanup(pfp, &info);
@@ -1071,7 +1071,7 @@ end:
 
 	if (error) {
 		if (parent_refed)
-			vinode_unref_tx(pfp, parent);
+			vinode_unref(pfp, parent);
 
 		errno = error;
 		return -1;
@@ -1088,7 +1088,7 @@ vinode_cleanup(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	if (preserve_errno)
 		error = errno;
 
-	vinode_unref_tx(pfp, vinode);
+	vinode_unref(pfp, vinode);
 
 	if (preserve_errno)
 		errno = error;
@@ -1280,7 +1280,7 @@ end:
 	put_cred(&cred);
 
 	if (vdir)
-		vinode_unref_tx(pfp, vdir);
+		vinode_unref(pfp, vdir);
 
 	if (error) {
 		errno = error;
@@ -1318,13 +1318,13 @@ _pmemfile_chdir(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 	struct inode_perms dir_perms = vinode_get_perms(dir);
 
 	if (!PMEMFILE_S_ISDIR(dir_perms.flags)) {
-		vinode_unref_tx(pfp, dir);
+		vinode_unref(pfp, dir);
 		errno = ENOTDIR;
 		return -1;
 	}
 
 	if (!can_access(cred, dir_perms, PFILE_WANT_EXECUTE)) {
-		vinode_unref_tx(pfp, dir);
+		vinode_unref(pfp, dir);
 		errno = EACCES;
 		return -1;
 	}
@@ -1333,7 +1333,7 @@ _pmemfile_chdir(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 	struct pmemfile_vinode *old_cwd = pfp->cwd;
 	pfp->cwd = dir;
 	os_rwlock_unlock(&pfp->cwd_rwlock);
-	vinode_unref_tx(pfp, old_cwd);
+	vinode_unref(pfp, old_cwd);
 
 	return 0;
 }
@@ -1374,7 +1374,7 @@ end:
 	put_cred(&cred);
 
 	if (at_unref)
-		vinode_unref_tx(pfp, at);
+		vinode_unref(pfp, at);
 	if (error)
 		errno = error;
 
@@ -1433,7 +1433,7 @@ _pmemfile_get_dir_path(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	struct pmemfile_vinode *parent, *child = vinode;
 
 	if (buf && size == 0) {
-		vinode_unref_tx(pfp, child);
+		vinode_unref(pfp, child);
 
 		errno = EINVAL;
 		return NULL;
@@ -1443,7 +1443,7 @@ _pmemfile_get_dir_path(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 
 	if (child->orphaned.arr) {
 		os_rwlock_unlock(&child->rwlock);
-		vinode_unref_tx(pfp, child);
+		vinode_unref(pfp, child);
 
 		errno = ENOENT;
 		return NULL;
@@ -1464,7 +1464,7 @@ _pmemfile_get_dir_path(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		buf = malloc(size);
 		if (!buf) {
 			int oerrno = errno;
-			vinode_unref_tx(pfp, child);
+			vinode_unref(pfp, child);
 			errno = oerrno;
 			return NULL;
 		}
@@ -1488,7 +1488,7 @@ _pmemfile_get_dir_path(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		size_t len = strlen(dirent->name);
 		if (curpos - len - 1 < buf) {
 			os_rwlock_unlock(&parent->rwlock);
-			vinode_unref_tx(pfp, parent);
+			vinode_unref(pfp, parent);
 			goto range_err;
 		}
 		curpos -= len;
@@ -1503,20 +1503,20 @@ _pmemfile_get_dir_path(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			grandparent = vinode_ref(pfp, parent->parent);
 		os_rwlock_unlock(&parent->rwlock);
 
-		vinode_unref_tx(pfp, child);
+		vinode_unref(pfp, child);
 
 		child = parent;
 		parent = grandparent;
 	}
 
-	vinode_unref_tx(pfp, child);
+	vinode_unref(pfp, child);
 
 	memmove(buf, curpos, (uintptr_t)(buf + size - curpos));
 
 	return buf;
 
 range_err:
-	vinode_unref_tx(pfp, child);
+	vinode_unref(pfp, child);
 	if (allocated)
 		free(buf);
 	errno = ERANGE;

@@ -290,8 +290,8 @@ pmemfile_pool_close(PMEMfilepool *pfp)
 	if (pfp->cred.groups)
 		free(pfp->cred.groups);
 
-	vinode_unref_tx(pfp, pfp->cwd);
-	vinode_unref_tx(pfp, pfp->root);
+	vinode_unref(pfp, pfp->cwd);
+	vinode_unref(pfp, pfp->root);
 	inode_map_free(pfp->inode_map);
 	os_rwlock_destroy(&pfp->cred_rwlock);
 	os_rwlock_destroy(&pfp->rwlock);

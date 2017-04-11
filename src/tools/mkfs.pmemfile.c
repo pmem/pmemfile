@@ -96,7 +96,7 @@ parse_size(const char *str)
 		invalid_size();
 
 	switch (tolower((unsigned char)*endptr)) {
-		case 'p': // Well, you never know what the future brings
+		case 'p': /* Well, you never know what the future brings */
 			size = mul_1024(size);
 			/* fallthrough */
 		case 't':

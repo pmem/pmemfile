@@ -216,13 +216,14 @@ pmemfile_preload_constructor(void)
 	const char *env_str = getenv("PMEMFILE_EXIT_ON_NOT_SUPPORTED");
 	exit_on_ENOTSUP = env_str ? env_str[0] == '1' : 0;
 
-	// establish_mount_points already needs to have the flag set up
+	/* establish_mount_points already needs to have the flag set up */
 	setup_strict_symlink_flag(getenv("PMEMFILE_USE_SYMLINK_STRICT"));
 
 	establish_mount_points(getenv("PMEMFILE_POOLS"));
 
 	if (pool_count == 0)
-		return; // No pools mounted. TODO: prevent syscall interception
+		/* No pools mounted. TODO: prevent syscall interception */
+		return;
 
 	/*
 	 * Must be the last step, the callback can be called anytime
@@ -234,7 +235,9 @@ pmemfile_preload_constructor(void)
 static void
 setup_strict_symlink_flag(const char *e)
 {
-	// Only overwrite the default when explicitly requested by an env var.
+	/*
+	 * Only overwrite the default when explicitly requested by an env var.
+	 */
 	if (e != NULL)
 		use_stricter_symlink_resolver = (e[0] != '0');
 }
@@ -242,7 +245,7 @@ setup_strict_symlink_flag(const char *e)
 static void
 init_hooking(void)
 {
-	// todo: move this filtering to the intercepting library
+	/* XXX: move this filtering to the intercepting library */
 	syscall_number_filter[SYS_access] = true;
 	syscall_number_filter[SYS_chmod] = true;
 	syscall_number_filter[SYS_chown] = true;
@@ -422,7 +425,9 @@ init_hooking(void)
 	syscall_has_fd_first_arg[SYS_writev] = true;
 	syscall_has_fd_first_arg[SYS_write] = true;
 
-	// Install the callback to be calleb by the syscall intercepting library
+	/*
+	 * Install the callback to be calleb by the syscall intercepting library
+	 */
 	intercept_hook_point = &hook;
 }
 
@@ -480,13 +485,13 @@ establish_mount_points(const char *config)
 
 		struct pool_description *pool_desc = pools + pool_count;
 
-		// fetch pool_desc->mount_point
+		/* fetch pool_desc->mount_point */
 		config = parse_mount_point(pool_desc, config);
 
-		// fetch pool_desc->poolfile_path
+		/* fetch pool_desc->poolfile_path */
 		config = parse_pool_path(pool_desc, config);
 
-		// fetch pool_desc-fd, pool_desc->stat
+		/* fetch pool_desc-fd, pool_desc->stat */
 		open_mount_point(pool_desc);
 
 		pool_desc->pool = NULL;
@@ -507,10 +512,12 @@ establish_mount_points(const char *config)
 static const char *
 parse_mount_point(struct pool_description *pool, const char *conf)
 {
-	if (conf[0] != '/') // Relative path is not allowed
+	if (conf[0] != '/') /* Relative path is not allowed */
 		config_error();
 
-	// There should be a colon separating the mount path from the pool path
+	/*
+	 * There should be a colon separating the mount path from the pool path.
+	 */
 	const char *colon = strchr(conf, ':');
 
 	if (colon == NULL || colon == conf)
@@ -531,14 +538,14 @@ parse_mount_point(struct pool_description *pool, const char *conf)
 
 	pool->mount_point_parent[pool->len_mount_point_parent] = '\0';
 
-	// Return a pointer to the char following the colon
+	/* Return a pointer to the char following the colon */
 	return colon + 1;
 }
 
 static const char *
 parse_pool_path(struct pool_description *pool, const char *conf)
 {
-	if (conf[0] != '/') // Relative path is not allowed
+	if (conf[0] != '/') /* Relative path is not allowed */
 		config_error();
 
 	/*
@@ -554,7 +561,7 @@ parse_pool_path(struct pool_description *pool, const char *conf)
 
 	pool->poolfile_path[i] = '\0';
 
-	// Return a pointer to the char following the semicolon, or NULL.
+	/* Return a pointer to the char following the semicolon, or NULL. */
 	if (conf[i] == ';')
 		return conf + i + 1;
 	else
@@ -668,7 +675,7 @@ dispatch_syscall(long syscall_number,
 			long arg2, long arg3,
 			long arg4, long arg5)
 {
-	// Use pmemfile_openat to implement open, create, openat
+	/* Use pmemfile_openat to implement open, create, openat */
 	if (syscall_number == SYS_open)
 		return hook_openat(cwd_desc(), arg0, arg1, arg2);
 
@@ -692,7 +699,7 @@ dispatch_syscall(long syscall_number,
 					fetch_fd(arg2), (const char *)arg3,
 					(unsigned)arg4);
 
-	// Use pmemfile_linkat to implement link, linkat
+	/* Use pmemfile_linkat to implement link, linkat */
 	if (syscall_number == SYS_link)
 		return hook_linkat(cwd_desc(), arg0, cwd_desc(), arg1, 0);
 
@@ -700,7 +707,7 @@ dispatch_syscall(long syscall_number,
 		return hook_linkat(fetch_fd(arg0), arg1, fetch_fd(arg2), arg3,
 		    arg4);
 
-	// Use pmemfile_unlinkat to implement unlink, unlinkat, rmdir
+	/* Use pmemfile_unlinkat to implement unlink, unlinkat, rmdir */
 	if (syscall_number == SYS_unlink)
 		return hook_unlinkat(cwd_desc(), arg0, 0);
 
@@ -710,14 +717,14 @@ dispatch_syscall(long syscall_number,
 	if (syscall_number == SYS_rmdir)
 		return hook_unlinkat(cwd_desc(), arg0, AT_REMOVEDIR);
 
-	// Use pmemfile_mkdirat to implement mkdir, mkdirat
+	/* Use pmemfile_mkdirat to implement mkdir, mkdirat */
 	if (syscall_number == SYS_mkdir)
 		return hook_mkdirat(cwd_desc(), arg0, arg1);
 
 	if (syscall_number == SYS_mkdirat)
 		return hook_mkdirat(fetch_fd(arg0), arg1, arg2);
 
-	// Use pmemfile_faccessat to implement access, faccessat
+	/* Use pmemfile_faccessat to implement access, faccessat */
 	if (syscall_number == SYS_access)
 		return hook_faccessat(cwd_desc(), arg0, 0, 0);
 
@@ -934,7 +941,7 @@ dispatch_syscall(long syscall_number,
 		return hook_copy_file_range(arg0, (loff_t *)arg1,
 		    arg2, (loff_t *)arg3, (size_t)arg4, (unsigned)arg5);
 
-	// Did we miss something?
+	/* Did we miss something? */
 	assert(false);
 	return syscall_no_intercept(syscall_number,
 	    arg0, arg1, arg2, arg3, arg4, arg5);
@@ -972,7 +979,7 @@ hook(long syscall_number,
 		return HOOKED;
 	}
 
-	// todo: move this filtering to the intercepting library
+	/* XXX: move this filtering to the intercepting library */
 	if (syscall_number < 0 ||
 	    (uint64_t)syscall_number >= ARRAY_SIZE(syscall_number_filter) ||
 	    !syscall_number_filter[syscall_number]) {
@@ -992,8 +999,10 @@ hook(long syscall_number,
 
 	if (syscall_has_fd_first_arg[syscall_number] &&
 	    !fd_pool_has_allocated(arg0)) {
-		// shortcut for write, read, and such
-		// so this check doesn't need to be copy-pasted into them
+		/*
+		 * shortcut for write, read, and such so this check doesn't
+		 * need to be copy-pasted into them
+		 */
 		is_hooked = NOT_HOOKED;
 	} else {
 		is_hooked = HOOKED;
@@ -1126,7 +1135,7 @@ hook_unlinkat(struct fd_desc at, long path_arg, long flags)
 	if (where.error_code != 0)
 		return where.error_code;
 
-	if (is_fda_null(&where.at.pmem_fda)) // Not pmemfile resident path
+	if (is_fda_null(&where.at.pmem_fda)) /* Not pmemfile resident path */
 		return syscall_no_intercept(SYS_unlinkat,
 		    where.at.kernel_fd, where.path, flags);
 
@@ -1304,8 +1313,10 @@ lookup_pd_by_path(const char *path)
 {
 	for (int i = 0; i < pool_count; ++i) {
 		struct pool_description *p = pools + i;
-		// TODO: first compare the lengths of the two strings to
-		// avoid strcmp calls
+		/*
+		 * XXX: first compare the lengths of the two strings to avoid
+		 * strcmp calls
+		 */
 		if (strcmp(p->mount_point, path) == 0)  {
 			PMEMfilepool *pfp;
 
@@ -1482,7 +1493,7 @@ hook_getxattr(long arg0, long arg1, long arg2, long arg3,
 
 	if (is_fda_null(&where.at.pmem_fda)) {
 		if (where.at.kernel_fd == AT_FDCWD)
-			return check_errno(-ENOTSUP); // todo...
+			return check_errno(-ENOTSUP); /* XXX */
 
 		return syscall_no_intercept(SYS_getxattr,
 		    where.path, arg1, arg2, arg3);
@@ -1504,7 +1515,7 @@ hook_setxattr(long arg0, long arg1, long arg2, long arg3, long arg4,
 
 	if (is_fda_null(&where.at.pmem_fda)) {
 		if (where.at.kernel_fd == AT_FDCWD)
-			return check_errno(-ENOTSUP); // todo...
+			return check_errno(-ENOTSUP); /* XXX */
 
 		return syscall_no_intercept(SYS_setxattr,
 		    where.path, arg1, arg2, arg3, arg4);
@@ -1557,17 +1568,17 @@ hook_openat(struct fd_desc at, long arg0, long flags, long mode)
 
 	resolve_path(at, path_arg, &where, follow_last);
 
-	if (where.error_code != 0) // path resolution failed
+	if (where.error_code != 0) /* path resolution failed */
 		return where.error_code;
 
-	if (is_fda_null(&where.at.pmem_fda)) // Not pmemfile resident path
+	if (is_fda_null(&where.at.pmem_fda)) /* Not pmemfile resident path */
 		return syscall_no_intercept(SYS_openat,
 		    where.at.kernel_fd, arg0, flags, mode);
 
-	// The fd to represent the pmem resident file for the application
+	/* The fd to represent the pmem resident file for the application */
 	long fd = fd_pool_fetch_new_fd();
 
-	if (fd < 0) { // error while trying to allocate a new fd
+	if (fd < 0) { /* error while trying to allocate a new fd */
 		return fd;
 	} else {
 		PMEMfile *file;

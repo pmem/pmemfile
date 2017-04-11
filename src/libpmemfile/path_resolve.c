@@ -175,7 +175,7 @@ resolve_symlink(struct resolved_path *result,
 	size_t postfix_len = *size - *end + 1;
 
 	if (postfix_insert + postfix_len >= sizeof(result->path)) {
-		// The path just doesn't fit in the available buffer
+		/* The path just doesn't fit in the available buffer */
 		result->error_code = -ENOMEM;
 		return;
 	}
@@ -188,7 +188,7 @@ resolve_symlink(struct resolved_path *result,
 	memmove(postfix_dst, postfix_src, postfix_len);
 	memcpy(link_dst, link_buf, (size_t)link_len);
 
-	// Adjust the offsets used by the path resolving loop
+	/* Adjust the offsets used by the path resolving loop */
 	*size = postfix_insert + postfix_len - 1;
 	*resolved = link_insert;
 
@@ -245,8 +245,8 @@ resolve_path(struct fd_desc at,
 	result->at = at;
 	result->error_code = 0;
 
-	size_t resolved; // How many chars are resolved already?
-	size_t size; // The length of the whole path to be resolved.
+	size_t resolved; /* How many chars are resolved already? */
+	size_t size; /* The length of the whole path to be resolved. */
 	bool last_component_is_dir = false;
 
 	for (size = 0; path[size] != '\0'; ++size)

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Intel Corporation
+ * Copyright 2016-2017, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -94,7 +94,7 @@ static ptrdiff_t next_item_to_use = -1;
 #define INIT_MAX_ALLOCATE_COUNT 0x100
 #define ALLOCATE_CHUNK 0x80
 
-// What dummy path should the fds actually reference?
+/* What dummy path should the fds actually reference? */
 #define DUMMY_PATH "/dev/null"
 
 static void
@@ -134,7 +134,7 @@ fd_pool_create(void)
 		syscall_no_intercept(SYS_exit_group, 77);
 }
 
-// TODO: is this needed?
+/* XXX: is this needed? */
 void
 fd_pool_destroy(void)
 {

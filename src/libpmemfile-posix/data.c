@@ -499,7 +499,7 @@ iterate_on_file_range(PMEMfilepool *pfp, PMEMfile *file,
 
 		/*
 		 * Multiple blocks might be used, but the first and last
-		 * blocks are special, in the sense that not necesseraly
+		 * blocks are special, in the sense that not necessarily
 		 * all of their content is copied.
 		 */
 
@@ -1233,6 +1233,8 @@ vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		uint64_t size)
 {
 	struct pmemfile_inode *inode = vinode->inode;
+
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 
 	if (vinode->blocks == NULL)
 		vinode_rebuild_block_tree(vinode);

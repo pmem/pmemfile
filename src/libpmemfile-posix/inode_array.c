@@ -41,6 +41,8 @@
 /*
  * inode_array_add_single -- finds space for 1 inode in specified
  * array, inserts it there and returns success status
+ *
+ * Must be called in a transaction.
  */
 static bool
 inode_array_add_single(struct pmemfile_inode_array *cur,
@@ -48,6 +50,8 @@ inode_array_add_single(struct pmemfile_inode_array *cur,
 		struct pmemfile_inode_array **ins,
 		unsigned *ins_idx)
 {
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
 	for (unsigned i = 0; i < NUMINODES_PER_ENTRY; ++i) {
 		if (!TOID_IS_NULL(cur->inodes[i]))
 			continue;
@@ -74,7 +78,7 @@ inode_array_add_single(struct pmemfile_inode_array *cur,
 /*
  * inode_array_add -- adds inode to array, returns its position
  *
- * Must be called in transaction.
+ * Must be called in a transaction.
  */
 void
 inode_array_add(PMEMfilepool *pfp,
@@ -123,13 +127,15 @@ inode_array_add(PMEMfilepool *pfp,
  * inode_array_unregister -- removes inode from specified place in
  * array
  *
- * Must be called in transaction.
+ * Must be called in a transaction.
  */
 void
 inode_array_unregister(PMEMfilepool *pfp,
 		struct pmemfile_inode_array *cur,
 		unsigned idx)
 {
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
 	mutex_tx_lock(pfp, &cur->mtx);
 
 	ASSERT(cur->used > 0);

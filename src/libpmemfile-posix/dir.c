@@ -67,6 +67,10 @@ str_compare(const char *s1, const char *s2, size_t s2n)
 	return 0;
 }
 
+/*
+ * str_contains -- returns true if string contains specified character in first
+ * len bytes
+ */
 bool
 str_contains(const char *str, size_t len, char c)
 {
@@ -77,6 +81,12 @@ str_contains(const char *str, size_t len, char c)
 	return false;
 }
 
+/*
+ * more_than_1_component -- returns true if path contains more than one
+ * component
+ *
+ * Deals with slashes at the end of path.
+ */
 bool
 more_than_1_component(const char *path)
 {
@@ -93,6 +103,10 @@ more_than_1_component(const char *path)
 	return true;
 }
 
+/*
+ * component_length -- returns number of characters till the end of path
+ * component
+ */
 size_t
 component_length(const char *path)
 {
@@ -103,6 +117,9 @@ component_length(const char *path)
 }
 
 #ifdef DEBUG
+/*
+ * util_strndup -- strndup (GNU extension) replacement
+ */
 static inline char *
 util_strndup(const char *c, size_t len)
 {
@@ -197,7 +214,7 @@ vinode_clear_debug_path(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 /*
  * vinode_add_dirent -- adds child inode to parent directory
  *
- * Must be called in transaction. Caller must have exclusive access to parent
+ * Must be called in a transaction. Caller must have exclusive access to parent
  * inode, by locking parent in WRITE mode.
  */
 void
@@ -229,10 +246,11 @@ vinode_add_dirent(PMEMfilepool *pfp,
 	struct pmemfile_inode *parent = parent_vinode->inode;
 
 	/* don't create files in deleted directories */
-	if (parent->nlink == 0)
+	if (parent->nlink == 0) {
 		/* but let directory creation succeed */
 		if (str_compare(".", name, namelen) != 0)
 			pmemfile_tx_abort(ENOENT);
+	}
 
 	struct pmemfile_dir *dir = &parent->file_data.dir;
 
@@ -299,6 +317,7 @@ vinode_add_dirent(PMEMfilepool *pfp,
  * vinode_new_dir -- creates new directory relative to parent
  *
  * Note: caller must hold WRITE lock on parent.
+ * Must be called in a transaction.
  */
 struct pmemfile_vinode *
 vinode_new_dir(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
@@ -458,7 +477,7 @@ vinode_lookup_dirent(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 				name, namelen);
 
 		if (!vinode && parent_refed)
-			vinode_unref_tx(pfp, parent);
+			vinode_unref(pfp, parent);
 	}
 
 end:
@@ -470,7 +489,7 @@ end:
 /*
  * vinode_unlink_dirent -- removes dirent from directory
  *
- * Must be called in transaction. Caller must have exclusive access to parent
+ * Must be called in a transaction. Caller must have exclusive access to parent
  * inode, eg by locking parent in WRITE mode.
  */
 void
@@ -482,6 +501,8 @@ vinode_unlink_dirent(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 	LOG(LDBG, "parent 0x%" PRIx64 " ppath %s name %.*s",
 			parent->tinode.oid.off, pmfi_path(parent), (int)namelen,
 			name);
+
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 
 	struct pmemfile_dirent *dirent =
 			vinode_lookup_dirent_by_name_locked(pfp, parent, name,
@@ -823,7 +844,7 @@ pmemfile_getdents64(PMEMfilepool *pfp, PMEMfile *file,
 }
 
 static void
-resolve_pathat_nested(PMEMfilepool *pfp, struct pmemfile_cred *cred,
+resolve_pathat_nested(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *parent, const char *path,
 		struct pmemfile_path_info *path_info, int flags, int nest_level)
 {
@@ -869,7 +890,7 @@ resolve_pathat_nested(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 		os_rwlock_rdlock(&child->rwlock);
 		struct inode_perms child_perms = _vinode_get_perms(child);
 
-		// XXX: handle protected_symlinks (see man 5 proc)
+		/* XXX: handle protected_symlinks (see man 5 proc) */
 		if (PMEMFILE_S_ISLNK(child_perms.flags)) {
 			const char *symlink_target =
 					child->inode->file_data.data;
@@ -877,12 +898,12 @@ resolve_pathat_nested(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 					strlen(slash + 1) + 1);
 			sprintf(new_path, "%s/%s", symlink_target, slash + 1);
 			os_rwlock_unlock(&child->rwlock);
-			vinode_unref_tx(pfp, child);
+			vinode_unref(pfp, child);
 
 			resolve_pathat_nested(pfp, cred, parent, new_path,
 					path_info, flags, nest_level + 1);
 
-			vinode_unref_tx(pfp, parent);
+			vinode_unref(pfp, parent);
 			free(new_path);
 			return;
 		}
@@ -897,13 +918,13 @@ resolve_pathat_nested(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 				want |= PFILE_USE_RACCESS;
 
 			if (!can_access(cred, child_perms, want)) {
-				vinode_unref_tx(pfp, child);
+				vinode_unref(pfp, child);
 				path_info->error = EACCES;
 				break;
 			}
 		}
 
-		vinode_unref_tx(pfp, parent);
+		vinode_unref(pfp, parent);
 		parent = child;
 		path = slash + 1;
 
@@ -935,7 +956,7 @@ resolve_pathat_nested(PMEMfilepool *pfp, struct pmemfile_cred *cred,
  * Takes reference on path_info->vinode.
  */
 void
-resolve_pathat(PMEMfilepool *pfp, struct pmemfile_cred *cred,
+resolve_pathat(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *parent, const char *path,
 		struct pmemfile_path_info *path_info, int flags)
 {
@@ -944,8 +965,11 @@ resolve_pathat(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 	resolve_pathat_nested(pfp, cred, parent, path, path_info, flags, 1);
 }
 
+/*
+ * resolve_pathat_full -- resolves full path
+ */
 struct pmemfile_vinode *
-resolve_pathat_full(PMEMfilepool *pfp, struct pmemfile_cred *cred,
+resolve_pathat_full(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *parent, const char *path,
 		struct pmemfile_path_info *path_info, int flags,
 		bool resolve_last_symlink)
@@ -985,11 +1009,11 @@ resolve_pathat_full(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 }
 
 void
-resolve_symlink(PMEMfilepool *pfp, struct pmemfile_cred *cred,
+resolve_symlink(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *vinode,
 		struct pmemfile_path_info *info)
 {
-	// XXX: handle protected_symlinks (see man 5 proc)
+	/* XXX: handle protected_symlinks (see man 5 proc) */
 
 	char symlink_target[PMEMFILE_PATH_MAX];
 	COMPILE_ERROR_ON(sizeof(symlink_target) < PMEMFILE_IN_INODE_STORAGE);
@@ -998,7 +1022,7 @@ resolve_symlink(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 	strcpy(symlink_target, vinode->inode->file_data.data);
 	os_rwlock_unlock(&vinode->rwlock);
 
-	vinode_unref_tx(pfp, vinode);
+	vinode_unref(pfp, vinode);
 
 	struct pmemfile_path_info info2;
 	resolve_pathat(pfp, cred, info->vinode, symlink_target, &info2, 0);
@@ -1006,11 +1030,14 @@ resolve_symlink(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 	memcpy(info, &info2, sizeof(*info));
 }
 
+/*
+ * path_info_cleanup -- clean up pmemfile_path_info object
+ */
 void
 path_info_cleanup(PMEMfilepool *pfp, struct pmemfile_path_info *path_info)
 {
 	if (path_info->vinode)
-		vinode_unref_tx(pfp, path_info->vinode);
+		vinode_unref(pfp, path_info->vinode);
 	if (path_info->remaining)
 		free(path_info->remaining);
 	memset(path_info, 0, sizeof(*path_info));
@@ -1062,7 +1089,7 @@ _pmemfile_mkdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	os_rwlock_unlock(&parent->rwlock);
 
 	if (!error)
-		vinode_unref_tx(pfp, child);
+		vinode_unref(pfp, child);
 
 end:
 	path_info_cleanup(pfp, &info);
@@ -1070,7 +1097,7 @@ end:
 
 	if (error) {
 		if (parent_refed)
-			vinode_unref_tx(pfp, parent);
+			vinode_unref(pfp, parent);
 
 		errno = error;
 		return -1;
@@ -1087,7 +1114,7 @@ vinode_cleanup(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	if (preserve_errno)
 		error = errno;
 
-	vinode_unref_tx(pfp, vinode);
+	vinode_unref(pfp, vinode);
 
 	if (preserve_errno)
 		errno = error;
@@ -1279,7 +1306,7 @@ end:
 	put_cred(&cred);
 
 	if (vdir)
-		vinode_unref_tx(pfp, vdir);
+		vinode_unref(pfp, vdir);
 
 	if (error) {
 		errno = error;
@@ -1311,19 +1338,19 @@ pmemfile_rmdir(PMEMfilepool *pfp, const char *path)
 }
 
 static int
-_pmemfile_chdir(PMEMfilepool *pfp, struct pmemfile_cred *cred,
+_pmemfile_chdir(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *dir)
 {
 	struct inode_perms dir_perms = vinode_get_perms(dir);
 
 	if (!PMEMFILE_S_ISDIR(dir_perms.flags)) {
-		vinode_unref_tx(pfp, dir);
+		vinode_unref(pfp, dir);
 		errno = ENOTDIR;
 		return -1;
 	}
 
 	if (!can_access(cred, dir_perms, PFILE_WANT_EXECUTE)) {
-		vinode_unref_tx(pfp, dir);
+		vinode_unref(pfp, dir);
 		errno = EACCES;
 		return -1;
 	}
@@ -1332,7 +1359,7 @@ _pmemfile_chdir(PMEMfilepool *pfp, struct pmemfile_cred *cred,
 	struct pmemfile_vinode *old_cwd = pfp->cwd;
 	pfp->cwd = dir;
 	os_rwlock_unlock(&pfp->cwd_rwlock);
-	vinode_unref_tx(pfp, old_cwd);
+	vinode_unref(pfp, old_cwd);
 
 	return 0;
 }
@@ -1373,7 +1400,7 @@ end:
 	put_cred(&cred);
 
 	if (at_unref)
-		vinode_unref_tx(pfp, at);
+		vinode_unref(pfp, at);
 	if (error)
 		errno = error;
 
@@ -1432,7 +1459,7 @@ _pmemfile_get_dir_path(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	struct pmemfile_vinode *parent, *child = vinode;
 
 	if (buf && size == 0) {
-		vinode_unref_tx(pfp, child);
+		vinode_unref(pfp, child);
 
 		errno = EINVAL;
 		return NULL;
@@ -1442,7 +1469,7 @@ _pmemfile_get_dir_path(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 
 	if (child->orphaned.arr) {
 		os_rwlock_unlock(&child->rwlock);
-		vinode_unref_tx(pfp, child);
+		vinode_unref(pfp, child);
 
 		errno = ENOENT;
 		return NULL;
@@ -1463,7 +1490,7 @@ _pmemfile_get_dir_path(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		buf = malloc(size);
 		if (!buf) {
 			int oerrno = errno;
-			vinode_unref_tx(pfp, child);
+			vinode_unref(pfp, child);
 			errno = oerrno;
 			return NULL;
 		}
@@ -1487,7 +1514,7 @@ _pmemfile_get_dir_path(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		size_t len = strlen(dirent->name);
 		if (curpos - len - 1 < buf) {
 			os_rwlock_unlock(&parent->rwlock);
-			vinode_unref_tx(pfp, parent);
+			vinode_unref(pfp, parent);
 			goto range_err;
 		}
 		curpos -= len;
@@ -1502,20 +1529,20 @@ _pmemfile_get_dir_path(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			grandparent = vinode_ref(pfp, parent->parent);
 		os_rwlock_unlock(&parent->rwlock);
 
-		vinode_unref_tx(pfp, child);
+		vinode_unref(pfp, child);
 
 		child = parent;
 		parent = grandparent;
 	}
 
-	vinode_unref_tx(pfp, child);
+	vinode_unref(pfp, child);
 
 	memmove(buf, curpos, (uintptr_t)(buf + size - curpos));
 
 	return buf;
 
 range_err:
-	vinode_unref_tx(pfp, child);
+	vinode_unref(pfp, child);
 	if (allocated)
 		free(buf);
 	errno = ERANGE;

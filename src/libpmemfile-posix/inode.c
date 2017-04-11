@@ -118,7 +118,7 @@ struct pmemfile_inode_map {
 static void
 inode_map_rand_params(struct pmemfile_inode_map *c)
 {
-	// XXX use independent random pool
+	/* XXX use independent random pool */
 	do {
 		c->hash_fun_a = (uint32_t)rand();
 	} while (c->hash_fun_a == 0);
@@ -409,13 +409,15 @@ inode_ref(PMEMfilepool *pfp,
 }
 
 /*
- * vinode_unref -- decreases inode reference counter
+ * vinode_tx_unref -- decreases inode reference counter
  *
- * Must be called in transaction.
+ * Must be called in a transaction.
  */
 static bool
-vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
+vinode_tx_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
 	if (__sync_sub_and_fetch(&vinode->ref, 1) > 0)
 		return false;
 
@@ -430,10 +432,12 @@ vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 }
 
 /*
- * vinode_unref_tx -- decreases inode reference counter
+ * vinode_unref -- decreases inode reference counter
+ *
+ * Can't be called in a transaction.
  */
 void
-vinode_unref_tx(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
+vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
 
@@ -446,7 +450,7 @@ vinode_unref_tx(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 			struct pmemfile_vinode *parent = vinode->parent;
 
-			if (vinode_unref(pfp, vinode))
+			if (vinode_tx_unref(pfp, vinode))
 				to_unregister = vinode;
 
 			if (to_unregister && vinode != pfp->root)
@@ -482,7 +486,7 @@ file_get_time(struct pmemfile_time *t)
 /*
  * inode_alloc -- allocates inode
  *
- * Must be called in transaction.
+ * Must be called in a transaction.
  */
 struct pmemfile_vinode *
 inode_alloc(PMEMfilepool *pfp, uint64_t flags, struct pmemfile_vinode *parent,
@@ -527,6 +531,8 @@ inode_alloc(PMEMfilepool *pfp, uint64_t flags, struct pmemfile_vinode *parent,
 
 /*
  * vinode_orphan -- register specified inode in orphaned_inodes array
+ *
+ * Must be called in a transaction.
  */
 void
 vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
@@ -534,9 +540,10 @@ vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 	LOG(LDBG, "inode 0x%" PRIx64 " path %s", vinode->tinode.oid.off,
 			pmfi_path(vinode));
 
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 	ASSERTeq(vinode->orphaned.arr, NULL);
 
-	rwlock_tx_wlock(&pfp->rwlock);
+	rwlock_tx_wlock(&pfp->super_rwlock);
 
 	TOID(struct pmemfile_inode_array) orphaned =
 			pfp->super->orphaned_inodes;
@@ -544,7 +551,7 @@ vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 	inode_array_add(pfp, orphaned, vinode,
 			&vinode->orphaned.arr, &vinode->orphaned.idx);
 
-	rwlock_tx_unlock_on_commit(&pfp->rwlock);
+	rwlock_tx_unlock_on_commit(&pfp->super_rwlock);
 }
 
 /*
@@ -561,7 +568,7 @@ dir_assert_no_dirents(struct pmemfile_dir *dir)
 /*
  * file_inode_free -- frees inode
  *
- * Must be called in transaction.
+ * Must be called in a transaction.
  */
 void
 inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
@@ -570,13 +577,15 @@ inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 
 	LOG(LDBG, "inode 0x%" PRIx64, tinode.oid.off);
 
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
 	struct pmemfile_inode *inode = D_RW(tinode);
 	if (inode_is_dir(inode)) {
 		struct pmemfile_dir *dir = &inode->file_data.dir;
 		TOID(struct pmemfile_dir) tdir = TOID_NULL(struct pmemfile_dir);
 
 		while (dir != NULL) {
-			/* should have been catched earlier */
+			/* should have been caught earlier */
 			dir_assert_no_dirents(dir);
 
 			TOID(struct pmemfile_dir) next = dir->next;
@@ -736,7 +745,7 @@ end:
 	put_cred(&cred);
 
 	if (vinode)
-		vinode_unref_tx(pfp, vinode);
+		vinode_unref(pfp, vinode);
 ret:
 	if (error) {
 		errno = error;

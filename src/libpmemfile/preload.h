@@ -41,18 +41,20 @@ struct PMEMfilepool;
 struct PMEMfile;
 
 struct pool_description {
-	// A path where the mount point is - a directory must exist at this path
+	/*
+	 * A path where the mount point is - a directory must exist at this path
+	 */
 	char mount_point[0x1000];
 
-	// The canonical parent directory of the mount point
+	/* The canonical parent directory of the mount point */
 	char mount_point_parent[0x1000];
 
 	size_t len_mount_point_parent;
 
-	// Where the actual pmemfile pool is
+	/* Where the actual pmemfile pool is */
 	char poolfile_path[0x1000];
 
-	// Keep the mount point directory open
+	/* Keep the mount point directory open */
 	long fd;
 
 	/*

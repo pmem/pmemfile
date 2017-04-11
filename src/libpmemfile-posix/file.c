@@ -52,6 +52,11 @@
 #include "pool.h"
 #include "util.h"
 
+/*
+ * is_tmpfile -- returns true if "flags" contains O_TMPFILE flag
+ *
+ * It's needed because O_TMPFILE contains O_DIRECTORY.
+ */
 static bool
 is_tmpfile(int flags)
 {
@@ -59,7 +64,7 @@ is_tmpfile(int flags)
 }
 
 /*
- * check_flags -- (internal) open(2) flags tester
+ * check_flags -- open(2) flags tester
  */
 static int
 check_flags(int flags)
@@ -80,7 +85,7 @@ check_flags(int flags)
 		flags &= ~PMEMFILE_O_CREAT;
 	}
 
-	// XXX: move to interposing layer
+	/* XXX: move to interposing layer */
 	if (flags & PMEMFILE_O_CLOEXEC) {
 		LOG(LINF, "O_CLOEXEC is always enabled");
 		flags &= ~PMEMFILE_O_CLOEXEC;
@@ -172,10 +177,13 @@ check_flags(int flags)
 }
 
 static struct pmemfile_vinode *
-create_file(PMEMfilepool *pfp, struct pmemfile_cred *cred, const char *filename,
-		size_t namelen, struct pmemfile_vinode *parent_vinode,
-		int flags, pmemfile_mode_t mode)
+create_file(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
+		const char *filename, size_t namelen,
+		struct pmemfile_vinode *parent_vinode, int flags,
+		pmemfile_mode_t mode)
 {
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
 	rwlock_tx_wlock(&parent_vinode->rwlock);
 
 	if (!_vinode_can_access(cred, parent_vinode, PFILE_WANT_WRITE))
@@ -197,9 +205,11 @@ create_file(PMEMfilepool *pfp, struct pmemfile_cred *cred, const char *filename,
 }
 
 static void
-open_file(PMEMfilepool *pfp, struct pmemfile_cred *cred,
+open_file(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *vinode, int flags)
 {
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
 	if (!(flags & PMEMFILE_O_PATH)) {
 		int acc = flags & PMEMFILE_O_ACCMODE;
 
@@ -373,7 +383,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	}
 
 	if (is_tmpfile(flags)) {
-		vinode_unref_tx(pfp, vparent);
+		vinode_unref(pfp, vparent);
 		vparent = vinode;
 		vinode = NULL;
 	}
@@ -415,7 +425,7 @@ end:
 
 	if (error) {
 		if (vinode != NULL)
-			vinode_unref_tx(pfp, vinode);
+			vinode_unref(pfp, vinode);
 
 		errno = error;
 		LOG(LDBG, "!");
@@ -555,7 +565,7 @@ pmemfile_open_parent(PMEMfilepool *pfp, PMEMfile *dir, char *path,
 							&info);
 					path_info_changed = true;
 				} else {
-					vinode_unref_tx(pfp, vinode);
+					vinode_unref(pfp, vinode);
 				}
 			}
 		}
@@ -581,7 +591,7 @@ end:
 	put_cred(&cred);
 
 	if (at_unref)
-		vinode_unref_tx(pfp, at);
+		vinode_unref(pfp, at);
 
 	if (error) {
 		errno = error;
@@ -600,7 +610,7 @@ pmemfile_close(PMEMfilepool *pfp, PMEMfile *file)
 	LOG(LDBG, "inode 0x%" PRIx64 " path %s", file->vinode->tinode.oid.off,
 			pmfi_path(file->vinode));
 
-	vinode_unref_tx(pfp, file->vinode);
+	vinode_unref(pfp, file->vinode);
 
 	os_mutex_destroy(&file->mutex);
 
@@ -660,7 +670,7 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 		goto end;
 	}
 
-	// XXX: handle protected_hardlinks (see man 5 proc)
+	/* XXX: handle protected_hardlinks (see man 5 proc) */
 
 	size_t dst_namelen = component_length(dst.remaining);
 
@@ -692,7 +702,7 @@ end:
 	put_cred(&cred);
 
 	if (src_vinode)
-		vinode_unref_tx(pfp, src_vinode);
+		vinode_unref(pfp, src_vinode);
 
 	if (error) {
 		errno = error;
@@ -727,10 +737,10 @@ pmemfile_linkat(PMEMfilepool *pfp, PMEMfile *olddir, const char *oldpath,
 		error = errno;
 
 	if (olddir_at_unref)
-		vinode_unref_tx(pfp, olddir_at);
+		vinode_unref(pfp, olddir_at);
 
 	if (newdir_at_unref)
-		vinode_unref_tx(pfp, newdir_at);
+		vinode_unref(pfp, newdir_at);
 
 	if (ret)
 		errno = error;
@@ -814,11 +824,11 @@ end:
 	put_cred(&cred);
 
 	if (vinode)
-		vinode_unref_tx(pfp, vinode);
+		vinode_unref(pfp, vinode);
 
 	if (error) {
 		if (parent_refed)
-			vinode_unref_tx(pfp, vparent);
+			vinode_unref(pfp, vparent);
 		errno = error;
 		return -1;
 	}
@@ -941,8 +951,10 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	}
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		// XXX, when src dir == dst dir we can just update dirent,
-		// without linking and unlinking
+		/*
+		 * XXX, when src dir == dst dir we can just update dirent,
+		 * without linking and unlinking
+		 */
 
 		if (!_vinode_can_access(&cred, src_parent, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);
@@ -964,7 +976,7 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 				true);
 
 		if (src_unlinked != src_vinode)
-			// XXX restart? lookups under lock?
+			/* XXX restart? lookups under lock? */
 			pmemfile_tx_abort(ENOENT);
 
 	} TX_ONABORT {
@@ -979,16 +991,16 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	}
 
 	if (dst_parent_refed)
-		vinode_unref_tx(pfp, dst_parent);
+		vinode_unref(pfp, dst_parent);
 
 	if (src_parent_refed)
-		vinode_unref_tx(pfp, src_parent);
+		vinode_unref(pfp, src_parent);
 
 	if (dst_unlinked)
-		vinode_unref_tx(pfp, dst_unlinked);
+		vinode_unref(pfp, dst_unlinked);
 
 	if (src_unlinked)
-		vinode_unref_tx(pfp, src_unlinked);
+		vinode_unref(pfp, src_unlinked);
 
 	if (error == 0) {
 		vinode_clear_debug_path(pfp, src_vinode);
@@ -1002,13 +1014,13 @@ end:
 	put_cred(&cred);
 
 	if (dst_vinode)
-		vinode_unref_tx(pfp, dst_vinode);
+		vinode_unref(pfp, dst_vinode);
 	if (src_vinode)
-		vinode_unref_tx(pfp, src_vinode);
+		vinode_unref(pfp, src_vinode);
 
 	if (error) {
 		if (dst_parent_refed)
-			vinode_unref_tx(pfp, dst.vinode);
+			vinode_unref(pfp, dst.vinode);
 
 		errno = error;
 		return -1;
@@ -1066,10 +1078,10 @@ pmemfile_renameat2(PMEMfilepool *pfp, PMEMfile *old_at, const char *old_path,
 		error = errno;
 
 	if (olddir_at_unref)
-		vinode_unref_tx(pfp, olddir_at);
+		vinode_unref(pfp, olddir_at);
 
 	if (newdir_at_unref)
-		vinode_unref_tx(pfp, newdir_at);
+		vinode_unref(pfp, newdir_at);
 
 	if (ret)
 		errno = error;
@@ -1151,7 +1163,7 @@ end:
 	put_cred(&cred);
 
 	if (vinode)
-		vinode_unref_tx(pfp, vinode);
+		vinode_unref(pfp, vinode);
 
 	if (error) {
 		errno = error;
@@ -1243,7 +1255,7 @@ end:
 	put_cred(&cred);
 
 	if (vinode)
-		vinode_unref_tx(pfp, vinode);
+		vinode_unref(pfp, vinode);
 
 	if (error) {
 		errno = error;
@@ -1299,7 +1311,7 @@ pmemfile_fcntl(PMEMfilepool *pfp, PMEMfile *file, int cmd, ...)
 				return -1;
 			}
 
-			// XXX
+			/* XXX */
 			return 0;
 		case PMEMFILE_F_GETFL:
 			if (file->flags & PFILE_PATH)
@@ -1357,6 +1369,11 @@ pmemfile_stats(PMEMfilepool *pfp, struct pmemfile_stats *stats)
 	stats->blocks = blocks;
 }
 
+/*
+ * vinode_chmod
+ *
+ * Can't be called in a transaction.
+ */
 static int
 vinode_chmod(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		pmemfile_mode_t mode)
@@ -1365,6 +1382,8 @@ vinode_chmod(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	int error = 0;
 	pmemfile_uid_t fsuid;
 	int cap;
+
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
 
 	os_rwlock_rdlock(&pfp->cred_rwlock);
 	fsuid = pfp->cred.fsuid;
@@ -1435,7 +1454,7 @@ end:
 	put_cred(&cred);
 
 	if (vinode)
-		vinode_unref_tx(pfp, vinode);
+		vinode_unref(pfp, vinode);
 
 	if (error) {
 		errno = error;
@@ -1496,6 +1515,9 @@ pmemfile_fchmod(PMEMfilepool *pfp, PMEMfile *file, pmemfile_mode_t mode)
 	return 0;
 }
 
+/*
+ * pmemfile_setreuid -- sets real and effective user id
+ */
 int
 pmemfile_setreuid(PMEMfilepool *pfp, pmemfile_uid_t ruid, pmemfile_uid_t euid)
 {
@@ -1521,6 +1543,9 @@ pmemfile_setreuid(PMEMfilepool *pfp, pmemfile_uid_t ruid, pmemfile_uid_t euid)
 	return 0;
 }
 
+/*
+ * pmemfile_setregid -- sets real and effective group id
+ */
 int
 pmemfile_setregid(PMEMfilepool *pfp, pmemfile_gid_t rgid, pmemfile_gid_t egid)
 {
@@ -1546,18 +1571,27 @@ pmemfile_setregid(PMEMfilepool *pfp, pmemfile_gid_t rgid, pmemfile_gid_t egid)
 	return 0;
 }
 
+/*
+ * pmemfile_setuid -- sets effective user id
+ */
 int
 pmemfile_setuid(PMEMfilepool *pfp, pmemfile_uid_t uid)
 {
 	return pmemfile_setreuid(pfp, (pmemfile_uid_t)-1, uid);
 }
 
+/*
+ * pmemfile_setgid -- sets effective group id
+ */
 int
 pmemfile_setgid(PMEMfilepool *pfp, pmemfile_gid_t gid)
 {
 	return pmemfile_setregid(pfp, (pmemfile_gid_t)-1, gid);
 }
 
+/*
+ * pmemfile_getuid -- returns real user id
+ */
 pmemfile_uid_t
 pmemfile_getuid(PMEMfilepool *pfp)
 {
@@ -1568,6 +1602,9 @@ pmemfile_getuid(PMEMfilepool *pfp)
 	return ret;
 }
 
+/*
+ * pmemfile_getgid -- returns real group id
+ */
 pmemfile_gid_t
 pmemfile_getgid(PMEMfilepool *pfp)
 {
@@ -1578,18 +1615,27 @@ pmemfile_getgid(PMEMfilepool *pfp)
 	return ret;
 }
 
+/*
+ * pmemfile_seteuid -- sets effective user id
+ */
 int
 pmemfile_seteuid(PMEMfilepool *pfp, pmemfile_uid_t uid)
 {
 	return pmemfile_setreuid(pfp, (pmemfile_uid_t)-1, uid);
 }
 
+/*
+ * pmemfile_setegid -- sets effective group id
+ */
 int
 pmemfile_setegid(PMEMfilepool *pfp, pmemfile_gid_t gid)
 {
 	return pmemfile_setregid(pfp, (pmemfile_gid_t)-1, gid);
 }
 
+/*
+ * pmemfile_geteuid -- returns effective user id
+ */
 pmemfile_uid_t
 pmemfile_geteuid(PMEMfilepool *pfp)
 {
@@ -1600,6 +1646,9 @@ pmemfile_geteuid(PMEMfilepool *pfp)
 	return ret;
 }
 
+/*
+ * pmemfile_getegid -- returns effective group id
+ */
 pmemfile_gid_t
 pmemfile_getegid(PMEMfilepool *pfp)
 {
@@ -1610,6 +1659,9 @@ pmemfile_getegid(PMEMfilepool *pfp)
 	return ret;
 }
 
+/*
+ * pmemfile_setfsuid -- sets filesystem user id
+ */
 int
 pmemfile_setfsuid(PMEMfilepool *pfp, pmemfile_uid_t fsuid)
 {
@@ -1626,6 +1678,9 @@ pmemfile_setfsuid(PMEMfilepool *pfp, pmemfile_uid_t fsuid)
 	return (int)prev_fsuid;
 }
 
+/*
+ * pmemfile_setfsgid -- sets filesystem group id
+ */
 int
 pmemfile_setfsgid(PMEMfilepool *pfp, pmemfile_gid_t fsgid)
 {
@@ -1642,6 +1697,9 @@ pmemfile_setfsgid(PMEMfilepool *pfp, pmemfile_gid_t fsgid)
 	return (int)prev_fsgid;
 }
 
+/*
+ * pmemfile_getgroups -- fills "list" with supplementary group ids
+ */
 int
 pmemfile_getgroups(PMEMfilepool *pfp, int size, pmemfile_gid_t list[])
 {
@@ -1665,6 +1723,9 @@ pmemfile_getgroups(PMEMfilepool *pfp, int size, pmemfile_gid_t list[])
 	return (int)groupsnum;
 }
 
+/*
+ * pmemfile_getgroups -- sets supplementary group ids
+ */
 int
 pmemfile_setgroups(PMEMfilepool *pfp, size_t size, const pmemfile_gid_t *list)
 {
@@ -1810,10 +1871,10 @@ end:
 	put_cred(cred);
 
 	if (vinode)
-		vinode_unref_tx(pfp, vinode);
+		vinode_unref(pfp, vinode);
 
 	if (unref_vparent)
-		vinode_unref_tx(pfp, vparent);
+		vinode_unref(pfp, vparent);
 
 	if (error) {
 		errno = error;
@@ -1967,13 +2028,20 @@ pmemfile_posix_fallocate(PMEMfilepool *pfp, PMEMfile *file,
 	return pmemfile_fallocate(pfp, file, 0, offset, length);
 }
 
+/*
+ * vinode_chown
+ *
+ * Can't be called in a transaction.
+ */
 static int
-vinode_chown(PMEMfilepool *pfp, struct pmemfile_cred *cred,
+vinode_chown(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *vinode, pmemfile_uid_t owner,
 		pmemfile_gid_t group)
 {
 	struct pmemfile_inode *inode = vinode->inode;
 	int error = 0;
+
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
 
 	if (owner == (pmemfile_uid_t)-1 && group == (pmemfile_gid_t)-1)
 		return 0;
@@ -2065,7 +2133,7 @@ end:
 	put_cred(&cred);
 
 	if (vinode)
-		vinode_unref_tx(pfp, vinode);
+		vinode_unref(pfp, vinode);
 
 	if (error) {
 		errno = error;
@@ -2202,7 +2270,7 @@ end:
 	put_cred(&cred);
 
 	if (vinode)
-		vinode_unref_tx(pfp, vinode);
+		vinode_unref(pfp, vinode);
 
 	if (error) {
 		errno = error;

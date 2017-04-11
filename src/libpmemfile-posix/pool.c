@@ -50,11 +50,15 @@
 
 /*
  * initialize_super_block -- initializes super block
+ *
+ * Can't be called in a transaction.
  */
 static int
 initialize_super_block(PMEMfilepool *pfp)
 {
 	LOG(LDBG, "pfp %p", pfp);
+
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
 
 	int error = 0;
 	struct pmemfile_super *super = pfp->super;
@@ -67,7 +71,7 @@ initialize_super_block(PMEMfilepool *pfp)
 	}
 
 	os_rwlock_init(&pfp->cred_rwlock);
-	os_rwlock_init(&pfp->rwlock);
+	os_rwlock_init(&pfp->super_rwlock);
 	os_rwlock_init(&pfp->cwd_rwlock);
 
 	pfp->inode_map = inode_map_alloc();
@@ -110,7 +114,7 @@ initialize_super_block(PMEMfilepool *pfp)
 tx_err:
 	inode_map_free(pfp->inode_map);
 inode_map_alloc_fail:
-	os_rwlock_destroy(&pfp->rwlock);
+	os_rwlock_destroy(&pfp->super_rwlock);
 	os_rwlock_destroy(&pfp->cwd_rwlock);
 	os_rwlock_destroy(&pfp->cred_rwlock);
 	errno = error;
@@ -119,12 +123,16 @@ inode_map_alloc_fail:
 
 /*
  * cleanup_orphanded_inodes_single -- cleans up one batch of inodes
+ *
+ * Must be called in a transaction.
  */
 static void
 cleanup_orphanded_inodes_single(PMEMfilepool *pfp,
 		TOID(struct pmemfile_inode_array) single)
 {
 	LOG(LDBG, "pfp %p arr 0x%" PRIx64, pfp, single.oid.off);
+
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 
 	struct pmemfile_inode_array *op = D_RW(single);
 	for (unsigned i = 0; op->used && i < NUMINODES_PER_ENTRY; ++i) {
@@ -145,14 +153,18 @@ cleanup_orphanded_inodes_single(PMEMfilepool *pfp,
 }
 
 /*
- * cleanup_orphanded_inodes -- removes inodes (and frees if there are
+ * cleanup_orphaned_inodes -- removes inodes (and frees if there are
  * no dirents referencing it) from specified list
+ *
+ * Can't be called in a transaction.
  */
 static void
-cleanup_orphanded_inodes(PMEMfilepool *pfp,
+cleanup_orphaned_inodes(PMEMfilepool *pfp,
 		TOID(struct pmemfile_inode_array) single)
 {
 	LOG(LDBG, "pfp %p", pfp);
+
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		TOID(struct pmemfile_inode_array) last = single;
@@ -266,7 +278,7 @@ pmemfile_pool_open(const char *pathname)
 		goto init_failed;
 	}
 
-	cleanup_orphanded_inodes(pfp, pfp->super->orphaned_inodes);
+	cleanup_orphaned_inodes(pfp, pfp->super->orphaned_inodes);
 
 	return pfp;
 
@@ -290,11 +302,11 @@ pmemfile_pool_close(PMEMfilepool *pfp)
 	if (pfp->cred.groups)
 		free(pfp->cred.groups);
 
-	vinode_unref_tx(pfp, pfp->cwd);
-	vinode_unref_tx(pfp, pfp->root);
+	vinode_unref(pfp, pfp->cwd);
+	vinode_unref(pfp, pfp->root);
 	inode_map_free(pfp->inode_map);
 	os_rwlock_destroy(&pfp->cred_rwlock);
-	os_rwlock_destroy(&pfp->rwlock);
+	os_rwlock_destroy(&pfp->super_rwlock);
 	os_rwlock_destroy(&pfp->cwd_rwlock);
 
 	pmemobj_close(pfp->pop);
@@ -400,7 +412,7 @@ vinode_can_access(const struct pmemfile_cred *cred,
  * copy_cred -- copies credentials
  */
 static int
-copy_cred(struct pmemfile_cred *dst_cred, struct pmemfile_cred *src_cred)
+copy_cred(struct pmemfile_cred *dst_cred, const struct pmemfile_cred *src_cred)
 {
 	dst_cred->ruid = src_cred->ruid;
 	dst_cred->rgid = src_cred->rgid;

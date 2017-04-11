@@ -118,7 +118,7 @@ struct pmemfile_inode_map {
 static void
 inode_map_rand_params(struct pmemfile_inode_map *c)
 {
-	// XXX use independent random pool
+	/* XXX use independent random pool */
 	do {
 		c->hash_fun_a = (uint32_t)rand();
 	} while (c->hash_fun_a == 0);

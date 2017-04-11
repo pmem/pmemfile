@@ -85,7 +85,7 @@ check_flags(int flags)
 		flags &= ~PMEMFILE_O_CREAT;
 	}
 
-	// XXX: move to interposing layer
+	/* XXX: move to interposing layer */
 	if (flags & PMEMFILE_O_CLOEXEC) {
 		LOG(LINF, "O_CLOEXEC is always enabled");
 		flags &= ~PMEMFILE_O_CLOEXEC;
@@ -670,7 +670,7 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 		goto end;
 	}
 
-	// XXX: handle protected_hardlinks (see man 5 proc)
+	/* XXX: handle protected_hardlinks (see man 5 proc) */
 
 	size_t dst_namelen = component_length(dst.remaining);
 
@@ -951,8 +951,10 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	}
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		// XXX, when src dir == dst dir we can just update dirent,
-		// without linking and unlinking
+		/*
+		 * XXX, when src dir == dst dir we can just update dirent,
+		 * without linking and unlinking
+		 */
 
 		if (!_vinode_can_access(&cred, src_parent, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);
@@ -974,7 +976,7 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 				true);
 
 		if (src_unlinked != src_vinode)
-			// XXX restart? lookups under lock?
+			/* XXX restart? lookups under lock? */
 			pmemfile_tx_abort(ENOENT);
 
 	} TX_ONABORT {
@@ -1309,7 +1311,7 @@ pmemfile_fcntl(PMEMfilepool *pfp, PMEMfile *file, int cmd, ...)
 				return -1;
 			}
 
-			// XXX
+			/* XXX */
 			return 0;
 		case PMEMFILE_F_GETFL:
 			if (file->flags & PFILE_PATH)

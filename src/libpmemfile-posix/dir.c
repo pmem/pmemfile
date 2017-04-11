@@ -890,7 +890,7 @@ resolve_pathat_nested(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		os_rwlock_rdlock(&child->rwlock);
 		struct inode_perms child_perms = _vinode_get_perms(child);
 
-		// XXX: handle protected_symlinks (see man 5 proc)
+		/* XXX: handle protected_symlinks (see man 5 proc) */
 		if (PMEMFILE_S_ISLNK(child_perms.flags)) {
 			const char *symlink_target =
 					child->inode->file_data.data;
@@ -1013,7 +1013,7 @@ resolve_symlink(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *vinode,
 		struct pmemfile_path_info *info)
 {
-	// XXX: handle protected_symlinks (see man 5 proc)
+	/* XXX: handle protected_symlinks (see man 5 proc) */
 
 	char symlink_target[PMEMFILE_PATH_MAX];
 	COMPILE_ERROR_ON(sizeof(symlink_target) < PMEMFILE_IN_INODE_STORAGE);

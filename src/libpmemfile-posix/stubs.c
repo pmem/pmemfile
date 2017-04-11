@@ -55,7 +55,7 @@ check_pfp_file(PMEMfilepool *pfp, PMEMfile *file)
 {
 	check_pfp(pfp);
 
-	// XXX: check that the PMEMfile* belongs to the pool
+	/* XXX: check that the PMEMfile* belongs to the pool */
 	if (file == NULL)
 		abort();
 }

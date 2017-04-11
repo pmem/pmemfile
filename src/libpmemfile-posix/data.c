@@ -432,17 +432,17 @@ write_block_range(PMEMfilepool *pfp, struct pmemfile_block *block,
 	VALGRIND_REMOVE_FROM_TX(data + offset, len);
 }
 
-static void
-iterate_on_file_range(PMEMfilepool *pfp, PMEMfile *file,
-    uint64_t offset, uint64_t len, char *buf, enum cpy_direction dir)
+static struct pmemfile_block *
+iterate_on_file_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+		struct pmemfile_block *starting_block, uint64_t offset,
+		uint64_t len, char *buf, enum cpy_direction dir)
 {
-	struct pmemfile_block *block = file_find_block(file, offset);
+	struct pmemfile_block *block = starting_block;
+	struct pmemfile_block *last_block = starting_block;
 
 	while (len > 0) {
 		/* Remember the pointer to block used last time */
-		if (block != NULL)
-			file->block_pointer_cache = block;
-		else
+		if (block == NULL)
 			ASSERT(dir == read_from_blocks);
 
 		if ((block == NULL) ||
@@ -459,7 +459,7 @@ iterate_on_file_range(PMEMfilepool *pfp, PMEMfile *file,
 			ASSERT(dir == read_from_blocks);
 
 			struct pmemfile_block *next_block =
-			    find_following_block(file->vinode, block);
+			    find_following_block(vinode, block);
 
 			/*
 			 * How many zero bytes should be read?
@@ -537,8 +537,11 @@ iterate_on_file_range(PMEMfilepool *pfp, PMEMfile *file,
 		offset += in_block_len;
 		len -= in_block_len;
 		buf += in_block_len;
+		last_block = block;
 		block = D_RW(block->next);
 	}
+
+	return last_block;
 }
 
 /*
@@ -568,8 +571,13 @@ file_write(PMEMfilepool *pfp, PMEMfile *file, struct pmemfile_inode *inode,
 
 	/* All blocks needed for writing are properly allocated at this point */
 
-	iterate_on_file_range(pfp, file, file->offset, count, (char *)buf,
-	    write_to_blocks);
+	struct pmemfile_block *block = file_find_block(file, file->offset);
+
+	block = iterate_on_file_range(pfp, file->vinode, block, file->offset,
+			count, (char *)buf, write_to_blocks);
+
+	if (block)
+		file->block_pointer_cache = block;
 
 	if (new_size != original_size) {
 		TX_ADD_FIELD_DIRECT(inode, size);
@@ -690,8 +698,13 @@ file_read(PMEMfilepool *pfp, PMEMfile *file, struct pmemfile_inode *inode,
 	if (size - file->offset < count)
 		count = size - file->offset;
 
-	iterate_on_file_range(pfp, file, file->offset, count, buf,
-	    read_from_blocks);
+	struct pmemfile_block *block = file_find_block(file, file->offset);
+
+	block = iterate_on_file_range(pfp, file->vinode, block, file->offset,
+			count, buf, read_from_blocks);
+
+	if (block)
+		file->block_pointer_cache = block;
 
 	return count;
 }

@@ -360,13 +360,13 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 }
 
 static struct pmemfile_block *
-find_following_block(PMEMfile * file,
+find_following_block(struct pmemfile_vinode *vinode,
 	struct pmemfile_block *block)
 {
 	if (block != NULL)
 		return D_RW(block->next);
 	else
-		return file->vinode->first_block;
+		return vinode->first_block;
 }
 
 enum cpy_direction { read_from_blocks, write_to_blocks };
@@ -459,7 +459,7 @@ iterate_on_file_range(PMEMfilepool *pfp, PMEMfile *file,
 			ASSERT(dir == read_from_blocks);
 
 			struct pmemfile_block *next_block =
-			    find_following_block(file, block);
+			    find_following_block(file->vinode, block);
 
 			/*
 			 * How many zero bytes should be read?

@@ -650,6 +650,18 @@ pmemfile_write(PMEMfilepool *pfp, PMEMfile *file, const void *buf, size_t count)
 {
 	pmemfile_ssize_t ret;
 
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
+	if (!file) {
+		LOG(LUSR, "NULL file");
+		errno = EFAULT;
+		return -1;
+	}
+
 	os_mutex_lock(&file->mutex);
 	ret = pmemfile_write_locked(pfp, file, buf, count);
 	os_mutex_unlock(&file->mutex);
@@ -776,6 +788,18 @@ pmemfile_ssize_t
 pmemfile_read(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count)
 {
 	pmemfile_ssize_t ret;
+
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
+	if (!file) {
+		LOG(LUSR, "NULL file");
+		errno = EFAULT;
+		return -1;
+	}
 
 	os_mutex_lock(&file->mutex);
 	ret = pmemfile_read_locked(pfp, file, buf, count);
@@ -995,6 +1019,18 @@ pmemfile_off_t
 pmemfile_lseek(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t offset,
 		int whence)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
+	if (!file) {
+		LOG(LUSR, "NULL file");
+		errno = EFAULT;
+		return -1;
+	}
+
 	COMPILE_ERROR_ON(sizeof(offset) != 8);
 	pmemfile_off_t ret;
 
@@ -1010,6 +1046,18 @@ pmemfile_pread(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count,
 		pmemfile_off_t offset)
 {
 	/* XXX this is hacky implementation */
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
+	if (!file) {
+		LOG(LUSR, "NULL file");
+		errno = EFAULT;
+		return -1;
+	}
+
 	pmemfile_ssize_t ret;
 	os_mutex_lock(&file->mutex);
 
@@ -1036,6 +1084,18 @@ pmemfile_pwrite(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 		size_t count, pmemfile_off_t offset)
 {
 	/* XXX this is hacky implementation */
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
+	if (!file) {
+		LOG(LUSR, "NULL file");
+		errno = EFAULT;
+		return -1;
+	}
+
 	pmemfile_ssize_t ret;
 	os_mutex_lock(&file->mutex);
 

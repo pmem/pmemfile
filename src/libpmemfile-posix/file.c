@@ -448,9 +448,21 @@ PMEMfile *
 pmemfile_openat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 		int flags, ...)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return NULL;
+	}
+
 	if (!pathname) {
 		LOG(LUSR, "NULL pathname");
 		errno = ENOENT;
+		return NULL;
+	}
+
+	if (pathname[0] != '/' && !dir) {
+		LOG(LUSR, "NULL dir");
+		errno = EFAULT;
 		return NULL;
 	}
 
@@ -507,6 +519,24 @@ PMEMfile *
 pmemfile_open_parent(PMEMfilepool *pfp, PMEMfile *dir, char *path,
 		size_t path_size, int flags)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return NULL;
+	}
+
+	if (!path) {
+		LOG(LUSR, "NULL path");
+		errno = ENOENT;
+		return NULL;
+	}
+
+	if (path[0] != '/' && !dir) {
+		LOG(LUSR, "NULL dir");
+		errno = EFAULT;
+		return NULL;
+	}
+
 	PMEMfile *ret = NULL;
 	struct pmemfile_vinode *at;
 	bool at_unref;
@@ -716,12 +746,30 @@ int
 pmemfile_linkat(PMEMfilepool *pfp, PMEMfile *olddir, const char *oldpath,
 		PMEMfile *newdir, const char *newpath, int flags)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	struct pmemfile_vinode *olddir_at, *newdir_at;
 	bool olddir_at_unref, newdir_at_unref;
 
 	if (!oldpath || !newpath) {
 		LOG(LUSR, "NULL pathname");
 		errno = ENOENT;
+		return -1;
+	}
+
+	if (oldpath[0] != '/' && !olddir) {
+		LOG(LUSR, "NULL old dir");
+		errno = EFAULT;
+		return -1;
+	}
+
+	if (newpath[0] != '/' && !newdir) {
+		LOG(LUSR, "NULL new dir");
+		errno = EFAULT;
 		return -1;
 	}
 
@@ -754,6 +802,12 @@ pmemfile_linkat(PMEMfilepool *pfp, PMEMfile *olddir, const char *oldpath,
 int
 pmemfile_link(PMEMfilepool *pfp, const char *oldpath, const char *newpath)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	struct pmemfile_vinode *at;
 
 	if (!oldpath || !newpath) {
@@ -840,11 +894,23 @@ int
 pmemfile_unlinkat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 		int flags)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	struct pmemfile_vinode *at;
 	bool at_unref;
 
 	if (!pathname) {
 		errno = ENOENT;
+		return -1;
+	}
+
+	if (pathname[0] != '/' && !dir) {
+		LOG(LUSR, "NULL dir");
+		errno = EFAULT;
 		return -1;
 	}
 
@@ -1032,6 +1098,12 @@ end:
 int
 pmemfile_rename(PMEMfilepool *pfp, const char *old_path, const char *new_path)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	struct pmemfile_vinode *at;
 
 	if (!old_path || !new_path) {
@@ -1057,12 +1129,30 @@ int
 pmemfile_renameat2(PMEMfilepool *pfp, PMEMfile *old_at, const char *old_path,
 		PMEMfile *new_at, const char *new_path, unsigned flags)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	struct pmemfile_vinode *olddir_at, *newdir_at;
 	bool olddir_at_unref, newdir_at_unref;
 
 	if (!old_path || !new_path) {
 		LOG(LUSR, "NULL pathname");
 		errno = ENOENT;
+		return -1;
+	}
+
+	if (old_path[0] != '/' && !old_at) {
+		LOG(LUSR, "NULL old dir");
+		errno = EFAULT;
+		return -1;
+	}
+
+	if (new_path[0] != '/' && !new_at) {
+		LOG(LUSR, "NULL new dir");
+		errno = EFAULT;
 		return -1;
 	}
 
@@ -1180,8 +1270,20 @@ pmemfile_symlinkat(PMEMfilepool *pfp, const char *target, PMEMfile *newdir,
 	struct pmemfile_vinode *at;
 	bool at_unref;
 
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	if (!target || !linkpath) {
 		errno = ENOENT;
+		return -1;
+	}
+
+	if (linkpath[0] != '/' && !newdir) {
+		LOG(LUSR, "NULL dir");
+		errno = EFAULT;
 		return -1;
 	}
 
@@ -1272,8 +1374,20 @@ pmemfile_readlinkat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 	struct pmemfile_vinode *at;
 	bool at_unref;
 
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	if (!pathname) {
 		errno = ENOENT;
+		return -1;
+	}
+
+	if (pathname[0] != '/' && !dir) {
+		LOG(LUSR, "NULL dir");
+		errno = EFAULT;
 		return -1;
 	}
 
@@ -1298,10 +1412,19 @@ pmemfile_readlink(PMEMfilepool *pfp, const char *pathname, char *buf,
 int
 pmemfile_fcntl(PMEMfilepool *pfp, PMEMfile *file, int cmd, ...)
 {
-	int ret = 0;
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
 
-	(void) pfp;
-	(void) file;
+	if (!file) {
+		LOG(LUSR, "NULL file");
+		errno = EFAULT;
+		return -1;
+	}
+
+	int ret = 0;
 
 	switch (cmd) {
 		case PMEMFILE_F_SETLK:
@@ -1471,8 +1594,20 @@ pmemfile_fchmodat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 	struct pmemfile_vinode *at;
 	bool at_unref;
 
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	if (!pathname) {
 		errno = ENOENT;
+		return -1;
+	}
+
+	if (pathname[0] != '/' && !dir) {
+		LOG(LUSR, "NULL dir");
+		errno = EFAULT;
 		return -1;
 	}
 
@@ -1495,8 +1630,15 @@ pmemfile_chmod(PMEMfilepool *pfp, const char *path, pmemfile_mode_t mode)
 int
 pmemfile_fchmod(PMEMfilepool *pfp, PMEMfile *file, pmemfile_mode_t mode)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	if (!file) {
-		errno = EBADF;
+		LOG(LUSR, "NULL file");
+		errno = EFAULT;
 		return -1;
 	}
 
@@ -1521,6 +1663,12 @@ pmemfile_fchmod(PMEMfilepool *pfp, PMEMfile *file, pmemfile_mode_t mode)
 int
 pmemfile_setreuid(PMEMfilepool *pfp, pmemfile_uid_t ruid, pmemfile_uid_t euid)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	if (ruid != (pmemfile_uid_t)-1 && ruid > INT_MAX) {
 		errno = EINVAL;
 		return -1;
@@ -1549,6 +1697,12 @@ pmemfile_setreuid(PMEMfilepool *pfp, pmemfile_uid_t ruid, pmemfile_uid_t euid)
 int
 pmemfile_setregid(PMEMfilepool *pfp, pmemfile_gid_t rgid, pmemfile_gid_t egid)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	if (rgid != (pmemfile_gid_t)-1 && rgid > INT_MAX) {
 		errno = EINVAL;
 		return -1;
@@ -1665,6 +1819,12 @@ pmemfile_getegid(PMEMfilepool *pfp)
 int
 pmemfile_setfsuid(PMEMfilepool *pfp, pmemfile_uid_t fsuid)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	if (fsuid > INT_MAX) {
 		errno = EINVAL;
 		return -1;
@@ -1684,6 +1844,12 @@ pmemfile_setfsuid(PMEMfilepool *pfp, pmemfile_uid_t fsuid)
 int
 pmemfile_setfsgid(PMEMfilepool *pfp, pmemfile_gid_t fsgid)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	if (fsgid > INT_MAX) {
 		errno = EINVAL;
 		return -1;
@@ -1703,6 +1869,12 @@ pmemfile_setfsgid(PMEMfilepool *pfp, pmemfile_gid_t fsgid)
 int
 pmemfile_getgroups(PMEMfilepool *pfp, int size, pmemfile_gid_t list[])
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	if (size < 0) {
 		errno = EINVAL;
 		return -1;
@@ -1729,6 +1901,12 @@ pmemfile_getgroups(PMEMfilepool *pfp, int size, pmemfile_gid_t list[])
 int
 pmemfile_setgroups(PMEMfilepool *pfp, size_t size, const pmemfile_gid_t *list)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	int error = 0;
 	os_rwlock_wrlock(&pfp->cred_rwlock);
 	if (size != pfp->cred.groupsnum) {
@@ -1782,6 +1960,18 @@ _pmemfile_ftruncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 int
 pmemfile_ftruncate(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t length)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
+	if (!file) {
+		LOG(LUSR, "NULL file");
+		errno = EFAULT;
+		return -1;
+	}
+
 	int ret;
 
 	if (length < 0) {
@@ -1819,6 +2009,18 @@ pmemfile_ftruncate(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t length)
 int
 pmemfile_truncate(PMEMfilepool *pfp, const char *path, pmemfile_off_t length)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
+	if (!path) {
+		LOG(LUSR, "NULL path");
+		errno = EFAULT;
+		return -1;
+	}
+
 	if (length < 0) {
 		errno = EINVAL;
 		return -1;
@@ -1997,6 +2199,18 @@ int
 pmemfile_fallocate(PMEMfilepool *pfp, PMEMfile *file, int mode,
 		pmemfile_off_t offset, pmemfile_off_t length)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
+	if (!file) {
+		LOG(LUSR, "NULL file");
+		errno = EFAULT;
+		return -1;
+	}
+
 	int error;
 
 	error = fallocate_check_arguments(mode, offset, length);
@@ -2150,8 +2364,20 @@ pmemfile_fchownat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 	struct pmemfile_vinode *at;
 	bool at_unref;
 
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	if (!pathname) {
 		errno = ENOENT;
+		return -1;
+	}
+
+	if (pathname[0] != '/' && !dir) {
+		LOG(LUSR, "NULL dir");
+		errno = EFAULT;
 		return -1;
 	}
 
@@ -2185,8 +2411,15 @@ int
 pmemfile_fchown(PMEMfilepool *pfp, PMEMfile *file, pmemfile_uid_t owner,
 		pmemfile_gid_t group)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	if (!file) {
-		errno = EBADF;
+		LOG(LUSR, "NULL file");
+		errno = EFAULT;
 		return -1;
 	}
 
@@ -2287,8 +2520,20 @@ pmemfile_faccessat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 	struct pmemfile_vinode *at;
 	bool at_unref;
 
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	if (!pathname) {
 		errno = ENOENT;
+		return -1;
+	}
+
+	if (pathname[0] != '/' && !dir) {
+		LOG(LUSR, "NULL dir");
+		errno = EFAULT;
 		return -1;
 	}
 

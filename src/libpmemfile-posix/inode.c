@@ -762,8 +762,20 @@ pmemfile_fstatat(PMEMfilepool *pfp, PMEMfile *dir, const char *path,
 	struct pmemfile_vinode *at;
 	bool at_unref;
 
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	if (!path) {
 		errno = ENOENT;
+		return -1;
+	}
+
+	if (path[0] != '/' && !dir) {
+		LOG(LUSR, "NULL file");
+		errno = EFAULT;
 		return -1;
 	}
 
@@ -792,8 +804,14 @@ pmemfile_stat(PMEMfilepool *pfp, const char *path, pmemfile_stat_t *buf)
 int
 pmemfile_fstat(PMEMfilepool *pfp, PMEMfile *file, pmemfile_stat_t *buf)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	if (!file) {
-		errno = EBADF;
+		errno = EFAULT;
 		return -1;
 	}
 

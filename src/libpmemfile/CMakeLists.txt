@@ -74,7 +74,7 @@ add_custom_command(OUTPUT libpmemfile.a
 add_custom_target(pmemfile_static ALL DEPENDS libpmemfile.a)
 
 install(TARGETS pmemfile_shared LIBRARY
-	CONFIGURATIONS Release None
+	CONFIGURATIONS Release None RelWithDebInfo
 	DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 install(TARGETS pmemfile_shared LIBRARY

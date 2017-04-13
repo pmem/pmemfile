@@ -36,7 +36,7 @@ add_executable(pmemfile-cat pmemfile-cat.c)
 target_link_libraries(pmemfile-cat pmemfile-posix_shared)
 
 install(TARGETS mkfs.pmemfile
-	CONFIGURATIONS Release None
+	CONFIGURATIONS Release None RelWithDebInfo
 	DESTINATION ${CMAKE_INSTALL_BINDIR}
 	PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 

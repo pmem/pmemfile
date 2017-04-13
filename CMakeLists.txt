@@ -172,6 +172,12 @@ add_cxx_flag(-O0 DEBUG)
 add_cxx_flag(-ggdb DEBUG)
 add_cxx_flag(-DDEBUG DEBUG)
 
+add_c_flag(-ggdb RELWITHDEBINFO)
+add_cxx_flag(-ggdb RELWITHDEBINFO)
+
+add_c_flag(-fno-omit-frame-pointer RELWITHDEBINFO)
+add_cxx_flag(-fno-omit-frame-pointer RELWITHDEBINFO)
+
 add_c_flag("-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2" RELEASE C_CAN_FORTIFY)
 add_cxx_flag("-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2" RELEASE CXX_CAN_FORTIFY)
 

@@ -103,7 +103,7 @@ add_custom_target(pmemfile-posix_static ALL DEPENDS libpmemfile-posix.a)
 configure_file(libpmemfile-posix.pc.in libpmemfile-posix.pc)
 
 install(TARGETS pmemfile-posix_shared
-	CONFIGURATIONS Release None
+	CONFIGURATIONS Release None RelWithDebInfo
 	DESTINATION ${CMAKE_INSTALL_LIBDIR}
 	PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
@@ -113,7 +113,7 @@ install(TARGETS pmemfile-posix_shared
 	PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libpmemfile-posix.a
-	CONFIGURATIONS Release None
+	CONFIGURATIONS Release None RelWithDebInfo
 	DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libpmemfile-posix.a
@@ -121,7 +121,7 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libpmemfile-posix.a
 	DESTINATION ${CMAKE_INSTALL_LIBDIR}/pmemfile_debug)
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libpmemfile-posix.pc
-	CONFIGURATIONS Release None
+	CONFIGURATIONS Release None RelWithDebInfo
 	DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 
 add_cstyle(pmemfile-posix)

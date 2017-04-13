@@ -61,7 +61,7 @@ protected:
 	}
 };
 
-TEST_F(rw, 1)
+TEST_F(rw, basic)
 {
 	PMEMfile *f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT |
 					    PMEMFILE_O_EXCL | PMEMFILE_O_WRONLY,
@@ -342,7 +342,7 @@ TEST_F(rw, 1)
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
 }
 
-TEST_F(rw, 2)
+TEST_F(rw, huge_file)
 {
 	/* write 800MB of random data and read it back */
 	unsigned char buf00[128], bufFF[128], bufd[4096 * 4], buftmp[4096 * 4];
@@ -1297,6 +1297,68 @@ TEST_F(rw, failed_write)
 
 	pmemfile_close(pfp, f);
 
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
+}
+
+TEST_F(rw, pwrite)
+{
+	PMEMfile *f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT |
+					    PMEMFILE_O_EXCL | PMEMFILE_O_RDWR,
+				    0644);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_CUR), 0);
+
+	ASSERT_EQ(pmemfile_pwrite(pfp, f, "test1234567890", 14, 0), 14);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_CUR), 0);
+
+	ASSERT_EQ(pmemfile_write(pfp, f, "blabla", 6), 6);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_CUR), 6);
+
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_SET), 0);
+
+	char buf[100];
+	char buf0xff[100];
+	memset(buf, 0xff, sizeof(buf));
+	memset(buf0xff, 0xff, sizeof(buf0xff));
+
+	ASSERT_EQ(pmemfile_read(pfp, f, buf, sizeof(buf)), 14);
+	ASSERT_EQ(memcmp(buf, "blabla34567890", 14), 0);
+	ASSERT_EQ(memcmp(buf0xff, buf + 14, sizeof(buf) - 14), 0);
+
+	pmemfile_close(pfp, f);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
+}
+
+TEST_F(rw, pread)
+{
+	PMEMfile *f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT |
+					    PMEMFILE_O_EXCL | PMEMFILE_O_RDWR,
+				    0644);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_CUR), 0);
+
+	ASSERT_EQ(pmemfile_write(pfp, f, "test1234567890", 14), 14);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_CUR), 14);
+
+	ASSERT_EQ(pmemfile_write(pfp, f, "wxyz!@#$%^&*()", 14), 14);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_CUR), 28);
+
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 14, PMEMFILE_SEEK_SET), 14);
+
+	char buf[100];
+	char buf0xff[100];
+	memset(buf, 0xff, sizeof(buf));
+	memset(buf0xff, 0xff, sizeof(buf0xff));
+
+	ASSERT_EQ(pmemfile_pread(pfp, f, buf, sizeof(buf), 10), 28 - 10);
+	ASSERT_EQ(memcmp(buf, "7890wxyz!@#$%^&*()", 28 - 10), 0);
+	ASSERT_EQ(memcmp(buf0xff, buf + 28 - 10, sizeof(buf) - (28 - 10)), 0);
+
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_CUR), 14);
+
+	pmemfile_close(pfp, f);
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
 }
 

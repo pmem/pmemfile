@@ -38,16 +38,33 @@
 
 #include "pmemfile_test.hpp"
 
-class mt : public pmemfile_test {
-public:
-	mt() : pmemfile_test()
-	{
-	}
-};
-
 static int ops = 20;
 
 static PMEMfilepool *global_pfp;
+
+class mt : public pmemfile_test {
+public:
+	long ncpus;
+	pthread_t *threads;
+
+	mt() : pmemfile_test(256 << 20)
+	{
+		ncpus = sysconf(_SC_NPROCESSORS_ONLN);
+		threads = new pthread_t[(size_t)ncpus * 2];
+	}
+
+	void
+	SetUp()
+	{
+		pmemfile_test::SetUp();
+		global_pfp = pfp;
+	}
+
+	~mt()
+	{
+		delete[] threads;
+	}
+};
 
 static void *
 open_close_worker(void *arg)
@@ -59,6 +76,12 @@ open_close_worker(void *arg)
 		PMEMfile *f1 = pmemfile_open(global_pfp, path, 0);
 		if (f1)
 			pmemfile_close(global_pfp, f1);
+		else {
+			if (errno != ENOENT) {
+				ADD_FAILURE() << errno;
+				abort();
+			}
+		}
 	}
 
 	return NULL;
@@ -75,21 +98,22 @@ create_close_unlink_worker(void *arg)
 			pmemfile_open(global_pfp, path, PMEMFILE_O_CREAT, 0644);
 		if (f1)
 			pmemfile_close(global_pfp, f1);
+		else {
+			if (errno != ENOENT && errno != EEXIST) {
+				ADD_FAILURE() << errno;
+				abort();
+			}
+		}
 		pmemfile_unlink(global_pfp, path);
 	}
 
 	return NULL;
 }
 
-TEST_F(mt, 0)
+TEST_F(mt, open_close_create_unlink)
 {
-	long ncpus = sysconf(_SC_NPROCESSORS_ONLN);
 	int i = 0;
-	pthread_t *threads =
-		(pthread_t *)malloc(sizeof(threads[0]) * (size_t)ncpus * 2);
-	ASSERT_NE(threads, nullptr);
 	int ret;
-	global_pfp = pfp;
 
 	for (int j = 0; j < ncpus / 2; ++j) {
 		ret = pthread_create(&threads[i++], NULL, open_close_worker,
@@ -115,8 +139,71 @@ TEST_F(mt, 0)
 		ret = pthread_join(threads[--i], NULL);
 		ASSERT_EQ(ret, 0) << strerror(errno);
 	}
+}
 
-	free(threads);
+static void *
+pread_worker(void *arg)
+{
+	PMEMfile *file = (PMEMfile *)arg;
+	sched_yield();
+
+	char buf[1024];
+	char bufpat[1024];
+
+	for (int i = 0; i < ops * 100; ++i) {
+		pmemfile_off_t block = rand() % 128;
+		pmemfile_off_t off = block << 10;
+		memset(buf, 0, sizeof(buf));
+		pmemfile_ssize_t ret =
+			pmemfile_pread(global_pfp, file, buf, sizeof(buf), off);
+		if (ret < 0)
+			abort();
+		if ((size_t)ret != sizeof(buf))
+			abort();
+
+		char pat = (char)(block % 256);
+		memset(bufpat, pat, sizeof(bufpat));
+		if (memcmp(buf, bufpat, sizeof(buf)) != 0)
+			abort();
+	}
+
+	return NULL;
+}
+
+TEST_F(mt, pread)
+{
+	PMEMfile *file =
+		pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT | PMEMFILE_O_RDWR,
+			      PMEMFILE_S_IRWXU);
+	ASSERT_NE(file, nullptr);
+
+	char buf[1024];
+	for (int i = 0; i < 128; ++i) {
+		memset(buf, i % 256, sizeof(buf));
+		ASSERT_EQ(pmemfile_write(pfp, file, buf, sizeof(buf)),
+			  (pmemfile_ssize_t)sizeof(buf))
+			<< strerror(errno);
+	}
+	ASSERT_EQ(pmemfile_lseek(pfp, file, 0, PMEMFILE_SEEK_CUR), 128 << 10);
+	ASSERT_EQ(pmemfile_lseek(pfp, file, 0, PMEMFILE_SEEK_SET), 0);
+
+	int i = 0;
+	int ret;
+
+	for (int j = 0; j < ncpus; ++j) {
+		ret = pthread_create(&threads[i++], NULL, pread_worker,
+				     (void *)file);
+		ASSERT_EQ(ret, 0) << strerror(errno);
+	}
+
+	while (i > 0) {
+		ret = pthread_join(threads[--i], NULL);
+		ASSERT_EQ(ret, 0) << strerror(errno);
+	}
+
+	pmemfile_close(pfp, file);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
 }
 
 int

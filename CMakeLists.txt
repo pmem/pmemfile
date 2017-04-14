@@ -164,12 +164,8 @@ if(LINKER_HAS_WARN_COMMON)
 	set(CMAKE_LD_FLAGS  "${CMAKE_LD_FLAGS} -Wl,--warn-common")
 endif()
 
-add_c_flag(-O0 DEBUG)
-add_c_flag(-ggdb DEBUG)
 add_c_flag(-DDEBUG DEBUG)
 
-add_cxx_flag(-O0 DEBUG)
-add_cxx_flag(-ggdb DEBUG)
 add_cxx_flag(-DDEBUG DEBUG)
 
 add_c_flag("-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2" RELEASE C_CAN_FORTIFY)

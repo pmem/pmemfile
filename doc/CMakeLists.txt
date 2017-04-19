@@ -65,12 +65,12 @@ generate_man2txt(mkfs.pmemfile.1)
 
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/generated/libpmemfile-posix.3
 	DESTINATION ${CMAKE_INSTALL_MANDIR}/man3
-	CONFIGURATIONS Release None)
+	CONFIGURATIONS Release None RelWithDebInfo)
 if(BUILD_LIBPMEMFILE)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/generated/libpmemfile.1
 	DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
-	CONFIGURATIONS Release None)
+	CONFIGURATIONS Release None RelWithDebInfo)
 endif()
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/generated/mkfs.pmemfile.1
 	DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
-	CONFIGURATIONS Release None)
+	CONFIGURATIONS Release None RelWithDebInfo)

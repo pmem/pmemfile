@@ -138,6 +138,16 @@ is_block_data_initialized(const struct pmemfile_block *block)
 }
 
 /*
+ * find_block -- look up block metadata with the highest offset
+ * lower than or equal to the offset argument
+ */
+static struct pmemfile_block *
+find_block(struct pmemfile_vinode *vinode, uint64_t off)
+{
+	return (void *)(uintptr_t)ctree_find_le_unlocked(vinode->blocks, &off);
+}
+
+/*
  * file_find_block -- look up block metadata with the highest offset
  * lower than or equal to the offset argument
  *
@@ -150,22 +160,7 @@ file_find_block(struct pmemfile_file *file, struct pmemfile_block *last_block,
 	if (is_offset_in_block(last_block, offset))
 		return last_block;
 
-	struct pmemfile_block *block;
-
-	block = (void *)(uintptr_t)ctree_find_le_unlocked(file->vinode->blocks,
-	    &offset);
-
-	return block;
-}
-
-/*
- * find_block -- look up block metadata with the highest offset
- * lower than or equal to the offset argument
- */
-static struct pmemfile_block *
-find_block(struct pmemfile_vinode *vinode, uint64_t off)
-{
-	return (void *)(uintptr_t)ctree_find_le_unlocked(vinode->blocks, &off);
+	return find_block(file->vinode, offset);
 }
 
 /*

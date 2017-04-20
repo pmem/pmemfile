@@ -74,7 +74,8 @@ fi
 exit_if_not_exist $LICENSE
 exit_if_not_exist $CHECK_LICENSE
 
-git rev-parse || exit 1
+export GIT="git -C ${SOURCE_ROOT}"
+$GIT rev-parse || exit 1
 
 if [ -f $SOURCE_ROOT/.git/shallow ]; then
 	SHALLOW_CLONE=1
@@ -101,10 +102,10 @@ while [ "$1" != "" ]; do
 done
 
 if [ $CHECK_ALL -eq 0 ]; then
-	CURRENT_COMMIT=$(git log --pretty=%H -1)
-	MERGE_BASE=$(git merge-base HEAD origin/master 2>/dev/null)
+	CURRENT_COMMIT=$($GIT log --pretty=%H -1)
+	MERGE_BASE=$($GIT merge-base HEAD origin/master 2>/dev/null)
 	[ -z $MERGE_BASE ] && \
-		MERGE_BASE=$(git log --pretty="%cN:%H" | grep GitHub | head -n1 | cut -d: -f2)
+		MERGE_BASE=$($GIT log --pretty="%cN:%H" | grep GitHub | head -n1 | cut -d: -f2)
 	[ -z $MERGE_BASE -o "$CURRENT_COMMIT" = "$MERGE_BASE" ] && \
 		CHECK_ALL=1
 fi
@@ -123,7 +124,7 @@ else
 	GIT_COMMAND="diff --name-only $MERGE_BASE $CURRENT_COMMIT $SOURCE_ROOT"
 fi
 
-FILES=$(git $GIT_COMMAND | ${SOURCE_ROOT}/utils/check_license/file-exceptions.sh | \
+FILES=$($GIT $GIT_COMMAND | ${SOURCE_ROOT}/utils/check_license/file-exceptions.sh | \
 	grep    -E -e '*\.[chs]$' -e '*\.[ch]pp$' -e '*\.sh$' \
 		   -e '*\.py$' -e '*\.map$' -e 'Makefile*' -e 'TEST*' \
 		   -e '/common.inc$' -e '/match$' -e '/check_whitespace$' \
@@ -147,7 +148,7 @@ for file in $FILES ; do
 	else
 		HEADER_FIRST=`echo $YEARS | cut -d"-" -f1`
 		HEADER_LAST=` echo $YEARS | cut -d"-" -f2`
-		git log --no-merges --format="%ai %H %aE" -- $file | sort > $TMP
+		$GIT log --no-merges --format="%ai %H %aE" -- $file | sort > $TMP
 
 		# skip new files
 		[ $(cat $TMP | wc -l) -eq 1 ] && continue
@@ -166,7 +167,7 @@ for file in $FILES ; do
 			HASH_FIRST=`echo $FIRST | cut -d" " -f4`
 			HASH_LAST=` echo $LAST  | cut -d" " -f4`
 			if [ "$HASH_FIRST" == "$HASH_LAST" ]; then
-				CHANGED=`git diff --name-only $HASH_FIRST -- $file`
+				CHANGED=`$GIT diff --name-only $HASH_FIRST -- $file`
 				if [ "$CHANGED" == "" ]; then
 					SKIP=1
 					[ $VERBOSE -eq 1 ] && echo "info: checking dates in file '$file' skipped (no history)"

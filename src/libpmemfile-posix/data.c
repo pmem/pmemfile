@@ -154,9 +154,6 @@ file_find_block(struct pmemfile_file *file, uint64_t offset)
 	block = (void *)(uintptr_t)ctree_find_le_unlocked(file->vinode->blocks,
 	    &offset);
 
-	if (block != NULL)
-		file->block_pointer_cache = block;
-
 	return block;
 }
 

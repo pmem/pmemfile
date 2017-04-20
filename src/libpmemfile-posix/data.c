@@ -148,19 +148,19 @@ find_block(struct pmemfile_vinode *vinode, uint64_t off)
 }
 
 /*
- * file_find_block -- look up block metadata with the highest offset
+ * find_block_with_hint -- look up block metadata with the highest offset
  * lower than or equal to the offset argument
  *
- * using the block_pointer_cache field in struct pmemfile_file
+ * using the proposed last_block
  */
 static struct pmemfile_block *
-file_find_block(struct pmemfile_file *file, struct pmemfile_block *last_block,
-		uint64_t offset)
+find_block_with_hint(struct pmemfile_vinode *vinode, uint64_t offset,
+		struct pmemfile_block *last_block)
 {
 	if (is_offset_in_block(last_block, offset))
 		return last_block;
 
-	return find_block(file->vinode, offset);
+	return find_block(vinode, offset);
 }
 
 /*
@@ -567,7 +567,7 @@ file_write(PMEMfilepool *pfp, PMEMfile *file, size_t offset,
 	/* All blocks needed for writing are properly allocated at this point */
 
 	struct pmemfile_block *block =
-			file_find_block(file, *last_block, offset);
+			find_block_with_hint(file->vinode, offset, *last_block);
 
 	block = iterate_on_file_range(pfp, file->vinode, block, offset,
 			count, (char *)buf, write_to_blocks);
@@ -704,7 +704,7 @@ file_read(PMEMfilepool *pfp, PMEMfile *file, size_t offset,
 		count = size - offset;
 
 	struct pmemfile_block *block =
-			file_find_block(file, *last_block, offset);
+			find_block_with_hint(file->vinode, offset, *last_block);
 
 	block = iterate_on_file_range(pfp, file->vinode, block, offset,
 			count, buf, read_from_blocks);

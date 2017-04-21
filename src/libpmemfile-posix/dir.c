@@ -693,7 +693,17 @@ int
 pmemfile_getdents(PMEMfilepool *pfp, PMEMfile *file,
 			struct linux_dirent *dirp, unsigned count)
 {
-	(void) pfp;
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
+	if (!file) {
+		LOG(LUSR, "NULL file");
+		errno = EFAULT;
+		return -1;
+	}
 
 	struct pmemfile_vinode *vinode = file->vinode;
 
@@ -811,7 +821,17 @@ int
 pmemfile_getdents64(PMEMfilepool *pfp, PMEMfile *file,
 			struct linux_dirent64 *dirp, unsigned count)
 {
-	(void) pfp;
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
+	if (!file) {
+		LOG(LUSR, "NULL file");
+		errno = EFAULT;
+		return -1;
+	}
 
 	struct pmemfile_vinode *vinode = file->vinode;
 
@@ -1127,8 +1147,20 @@ pmemfile_mkdirat(PMEMfilepool *pfp, PMEMfile *dir, const char *path,
 	struct pmemfile_vinode *at;
 	bool at_unref;
 
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	if (!path) {
 		errno = ENOENT;
+		return -1;
+	}
+
+	if (path[0] != '/' && !dir) {
+		LOG(LUSR, "NULL dir");
+		errno = EFAULT;
 		return -1;
 	}
 
@@ -1322,6 +1354,12 @@ pmemfile_rmdir(PMEMfilepool *pfp, const char *path)
 	struct pmemfile_vinode *at;
 	bool at_unref;
 
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	if (!path) {
 		errno = ENOENT;
 		return -1;
@@ -1374,6 +1412,12 @@ pmemfile_chdir(PMEMfilepool *pfp, const char *path)
 	int error = 0;
 	bool at_unref;
 
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	if (!path) {
 		errno = ENOENT;
 		return -1;
@@ -1410,6 +1454,18 @@ end:
 int
 pmemfile_fchdir(PMEMfilepool *pfp, PMEMfile *dir)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
+	if (!dir) {
+		LOG(LUSR, "NULL dir");
+		errno = EFAULT;
+		return -1;
+	}
+
 	int ret;
 	struct pmemfile_cred cred;
 	if (get_cred(pfp, &cred))
@@ -1552,6 +1608,18 @@ range_err:
 char *
 pmemfile_get_dir_path(PMEMfilepool *pfp, PMEMfile *dir, char *buf, size_t size)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return NULL;
+	}
+
+	if (!dir) {
+		LOG(LUSR, "NULL dir");
+		errno = EFAULT;
+		return NULL;
+	}
+
 	struct pmemfile_vinode *vdir;
 
 	if (dir == PMEMFILE_AT_CWD)
@@ -1565,5 +1633,11 @@ pmemfile_get_dir_path(PMEMfilepool *pfp, PMEMfile *dir, char *buf, size_t size)
 char *
 pmemfile_getcwd(PMEMfilepool *pfp, char *buf, size_t size)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return NULL;
+	}
+
 	return _pmemfile_get_dir_path(pfp, pool_get_cwd(pfp), buf, size);
 }

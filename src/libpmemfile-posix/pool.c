@@ -468,6 +468,12 @@ put_cred(struct pmemfile_cred *cred)
 int
 pmemfile_setcap(PMEMfilepool *pfp, int cap)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	int ret = 0;
 	os_rwlock_wrlock(&pfp->cred_rwlock);
 	switch (cap) {
@@ -490,6 +496,12 @@ pmemfile_setcap(PMEMfilepool *pfp, int cap)
 int
 pmemfile_clrcap(PMEMfilepool *pfp, int cap)
 {
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
 	int ret = 0;
 	os_rwlock_wrlock(&pfp->cred_rwlock);
 	switch (cap) {

@@ -251,6 +251,8 @@ init_hooking(void)
 	syscall_number_filter[SYS_chown] = true;
 	syscall_number_filter[SYS_close] = true;
 	syscall_number_filter[SYS_faccessat] = true;
+	syscall_number_filter[SYS_fadvise64] = true;
+	syscall_number_filter[SYS_fallocate] = true;
 	syscall_number_filter[SYS_fchmodat] = true;
 	syscall_number_filter[SYS_fchmod] = true;
 	syscall_number_filter[SYS_fchownat] = true;
@@ -261,6 +263,7 @@ init_hooking(void)
 	syscall_number_filter[SYS_flock] = true;
 	syscall_number_filter[SYS_fsetxattr] = true;
 	syscall_number_filter[SYS_fstat] = true;
+	syscall_number_filter[SYS_fsync] = true;
 	syscall_number_filter[SYS_ftruncate] = true;
 	syscall_number_filter[SYS_getdents64] = true;
 	syscall_number_filter[SYS_getdents] = true;
@@ -280,6 +283,8 @@ init_hooking(void)
 	syscall_number_filter[SYS_pread64] = true;
 	syscall_number_filter[SYS_pwrite64] = true;
 	syscall_number_filter[SYS_read] = true;
+	syscall_number_filter[SYS_readlinkat] = true;
+	syscall_number_filter[SYS_readlink] = true;
 	syscall_number_filter[SYS_renameat2] = true;
 	syscall_number_filter[SYS_renameat] = true;
 	syscall_number_filter[SYS_rename] = true;
@@ -302,8 +307,6 @@ init_hooking(void)
 	syscall_number_filter[SYS_dup] = true;
 	syscall_number_filter[SYS_execveat] = true;
 	syscall_number_filter[SYS_execve] = true;
-	syscall_number_filter[SYS_fadvise64] = true;
-	syscall_number_filter[SYS_fallocate] = true;
 	syscall_number_filter[SYS_flistxattr] = true;
 	syscall_number_filter[SYS_fremovexattr] = true;
 	syscall_number_filter[SYS_futimesat] = true;
@@ -317,8 +320,6 @@ init_hooking(void)
 	syscall_number_filter[SYS_preadv2] = true;
 	syscall_number_filter[SYS_pwritev2] = true;
 	syscall_number_filter[SYS_readahead] = true;
-	syscall_number_filter[SYS_readlinkat] = true;
-	syscall_number_filter[SYS_readlink] = true;
 	syscall_number_filter[SYS_readv] = true;
 	syscall_number_filter[SYS_removexattr] = true;
 	syscall_number_filter[SYS_sendfile] = true;
@@ -339,6 +340,7 @@ init_hooking(void)
 	syscall_needs_fd_rlock[SYS_flock] = true;
 	syscall_needs_fd_rlock[SYS_fsetxattr] = true;
 	syscall_needs_fd_rlock[SYS_fstat] = true;
+	syscall_needs_fd_rlock[SYS_fsync] = true;
 	syscall_needs_fd_rlock[SYS_ftruncate] = true;
 	syscall_needs_fd_rlock[SYS_getdents64] = true;
 	syscall_needs_fd_rlock[SYS_getdents64] = true;
@@ -410,6 +412,7 @@ init_hooking(void)
 	syscall_has_fd_first_arg[SYS_fremovexattr] = true;
 	syscall_has_fd_first_arg[SYS_fsetxattr] = true;
 	syscall_has_fd_first_arg[SYS_fstat] = true;
+	syscall_has_fd_first_arg[SYS_fsync] = true;
 	syscall_has_fd_first_arg[SYS_ftruncate] = true;
 	syscall_has_fd_first_arg[SYS_getdents64] = true;
 	syscall_has_fd_first_arg[SYS_getdents] = true;
@@ -816,6 +819,9 @@ dispatch_syscall(long syscall_number,
 		return 0;
 
 	if (syscall_number == SYS_fdatasync)
+		return 0;
+
+	if (syscall_number == SYS_fsync)
 		return 0;
 
 	if (syscall_number == SYS_flock)

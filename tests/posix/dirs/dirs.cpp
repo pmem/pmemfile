@@ -1090,9 +1090,6 @@ TEST_F(dirs, O_PATH)
 	EXPECT_EQ(pmemfile_fcntl(pfp, file, PMEMFILE_F_SETLK), -1);
 	EXPECT_EQ(errno, EBADF);
 
-	EXPECT_EQ(pmemfile_fcntl(pfp, file, PMEMFILE_F_UNLCK), -1);
-	EXPECT_EQ(errno, EBADF);
-
 	ASSERT_EQ(pmemfile_fchdir(pfp, dir), 0);
 	ASSERT_EQ(pmemfile_access(pfp, "file", PMEMFILE_R_OK), 0);
 

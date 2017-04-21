@@ -1305,7 +1305,6 @@ pmemfile_fcntl(PMEMfilepool *pfp, PMEMfile *file, int cmd, ...)
 
 	switch (cmd) {
 		case PMEMFILE_F_SETLK:
-		case PMEMFILE_F_UNLCK:
 			if (file->flags & PFILE_PATH) {
 				errno = EBADF;
 				return -1;

@@ -158,6 +158,8 @@
 #define PMEMFILE_FL_ZERO_RANGE      0x10
 #define PMEMFILE_FL_INSERT_RANGE    0x20
 
+#define PMEMFILE_FD_CLOEXEC 1
+
 #define PMEMFILE_MAP_FAILED	((void *) -1)
 
 #ifdef __cplusplus

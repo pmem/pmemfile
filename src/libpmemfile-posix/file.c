@@ -1329,6 +1329,31 @@ pmemfile_fcntl(PMEMfilepool *pfp, PMEMfile *file, int cmd, ...)
 					(PFILE_READ | PFILE_WRITE))
 				ret |= PMEMFILE_O_RDWR;
 			return ret;
+		case PMEMFILE_F_GETFD:
+			return PMEMFILE_FD_CLOEXEC;
+		case PMEMFILE_F_SETFD:
+		{
+			va_list ap;
+			va_start(ap, cmd);
+			int fd_flags = va_arg(ap, int);
+			va_end(ap);
+
+			if (fd_flags & PMEMFILE_FD_CLOEXEC) {
+				fd_flags &= ~PMEMFILE_FD_CLOEXEC;
+			} else {
+				LOG(LSUP,
+					"clearing FD_CLOEXEC isn't supported");
+				errno = EINVAL;
+				return -1;
+			}
+
+
+			if (fd_flags) {
+				LOG(LSUP, "flag %d not supported", fd_flags);
+				errno = EINVAL;
+				return -1;
+			}
+		}
 	}
 
 	errno = ENOTSUP;

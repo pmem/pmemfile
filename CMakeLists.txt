@@ -75,6 +75,15 @@ else()
 			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 			OUTPUT_STRIP_TRAILING_WHITESPACE)
 endif()
+
+include(FindPerl)
+if(NOT PERL_FOUND)
+	message(FATAL_ERROR "Perl not found")
+endif()
+if (PERL_VERSION_STRING VERSION_LESS 5.16)
+	message(FATAL_ERROR "Too old Perl (<5.16)")
+endif()
+
 add_definitions(-DSRCVERSION="${SRCVERSION}")
 add_definitions(-DPMEMFILE_MAJOR_VERSION=${VERSION_MAJOR})
 add_definitions(-DPMEMFILE_MINOR_VERSION=${VERSION_MINOR})
@@ -224,7 +233,8 @@ add_executable(check_license EXCLUDE_FROM_ALL utils/check_license/check-license.
 function(add_cstyle name)
 	if(${ARGC} EQUAL 1)
 		add_custom_target(cstyle-${name}
-			COMMAND ${CMAKE_SOURCE_DIR}/utils/cstyle
+			COMMAND ${PERL_EXECUTABLE}
+				${CMAKE_SOURCE_DIR}/utils/cstyle
 				${CMAKE_CURRENT_SOURCE_DIR}/*.c
 				${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 	else()
@@ -241,14 +251,16 @@ function(add_cppstyle name)
 
 	if(${ARGC} EQUAL 1)
 		add_custom_target(cppstyle-${name}
-			COMMAND ${CMAKE_SOURCE_DIR}/utils/cppstyle
+			COMMAND ${PERL_EXECUTABLE}
+				${CMAKE_SOURCE_DIR}/utils/cppstyle
 				${CLANG_FORMAT}
 				check
 				${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
 				${CMAKE_CURRENT_SOURCE_DIR}/*.hpp
 			)
 		add_custom_target(cppformat-${name}
-			COMMAND ${CMAKE_SOURCE_DIR}/utils/cppstyle
+			COMMAND ${PERL_EXECUTABLE}
+				${CMAKE_SOURCE_DIR}/utils/cppstyle
 				${CLANG_FORMAT}
 				format
 				${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
@@ -256,13 +268,15 @@ function(add_cppstyle name)
 			)
 	else()
 		add_custom_target(cppstyle-${name}
-			COMMAND ${CMAKE_SOURCE_DIR}/utils/cppstyle
+			COMMAND ${PERL_EXECUTABLE}
+				${CMAKE_SOURCE_DIR}/utils/cppstyle
 				${CLANG_FORMAT}
 				check
 				${ARGN}
 			)
 		add_custom_target(cppformat-${name}
-			COMMAND ${CMAKE_SOURCE_DIR}/utils/cppstyle
+			COMMAND ${PERL_EXECUTABLE}
+				${CMAKE_SOURCE_DIR}/utils/cppstyle
 				${CLANG_FORMAT}
 				format
 				${ARGN}
@@ -276,12 +290,14 @@ endfunction()
 function(add_check_whitespace name)
 	if(${ARGC} EQUAL 1)
 		add_custom_target(check-whitespace-${name}
-			COMMAND ${CMAKE_SOURCE_DIR}/utils/check_whitespace
+			COMMAND ${PERL_EXECUTABLE}
+				${CMAKE_SOURCE_DIR}/utils/check_whitespace
 				${CMAKE_CURRENT_SOURCE_DIR}/*.c
 				${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 	else()
 		add_custom_target(check-whitespace-${name}
-			COMMAND ${CMAKE_SOURCE_DIR}/utils/check_whitespace ${ARGN})
+			COMMAND ${PERL_EXECUTABLE}
+				${CMAKE_SOURCE_DIR}/utils/check_whitespace ${ARGN})
 	endif()
 	add_dependencies(check-whitespace check-whitespace-${name})
 endfunction()
@@ -302,7 +318,8 @@ add_cstyle(check_license ${CMAKE_SOURCE_DIR}/utils/check_license/*.c)
 add_check_whitespace(check_license ${CMAKE_SOURCE_DIR}/utils/check_license/*.c)
 
 add_custom_target(check-whitespace-main
-		COMMAND ${CMAKE_SOURCE_DIR}/utils/check_whitespace
+		COMMAND ${PERL_EXECUTABLE}
+			${CMAKE_SOURCE_DIR}/utils/check_whitespace
 			${CMAKE_SOURCE_DIR}/utils/check_license/*.sh
 			${CMAKE_SOURCE_DIR}/utils/*.sh
 			${CMAKE_SOURCE_DIR}/README.md

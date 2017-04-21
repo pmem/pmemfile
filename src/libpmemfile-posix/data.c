@@ -138,29 +138,6 @@ is_block_data_initialized(const struct pmemfile_block *block)
 }
 
 /*
- * file_find_block -- look up block metadata with the highest offset
- * lower than or equal to the offset argument
- *
- * using the block_pointer_cache field in struct pmemfile_file
- */
-static struct pmemfile_block *
-file_find_block(struct pmemfile_file *file, uint64_t offset)
-{
-	if (is_offset_in_block(file->block_pointer_cache, offset))
-		return file->block_pointer_cache;
-
-	struct pmemfile_block *block;
-
-	block = (void *)(uintptr_t)ctree_find_le_unlocked(file->vinode->blocks,
-	    &offset);
-
-	if (block != NULL)
-		file->block_pointer_cache = block;
-
-	return block;
-}
-
-/*
  * find_block -- look up block metadata with the highest offset
  * lower than or equal to the offset argument
  */
@@ -168,6 +145,22 @@ static struct pmemfile_block *
 find_block(struct pmemfile_vinode *vinode, uint64_t off)
 {
 	return (void *)(uintptr_t)ctree_find_le_unlocked(vinode->blocks, &off);
+}
+
+/*
+ * find_block_with_hint -- look up block metadata with the highest offset
+ * lower than or equal to the offset argument
+ *
+ * using the proposed last_block
+ */
+static struct pmemfile_block *
+find_block_with_hint(struct pmemfile_vinode *vinode, uint64_t offset,
+		struct pmemfile_block *last_block)
+{
+	if (is_offset_in_block(last_block, offset))
+		return last_block;
+
+	return find_block(vinode, offset);
 }
 
 /*
@@ -360,13 +353,13 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 }
 
 static struct pmemfile_block *
-find_following_block(PMEMfile * file,
+find_following_block(struct pmemfile_vinode *vinode,
 	struct pmemfile_block *block)
 {
 	if (block != NULL)
 		return D_RW(block->next);
 	else
-		return file->vinode->first_block;
+		return vinode->first_block;
 }
 
 enum cpy_direction { read_from_blocks, write_to_blocks };
@@ -432,17 +425,17 @@ write_block_range(PMEMfilepool *pfp, struct pmemfile_block *block,
 	VALGRIND_REMOVE_FROM_TX(data + offset, len);
 }
 
-static void
-iterate_on_file_range(PMEMfilepool *pfp, PMEMfile *file,
-    uint64_t offset, uint64_t len, char *buf, enum cpy_direction dir)
+static struct pmemfile_block *
+iterate_on_file_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+		struct pmemfile_block *starting_block, uint64_t offset,
+		uint64_t len, char *buf, enum cpy_direction dir)
 {
-	struct pmemfile_block *block = file_find_block(file, offset);
+	struct pmemfile_block *block = starting_block;
+	struct pmemfile_block *last_block = starting_block;
 
 	while (len > 0) {
 		/* Remember the pointer to block used last time */
-		if (block != NULL)
-			file->block_pointer_cache = block;
-		else
+		if (block == NULL)
 			ASSERT(dir == read_from_blocks);
 
 		if ((block == NULL) ||
@@ -459,7 +452,7 @@ iterate_on_file_range(PMEMfilepool *pfp, PMEMfile *file,
 			ASSERT(dir == read_from_blocks);
 
 			struct pmemfile_block *next_block =
-			    find_following_block(file, block);
+			    find_following_block(vinode, block);
 
 			/*
 			 * How many zero bytes should be read?
@@ -537,18 +530,23 @@ iterate_on_file_range(PMEMfilepool *pfp, PMEMfile *file,
 		offset += in_block_len;
 		len -= in_block_len;
 		buf += in_block_len;
+		last_block = block;
 		block = D_RW(block->next);
 	}
+
+	return last_block;
 }
 
 /*
- * file_write -- writes to file
+ * vinode_write -- writes to file
  */
 static void
-file_write(PMEMfilepool *pfp, PMEMfile *file, struct pmemfile_inode *inode,
+vinode_write(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, size_t offset,
+		struct pmemfile_block **last_block,
 		const char *buf, size_t count)
 {
 	ASSERT(count > 0);
+	struct pmemfile_inode *inode = vinode->inode;
 
 	/*
 	 * Three steps:
@@ -558,18 +556,24 @@ file_write(PMEMfilepool *pfp, PMEMfile *file, struct pmemfile_inode *inode,
 	 * - Copy the data from the users buffer
 	 */
 
-	vinode_allocate_interval(pfp, file->vinode, file->offset, count);
+	vinode_allocate_interval(pfp, vinode, offset, count);
 
 	uint64_t original_size = inode->size;
 	uint64_t new_size = inode->size;
 
-	if (file->offset + count > original_size)
-		new_size = file->offset + count;
+	if (offset + count > original_size)
+		new_size = offset + count;
 
 	/* All blocks needed for writing are properly allocated at this point */
 
-	iterate_on_file_range(pfp, file, file->offset, count, (char *)buf,
-	    write_to_blocks);
+	struct pmemfile_block *block =
+			find_block_with_hint(vinode, offset, *last_block);
+
+	block = iterate_on_file_range(pfp, vinode, block, offset,
+			count, (char *)buf, write_to_blocks);
+
+	if (block)
+		*last_block = block;
 
 	if (new_size != original_size) {
 		TX_ADD_FIELD_DIRECT(inode, size);
@@ -578,17 +582,22 @@ file_write(PMEMfilepool *pfp, PMEMfile *file, struct pmemfile_inode *inode,
 }
 
 static pmemfile_ssize_t
-pmemfile_write_locked(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
+pmemfile_pwrite_internal(PMEMfilepool *pfp,
+		struct pmemfile_vinode *vinode,
+		struct pmemfile_block **last_block,
+		uint64_t file_flags,
+		size_t offset,
+		const void *buf,
 		size_t count)
 {
-	LOG(LDBG, "file %p buf %p count %zu", file, buf, count);
+	LOG(LDBG, "vinode %p buf %p count %zu", vinode, buf, count);
 
-	if (!vinode_is_regular_file(file->vinode)) {
+	if (!vinode_is_regular_file(vinode)) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	if (!(file->flags & PFILE_WRITE)) {
+	if (!(file_flags & PFILE_WRITE)) {
 		errno = EBADF;
 		return -1;
 	}
@@ -596,15 +605,14 @@ pmemfile_write_locked(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 	if ((pmemfile_ssize_t)count < 0)    /* Normally this will still   */
 		count = SSIZE_MAX; /* try to write 2^63 bytes... */
 
-	if (file->offset + count < file->offset) /* overflow check */
-		count = SIZE_MAX - file->offset;
+	if (offset + count < offset) /* overflow check */
+		count = SIZE_MAX - offset;
 
 	if (count == 0)
 		return 0;
 
 	int error = 0;
 
-	struct pmemfile_vinode *vinode = file->vinode;
 	struct pmemfile_inode *inode = vinode->inode;
 
 	os_rwlock_wrlock(&vinode->rwlock);
@@ -615,10 +623,10 @@ pmemfile_write_locked(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 		if (!vinode->blocks)
 			vinode_rebuild_block_tree(vinode);
 
-		if (file->flags & PFILE_APPEND)
-			file->offset = inode->size;
+		if (file_flags & PFILE_APPEND)
+			offset = inode->size;
 
-		file_write(pfp, file, inode, buf, count);
+		vinode_write(pfp, vinode, offset, last_block, buf, count);
 
 		if (count > 0) {
 			struct pmemfile_time tm;
@@ -628,8 +636,6 @@ pmemfile_write_locked(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 	} TX_ONABORT {
 		error = errno;
 		vinode_restore_on_abort(vinode);
-	} TX_ONCOMMIT {
-		file->offset += count;
 	} TX_END
 
 	os_rwlock_unlock(&vinode->rwlock);
@@ -663,35 +669,49 @@ pmemfile_write(PMEMfilepool *pfp, PMEMfile *file, const void *buf, size_t count)
 	}
 
 	os_mutex_lock(&file->mutex);
-	ret = pmemfile_write_locked(pfp, file, buf, count);
+
+	struct pmemfile_block *last_block = file->block_pointer_cache;
+	ret = pmemfile_pwrite_internal(pfp, file->vinode, &last_block,
+			file->flags, file->offset, buf, count);
+	if (ret >= 0) {
+		file->offset += (size_t)ret;
+		file->block_pointer_cache = last_block;
+	}
+
 	os_mutex_unlock(&file->mutex);
 
 	return ret;
 }
 
 /*
- * file_read -- reads file
+ * vinode_read -- reads file
  */
 static size_t
-file_read(PMEMfilepool *pfp, PMEMfile *file, struct pmemfile_inode *inode,
-		char *buf, size_t count)
+vinode_read(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, size_t offset,
+		struct pmemfile_block **last_block, char *buf, size_t count)
 {
-	uint64_t size = inode->size;
+	uint64_t size = vinode->inode->size;
 
 	/*
-	 * Start reading at file->offset, stop reading
+	 * Start reading at offset, stop reading
 	 * when end of file is reached, or count bytes were read.
 	 * The following two branches compute how many bytes are
 	 * going to be read.
 	 */
-	if (file->offset >= size)
+	if (offset >= size)
 		return 0; /* EOF already */
 
-	if (size - file->offset < count)
-		count = size - file->offset;
+	if (size - offset < count)
+		count = size - offset;
 
-	iterate_on_file_range(pfp, file, file->offset, count, buf,
-	    read_from_blocks);
+	struct pmemfile_block *block =
+			find_block_with_hint(vinode, offset, *last_block);
+
+	block = iterate_on_file_range(pfp, vinode, block, offset,
+			count, buf, read_from_blocks);
+
+	if (block)
+		*last_block = block;
 
 	return count;
 }
@@ -711,16 +731,22 @@ time_cmp(const struct pmemfile_time *t1, const struct pmemfile_time *t2)
 }
 
 static pmemfile_ssize_t
-pmemfile_read_locked(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count)
+pmemfile_pread_internal(PMEMfilepool *pfp,
+		struct pmemfile_vinode *vinode,
+		struct pmemfile_block **last_block,
+		uint64_t file_flags,
+		size_t offset,
+		void *buf,
+		size_t count)
 {
-	LOG(LDBG, "file %p buf %p count %zu", file, buf, count);
+	LOG(LDBG, "vinode %p buf %p count %zu", vinode, buf, count);
 
-	if (!vinode_is_regular_file(file->vinode)) {
+	if (!vinode_is_regular_file(vinode)) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	if (!(file->flags & PFILE_READ)) {
+	if (!(file_flags & PFILE_READ)) {
 		errno = EBADF;
 		return -1;
 	}
@@ -730,7 +756,6 @@ pmemfile_read_locked(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count)
 
 	size_t bytes_read = 0;
 
-	struct pmemfile_vinode *vinode = file->vinode;
 	struct pmemfile_inode *inode = vinode->inode;
 
 	os_rwlock_rdlock(&vinode->rwlock);
@@ -743,9 +768,9 @@ pmemfile_read_locked(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count)
 		os_rwlock_rdlock(&vinode->rwlock);
 	}
 
-	bytes_read = file_read(pfp, file, inode, buf, count);
+	bytes_read = vinode_read(pfp, vinode, offset, last_block, buf, count);
 
-	bool update_atime = !(file->flags & PFILE_NOATIME);
+	bool update_atime = !(file_flags & PFILE_NOATIME);
 	struct pmemfile_time tm;
 
 	if (update_atime) {
@@ -775,8 +800,6 @@ pmemfile_read_locked(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count)
 	}
 
 
-	file->offset += bytes_read;
-
 	ASSERT(bytes_read <= count);
 	return (pmemfile_ssize_t)bytes_read;
 }
@@ -802,7 +825,15 @@ pmemfile_read(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count)
 	}
 
 	os_mutex_lock(&file->mutex);
-	ret = pmemfile_read_locked(pfp, file, buf, count);
+
+	struct pmemfile_block *last_block = file->block_pointer_cache;
+	ret = pmemfile_pread_internal(pfp, file->vinode, &last_block,
+			file->flags, file->offset, buf, count);
+	if (ret >= 0) {
+		file->offset += (size_t)ret;
+		file->block_pointer_cache = last_block;
+	}
+
 	os_mutex_unlock(&file->mutex);
 
 	return ret;
@@ -1045,7 +1076,6 @@ pmemfile_ssize_t
 pmemfile_pread(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count,
 		pmemfile_off_t offset)
 {
-	/* XXX this is hacky implementation */
 	if (!pfp) {
 		LOG(LUSR, "NULL pool");
 		errno = EFAULT;
@@ -1058,32 +1088,27 @@ pmemfile_pread(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count,
 		return -1;
 	}
 
-	pmemfile_ssize_t ret;
-	os_mutex_lock(&file->mutex);
-
-	size_t cur_off = file->offset;
-
-	if (pmemfile_lseek_locked(pfp, file, offset, PMEMFILE_SEEK_SET) !=
-			offset) {
-		ret = -1;
-		goto end;
+	if (offset < 0) {
+		errno = EINVAL;
+		return -1;
 	}
 
-	ret = pmemfile_read_locked(pfp, file, buf, count);
+	os_mutex_lock(&file->mutex);
 
-	file->offset = cur_off;
+	struct pmemfile_block *last_block = file->block_pointer_cache;
+	struct pmemfile_vinode *vinode = file->vinode;
+	uint64_t flags = file->flags;
 
-end:
 	os_mutex_unlock(&file->mutex);
 
-	return ret;
+	return pmemfile_pread_internal(pfp, vinode, &last_block, flags,
+			(size_t)offset, buf, count);
 }
 
 pmemfile_ssize_t
 pmemfile_pwrite(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 		size_t count, pmemfile_off_t offset)
 {
-	/* XXX this is hacky implementation */
 	if (!pfp) {
 		LOG(LUSR, "NULL pool");
 		errno = EFAULT;
@@ -1096,25 +1121,21 @@ pmemfile_pwrite(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 		return -1;
 	}
 
-	pmemfile_ssize_t ret;
-	os_mutex_lock(&file->mutex);
-
-	size_t cur_off = file->offset;
-
-	if (pmemfile_lseek_locked(pfp, file, offset, PMEMFILE_SEEK_SET) !=
-			offset) {
-		ret = -1;
-		goto end;
+	if (offset < 0) {
+		errno = EINVAL;
+		return -1;
 	}
 
-	ret = pmemfile_write_locked(pfp, file, buf, count);
+	os_mutex_lock(&file->mutex);
 
-	file->offset = cur_off;
+	struct pmemfile_block *last_block = file->block_pointer_cache;
+	struct pmemfile_vinode *vinode = file->vinode;
+	uint64_t flags = file->flags;
 
-end:
 	os_mutex_unlock(&file->mutex);
 
-	return ret;
+	return pmemfile_pwrite_internal(pfp, vinode, &last_block, flags,
+			(size_t)offset, buf, count);
 }
 
 /*

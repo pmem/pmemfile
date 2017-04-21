@@ -33,6 +33,7 @@ add_c_flag(-fno-strict-aliasing)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+include(FindThreads)
 include(ExternalProject)
 set(GTEST_VERSION 1.8.0)
 

@@ -251,6 +251,8 @@ init_hooking(void)
 	syscall_number_filter[SYS_chown] = true;
 	syscall_number_filter[SYS_close] = true;
 	syscall_number_filter[SYS_faccessat] = true;
+	syscall_number_filter[SYS_fadvise64] = true;
+	syscall_number_filter[SYS_fallocate] = true;
 	syscall_number_filter[SYS_fchmodat] = true;
 	syscall_number_filter[SYS_fchmod] = true;
 	syscall_number_filter[SYS_fchownat] = true;
@@ -280,6 +282,8 @@ init_hooking(void)
 	syscall_number_filter[SYS_pread64] = true;
 	syscall_number_filter[SYS_pwrite64] = true;
 	syscall_number_filter[SYS_read] = true;
+	syscall_number_filter[SYS_readlinkat] = true;
+	syscall_number_filter[SYS_readlink] = true;
 	syscall_number_filter[SYS_renameat2] = true;
 	syscall_number_filter[SYS_renameat] = true;
 	syscall_number_filter[SYS_rename] = true;
@@ -302,8 +306,6 @@ init_hooking(void)
 	syscall_number_filter[SYS_dup] = true;
 	syscall_number_filter[SYS_execveat] = true;
 	syscall_number_filter[SYS_execve] = true;
-	syscall_number_filter[SYS_fadvise64] = true;
-	syscall_number_filter[SYS_fallocate] = true;
 	syscall_number_filter[SYS_flistxattr] = true;
 	syscall_number_filter[SYS_fremovexattr] = true;
 	syscall_number_filter[SYS_futimesat] = true;
@@ -317,8 +319,6 @@ init_hooking(void)
 	syscall_number_filter[SYS_preadv2] = true;
 	syscall_number_filter[SYS_pwritev2] = true;
 	syscall_number_filter[SYS_readahead] = true;
-	syscall_number_filter[SYS_readlinkat] = true;
-	syscall_number_filter[SYS_readlink] = true;
 	syscall_number_filter[SYS_readv] = true;
 	syscall_number_filter[SYS_removexattr] = true;
 	syscall_number_filter[SYS_sendfile] = true;

@@ -338,6 +338,13 @@ if(DEVELOPER_MODE)
 		message(WARNING "clang-format not found - C++ sources will not be checked")
 	endif()
 
+	execute_process(COMMAND ${PERL_EXECUTABLE} -MText::Diff -e ""
+			ERROR_QUIET
+			RESULT_VARIABLE PERL_TEXT_DIFF_STATUS)
+	if (PERL_TEXT_DIFF_STATUS)
+		message(FATAL_ERROR "Text::Diff Perl module not found (install libtext-diff-perl or perl-Text-Diff)")
+	endif()
+
 	add_dependencies(checkers cstyle)
 	add_dependencies(checkers cppstyle)
 	add_dependencies(checkers check-whitespace)

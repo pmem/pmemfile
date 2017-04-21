@@ -52,7 +52,7 @@ endfunction()
 
 function(match log_file match_file)
 	execute_process(COMMAND
-			${MATCH_SCRIPT} -o ${log_file} ${match_file}
+			${PERL_EXECUTABLE} ${MATCH_SCRIPT} -o ${log_file} ${match_file}
 			RESULT_VARIABLE MATCH_ERROR)
 
 	if(MATCH_ERROR)
@@ -110,14 +110,9 @@ function(list_files out dir)
 	if(res)
 		message(FATAL_ERROR "ls ${dir} > ${out} failed: ${res}")
 	endif()
-	if(EXISTS ${SRC_DIR}/${out}.match)
-		execute_process(COMMAND
-		${MATCH_SCRIPT} -o ${BIN_DIR}/${out} ${SRC_DIR}/${out}.match
-		RESULT_VARIABLE MATCH_ERROR)
 
-		if(MATCH_ERROR)
-			message(FATAL_ERROR "Log does not match: ${MATCH_ERROR}")
-		endif()
+	if(EXISTS ${SRC_DIR}/${out}.match)
+		match(${BIN_DIR}/${out} ${SRC_DIR}/${out}.match)
 	endif()
 endfunction()
 

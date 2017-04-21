@@ -32,6 +32,7 @@
 option(TESTS_USE_FORCED_PMEM "let tests force enable or force disable use of optimized flush in libpmemobj (to speed them up)" OFF)
 
 set(GLOBAL_TEST_ARGS
+	-DPERL_EXECUTABLE=${PERL_EXECUTABLE}
 	-DMATCH_SCRIPT=${PROJECT_SOURCE_DIR}/tests/match
 	-DMKFS_EXECUTABLE=$<TARGET_FILE:mkfs.pmemfile>
 	-DCAT_EXECUTABLE=$<TARGET_FILE:pmemfile-cat>

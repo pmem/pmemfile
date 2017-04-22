@@ -1,0 +1,5 @@
+total $(N)
+drwxrwxrwx 2 $(N) .
+drwxrwxrwx 2 $(N) ..
+-rw-r--r-- 1 391 file_a
+-rw-r--r-- 1 4401 file_b

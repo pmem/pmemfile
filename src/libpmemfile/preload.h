@@ -39,6 +39,7 @@
 
 struct PMEMfilepool;
 struct PMEMfile;
+extern volatile int pause_at_start;
 
 struct pool_description {
 	/*

@@ -393,7 +393,7 @@ endif()
 
 add_subdirectory(src/libpmemfile-posix)
 if(BUILD_LIBPMEMFILE)
-add_subdirectory(src/libpmemfile)
+	add_subdirectory(src/libpmemfile)
 endif()
 add_subdirectory(src/tools)
 add_subdirectory(tests)

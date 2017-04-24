@@ -46,5 +46,5 @@ endif()
 add_subdirectory(posix)
 
 if(BUILD_LIBPMEMFILE)
-add_subdirectory(preload)
+	add_subdirectory(preload)
 endif()

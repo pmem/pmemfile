@@ -38,9 +38,9 @@ include(ExternalProject)
 set(GTEST_VERSION 1.8.0)
 
 if(EXISTS ${CMAKE_SOURCE_DIR}/googletest-${GTEST_VERSION}.zip)
-set(GTEST_URL ${CMAKE_SOURCE_DIR}/googletest-${GTEST_VERSION}.zip)
+	set(GTEST_URL ${CMAKE_SOURCE_DIR}/googletest-${GTEST_VERSION}.zip)
 else()
-set(GTEST_URL https://github.com/google/googletest/archive/release-${GTEST_VERSION}.zip)
+	set(GTEST_URL https://github.com/google/googletest/archive/release-${GTEST_VERSION}.zip)
 endif()
 ExternalProject_Add(
 	gtest

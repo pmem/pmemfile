@@ -84,6 +84,11 @@ list_files(ls_with_dir.log ${DIR}/mount_point)
 rmdir(${DIR}/mount_point/dummy_dir_a)
 list_files(ls_without_dir.log ${DIR}/mount_point)
 
+set(ENV{PMEMFILE_CD} ${DIR}/mount_point)
+mkdir(dir_inside)
+unset(ENV{PMEMFILE_CD})
+execute(stat ${DIR}/mount_point/dir_inside)
+
 # todo: when rm works...
 #  only faccessat seems to be missing for rm to work
 # expect_normal_exit rm ${DIR}/dummy_mount_point/file_a

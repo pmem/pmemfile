@@ -230,6 +230,12 @@ pmemfile_preload_constructor(void)
 	 * after the call to init_hooking()
 	 */
 	init_hooking();
+
+	char *cd = getenv("PMEMFILE_CD");
+	if (cd && chdir(cd)) {
+		perror("chdir");
+		exit(1);
+	}
 }
 
 static void

@@ -158,9 +158,7 @@ add_cxx_flag(-Wconversion)
 add_cxx_flag(-Wunreachable-code-return)
 add_cxx_flag(-Wmissing-variable-declarations)
 
-add_c_flag(-pthread)
 add_c_flag(-fno-common)
-add_cxx_flag(-pthread)
 add_cxx_flag(-fno-common)
 
 check_c_compiler_flag(-Wl,-z,relro LINKER_HAS_RELRO)

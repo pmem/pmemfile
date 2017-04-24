@@ -82,6 +82,7 @@ add_library(pmemfile-posix_shared SHARED $<TARGET_OBJECTS:pmemfile-posix_o>)
 add_library(pmemfile-posix_static_unscoped STATIC $<TARGET_OBJECTS:pmemfile-posix_o>)
 
 target_link_libraries(pmemfile-posix_shared PRIVATE ${PMEMOBJ_LIBRARIES})
+target_link_libraries(pmemfile-posix_shared PRIVATE ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(pmemfile-posix_shared PRIVATE -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/libpmemfile-posix.map)
 set_target_properties(pmemfile-posix_shared PROPERTIES LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/libpmemfile-posix.map)
 

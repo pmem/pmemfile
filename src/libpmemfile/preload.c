@@ -204,6 +204,8 @@ static void establish_mount_points(const char *);
 static void setup_strict_symlink_flag(const char *);
 static void init_hooking(void);
 
+int pause_at_start;
+
 pf_constructor void
 pmemfile_preload_constructor(void)
 {
@@ -224,6 +226,12 @@ pmemfile_preload_constructor(void)
 	if (pool_count == 0)
 		/* No pools mounted. TODO: prevent syscall interception */
 		return;
+
+	if (getenv("PMEMFILE_PRELOAD_PAUSE_AT_START")) {
+		pause_at_start = 1;
+		while (pause_at_start)
+			;
+	}
 
 	/*
 	 * Must be the last step, the callback can be called anytime

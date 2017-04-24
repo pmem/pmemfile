@@ -615,8 +615,7 @@ static long hook_unlinkat(struct fd_desc at, long arg0, long flags);
 static long hook_newfstatat(struct fd_desc at, long arg0, long arg1, long arg2);
 static long hook_fstat(long fd, long buf_addr);
 static long hook_close(long fd);
-static long hook_faccessat(struct fd_desc at, long path_arg,
-				long mode, long flags);
+static long hook_faccessat(struct fd_desc at, long path_arg, long mode);
 static long hook_getxattr(long arg0, long arg1, long arg2, long arg3,
 			int resolve_last);
 static long hook_setxattr(long arg0, long arg1, long arg2, long arg3, long arg4,
@@ -729,10 +728,10 @@ dispatch_syscall(long syscall_number,
 
 	/* Use pmemfile_faccessat to implement access, faccessat */
 	if (syscall_number == SYS_access)
-		return hook_faccessat(cwd_desc(), arg0, 0, 0);
+		return hook_faccessat(cwd_desc(), arg0, 0);
 
 	if (syscall_number == SYS_faccessat)
-		return hook_faccessat(fetch_fd(arg0), arg1, arg2, arg3);
+		return hook_faccessat(fetch_fd(arg0), arg1, arg2);
 
 	/*
 	 * The newfstatat syscall implements both stat and lstat.
@@ -1413,7 +1412,7 @@ hook_pwrite64(long fd, const char *buf, size_t count, off_t pos)
 }
 
 static long
-hook_faccessat(struct fd_desc at, long path_arg, long mode, long flags)
+hook_faccessat(struct fd_desc at, long path_arg, long mode)
 {
 	struct resolved_path where;
 
@@ -1424,32 +1423,20 @@ hook_faccessat(struct fd_desc at, long path_arg, long mode, long flags)
 
 	if (is_fda_null(&where.at.pmem_fda)) {
 		return syscall_no_intercept(SYS_faccessat,
-		    where.at.kernel_fd, where.path, mode, flags);
+		    where.at.kernel_fd, where.path, mode);
 	}
 
-	pmemfile_stat_t stat;
-	/* XXX implement for real! */
-	if (pmemfile_fstatat(where.at.pmem_fda.pool->pool,
-			where.at.pmem_fda.file, where.path, &stat, 0))
-		return check_errno(-errno);
-	return 0;
+	long r = pmemfile_faccessat(where.at.pmem_fda.pool->pool,
+	    where.at.pmem_fda.file, where.path, (int)mode, 0);
 
-	/*
-	 *
-	 * TODO
-	 *
-	 * long r = pmemfile_faccessat(where.pool->pool,
-	 *		where.path, (mode_t)arg1);
-	 *
-	 * log_write("pmemfile_lstat(%p, \"%s\", %ld) = %ld",
-	 *     (void *)where.pool->pool, where.path, arg1, r);
-	 *
-	 * if (r < 0)
-	 *     r = -errno;
-	 *
-	 * return r;
-	 *
-	 */
+	log_write("pmemfile_faccessat(%p, %p, \"%s\", %ld, 0) = %ld",
+	    (void *)where.at.pmem_fda.pool->pool, where.at.pmem_fda.file,
+	    where.path, mode, r);
+
+	if (r == 0)
+		return 0;
+	else
+		return check_errno(-errno);
 }
 
 static long

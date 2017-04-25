@@ -129,7 +129,7 @@ function(add_test_generic name tracer)
 			-DTRACER=${tracer}
 			-DLONG_TESTS=${LONG_TESTS}
 			${ARGV2}
-			-P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/test.cmake)
+			-P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/${name}.cmake)
 
 	set_tests_properties(${name}_${tracer} PROPERTIES
 		ENVIRONMENT "LC_ALL=C;PATH=$ENV{PATH};${ARGV3}")

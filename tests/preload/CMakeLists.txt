@@ -47,7 +47,7 @@ function(add_test_generic name main_executable)
 			-DBIN_DIR=${CMAKE_CURRENT_BINARY_DIR}/${name}
 			-DPRELOAD_LIB=$<TARGET_FILE:pmemfile_shared>
 			-DMAIN_EXECUTABLE=${main_executable}
-			-P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/test.cmake)
+			-P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/${name}.cmake)
 
 	set_tests_properties(preload_${name} PROPERTIES
 		ENVIRONMENT "LC_ALL=C;${ARGV3}")

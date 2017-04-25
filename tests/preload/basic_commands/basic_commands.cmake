@@ -89,6 +89,16 @@ mkdir(dir_inside)
 unset(ENV{PMEMFILE_CD})
 execute(stat ${DIR}/mount_point/dir_inside)
 
+mkdir(${DIR}/mount_point/../test)
+execute(ls -lR ${DIR}/..)
+execute(stat ${DIR}/test)
+
+set(ENV{PMEMFILE_CD} ${DIR}/mount_point/dir_inside)
+mkdir(../../dir_outside)
+unset(ENV{PMEMFILE_CD})
+execute(ls -lR ${DIR}/..)
+execute(stat ${DIR}/dir_outside)
+
 # todo: when rm works...
 #  only faccessat seems to be missing for rm to work
 # expect_normal_exit rm ${DIR}/dummy_mount_point/file_a

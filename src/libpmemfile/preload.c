@@ -1293,6 +1293,8 @@ open_new_pool(struct pool_description *p)
 {
 	if (p->pool == NULL) {
 		PMEMfilepool *pfp = pmemfile_pool_open(p->poolfile_path);
+		if (pmemfile_stat(pfp, "/", &p->pmem_stat))
+			FATAL("pmemfile_stat(\"/\") failed!");
 		__atomic_store_n(&p->pool, pfp, __ATOMIC_SEQ_CST);
 	}
 }
@@ -1302,11 +1304,11 @@ open_new_pool(struct pool_description *p)
  * function can be used to lookup a mount point by inode number.
  */
 struct pool_description *
-lookup_pd_by_inode(__ino_t inode)
+lookup_pd_by_inode(struct stat *stat)
 {
 	for (int i = 0; i < pool_count; ++i) {
 		struct pool_description *p = pools + i;
-		if (p->stat.st_ino == inode)  {
+		if (same_inode(&p->stat, stat)) {
 			PMEMfilepool *pfp;
 
 			pfp = __atomic_load_n(&p->pool, __ATOMIC_SEQ_CST);
@@ -1535,7 +1537,7 @@ hook_mkdirat(struct fd_desc at, long path_arg, long mode)
 
 	if (is_fda_null(&where.at.pmem_fda))
 		return syscall_no_intercept(SYS_mkdirat,
-		    where.at.kernel_fd, path_arg, mode);
+		    where.at.kernel_fd, where.path, mode);
 
 	long r = pmemfile_mkdirat(where.at.pmem_fda.pool->pool,
 	    where.at.pmem_fda.file, where.path, (mode_t)mode);
@@ -1572,7 +1574,7 @@ hook_openat(struct fd_desc at, long arg0, long flags, long mode)
 
 	if (is_fda_null(&where.at.pmem_fda)) /* Not pmemfile resident path */
 		return syscall_no_intercept(SYS_openat,
-		    where.at.kernel_fd, arg0, flags, mode);
+		    where.at.kernel_fd, where.path, flags, mode);
 
 	/* The fd to represent the pmem resident file for the application */
 	long fd = fd_pool_fetch_new_fd();
@@ -1935,7 +1937,7 @@ hook_futimesat(struct fd_desc at, const char *path,
 
 	if (where.at.pmem_fda.pool == NULL)
 		return syscall_no_intercept(SYS_futimesat,
-		    where.at.kernel_fd, path, times);
+		    where.at.kernel_fd, where.path, times);
 
 	return check_errno(-ENOTSUP);
 }
@@ -1955,7 +1957,7 @@ hook_name_to_handle_at(struct fd_desc at, const char *path,
 
 	if (where.at.pmem_fda.pool == NULL)
 		return syscall_no_intercept(SYS_name_to_handle_at,
-		    where.at.kernel_fd, path, mount_id, flags);
+		    where.at.kernel_fd, where.path, mount_id, flags);
 
 	return check_errno(-ENOTSUP);
 }
@@ -1975,7 +1977,7 @@ hook_execveat(struct fd_desc at, const char *path,
 
 	if (where.at.pmem_fda.pool == NULL)
 		return syscall_no_intercept(SYS_execveat,
-		    where.at.kernel_fd, path, argv, envp, flags);
+		    where.at.kernel_fd, where.path, argv, envp, flags);
 
 	/* The expectation is that pmemfile will never support this. */
 	return check_errno(-ENOTSUP);

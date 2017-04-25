@@ -76,8 +76,13 @@ struct pool_description {
 #define RESOLVE_LAST_SLINK 1
 #define NO_RESOLVE_LAST_SLINK 2
 
-struct pool_description *lookup_pd_by_inode(__ino_t inode);
+struct pool_description *lookup_pd_by_inode(struct stat *stat);
 struct pool_description *lookup_pd_by_path(const char *path);
+static inline bool
+same_inode(const struct stat *st1, const struct stat *st2)
+{
+	return st1->st_ino == st2->st_ino && st1->st_dev == st2->st_dev;
+}
 
 /*
  * The array fd_table is used to look up file descriptors, and find a pool, and

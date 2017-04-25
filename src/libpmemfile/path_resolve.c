@@ -212,14 +212,12 @@ enter_pool(struct resolved_path *result, struct pool_description *pool,
 }
 
 static void
-exit_pool(struct resolved_path *result,
-		size_t *resolved, size_t end, size_t *size)
+exit_pool(struct resolved_path *result, size_t resolved, size_t *size)
 {
 	result->at.kernel_fd = result->at.pmem_fda.pool->fd;
 	result->at.pmem_fda.pool = NULL;
-	memcpy(result->path, result->path + end + 1, *size - end);
-	*resolved = 0;
-	*size -= end;
+	memmove(result->path, result->path + resolved, *size - resolved + 1);
+	*size -= resolved;
 }
 
 static size_t
@@ -268,6 +266,8 @@ resolve_path(struct fd_desc at,
 	if (path[0] == '/')
 		result->at.pmem_fda.pool = NULL;
 
+	bool at_root = false;
+
 	/*
 	 * XXX
 	 * This code is too convoluted, and new bugs are found in it weekly.
@@ -303,8 +303,19 @@ resolve_path(struct fd_desc at,
 		if (get_stat(result, &stat_buf) != 0)
 			break;
 
+		const struct fd_association *pmem_fda = &result->at.pmem_fda;
+
 		if (!is_last_component)
 			result->path[end] = '/';
+
+		if (at_root && (end - resolved) == 2 &&
+				memcmp(&result->path[resolved],	"..", 2) == 0) {
+			exit_pool(result, resolved, &size);
+			at_root = false;
+			continue;
+		}
+
+		at_root = false;
 
 		if (S_ISLNK(stat_buf.st_mode)) {
 			resolve_symlink(result,
@@ -315,24 +326,22 @@ resolve_path(struct fd_desc at,
 				result->error_code = -ENOTDIR;
 
 			break;
-		} else if (is_fda_null(&result->at.pmem_fda)) {
+		} else if (is_fda_null(pmem_fda)) {
 			struct pool_description *pool;
 
-			pool = lookup_pd_by_inode(stat_buf.st_ino);
+			pool = lookup_pd_by_inode(&stat_buf);
 			if (pool != NULL) {
 				if (pool->pool == NULL) {
 					result->error_code = -EIO;
 					return;
 				}
 				enter_pool(result, pool, &resolved, end, &size);
+				at_root = true;
 				continue;
 			}
 		} else {
-			if (stat_buf.st_ino ==
-			    result->at.pmem_fda.pool->pmem_stat.st_ino) {
-				exit_pool(result, &resolved, end, &size);
-				continue;
-			}
+			if (same_inode(&stat_buf, &pmem_fda->pool->pmem_stat))
+				at_root = true;
 		}
 
 		for (resolved = end; result->path[resolved] == '/'; ++resolved)

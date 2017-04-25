@@ -33,6 +33,10 @@ include(${SRC_DIR}/../posix-helpers.cmake)
 
 setup()
 
-execute(${TEST_EXECUTABLE} ${ops})
+if(NOT LONG_TESTS)
+	set(opts "--gtest-filter=-mt.pread")
+endif()
+
+execute(${TEST_EXECUTABLE} ${ops} ${opts})
 
 cleanup()

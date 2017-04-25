@@ -33,8 +33,8 @@
 /*
  * mt.cpp -- multithreaded test for pmemfile_*
  */
-#include <sched.h>
-#include <unistd.h>
+#include <list>
+#include <thread>
 
 #include "pmemfile_test.hpp"
 
@@ -44,13 +44,12 @@ static PMEMfilepool *global_pfp;
 
 class mt : public pmemfile_test {
 public:
-	long ncpus;
-	pthread_t *threads;
+	unsigned ncpus;
+	std::list<std::thread> threads;
 
 	mt() : pmemfile_test(256 << 20)
 	{
-		ncpus = sysconf(_SC_NPROCESSORS_ONLN);
-		threads = new pthread_t[(size_t)ncpus * 2];
+		ncpus = std::thread::hardware_concurrency();
 	}
 
 	void
@@ -62,16 +61,12 @@ public:
 
 	~mt()
 	{
-		delete[] threads;
 	}
 };
 
-static void *
-open_close_worker(void *arg)
+static void
+open_close_worker(const char *path)
 {
-	const char *path = (const char *)arg;
-	sched_yield();
-
 	for (int i = 0; i < ops; ++i) {
 		PMEMfile *f1 = pmemfile_open(global_pfp, path, 0);
 		if (f1)
@@ -83,16 +78,11 @@ open_close_worker(void *arg)
 			}
 		}
 	}
-
-	return NULL;
 }
 
-static void *
-create_close_unlink_worker(void *arg)
+static void
+create_close_unlink_worker(const char *path)
 {
-	const char *path = (const char *)arg;
-	sched_yield();
-
 	for (int i = 0; i < ops; ++i) {
 		PMEMfile *f1 =
 			pmemfile_open(global_pfp, path, PMEMFILE_O_CREAT, 0644);
@@ -106,47 +96,29 @@ create_close_unlink_worker(void *arg)
 		}
 		pmemfile_unlink(global_pfp, path);
 	}
-
-	return NULL;
 }
 
 TEST_F(mt, open_close_create_unlink)
 {
-	int i = 0;
-	int ret;
-
-	for (int j = 0; j < ncpus / 2; ++j) {
-		ret = pthread_create(&threads[i++], NULL, open_close_worker,
-				     (void *)"/aaa");
-		ASSERT_EQ(ret, 0) << strerror(errno);
-		ret = pthread_create(&threads[i++], NULL,
-				     create_close_unlink_worker,
-				     (void *)"/aaa");
-		ASSERT_EQ(ret, 0) << strerror(errno);
+	for (unsigned j = 0; j < ncpus / 2; ++j) {
+		threads.push_back(std::thread(open_close_worker, "/aaa"));
+		threads.push_back(
+			std::thread(create_close_unlink_worker, "/aaa"));
 	}
 
-	for (int j = 0; j < ncpus / 2; ++j) {
-		ret = pthread_create(&threads[i++], NULL, open_close_worker,
-				     (void *)"/bbb");
-		ASSERT_EQ(ret, 0) << strerror(errno);
-		ret = pthread_create(&threads[i++], NULL,
-				     create_close_unlink_worker,
-				     (void *)"/bbb");
-		ASSERT_EQ(ret, 0) << strerror(errno);
+	for (unsigned j = 0; j < ncpus / 2; ++j) {
+		threads.push_back(std::thread(open_close_worker, "/bbb"));
+		threads.push_back(
+			std::thread(create_close_unlink_worker, "/bbb"));
 	}
 
-	while (i > 0) {
-		ret = pthread_join(threads[--i], NULL);
-		ASSERT_EQ(ret, 0) << strerror(errno);
-	}
+	for (auto &t : threads)
+		t.join();
 }
 
-static void *
-pread_worker(void *arg)
+static void
+pread_worker(PMEMfile *file)
 {
-	PMEMfile *file = (PMEMfile *)arg;
-	sched_yield();
-
 	char buf[1024];
 	char bufpat[1024];
 
@@ -166,8 +138,6 @@ pread_worker(void *arg)
 		if (memcmp(buf, bufpat, sizeof(buf)) != 0)
 			abort();
 	}
-
-	return NULL;
 }
 
 TEST_F(mt, pread)
@@ -187,19 +157,11 @@ TEST_F(mt, pread)
 	ASSERT_EQ(pmemfile_lseek(pfp, file, 0, PMEMFILE_SEEK_CUR), 128 << 10);
 	ASSERT_EQ(pmemfile_lseek(pfp, file, 0, PMEMFILE_SEEK_SET), 0);
 
-	int i = 0;
-	int ret;
+	for (unsigned j = 0; j < ncpus; ++j)
+		threads.push_back(std::thread(pread_worker, file));
 
-	for (int j = 0; j < ncpus; ++j) {
-		ret = pthread_create(&threads[i++], NULL, pread_worker,
-				     (void *)file);
-		ASSERT_EQ(ret, 0) << strerror(errno);
-	}
-
-	while (i > 0) {
-		ret = pthread_join(threads[--i], NULL);
-		ASSERT_EQ(ret, 0) << strerror(errno);
-	}
+	for (auto &t : threads)
+		t.join();
 
 	pmemfile_close(pfp, file);
 

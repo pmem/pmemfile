@@ -100,12 +100,16 @@ create_close_unlink_worker(const char *path)
 
 TEST_F(mt, open_close_create_unlink)
 {
-	for (unsigned j = 0; j < ncpus / 2; ++j) {
+	unsigned n = ncpus / 2;
+	if (n == 0) /* when ncpus == 1 */
+		n = 1;
+
+	for (unsigned j = 0; j < n; ++j) {
 		threads.emplace_back(open_close_worker, "/aaa");
 		threads.emplace_back(create_close_unlink_worker, "/aaa");
 	}
 
-	for (unsigned j = 0; j < ncpus / 2; ++j) {
+	for (unsigned j = 0; j < n; ++j) {
 		threads.emplace_back(open_close_worker, "/bbb");
 		threads.emplace_back(create_close_unlink_worker, "/bbb");
 	}

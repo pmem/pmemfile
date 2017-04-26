@@ -1500,7 +1500,7 @@ TEST_F(rw, writev)
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_SET), 0);
 
 	char buf[vec_size * 5];
-	memset(buf, 0x66, vec_size * 5 + 1);
+	memset(buf, 0x66, vec_size * 5);
 
 	ASSERT_EQ(pmemfile_read(pfp, f, buf, vec_size * 5), vec_size * 5);
 	for (int i = 0; i < vec_size; ++i) {

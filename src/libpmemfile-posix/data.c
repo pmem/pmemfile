@@ -852,15 +852,15 @@ time_cmp(const struct pmemfile_time *t1, const struct pmemfile_time *t2)
 }
 
 static pmemfile_ssize_t
-pmemfile_pread_internal(PMEMfilepool *pfp,
+pmemfile_preadv_internal(PMEMfilepool *pfp,
 		struct pmemfile_vinode *vinode,
 		struct pmemfile_block **last_block,
 		uint64_t file_flags,
 		size_t offset,
-		void *buf,
-		size_t count)
+		const pmemfile_iovec_t *iov,
+		int iovcnt)
 {
-	LOG(LDBG, "vinode %p buf %p count %zu", vinode, buf, count);
+	LOG(LDBG, "vinode %p iov %p iovcnt %d", vinode, iov, iovcnt);
 
 	if (!vinode_is_regular_file(vinode)) {
 		errno = EINVAL;
@@ -872,10 +872,8 @@ pmemfile_pread_internal(PMEMfilepool *pfp,
 		return -1;
 	}
 
-	if ((pmemfile_ssize_t)count < 0)
-		count = SSIZE_MAX;
-
-	size_t bytes_read = 0;
+	if (iovcnt == 0)
+		return 0;
 
 	struct pmemfile_inode *inode = vinode->inode;
 
@@ -889,7 +887,22 @@ pmemfile_pread_internal(PMEMfilepool *pfp,
 		os_rwlock_rdlock(&vinode->rwlock);
 	}
 
-	bytes_read = vinode_read(pfp, vinode, offset, last_block, buf, count);
+	size_t ret = 0;
+
+	for (int i = 0; i < iovcnt; ++i) {
+		size_t len = iov[i].iov_len;
+		if ((pmemfile_ssize_t)(ret + len) < 0)
+			len = SSIZE_MAX - ret;
+		ASSERT((pmemfile_ssize_t)(ret + len) >= 0);
+
+		size_t bytes_read = vinode_read(pfp, vinode, offset, last_block,
+				iov[i].iov_base, len);
+
+		ret += bytes_read;
+		offset += bytes_read;
+		if (bytes_read != len)
+			break;
+	}
 
 	bool update_atime = !(file_flags & PFILE_NOATIME);
 	struct pmemfile_time tm;
@@ -920,9 +933,7 @@ pmemfile_pread_internal(PMEMfilepool *pfp,
 		os_rwlock_unlock(&vinode->rwlock);
 	}
 
-
-	ASSERT(bytes_read <= count);
-	return (pmemfile_ssize_t)bytes_read;
+	return (pmemfile_ssize_t)ret;
 }
 
 /*
@@ -931,8 +942,6 @@ pmemfile_pread_internal(PMEMfilepool *pfp,
 pmemfile_ssize_t
 pmemfile_read(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count)
 {
-	pmemfile_ssize_t ret;
-
 	if (!pfp) {
 		LOG(LUSR, "NULL pool");
 		errno = EFAULT;
@@ -948,8 +957,12 @@ pmemfile_read(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count)
 	os_mutex_lock(&file->mutex);
 
 	struct pmemfile_block *last_block = file->block_pointer_cache;
-	ret = pmemfile_pread_internal(pfp, file->vinode, &last_block,
-			file->flags, file->offset, buf, count);
+	pmemfile_iovec_t vec;
+	vec.iov_base = buf;
+	vec.iov_len = count;
+
+	pmemfile_ssize_t ret = pmemfile_preadv_internal(pfp, file->vinode,
+			&last_block, file->flags, file->offset, &vec, 1);
 	if (ret >= 0) {
 		file->offset += (size_t)ret;
 		file->block_pointer_cache = last_block;
@@ -964,8 +977,6 @@ pmemfile_ssize_t
 pmemfile_readv(PMEMfilepool *pfp, PMEMfile *file, const pmemfile_iovec_t *iov,
 		int iovcnt)
 {
-	pmemfile_ssize_t ret = 0;
-
 	if (!pfp) {
 		LOG(LUSR, "NULL pool");
 		errno = EFAULT;
@@ -981,19 +992,13 @@ pmemfile_readv(PMEMfilepool *pfp, PMEMfile *file, const pmemfile_iovec_t *iov,
 	os_mutex_lock(&file->mutex);
 
 	struct pmemfile_block *last_block = file->block_pointer_cache;
-	for (int i = 0; i < iovcnt; ++i) {
-		pmemfile_ssize_t tmp_ret =
-			pmemfile_pread_internal(pfp, file->vinode, &last_block,
-				file->flags, file->offset, iov[i].iov_base,
-				iov[i].iov_len);
-		if (tmp_ret < 0)
-			break;
 
-		file->offset += (size_t)tmp_ret;
-
-		ret += tmp_ret;
+	pmemfile_ssize_t ret = pmemfile_preadv_internal(pfp, file->vinode,
+			&last_block, file->flags, file->offset, iov, iovcnt);
+	if (ret >= 0) {
+		file->offset += (size_t)ret;
+		file->block_pointer_cache = last_block;
 	}
-	file->block_pointer_cache = last_block;
 
 	os_mutex_unlock(&file->mutex);
 
@@ -1029,8 +1034,12 @@ pmemfile_pread(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count,
 
 	os_mutex_unlock(&file->mutex);
 
-	return pmemfile_pread_internal(pfp, vinode, &last_block, flags,
-			(size_t)offset, buf, count);
+	pmemfile_iovec_t vec;
+	vec.iov_base = buf;
+	vec.iov_len = count;
+
+	return pmemfile_preadv_internal(pfp, vinode, &last_block, flags,
+			(size_t)offset, &vec, 1);
 }
 
 
@@ -1038,8 +1047,6 @@ pmemfile_ssize_t
 pmemfile_preadv(PMEMfilepool *pfp, PMEMfile *file, const pmemfile_iovec_t *iov,
 		int iovcnt, pmemfile_off_t offset)
 {
-	pmemfile_ssize_t ret = 0;
-
 	if (!pfp) {
 		LOG(LUSR, "NULL pool");
 		errno = EFAULT;
@@ -1056,7 +1063,6 @@ pmemfile_preadv(PMEMfilepool *pfp, PMEMfile *file, const pmemfile_iovec_t *iov,
 		errno = EINVAL;
 		return -1;
 	}
-	size_t off = (size_t)offset;
 
 	os_mutex_lock(&file->mutex);
 
@@ -1066,20 +1072,8 @@ pmemfile_preadv(PMEMfilepool *pfp, PMEMfile *file, const pmemfile_iovec_t *iov,
 
 	os_mutex_unlock(&file->mutex);
 
-	for (int i = 0; i < iovcnt; ++i) {
-		pmemfile_ssize_t tmp_ret =
-			pmemfile_pread_internal(pfp, vinode, &last_block,
-				flags, off, iov[i].iov_base,
-				iov[i].iov_len);
-		if (tmp_ret < 0)
-			break;
-
-		off += (size_t)tmp_ret;
-
-		ret += tmp_ret;
-	}
-
-	return ret;
+	return pmemfile_preadv_internal(pfp, vinode, &last_block, flags,
+			(size_t)offset, iov, iovcnt);
 }
 
 /*

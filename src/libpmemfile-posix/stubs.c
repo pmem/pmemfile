@@ -160,66 +160,6 @@ pmemfile_mprotect(PMEMfilepool *pfp, void *addr, size_t len, int prot)
 	return -1;
 }
 
-pmemfile_ssize_t
-pmemfile_readv(PMEMfilepool *pfp, PMEMfile *file,
-		const pmemfile_iovec_t *iov, int iovcnt)
-{
-	check_pfp(pfp);
-
-	(void) file;
-	(void) iov;
-	(void) iovcnt;
-
-	errno = ENOTSUP;
-	return -1;
-}
-
-pmemfile_ssize_t
-pmemfile_writev(PMEMfilepool *pfp, PMEMfile *file,
-		const pmemfile_iovec_t *iov, int iovcnt)
-{
-	check_pfp(pfp);
-
-	(void) file;
-	(void) iov;
-	(void) iovcnt;
-
-	errno = ENOTSUP;
-	return -1;
-}
-
-pmemfile_ssize_t
-pmemfile_preadv(PMEMfilepool *pfp, PMEMfile *file,
-		const pmemfile_iovec_t *iov, int iovcnt,
-		pmemfile_off_t offset)
-{
-	check_pfp(pfp);
-
-	(void) file;
-	(void) iov;
-	(void) iovcnt;
-	(void) offset;
-
-	errno = ENOTSUP;
-	return -1;
-}
-
-pmemfile_ssize_t
-pmemfile_pwritev(PMEMfilepool *pfp, PMEMfile *file,
-		const pmemfile_iovec_t *iov, int iovcnt,
-		pmemfile_off_t offset)
-{
-	check_pfp(pfp);
-
-	(void) file;
-	(void) iov;
-	(void) iovcnt;
-	(void) offset;
-
-	errno = ENOTSUP;
-	return -1;
-}
-
 int
 pmemfile_utime(PMEMfilepool *pfp, const char *filename,
 		const pmemfile_utimbuf_t *times)

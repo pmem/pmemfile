@@ -65,6 +65,7 @@ void *pmemfile_mremap(PMEMfilepool *, void *old_addr, size_t old_size,
 int pmemfile_msync(PMEMfilepool *, void *addr, size_t len, int flags);
 int pmemfile_mprotect(PMEMfilepool *, void *addr, size_t len, int prot);
 
+#include <sys/uio.h>
 typedef struct iovec pmemfile_iovec_t;
 
 pmemfile_ssize_t pmemfile_readv(PMEMfilepool *, PMEMfile *file,

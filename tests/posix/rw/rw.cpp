@@ -1363,6 +1363,14 @@ TEST_F(rw, pread)
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
 }
 
+static constexpr char poison_pattern = 0x66;
+
+static constexpr char
+fill_pattern(size_t i)
+{
+	return (char)(0xc0 + i);
+}
+
 static PMEMfile *
 prepare_file(PMEMfilepool *pfp)
 {
@@ -1374,8 +1382,8 @@ prepare_file(PMEMfilepool *pfp)
 		return nullptr;
 
 	char buf[10];
-	for (int i = 0; i < 20; ++i) {
-		memset(buf, 0xc0 + i, sizeof(buf));
+	for (size_t i = 0; i < 20; ++i) {
+		memset(buf, fill_pattern(i), sizeof(buf));
 		ssize_t ret = pmemfile_write(pfp, f, buf, sizeof(buf));
 		EXPECT_GT(ret, 0);
 		if (ret < 0)
@@ -1407,28 +1415,28 @@ TEST_F(rw, readv)
 	PMEMfile *f = prepare_file(pfp);
 	ASSERT_NE(f, nullptr);
 
-	const int vec_size = 40;
+	constexpr size_t vec_size = 40;
+	constexpr size_t arr_len = 5;
 	char buf[10];
-	char bufs[vec_size][5];
+	char bufs[vec_size][arr_len];
 	pmemfile_iovec_t vec[vec_size];
 
-	for (int i = 0; i < vec_size; ++i) {
-		memset(bufs[i], 0x66, sizeof(bufs[i]));
+	for (size_t i = 0; i < vec_size; ++i) {
+		memset(bufs[i], poison_pattern, arr_len);
 		vec[i].iov_base = bufs[i];
-		vec[i].iov_len = sizeof(bufs[i]);
+		vec[i].iov_len = arr_len;
 	}
 
 	ssize_t ret = pmemfile_readv(pfp, f, vec, vec_size);
 	ASSERT_GT(ret, 0);
-	ASSERT_EQ((size_t)ret, vec_size * sizeof(bufs[0]));
+	ASSERT_EQ((size_t)ret, vec_size * arr_len);
 
-	for (int i = 0; i < vec_size; ++i) {
-		size_t len = sizeof(bufs[i]);
+	for (size_t i = 0; i < vec_size; ++i) {
+		memset(buf, fill_pattern(i / 2), arr_len);
 
-		memset(buf, 0xc0 + i / 2, len);
-		EXPECT_EQ(memcmp(bufs[i], buf, len), 0)
-			<< i << " expected:" << dump_buf(buf, len)
-			<< " got:" << dump_buf(bufs[i], len);
+		EXPECT_EQ(memcmp(bufs[i], buf, arr_len), 0)
+			<< i << " expected:" << dump_buf(buf, arr_len)
+			<< " got:" << dump_buf(bufs[i], arr_len);
 	}
 
 	pmemfile_close(pfp, f);
@@ -1440,28 +1448,30 @@ TEST_F(rw, preadv)
 	PMEMfile *f = prepare_file(pfp);
 	ASSERT_NE(f, nullptr);
 
-	const int vec_size = 40;
+	constexpr size_t vec_size = 40;
+	constexpr size_t arr_len = 5;
 	char buf[10];
-	char bufs[vec_size][5];
+	char bufs[vec_size][arr_len];
 	pmemfile_iovec_t vec[vec_size];
 
-	for (int i = 0; i < vec_size; ++i) {
-		memset(bufs[i], 0x66, sizeof(bufs[i]));
+	for (size_t i = 0; i < vec_size; ++i) {
+		memset(bufs[i], poison_pattern, arr_len);
 		vec[i].iov_base = bufs[i];
-		vec[i].iov_len = sizeof(bufs[i]);
+		vec[i].iov_len = arr_len;
 	}
 
 	ssize_t ret = pmemfile_preadv(pfp, f, vec, vec_size, 1);
 	ASSERT_GT(ret, 0);
-	ASSERT_EQ((size_t)ret, vec_size * sizeof(bufs[0]) - 1);
+	ASSERT_EQ((size_t)ret, vec_size * arr_len - 1);
+
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_CUR), 0);
 
-	for (int i = 0; i < vec_size; ++i) {
-		size_t len = sizeof(bufs[i]);
+	for (size_t i = 0; i < vec_size; ++i) {
+		size_t len = arr_len;
 
-		memset(buf, 0xc0 + i / 2, len);
+		memset(buf, fill_pattern(i / 2), len);
 		if (i % 2 == 1) {
-			buf[4] = (char)(0xc0 + (i + 1) / 2);
+			buf[4] = fill_pattern((i + 1) / 2);
 			/* last vector is shorter because of initial offset */
 			if (i == vec_size - 1)
 				len--;
@@ -1476,44 +1486,72 @@ TEST_F(rw, preadv)
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
 }
 
-TEST_F(rw, writev)
+static bool
+test_writev(PMEMfilepool *pfp, const size_t vec_size, const size_t arr_len)
 {
 	PMEMfile *f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT |
 					    PMEMFILE_O_EXCL | PMEMFILE_O_RDWR,
 				    0644);
-	ASSERT_NE(f, nullptr) << strerror(errno);
+	EXPECT_NE(f, nullptr) << strerror(errno);
+	if (!f)
+		return false;
 
-	const int vec_size = 40;
-	char bufs[vec_size][5];
+	char bufs[vec_size][arr_len];
 	pmemfile_iovec_t vec[vec_size];
 
-	for (int i = 0; i < vec_size; ++i) {
-		memset(bufs[i], 0xc0 + i, sizeof(bufs[i]));
+	for (size_t i = 0; i < vec_size; ++i) {
+		memset(bufs[i], fill_pattern(i), arr_len);
 		vec[i].iov_base = bufs[i];
-		vec[i].iov_len = sizeof(bufs[i]);
+		vec[i].iov_len = arr_len;
 	}
 
-	ssize_t ret = pmemfile_writev(pfp, f, vec, vec_size);
-	ASSERT_GT(ret, 0);
-	ASSERT_EQ((size_t)ret, vec_size * sizeof(bufs[0]));
+	ssize_t ret = pmemfile_writev(pfp, f, vec, (int)vec_size);
+	EXPECT_GT(ret, 0);
+	EXPECT_EQ((size_t)ret, vec_size * arr_len);
+	if (ret <= 0 || (size_t)ret != vec_size * arr_len)
+		return false;
 
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_SET), 0);
+	pmemfile_off_t off = pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_SET);
+	EXPECT_EQ(off, 0);
+	if (off)
+		return false;
 
-	char buf[vec_size * 5];
-	memset(buf, 0x66, vec_size * 5);
+	char buf[vec_size * arr_len];
+	memset(buf, poison_pattern, vec_size * arr_len);
 
-	ASSERT_EQ(pmemfile_read(pfp, f, buf, vec_size * 5), vec_size * 5);
-	for (int i = 0; i < vec_size; ++i) {
-		size_t len = sizeof(bufs[i]);
+	ret = pmemfile_read(pfp, f, buf, vec_size * arr_len);
+	EXPECT_GT(ret, 0);
+	EXPECT_EQ((size_t)ret, vec_size * arr_len);
+	if (ret <= 0 || (size_t)ret != vec_size * arr_len)
+		return false;
 
-		memset(bufs[0], 0xc0 + i, len);
-		EXPECT_EQ(memcmp(bufs[0], buf + 5 * i, 5), 0)
-			<< i << " expected:" << dump_buf(bufs[0], len)
-			<< " got:" << dump_buf(buf + 5 * i, len);
+	int ok = 1;
+	for (size_t i = 0; i < vec_size; ++i) {
+		memset(bufs[0], fill_pattern(i), arr_len);
+
+		int r = memcmp(bufs[0], buf + arr_len * i, arr_len);
+		EXPECT_EQ(r, 0)
+			<< i << " expected:" << dump_buf(bufs[0], arr_len)
+			<< " got:" << dump_buf(buf + arr_len * i, arr_len);
+		if (r)
+			ok = 0;
 	}
+	if (!ok)
+		return false;
 
 	pmemfile_close(pfp, f);
-	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
+	int unlinkret = pmemfile_unlink(pfp, "/file1");
+	EXPECT_EQ(unlinkret, 0);
+	if (unlinkret)
+		return false;
+
+	return true;
+}
+
+TEST_F(rw, writev)
+{
+	ASSERT_TRUE(test_writev(pfp, 40, 5));
+	ASSERT_TRUE(test_writev(pfp, 10, 4096));
 }
 
 TEST_F(rw, pwritev)
@@ -1523,35 +1561,38 @@ TEST_F(rw, pwritev)
 				    0644);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
-	const int vec_size = 40;
-	char bufs[vec_size][5];
+	constexpr size_t vec_size = 40;
+	constexpr size_t arr_len = 5;
+	char bufs[vec_size][arr_len];
 	pmemfile_iovec_t vec[vec_size];
 
-	for (int i = 0; i < vec_size; ++i) {
-		memset(bufs[i], 0xc0 + i, sizeof(bufs[i]));
+	for (size_t i = 0; i < vec_size; ++i) {
+		memset(bufs[i], fill_pattern(i), arr_len);
 		vec[i].iov_base = bufs[i];
-		vec[i].iov_len = sizeof(bufs[i]);
+		vec[i].iov_len = arr_len;
 	}
 
 	ssize_t ret = pmemfile_pwritev(pfp, f, vec, vec_size, 1);
 	ASSERT_GT(ret, 0);
-	ASSERT_EQ((size_t)ret, vec_size * sizeof(bufs[0]));
+	ASSERT_EQ((size_t)ret, vec_size * arr_len);
 
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_CUR), 0);
 
-	char buf[vec_size * 5 + 1];
-	memset(buf, 0x66, vec_size * 5 + 1);
+	char buf[vec_size * arr_len + 1];
+	memset(buf, poison_pattern, vec_size * arr_len + 1);
 
-	ASSERT_EQ(pmemfile_read(pfp, f, buf, vec_size * 5 + 1),
-		  vec_size * 5 + 1);
+	ret = pmemfile_read(pfp, f, buf, vec_size * arr_len + 1);
+	ASSERT_GT(ret, 0);
+	ASSERT_EQ((size_t)ret, vec_size * arr_len + 1);
+
 	EXPECT_EQ(buf[0], 0);
-	for (int i = 0; i < vec_size; ++i) {
-		size_t len = sizeof(bufs[i]);
 
-		memset(bufs[0], 0xc0 + i, len);
-		EXPECT_EQ(memcmp(bufs[0], buf + 5 * i + 1, 5), 0)
-			<< i << " expected:" << dump_buf(bufs[0], len)
-			<< " got:" << dump_buf(buf + 5 * i + 1, len);
+	for (size_t i = 0; i < vec_size; ++i) {
+		memset(bufs[0], fill_pattern(i), arr_len);
+
+		EXPECT_EQ(memcmp(bufs[0], buf + arr_len * i + 1, arr_len), 0)
+			<< i << " expected:" << dump_buf(bufs[0], arr_len)
+			<< " got:" << dump_buf(buf + arr_len * i + 1, arr_len);
 	}
 
 	pmemfile_close(pfp, f);

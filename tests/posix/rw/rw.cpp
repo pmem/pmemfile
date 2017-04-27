@@ -1486,15 +1486,16 @@ TEST_F(rw, preadv)
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
 }
 
-TEST_F(rw, writev)
+static bool
+test_writev(PMEMfilepool *pfp, const size_t vec_size, const size_t arr_len)
 {
 	PMEMfile *f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT |
 					    PMEMFILE_O_EXCL | PMEMFILE_O_RDWR,
 				    0644);
-	ASSERT_NE(f, nullptr) << strerror(errno);
+	EXPECT_NE(f, nullptr) << strerror(errno);
+	if (!f)
+		return false;
 
-	const size_t vec_size = 40;
-	const size_t arr_len = 5;
 	char bufs[vec_size][arr_len];
 	pmemfile_iovec_t vec[vec_size];
 
@@ -1504,29 +1505,53 @@ TEST_F(rw, writev)
 		vec[i].iov_len = arr_len;
 	}
 
-	ssize_t ret = pmemfile_writev(pfp, f, vec, vec_size);
-	ASSERT_GT(ret, 0);
-	ASSERT_EQ((size_t)ret, vec_size * arr_len);
+	ssize_t ret = pmemfile_writev(pfp, f, vec, (int)vec_size);
+	EXPECT_GT(ret, 0);
+	EXPECT_EQ((size_t)ret, vec_size * arr_len);
+	if (ret <= 0 || (size_t)ret != vec_size * arr_len)
+		return false;
 
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_SET), 0);
+	pmemfile_off_t off = pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_SET);
+	EXPECT_EQ(off, 0);
+	if (off)
+		return false;
 
 	char buf[vec_size * arr_len];
 	memset(buf, poison_pattern, vec_size * arr_len);
 
 	ret = pmemfile_read(pfp, f, buf, vec_size * arr_len);
-	ASSERT_GT(ret, 0);
-	ASSERT_EQ((size_t)ret, vec_size * arr_len);
+	EXPECT_GT(ret, 0);
+	EXPECT_EQ((size_t)ret, vec_size * arr_len);
+	if (ret <= 0 || (size_t)ret != vec_size * arr_len)
+		return false;
 
+	int ok = 1;
 	for (size_t i = 0; i < vec_size; ++i) {
 		memset(bufs[0], fill_pattern(i), arr_len);
 
-		EXPECT_EQ(memcmp(bufs[0], buf + arr_len * i, arr_len), 0)
+		int r = memcmp(bufs[0], buf + arr_len * i, arr_len);
+		EXPECT_EQ(r, 0)
 			<< i << " expected:" << dump_buf(bufs[0], arr_len)
 			<< " got:" << dump_buf(buf + arr_len * i, arr_len);
+		if (r)
+			ok = 0;
 	}
+	if (!ok)
+		return false;
 
 	pmemfile_close(pfp, f);
-	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
+	int unlinkret = pmemfile_unlink(pfp, "/file1");
+	EXPECT_EQ(unlinkret, 0);
+	if (unlinkret)
+		return false;
+
+	return true;
+}
+
+TEST_F(rw, writev)
+{
+	ASSERT_TRUE(test_writev(pfp, 40, 5));
+	ASSERT_TRUE(test_writev(pfp, 10, 4096));
 }
 
 TEST_F(rw, pwritev)

@@ -36,6 +36,8 @@
 
 #include "pmemfile_test.hpp"
 
+static size_t ops = 100;
+
 class dirs : public pmemfile_test {
 public:
 	dirs() : pmemfile_test(256 * 1024 * 1024)
@@ -214,7 +216,7 @@ TEST_F(dirs, lots_of_files)
 	ASSERT_TRUE(test_empty_dir(pfp, "/"));
 	memset(buf, 0xff, sizeof(buf));
 
-	for (size_t i = 0; i < 100; ++i) {
+	for (size_t i = 0; i < ops; ++i) {
 		sprintf(buf, "/file%04lu", i);
 
 		f = pmemfile_open(pfp, buf, PMEMFILE_O_CREAT | PMEMFILE_O_EXCL |
@@ -231,25 +233,26 @@ TEST_F(dirs, lots_of_files)
 				       "test1: after one iter"));
 	}
 
-	for (int i = 0; i < 100; ++i) {
-		sprintf(buf, "/file%04d", i);
+	for (size_t i = 0; i < ops; ++i) {
+		sprintf(buf, "/file%04zu", i);
 
 		ret = pmemfile_unlink(pfp, buf);
 		ASSERT_EQ(ret, 0) << strerror(errno);
 	}
 
-	EXPECT_TRUE(
-		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
-						    {040777, 2, 32680, "."},
-						    {040777, 2, 32680, ".."},
-					    }));
+	if (ops == 100)
+		EXPECT_TRUE(test_compare_dirs(pfp, "/",
+					      std::vector<pmemfile_ls>{
+						      {040777, 2, 32680, "."},
+						      {040777, 2, 32680, ".."},
+					      }));
 }
 
 TEST_F(dirs, mkdir_rmdir_unlink_errors)
 {
 	char buf[1001];
 
-	for (size_t i = 0; i < 100; ++i) {
+	for (size_t i = 0; i < ops; ++i) {
 		sprintf(buf, "/dir%04lu", i);
 
 		ASSERT_EQ(pmemfile_mkdir(pfp, buf, 0755), 0);
@@ -258,7 +261,7 @@ TEST_F(dirs, mkdir_rmdir_unlink_errors)
 				       "test2: after one iter"));
 	}
 
-	ASSERT_TRUE(list_files(pfp, "/", 100 + 2, 1, "test2: after loop"));
+	ASSERT_TRUE(list_files(pfp, "/", ops + 2, 1, "test2: after loop"));
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir0007/another_directory", 0755), 0);
 
 	errno = 0;
@@ -273,7 +276,7 @@ TEST_F(dirs, mkdir_rmdir_unlink_errors)
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir2333/aaaa", 0755), -1);
 	EXPECT_EQ(errno, ENOENT);
 
-	ASSERT_TRUE(list_files(pfp, "/", 100 + 2, 1, "test2: after2"));
+	ASSERT_TRUE(list_files(pfp, "/", ops + 2, 1, "test2: after2"));
 
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/file", PMEMFILE_O_EXCL, 0644));
 
@@ -283,15 +286,19 @@ TEST_F(dirs, mkdir_rmdir_unlink_errors)
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file"), 0);
 
-	ASSERT_TRUE(list_files(pfp, "/", 100 + 2, 1, "test2: after3"));
+	ASSERT_TRUE(list_files(pfp, "/", ops + 2, 1, "test2: after3"));
 
-	errno = 0;
-	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir0100"), -1);
-	EXPECT_EQ(errno, ENOENT);
+	if (ops >= 100) {
+		errno = 0;
+		ASSERT_EQ(pmemfile_rmdir(pfp, "/dir0100"), -1);
+		EXPECT_EQ(errno, ENOENT);
+	}
 
-	errno = 0;
-	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir0099/inside"), -1);
-	EXPECT_EQ(errno, ENOENT);
+	if (ops >= 99) {
+		errno = 0;
+		ASSERT_EQ(pmemfile_rmdir(pfp, "/dir0099/inside"), -1);
+		EXPECT_EQ(errno, ENOENT);
+	}
 
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/file", PMEMFILE_O_EXCL, 0644));
 
@@ -319,8 +326,8 @@ TEST_F(dirs, mkdir_rmdir_unlink_errors)
 
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir0007/another_directory"), 0);
 
-	for (int i = 0; i < 100; ++i) {
-		sprintf(buf, "/dir%04d", i);
+	for (size_t i = 0; i < ops; ++i) {
+		sprintf(buf, "/dir%04zu", i);
 
 		ASSERT_EQ(pmemfile_rmdir(pfp, buf), 0);
 	}
@@ -1114,11 +1121,16 @@ main(int argc, char *argv[])
 	START();
 
 	if (argc < 2) {
-		fprintf(stderr, "usage: %s global_path", argv[0]);
+		fprintf(stderr, "usage: %s global_path [ops]", argv[0]);
 		exit(1);
 	}
 
 	global_path = argv[1];
+
+	if (argc >= 3)
+		ops = (size_t)atoll(argv[2]);
+
+	T_OUT("ops %zu", ops);
 
 	::testing::InitGoogleTest(&argc, argv);
 	return RUN_ALL_TESTS();

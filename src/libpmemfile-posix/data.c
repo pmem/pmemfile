@@ -549,14 +549,11 @@ vinode_write(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, size_t offset,
 	struct pmemfile_inode *inode = vinode->inode;
 
 	/*
-	 * Three steps:
-	 * - Append new blocks to end of the file ( optionally )
+	 * Two steps:
 	 * - Zero Fill some new blocks, in case the file is extended by
 	 *   writing to the file after seeking past file size ( optionally )
 	 * - Copy the data from the users buffer
 	 */
-
-	vinode_allocate_interval(pfp, vinode, offset, count);
 
 	uint64_t original_size = inode->size;
 	uint64_t new_size = inode->size;
@@ -621,6 +618,29 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 
 		if (file_flags & PFILE_APPEND)
 			offset = inode->size;
+
+		size_t sum_len = 0;
+		for (int i = 0; i < iovcnt; ++i) {
+			size_t len = iov[i].iov_len;
+
+			if ((pmemfile_ssize_t)len < 0)
+				len = SSIZE_MAX;
+
+			if ((pmemfile_ssize_t)(sum_len + len) < 0)
+				len = SSIZE_MAX - ret;
+
+			/* overflow check */
+			if (offset + sum_len + len < offset)
+				len = SIZE_MAX - offset - sum_len;
+
+			sum_len += len;
+
+			if (len != iov[i].iov_len)
+				break;
+		}
+
+		if (sum_len > 0)
+			vinode_allocate_interval(pfp, vinode, offset, sum_len);
 
 		for (int i = 0; i < iovcnt; ++i) {
 			size_t len = iov[i].iov_len;

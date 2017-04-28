@@ -707,6 +707,100 @@ TEST_F(dirs, file_renames)
 	EXPECT_EQ(errno, EBUSY);
 }
 
+TEST_F(dirs, file_renames_lock_files_in_different_order)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir2", 0755), 0);
+
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/file1", 0, 0755));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/file2", 0, 0755));
+
+	/*
+	 * We have to keep these files open for duration of the test, to not
+	 * let pmemfile free the underlying vinodes, so that helgrind can notice
+	 * we are locking them in wrong order.
+	 */
+	PMEMfile *f1 = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDONLY);
+	PMEMfile *f2 = pmemfile_open(pfp, "/file2", PMEMFILE_O_RDONLY);
+	ASSERT_NE(f1, nullptr);
+	ASSERT_NE(f2, nullptr);
+
+	ASSERT_EQ(pmemfile_link(pfp, "/file1", "/dir1/file1"), 0);
+	ASSERT_EQ(pmemfile_link(pfp, "/file2", "/dir2/file2"), 0);
+
+	/* file1 -> file2 */
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir1/file1", "/dir2/file2"), 0);
+
+	/* restore the initial situation */
+	ASSERT_EQ(pmemfile_link(pfp, "/file1", "/dir1/file1"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir2/file2"), 0);
+	ASSERT_EQ(pmemfile_link(pfp, "/file2", "/dir2/file2"), 0);
+
+	/* file2 -> file1 */
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir2/file2", "/dir1/file1"), 0);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir1/file1"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file2"), 0);
+
+	pmemfile_close(pfp, f1);
+	pmemfile_close(pfp, f2);
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir2"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
+}
+
+TEST_F(dirs, file_renames_same_file_overwrite)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir2", 0755), 0);
+
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/file", 0, 0755));
+
+	ASSERT_EQ(pmemfile_link(pfp, "/file", "/dir1/file"), 0);
+	ASSERT_EQ(pmemfile_link(pfp, "/file", "/dir2/file"), 0);
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir1/file", "/dir2/file"), 0);
+
+	ASSERT_EQ(pmemfile_link(pfp, "/file", "/dir1/file"), 0);
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir2/file", "/dir1/file"), 0);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir1/file"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file"), 0);
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir2"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
+}
+
+TEST_F(dirs, file_renames_in_same_tree)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1/dir2", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1/dir2/dir3", 0755), 0);
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/dir2/dir3/file", 0, 0755));
+	ASSERT_EQ(
+		pmemfile_rename(pfp, "/dir1/dir2/dir3/file", "/dir1/dir2/file"),
+		0);
+	ASSERT_EQ(
+		pmemfile_rename(pfp, "/dir1/dir2/file", "/dir1/dir2/dir3/file"),
+		0);
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir1/dir2/dir3/file", "/dir1/file"),
+		  0);
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir1/file", "/dir1/dir2/dir3/file"),
+		  0);
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir1/dir2/dir3/file", "/file"), 0);
+	ASSERT_EQ(pmemfile_rename(pfp, "/file", "/dir1/file"), 0);
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir1/file", "/dir1/dir2/file"), 0);
+	ASSERT_EQ(
+		pmemfile_rename(pfp, "/dir1/dir2/file", "/dir1/dir2/dir3/file"),
+		0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir1/dir2/dir3/file"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1/dir2/dir3"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1/dir2"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
+}
+
 static bool
 is_owned(PMEMfilepool *pfp, const char *path, pmemfile_uid_t owner)
 {

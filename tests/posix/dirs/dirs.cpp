@@ -703,6 +703,21 @@ TEST_F(dirs, file_renames)
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir2"), 0);
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
 
+	/*
+	 * From "rename" manpage:
+	 * "If oldpath and newpath are existing hard links referring to
+	 * the same file, then rename() does nothing, and returns a success
+	 * status."
+	 */
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/file1", 0, 0755));
+	ASSERT_EQ(pmemfile_link(pfp, "/file1", "/file2"), 0);
+	ASSERT_EQ(pmemfile_rename(pfp, "/file1", "/file2"), 0);
+	pmemfile_stat_t stat_buf;
+	ASSERT_EQ(pmemfile_stat(pfp, "/file1", &stat_buf), 0);
+	ASSERT_EQ(pmemfile_stat(pfp, "/file2", &stat_buf), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file2"), 0);
+
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/"), -1);
 	EXPECT_EQ(errno, EBUSY);
 }
@@ -745,29 +760,6 @@ TEST_F(dirs, file_renames_lock_files_in_different_order)
 
 	pmemfile_close(pfp, f1);
 	pmemfile_close(pfp, f2);
-
-	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir2"), 0);
-	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
-}
-
-TEST_F(dirs, file_renames_same_file_overwrite)
-{
-	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
-	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir2", 0755), 0);
-
-	ASSERT_TRUE(test_pmemfile_create(pfp, "/file", 0, 0755));
-
-	ASSERT_EQ(pmemfile_link(pfp, "/file", "/dir1/file"), 0);
-	ASSERT_EQ(pmemfile_link(pfp, "/file", "/dir2/file"), 0);
-
-	ASSERT_EQ(pmemfile_rename(pfp, "/dir1/file", "/dir2/file"), 0);
-
-	ASSERT_EQ(pmemfile_link(pfp, "/file", "/dir1/file"), 0);
-
-	ASSERT_EQ(pmemfile_rename(pfp, "/dir2/file", "/dir1/file"), 0);
-
-	ASSERT_EQ(pmemfile_unlink(pfp, "/dir1/file"), 0);
-	ASSERT_EQ(pmemfile_unlink(pfp, "/file"), 0);
 
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir2"), 0);
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);

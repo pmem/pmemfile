@@ -1167,6 +1167,15 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 		goto end_unlock;
 	}
 
+	/*
+	 * From "rename" manpage:
+	 * "If oldpath and newpath are existing hard links referring to
+	 * the same file, then rename() does nothing, and returns a success
+	 * status."
+	 */
+	if (dst_vinode == src_vinode)
+		goto end_unlock;
+
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		/*
 		 * XXX, when src dir == dst dir we can just update dirent,

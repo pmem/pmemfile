@@ -100,13 +100,14 @@ struct pmemfile_vinode *vinode_lookup_dirent(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent, const char *name,
 		size_t namelen, int flags);
 
+struct pmemfile_dirent *vinode_lookup_dirent_by_name_locked(PMEMfilepool *pfp,
+		struct pmemfile_vinode *parent, const char *name,
+		size_t namelen);
+
 void vinode_unlink_dirent(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent,
-		const char *name,
-		size_t namelen,
-		struct pmemfile_vinode *volatile *vinode,
-		volatile bool *parent_refed,
-		bool abort_on_ENOENT);
+		struct pmemfile_dirent *dirent,
+		struct pmemfile_vinode *vinode);
 
 struct pmemfile_vinode *pool_get_cwd(PMEMfilepool *pfp);
 struct pmemfile_vinode *pool_get_dir_for_path(PMEMfilepool *pfp, PMEMfile *dir,

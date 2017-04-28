@@ -144,7 +144,9 @@ add_test_generic(crash none)
 
 add_test_generic(dirs none)
 add_test_generic(dirs memcheck)
-add_test_generic(dirs pmemcheck)
+add_test_generic(dirs helgrind  -Dops=10)
+add_test_generic(dirs drd)
+add_test_generic(dirs pmemcheck -Dops=10)
 
 add_test_generic(getdents none)
 add_test_generic(getdents memcheck)

@@ -42,6 +42,7 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/uio.h>
 
 #define PMEMFILE_PATH_MAX 4096
 
@@ -185,6 +186,7 @@ typedef blksize_t pmemfile_blksize_t;
 typedef blkcnt64_t pmemfile_blkcnt_t;
 typedef dev_t pmemfile_dev_t;
 typedef ino64_t pmemfile_ino_t;
+typedef struct iovec pmemfile_iovec_t;
 
 typedef struct timespec pmemfile_timespec_t;
 typedef struct stat pmemfile_stat_t;
@@ -219,20 +221,26 @@ int pmemfile_renameat(PMEMfilepool *, PMEMfile *old_at, const char *old_path,
 int pmemfile_renameat2(PMEMfilepool *, PMEMfile *old_at, const char *old_path,
 		PMEMfile *new_at, const char *new_path, unsigned flags);
 
-pmemfile_ssize_t pmemfile_write(PMEMfilepool *pfp, PMEMfile *file,
-		const void *buf, size_t count);
-
 pmemfile_ssize_t pmemfile_read(PMEMfilepool *pfp, PMEMfile *file, void *buf,
 		size_t count);
+pmemfile_ssize_t pmemfile_pread(PMEMfilepool *pfp, PMEMfile *file, void *buf,
+		size_t count, pmemfile_off_t offset);
+pmemfile_ssize_t pmemfile_readv(PMEMfilepool *, PMEMfile *file,
+	const pmemfile_iovec_t *iov, int iovcnt);
+pmemfile_ssize_t pmemfile_preadv(PMEMfilepool *, PMEMfile *file,
+	const pmemfile_iovec_t *iov, int iovcnt, pmemfile_off_t offset);
+
+pmemfile_ssize_t pmemfile_write(PMEMfilepool *pfp, PMEMfile *file,
+		const void *buf, size_t count);
+pmemfile_ssize_t pmemfile_pwrite(PMEMfilepool *pfp, PMEMfile *file,
+		const void *buf, size_t count, pmemfile_off_t offset);
+pmemfile_ssize_t pmemfile_writev(PMEMfilepool *, PMEMfile *file,
+	const pmemfile_iovec_t *iov, int iovcnt);
+pmemfile_ssize_t pmemfile_pwritev(PMEMfilepool *, PMEMfile *file,
+	const pmemfile_iovec_t *iov, int iovcnt, pmemfile_off_t offset);
 
 pmemfile_off_t pmemfile_lseek(PMEMfilepool *pfp, PMEMfile *file,
 		pmemfile_off_t offset, int whence);
-
-pmemfile_ssize_t pmemfile_pwrite(PMEMfilepool *pfp, PMEMfile *file,
-		const void *buf, size_t count, pmemfile_off_t offset);
-
-pmemfile_ssize_t pmemfile_pread(PMEMfilepool *pfp, PMEMfile *file, void *buf,
-		size_t count, pmemfile_off_t offset);
 
 int pmemfile_stat(PMEMfilepool *, const char *path, pmemfile_stat_t *buf);
 int pmemfile_lstat(PMEMfilepool *, const char *path, pmemfile_stat_t *buf);

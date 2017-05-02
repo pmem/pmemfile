@@ -314,6 +314,52 @@ vinode_add_dirent(PMEMfilepool *pfp,
 }
 
 /*
+ * vinode_update_parent -- update .. entry of "vinode" from "src_parent" to
+ * "dst_parent"
+ */
+void
+vinode_update_parent(PMEMfilepool *pfp,
+		struct pmemfile_vinode *vinode,
+		struct pmemfile_vinode *src_parent,
+		struct pmemfile_vinode *dst_parent)
+{
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
+	struct pmemfile_dir *dir = &vinode->inode->file_data.dir;
+
+	struct pmemfile_dirent *dirent = NULL;
+
+	do {
+		for (uint32_t i = 0; i < dir->num_elements; ++i) {
+			if (strcmp(dir->dirents[i].name, "..") == 0) {
+				dirent = &dir->dirents[i];
+				break;
+			}
+		}
+
+		if (dirent)
+			break;
+
+		dir = D_RW(dir->next);
+	} while (dir);
+
+	ASSERTne(dirent, NULL);
+	ASSERT(TOID_EQUALS(dirent->inode, src_parent->tinode));
+	ASSERTeq(vinode->parent, src_parent);
+
+	TX_ADD_DIRECT(&src_parent->inode->nlink);
+	src_parent->inode->nlink--;
+
+	TX_ADD_DIRECT(&dst_parent->inode->nlink);
+	dst_parent->inode->nlink++;
+
+	TX_ADD_DIRECT(&dirent->inode);
+	dirent->inode = dst_parent->tinode;
+
+	vinode->parent = vinode_ref(pfp, dst_parent);
+}
+
+/*
  * vinode_new_dir -- creates new directory relative to parent
  *
  * Note: caller must hold WRITE lock on parent.
@@ -487,13 +533,13 @@ end:
 }
 
 /*
- * vinode_unlink_dirent -- removes dirent from directory
+ * vinode_unlink_file -- removes file dirent from directory
  *
  * Must be called in a transaction. Caller must have exclusive access to both
  * parent and child inode by locking them in WRITE mode.
  */
 void
-vinode_unlink_dirent(PMEMfilepool *pfp,
+vinode_unlink_file(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent,
 		struct pmemfile_dirent *dirent,
 		struct pmemfile_vinode *vinode)
@@ -505,9 +551,6 @@ vinode_unlink_dirent(PMEMfilepool *pfp,
 
 	TOID(struct pmemfile_inode) tinode = dirent->inode;
 	struct pmemfile_inode *inode = D_RW(tinode);
-
-	if (inode_is_dir(inode))
-		pmemfile_tx_abort(EISDIR);
 
 	ASSERT(inode->nlink > 0);
 
@@ -1163,6 +1206,77 @@ pmemfile_mkdir(PMEMfilepool *pfp, const char *path, pmemfile_mode_t mode)
 	return pmemfile_mkdirat(pfp, PMEMFILE_AT_CWD, path, mode);
 }
 
+void
+vinode_unlink_dir(PMEMfilepool *pfp,
+		struct pmemfile_vinode *vparent,
+		struct pmemfile_dirent *dirent,
+		struct pmemfile_vinode *vdir,
+		const char *path)
+{
+	struct pmemfile_inode *iparent = vparent->inode;
+	struct pmemfile_inode *idir = vdir->inode;
+	struct pmemfile_dir *ddir = &idir->file_data.dir;
+	if (!TOID_IS_NULL(ddir->next)) {
+		LOG(LUSR, "directory %s not empty", path);
+		pmemfile_tx_abort(ENOTEMPTY);
+	}
+
+	struct pmemfile_dirent *dirdot = &ddir->dirents[0];
+	struct pmemfile_dirent *dirdotdot = &ddir->dirents[1];
+
+	ASSERTeq(strcmp(dirdot->name, "."), 0);
+	ASSERT(TOID_EQUALS(dirdot->inode, vdir->tinode));
+
+	ASSERTeq(strcmp(dirdotdot->name, ".."), 0);
+	ASSERT(TOID_EQUALS(dirdotdot->inode, vparent->tinode));
+
+	for (uint32_t i = 2; i < ddir->num_elements; ++i) {
+		struct pmemfile_dirent *d = &ddir->dirents[i];
+
+		if (!TOID_IS_NULL(d->inode)) {
+			LOG(LUSR, "directory %s not empty", path);
+			pmemfile_tx_abort(ENOTEMPTY);
+		}
+	}
+
+	pmemobj_tx_add_range_direct(dirdot, sizeof(dirdot->inode) + 1);
+	dirdot->name[0] = '\0';
+	dirdot->inode = TOID_NULL(struct pmemfile_inode);
+
+	pmemobj_tx_add_range_direct(dirdotdot,
+			sizeof(dirdotdot->inode) + 1);
+	dirdotdot->name[0] = '\0';
+	dirdotdot->inode = TOID_NULL(struct pmemfile_inode);
+
+	ASSERTeq(idir->nlink, 2);
+	TX_ADD_DIRECT(&idir->nlink);
+	idir->nlink = 0;
+
+	pmemobj_tx_add_range_direct(dirent, sizeof(dirent->inode) + 1);
+	dirent->name[0] = '\0';
+	dirent->inode = TOID_NULL(struct pmemfile_inode);
+
+	TX_ADD_DIRECT(&iparent->nlink);
+	iparent->nlink--;
+
+	struct pmemfile_time tm;
+	file_get_time(&tm);
+
+	/*
+	 * From "stat" man page:
+	 * "The field st_ctime is changed by writing or by setting inode
+	 * information (i.e., owner, group, link count, mode, etc.)."
+	 */
+	TX_SET_DIRECT(iparent, ctime, tm);
+
+	/*
+	 * From "stat" man page:
+	 * "st_mtime of a directory is changed by the creation
+	 * or deletion of files in that directory."
+	 */
+	TX_SET_DIRECT(iparent, mtime, tm);
+}
+
 int
 _pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		const char *path)
@@ -1206,8 +1320,6 @@ _pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		error = EBUSY;
 		goto end;
 	}
-
-	struct pmemfile_inode *iparent = vparent->inode;
 
 	os_rwlock_rdlock(&vparent->rwlock);
 
@@ -1267,70 +1379,9 @@ _pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	}
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		struct pmemfile_inode *idir = vdir->inode;
-		struct pmemfile_dir *ddir = &idir->file_data.dir;
-		if (!TOID_IS_NULL(ddir->next)) {
-			LOG(LUSR, "directory %s not empty", path);
-			pmemfile_tx_abort(ENOTEMPTY);
-		}
-
-		struct pmemfile_dirent *dirdot = &ddir->dirents[0];
-		struct pmemfile_dirent *dirdotdot = &ddir->dirents[1];
-
-		ASSERTeq(strcmp(dirdot->name, "."), 0);
-		ASSERT(TOID_EQUALS(dirdot->inode, vdir->tinode));
-
-		ASSERTeq(strcmp(dirdotdot->name, ".."), 0);
-		ASSERT(TOID_EQUALS(dirdotdot->inode, vparent->tinode));
-
-
-		for (uint32_t i = 2; i < ddir->num_elements; ++i) {
-			struct pmemfile_dirent *d = &ddir->dirents[i];
-
-			if (!TOID_IS_NULL(d->inode)) {
-				LOG(LUSR, "directory %s not empty", path);
-				pmemfile_tx_abort(ENOTEMPTY);
-			}
-		}
-
-		pmemobj_tx_add_range_direct(dirdot, sizeof(dirdot->inode) + 1);
-		dirdot->name[0] = '\0';
-		dirdot->inode = TOID_NULL(struct pmemfile_inode);
-
-		pmemobj_tx_add_range_direct(dirdotdot,
-				sizeof(dirdotdot->inode) + 1);
-		dirdotdot->name[0] = '\0';
-		dirdotdot->inode = TOID_NULL(struct pmemfile_inode);
-
-		ASSERTeq(idir->nlink, 2);
-		TX_ADD_DIRECT(&idir->nlink);
-		idir->nlink = 0;
-
-		pmemobj_tx_add_range_direct(dirent, sizeof(dirent->inode) + 1);
-		dirent->name[0] = '\0';
-		dirent->inode = TOID_NULL(struct pmemfile_inode);
-
-		TX_ADD_DIRECT(&iparent->nlink);
-		iparent->nlink--;
+		vinode_unlink_dir(pfp, vparent, dirent, vdir, path);
 
 		vinode_orphan(pfp, vdir);
-
-		struct pmemfile_time tm;
-		file_get_time(&tm);
-
-		/*
-		 * From "stat" man page:
-		 * "The field st_ctime is changed by writing or by setting inode
-		 * information (i.e., owner, group, link count, mode, etc.)."
-		 */
-		TX_SET_DIRECT(iparent, ctime, tm);
-
-		/*
-		 * From "stat" man page:
-		 * "st_mtime of a directory is changed by the creation
-		 * or deletion of files in that directory."
-		 */
-		TX_SET_DIRECT(iparent, mtime, tm);
 	} TX_ONABORT {
 		error = errno;
 	} TX_END

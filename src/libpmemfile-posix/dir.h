@@ -82,6 +82,11 @@ void vinode_add_dirent(PMEMfilepool *pfp,
 		struct pmemfile_vinode *child_vinode,
 		struct pmemfile_time tm);
 
+void vinode_update_parent(PMEMfilepool *pfp,
+		struct pmemfile_vinode *vinode,
+		struct pmemfile_vinode *src_parent,
+		struct pmemfile_vinode *dst_parent);
+
 void vinode_set_debug_path_locked(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent_vinode,
 		struct pmemfile_vinode *child_vinode,
@@ -104,10 +109,16 @@ struct pmemfile_dirent *vinode_lookup_dirent_by_name_locked(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent, const char *name,
 		size_t namelen);
 
-void vinode_unlink_dirent(PMEMfilepool *pfp,
+void vinode_unlink_file(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent,
 		struct pmemfile_dirent *dirent,
 		struct pmemfile_vinode *vinode);
+
+void vinode_unlink_dir(PMEMfilepool *pfp,
+		struct pmemfile_vinode *vparent,
+		struct pmemfile_dirent *dirent,
+		struct pmemfile_vinode *vdir,
+		const char *path);
 
 struct pmemfile_vinode *pool_get_cwd(PMEMfilepool *pfp);
 struct pmemfile_vinode *pool_get_dir_for_path(PMEMfilepool *pfp, PMEMfile *dir,

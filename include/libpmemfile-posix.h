@@ -161,6 +161,10 @@
 
 #define PMEMFILE_FD_CLOEXEC 1
 
+#define PMEMFILE_RENAME_NOREPLACE	(1 << 0)
+#define PMEMFILE_RENAME_EXCHANGE	(1 << 1)
+#define PMEMFILE_RENAME_WHITEOUT	(1 << 2)
+
 #define PMEMFILE_MAP_FAILED	((void *) -1)
 
 #ifdef __cplusplus

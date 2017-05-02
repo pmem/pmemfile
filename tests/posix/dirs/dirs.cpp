@@ -1026,6 +1026,36 @@ TEST_F(dirs, rename_dir_to_empty)
 				      }));
 }
 
+TEST_F(dirs, rename_noreplace)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir2", 0755), 0);
+
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/f1", 0, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir2/f2", 0, 0644));
+
+	ASSERT_EQ(pmemfile_renameat2(pfp, NULL, "/dir1/f1", NULL, "/dir2/f2",
+				     PMEMFILE_RENAME_NOREPLACE),
+		  -1);
+	EXPECT_EQ(errno, EEXIST);
+
+	ASSERT_EQ(
+		pmemfile_renameat2(pfp, NULL, "/dir1/f1", NULL, "/dir2/f2", 0),
+		0)
+		<< strerror(errno);
+
+	ASSERT_EQ(pmemfile_renameat2(pfp, NULL, "/dir2", NULL, "/dir1",
+				     PMEMFILE_RENAME_NOREPLACE),
+		  -1);
+	EXPECT_EQ(errno, EEXIST);
+
+	ASSERT_EQ(pmemfile_renameat2(pfp, NULL, "/dir2", NULL, "/dir1", 0), 0);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir1/f2"), 0);
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
+}
+
 static bool
 is_owned(PMEMfilepool *pfp, const char *path, pmemfile_uid_t owner)
 {

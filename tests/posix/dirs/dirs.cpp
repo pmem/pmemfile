@@ -794,6 +794,239 @@ TEST_F(dirs, file_renames_in_same_tree)
 }
 
 static bool
+same_inode(PMEMfilepool *pfp, const char *path, const pmemfile_stat_t *tmpl)
+{
+	pmemfile_stat_t buf;
+	if (pmemfile_stat(pfp, path, &buf)) {
+		ADD_FAILURE() << strerror(errno);
+		return false;
+	}
+
+	if (buf.st_dev != tmpl->st_dev || buf.st_ino != tmpl->st_ino) {
+		ADD_FAILURE() << "(" << buf.st_dev << ", " << buf.st_ino
+			      << ") != (" << tmpl->st_dev << ", "
+			      << tmpl->st_ino << ")";
+		return false;
+	}
+
+	return true;
+}
+
+TEST_F(dirs, rename_dir)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1/dir2", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1/dir2/dir3", 0755), 0);
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/f1", 0, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/dir2/f2", 0, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/dir2/dir3/f3", 0, 0644));
+
+	pmemfile_stat_t root_stat, dir1_stat, dir2_stat, dir3_stat;
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/", &root_stat), 0);
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir1", &dir1_stat), 0);
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir1/dir2", &dir2_stat), 0);
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir1/dir2/dir3", &dir3_stat), 0);
+
+	EXPECT_TRUE(
+		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
+						    {040777, 3, 4008, "."},
+						    {040777, 3, 4008, ".."},
+						    {040755, 3, 4008, "dir1"},
+					    }));
+
+	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1",
+				      std::vector<pmemfile_ls>{
+					      {040755, 3, 4008, "."},
+					      {040777, 3, 4008, ".."},
+					      {040755, 3, 4008, "dir2"},
+					      {0100644, 1, 0, "f1"},
+				      }));
+
+	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1/dir2",
+				      std::vector<pmemfile_ls>{
+					      {040755, 3, 4008, "."},
+					      {040755, 3, 4008, ".."},
+					      {040755, 2, 4008, "dir3"},
+					      {0100644, 1, 0, "f2"},
+				      }));
+
+	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1/dir2/dir3",
+				      std::vector<pmemfile_ls>{
+					      {040755, 2, 4008, "."},
+					      {040755, 3, 4008, ".."},
+					      {0100644, 1, 0, "f3"},
+				      }));
+
+	EXPECT_TRUE(same_inode(pfp, "/dir1/dir2/dir3/..", &dir2_stat));
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir1/dir2/dir3", "/dir1/dir2/dir31"),
+		  0)
+		<< strerror(errno);
+
+	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1/dir2",
+				      std::vector<pmemfile_ls>{
+					      {040755, 3, 4008, "."},
+					      {040755, 3, 4008, ".."},
+					      {040755, 2, 4008, "dir31"},
+					      {0100644, 1, 0, "f2"},
+				      }));
+
+	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1/dir2/dir31",
+				      std::vector<pmemfile_ls>{
+					      {040755, 2, 4008, "."},
+					      {040755, 3, 4008, ".."},
+					      {0100644, 1, 0, "f3"},
+				      }));
+
+	EXPECT_TRUE(same_inode(pfp, "/dir1/dir2", &dir2_stat));
+	EXPECT_TRUE(same_inode(pfp, "/dir1/dir2/dir31", &dir3_stat));
+	EXPECT_TRUE(same_inode(pfp, "/dir1/dir2/dir31/.", &dir3_stat));
+	EXPECT_TRUE(same_inode(pfp, "/dir1/dir2/dir31/..", &dir2_stat));
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir1/dir2", "/dir1/dir21"), 0)
+		<< strerror(errno);
+
+	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1",
+				      std::vector<pmemfile_ls>{
+					      {040755, 3, 4008, "."},
+					      {040777, 3, 4008, ".."},
+					      {040755, 3, 4008, "dir21"},
+					      {0100644, 1, 0, "f1"},
+				      }));
+
+	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1/dir21",
+				      std::vector<pmemfile_ls>{
+					      {040755, 3, 4008, "."},
+					      {040755, 3, 4008, ".."},
+					      {040755, 2, 4008, "dir31"},
+					      {0100644, 1, 0, "f2"},
+				      }));
+
+	EXPECT_TRUE(same_inode(pfp, "/dir1/dir21", &dir2_stat));
+	EXPECT_TRUE(same_inode(pfp, "/dir1/dir21/.", &dir2_stat));
+	EXPECT_TRUE(same_inode(pfp, "/dir1/dir21/..", &dir1_stat));
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir1", "/dir11"), 0)
+		<< strerror(errno);
+
+	EXPECT_TRUE(
+		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
+						    {040777, 3, 4008, "."},
+						    {040777, 3, 4008, ".."},
+						    {040755, 3, 4008, "dir11"},
+					    }));
+
+	EXPECT_TRUE(test_compare_dirs(pfp, "/dir11",
+				      std::vector<pmemfile_ls>{
+					      {040755, 3, 4008, "."},
+					      {040777, 3, 4008, ".."},
+					      {040755, 3, 4008, "dir21"},
+					      {0100644, 1, 0, "f1"},
+				      }));
+
+	EXPECT_TRUE(same_inode(pfp, "/dir11", &dir1_stat));
+	EXPECT_TRUE(same_inode(pfp, "/dir11/.", &dir1_stat));
+	EXPECT_TRUE(same_inode(pfp, "/dir11/..", &root_stat));
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir11/dir21/dir31/f3"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir11/dir21/f2"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir11/f1"), 0);
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir11/dir21/dir31"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir11/dir21"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir11"), 0);
+}
+
+TEST_F(dirs, move_dirs_between_dirs)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1/dir2", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1/dir2/dir3", 0755), 0);
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/f1", 0, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/dir2/f2", 0, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/dir2/dir3/f3", 0, 0644));
+
+	pmemfile_stat_t root_stat, dir1_stat, dir2_stat, dir3_stat;
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/", &root_stat), 0);
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir1", &dir1_stat), 0);
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir1/dir2", &dir2_stat), 0);
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir1/dir2/dir3", &dir3_stat), 0);
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir1", "/dir1/dir2/dirX"), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	EXPECT_TRUE(
+		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
+						    {040777, 3, 4008, "."},
+						    {040777, 3, 4008, ".."},
+						    {040755, 3, 4008, "dir1"},
+					    }));
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir1/dir2/dir3", "/dir1/dir3"), 0)
+		<< strerror(errno);
+
+	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1",
+				      std::vector<pmemfile_ls>{
+					      {040755, 4, 4008, "."},
+					      {040777, 3, 4008, ".."},
+					      {040755, 2, 4008, "dir2"},
+					      {0100644, 1, 0, "f1"},
+					      {040755, 2, 4008, "dir3"},
+				      }));
+
+	EXPECT_TRUE(same_inode(pfp, "/dir1/dir3", &dir3_stat));
+	EXPECT_TRUE(same_inode(pfp, "/dir1/dir3/..", &dir1_stat));
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir1/dir3/f3"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir1/dir2/f2"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir1/f1"), 0);
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1/dir3"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1/dir2"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
+}
+
+TEST_F(dirs, rename_dir_to_empty)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_empty", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_not_empty", 0755), 0);
+
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir/f1", 0, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir_not_empty/f2", 0, 0644));
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir", "/dir_not_empty"), -1);
+	EXPECT_EQ(errno, ENOTEMPTY); // or EEXIST
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir", "/dir_empty"), 0)
+		<< strerror(errno);
+
+	EXPECT_TRUE(test_compare_dirs(
+		pfp, "/", std::vector<pmemfile_ls>{
+				  {040777, 4, 4008, "."},
+				  {040777, 4, 4008, ".."},
+				  {040755, 2, 4008, "dir_empty"},
+				  {040755, 2, 4008, "dir_not_empty"},
+			  }));
+
+	EXPECT_TRUE(test_compare_dirs(pfp, "/dir_empty",
+				      std::vector<pmemfile_ls>{
+					      {040755, 2, 4008, "."},
+					      {040777, 4, 4008, ".."},
+					      {0100644, 1, 0, "f1"},
+				      }));
+
+	EXPECT_TRUE(test_compare_dirs(pfp, "/dir_not_empty",
+				      std::vector<pmemfile_ls>{
+					      {040755, 2, 4008, "."},
+					      {040777, 4, 4008, ".."},
+					      {0100644, 1, 0, "f2"},
+				      }));
+}
+
+static bool
 is_owned(PMEMfilepool *pfp, const char *path, pmemfile_uid_t owner)
 {
 	pmemfile_stat_t st;

@@ -928,8 +928,13 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto end_vinode;
 	}
 
+	if (vinode_is_dir(vinode)) {
+		error = EISDIR;
+		goto end_vinode;
+	}
+
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		vinode_unlink_dirent(pfp, vparent, dirent, vinode);
+		vinode_unlink_file(pfp, vparent, dirent, vinode);
 
 		if (vinode->inode->nlink == 0)
 			vinode_orphan(pfp, vinode);
@@ -1161,12 +1166,6 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 		goto end_unlock;
 	}
 
-	if (vinode_is_dir(src_vinode)) {
-		LOG(LSUP, "renaming directories is not supported yet");
-		error = ENOTSUP;
-		goto end_unlock;
-	}
-
 	/*
 	 * From "rename" manpage:
 	 * "If oldpath and newpath are existing hard links referring to
@@ -1176,6 +1175,23 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	if (dst_vinode == src_vinode)
 		goto end_unlock;
 
+	/*
+	 * From "rename" manpage:
+	 * "EINVAL The new pathname contained a path prefix of the old, or,
+	 * more generally, an attempt was made to make a directory
+	 * a subdirectory of itself."
+	 */
+	if (vinode_is_dir(src_vinode) && src_parent != dst_parent) {
+		struct pmemfile_vinode *v = dst_parent;
+		while (v != pfp->root) {
+			if (v == src_vinode) {
+				error = EINVAL;
+				goto end_unlock;
+			}
+			v = v->parent;
+		}
+	}
+
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		/*
 		 * XXX, when src dir == dst dir we can just update dirent,
@@ -1183,8 +1199,13 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 		 */
 
 		if (dst_dirent) {
-			vinode_unlink_dirent(pfp, dst_parent, dst_dirent,
-					dst_vinode);
+			if (vinode_is_dir(dst_vinode)) {
+				vinode_unlink_dir(pfp, dst_parent, dst_dirent,
+						dst_vinode, newpath);
+			} else {
+				vinode_unlink_file(pfp, dst_parent, dst_dirent,
+						dst_vinode);
+			}
 
 			if (dst_vinode->inode->nlink == 0)
 				vinode_orphan(pfp, dst_vinode);
@@ -1195,10 +1216,17 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 		vinode_add_dirent(pfp, dst_parent, dst.remaining, dst_namelen,
 				src_vinode, t);
 
-		vinode_unlink_dirent(pfp, src_parent, src_dirent, src_vinode);
+		vinode_unlink_file(pfp, src_parent, src_dirent, src_vinode);
+
+		if (vinode_is_dir(src_vinode) && src_parent != dst_parent)
+			vinode_update_parent(pfp, src_vinode, src_parent,
+					dst_parent);
 	} TX_ONABORT {
 		error = errno;
 	} TX_END
+
+	if (error == 0 && vinode_is_dir(src_vinode) && src_parent != dst_parent)
+		vinode_unref(pfp, src_parent);
 
 end_unlock:
 

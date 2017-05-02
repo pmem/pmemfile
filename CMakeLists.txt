@@ -331,9 +331,9 @@ add_custom_target(tests)
 
 option(DEVELOPER_MODE "enable developer checks" OFF)
 if(DEVELOPER_MODE)
-	find_program(CLANG_FORMAT NAMES clang-format-3.9 clang-format-3.8 clang-format)
+	find_program(CLANG_FORMAT NAMES clang-format-3.9 clang-format-3.8)
 	if (NOT CLANG_FORMAT)
-		message(WARNING "clang-format not found - C++ sources will not be checked")
+		message(WARNING "clang-format not found - C++ sources will not be checked (needed version: 3.8 or 3.9)")
 	endif()
 
 	execute_process(COMMAND ${PERL_EXECUTABLE} -MText::Diff -e ""

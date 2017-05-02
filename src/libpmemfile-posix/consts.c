@@ -37,6 +37,7 @@
 
 #include <dirent.h>
 #include <fcntl.h>
+#include <linux/fs.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -160,6 +161,10 @@ verify_consts(void)
 #endif
 
 	COMPILE_ERROR_ON(PMEMFILE_FD_CLOEXEC != FD_CLOEXEC);
+
+	COMPILE_ERROR_ON(PMEMFILE_RENAME_EXCHANGE != RENAME_EXCHANGE);
+	COMPILE_ERROR_ON(PMEMFILE_RENAME_NOREPLACE != RENAME_NOREPLACE);
+	COMPILE_ERROR_ON(PMEMFILE_RENAME_WHITEOUT != RENAME_WHITEOUT);
 
 	COMPILE_ERROR_ON(PMEMFILE_MAP_FAILED != MAP_FAILED);
 }

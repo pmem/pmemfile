@@ -1028,8 +1028,31 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 {
 	LOG(LDBG, "oldpath %s newpath %s", oldpath, newpath);
 
-	if (flags) {
-		LOG(LSUP, "0 flags supported in rename");
+#define PMEMFILE_RENAME_KNOWN_FLAGS ((unsigned)(PMEMFILE_RENAME_EXCHANGE | \
+		PMEMFILE_RENAME_NOREPLACE | PMEMFILE_RENAME_WHITEOUT))
+
+	if (flags & ~PMEMFILE_RENAME_KNOWN_FLAGS) {
+		LOG(LSUP, "unknown flag %u",
+				flags & ~PMEMFILE_RENAME_KNOWN_FLAGS);
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (flags & PMEMFILE_RENAME_WHITEOUT) {
+		LOG(LSUP, "RENAME_WHITEOUT is not supported");
+		errno = EINVAL;
+		return -1;
+	}
+
+	if ((flags & (PMEMFILE_RENAME_EXCHANGE | PMEMFILE_RENAME_NOREPLACE)) ==
+		(PMEMFILE_RENAME_EXCHANGE | PMEMFILE_RENAME_NOREPLACE)) {
+		LOG(LUSR, "both RENAME_EXCHANGE and RENAME_NOREPLACE are set");
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (flags & PMEMFILE_RENAME_EXCHANGE) {
+		LOG(LSUP, "RENAME_EXCHANGE is not supported yet");
 		errno = EINVAL;
 		return -1;
 	}
@@ -1174,6 +1197,11 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	 */
 	if (dst_vinode == src_vinode)
 		goto end_unlock;
+
+	if (dst_dirent && (flags & PMEMFILE_RENAME_NOREPLACE)) {
+		error = EEXIST;
+		goto end_unlock;
+	}
 
 	/*
 	 * From "rename" manpage:

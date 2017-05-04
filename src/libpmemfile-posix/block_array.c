@@ -116,6 +116,9 @@ is_zeroed(const void *addr, size_t len)
 static struct pmemfile_block *
 acquire_new_entry(struct pmemfile_vinode *vinode)
 {
+	if (!has_free_block_entry(vinode))
+		allocate_new_block_array(vinode);
+
 	ASSERT(has_free_block_entry(vinode));
 
 	struct block_info *binfo = &vinode->first_free_block;
@@ -136,9 +139,6 @@ block_list_insert_after(struct pmemfile_vinode *vinode,
 			struct pmemfile_block *prev)
 {
 	update_first_block_info(vinode);
-
-	if (!has_free_block_entry(vinode))
-		allocate_new_block_array(vinode);
 
 	struct pmemfile_block *block = acquire_new_entry(vinode);
 

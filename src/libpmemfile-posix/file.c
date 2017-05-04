@@ -1996,8 +1996,6 @@ pmemfile_ftruncate(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t length)
 		return -1;
 	}
 
-	int ret;
-
 	if (length < 0) {
 		errno = EINVAL;
 		return -1;
@@ -2009,25 +2007,22 @@ pmemfile_ftruncate(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t length)
 	}
 
 	os_mutex_lock(&file->mutex);
-
-	if (file->flags & PFILE_WRITE) {
-		int err;
-
-		err = _pmemfile_ftruncate(pfp, file->vinode, (uint64_t)length);
-		if (err == 0) {
-			ret = 0;
-		} else {
-			errno = err;
-			ret = -1;
-		}
-	} else {
-		errno = EBADF;
-		ret = -1;
-	}
-
+	uint64_t flags = file->flags;
+	struct pmemfile_vinode *vinode = file->vinode;
 	os_mutex_unlock(&file->mutex);
 
-	return ret;
+	if (!(flags & PFILE_WRITE)) {
+		errno = EBADF;
+		return -1;
+	}
+
+	int err = _pmemfile_ftruncate(pfp, vinode, (uint64_t)length);
+	if (err) {
+		errno = err;
+		return -1;
+	}
+
+	return 0;
 }
 
 int
@@ -2187,38 +2182,6 @@ fallocate_check_arguments(int mode, pmemfile_off_t offset,
 	return 0;
 }
 
-/*
- * file_fallocate - part of pmemfile_fallocate implementation
- * Operates on a PMEMfile, and calls vinode_fallocate, which
- * does the actual fallocate operation on the inode.
- *
- * This function expected the file to locked while being called,
- * and makes sure the vinode is locked while calling vinode_fallocate.
- */
-static int
-file_fallocate(PMEMfilepool *pfp, PMEMfile *file, int mode,
-		uint64_t offset, uint64_t length)
-{
-	int error;
-
-	/*
-	 * from man 2 fallocate:
-	 *
-	 * "EBADF  fd is not a valid file descriptor, or is not opened for
-	 * writing."
-	 */
-	if ((file->flags & PFILE_WRITE) == 0)
-		return EBADF;
-
-	os_rwlock_wrlock(&file->vinode->rwlock);
-
-	error = vinode_fallocate(pfp, file->vinode, mode, offset, length);
-
-	os_rwlock_unlock(&file->vinode->rwlock);
-
-	return error;
-}
-
 int
 pmemfile_fallocate(PMEMfilepool *pfp, PMEMfile *file, int mode,
 		pmemfile_off_t offset, pmemfile_off_t length)
@@ -2238,19 +2201,37 @@ pmemfile_fallocate(PMEMfilepool *pfp, PMEMfile *file, int mode,
 	int error;
 
 	error = fallocate_check_arguments(mode, offset, length);
+	if (error)
+		goto end;
 
-	if (error == 0) {
-		ASSERT(offset >= 0);
-		ASSERT(length > 0);
+	ASSERT(offset >= 0);
+	ASSERT(length > 0);
 
-		os_mutex_lock(&file->mutex);
+	os_mutex_lock(&file->mutex);
+	uint64_t flags = file->flags;
+	struct pmemfile_vinode *vinode = file->vinode;
+	os_mutex_unlock(&file->mutex);
 
-		error = file_fallocate(pfp, file, mode,
-		    (uint64_t)offset, (uint64_t)length);
-
-		os_mutex_unlock(&file->mutex);
+	/*
+	 * from man 2 fallocate:
+	 *
+	 * "EBADF  fd is not a valid file descriptor, or is not opened for
+	 * writing."
+	 */
+	if ((flags & PFILE_WRITE) == 0) {
+		error = EBADF;
+		goto end;
 	}
 
+	os_rwlock_wrlock(&vinode->rwlock);
+
+	error = vinode_fallocate(pfp, vinode, mode, (uint64_t)offset,
+			(uint64_t)length);
+
+	os_rwlock_unlock(&vinode->rwlock);
+
+
+end:
 	if (error != 0) {
 		errno = error;
 		return -1;

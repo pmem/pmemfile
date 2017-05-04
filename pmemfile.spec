@@ -3,9 +3,9 @@ Version:	0.1
 Release:	0%{?dist}
 Summary:	Persistent memory-backed, userspace implementation of POSIX-like API.
 License:	BSD
-URL:		http://github.com/marcinslusarz/pmemfile
+URL:		http://github.com/pmem/pmemfile
 Source0:	pmemfile-%{version}.tar.gz
-#Source0:	https://github.com/marcinslusarz/pmemfile/archive/%{version}.tar.gz#/pmemfile-%{version}.tar.gz
+#Source0:	https://github.com/pmem/pmemfile/archive/%{version}.tar.gz#/pmemfile-%{version}.tar.gz
 
 BuildRequires:	glibc-devel
 BuildRequires:	cmake

@@ -35,9 +35,6 @@
 #            prepared for building this project.
 #
 
-export DOCKER_USER=marcinslusarz
-export PROJECT=pmemfile
-
 if [[ -z "$OS" || -z "$OS_VER" ]]; then
 	echo "ERROR: The variables OS and OS_VER have to be set properly " \
 		"(eg. OS=ubuntu, OS_VER=16.04)."
@@ -50,17 +47,17 @@ if [[ -z "$HOST_WORKDIR" ]]; then
 	exit 1
 fi
 
-imageName=${DOCKER_USER}/${PROJECT}_${OS}:${OS_VER}
-containerName=${DOCKER_USER}-${PROJECT}-${OS}-${OS_VER}
+imageName=pmem/pmemfile:${OS}-${OS_VER}
+containerName=pmemfile-${OS}-${OS_VER}
 
 if [[ $MAKE_PKG -eq 0 ]] ; then command="./run-build.sh"; fi
 if [[ $MAKE_PKG -eq 1 ]] ; then command="./run-build-package.sh"; fi
 
-WORKDIR=/${PROJECT}
+WORKDIR=/pmemfile
 
 # Run a container with
 #  - environment variables set (--env)
-#  - host directory containing nvml source mounted (-v)
+#  - host directory containing pmemfile source mounted (-v)
 #  - working directory set (-w)
 sudo docker run --rm --privileged=true --name=$containerName -ti \
 	--env http_proxy=$http_proxy \

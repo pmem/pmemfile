@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash -ex
 #
 # Copyright 2016-2017, Intel Corporation
 #
@@ -44,11 +44,11 @@
 # further scripts.
 #
 # If the Docker image does not have to be rebuilt, it will be pulled from
-# the Docker Hub.
+# Docker Hub.
 #
 
-export DOCKER_USER=marcinslusarz
-export PROJECT=pmemfile
+export DH_REPO=pmem/pmemfile
+export GH_REPO=pmem/pmemfile
 
 if [[ -z "$OS" || -z "$OS_VER" ]]; then
 	echo "ERROR: The variables OS and OS_VER have to be set properly " \
@@ -91,28 +91,28 @@ for file in $files; do
 		# Rebuild Docker image for the current OS version
 		echo "Rebuilding the Docker image for the Dockerfile.$OS-$OS_VER"
 		pushd $images_dir_name
-		./build-image.sh $OS:$OS_VER
+		./build-image.sh ${OS}-${OS_VER}
 		popd
 
-		# Check if the image has to be pushed to the Docker Hub
-		# (i.e. the build is triggered by commits to the ${DOCKER_USER}/${PROJECT}
+		# Check if the image has to be pushed to Docker Hub
+		# (i.e. the build is triggered by commits to the ${GH_REPO}
 		# repository's master branch, and the Travis build is not
 		# of the "pull_request" type). In that case, create the empty
 		# file.
-		if [[ $TRAVIS_REPO_SLUG == "${DOCKER_USER}/${PROJECT}" \
-			&& $TRAVIS_BRANCH == "master" \
+		if [[ $TRAVIS_REPO_SLUG == "${GH_REPO}" \
+			&& $TRAVIS_BRANCH == "development" \
 			&& $TRAVIS_EVENT_TYPE != "pull_request"
 			&& $MAKE_PKG == "1" ]]
 		then
-			echo "The image will be pushed to the Docker Hub"
+			echo "The image will be pushed to Docker Hub"
 			touch push_image_to_repo_flag
 		else
-			echo "Skip pushing the image to the Docker Hub"
+			echo "Skip pushing the image to Docker Hub"
 		fi
 		exit 0
 	fi
 done
 
 # Getting here means rebuilding the Docker image is not required.
-# Pull the image from the Docker Hub.
-sudo docker pull ${DOCKER_USER}/${PROJECT}_$OS:$OS_VER
+# Pull the image from Docker Hub.
+sudo docker pull ${DH_REPO}:$OS-$OS_VER

@@ -47,7 +47,7 @@ if [[ -z "$HOST_WORKDIR" ]]; then
 	exit 1
 fi
 
-imageName=pmem/pmemfile:${OS}-${OS_VER}
+imageName=${DOCKERHUB_REPO}:${OS}-${OS_VER}
 containerName=pmemfile-${OS}-${OS_VER}
 
 if [[ $MAKE_PKG -eq 0 ]] ; then command="./run-build.sh"; fi

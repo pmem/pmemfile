@@ -11,6 +11,8 @@ env:
 
 before_install:
   - export HOST_WORKDIR=`pwd`
+  - export GITHUB_REPO=pmem/pmemfile
+  - export DOCKERHUB_REPO=pmem/pmemfile
   - cd utils/docker
   - ./prepare-environment.sh
   - ./pull-or-rebuild-image.sh

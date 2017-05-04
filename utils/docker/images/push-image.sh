@@ -34,18 +34,16 @@
 # push-image.sh <OS-VER> - pushes the Docker image tagged with OS-VER
 #                          to Docker Hub
 #
-# The script utilizes $DOCKER_USER and $DOCKER_PASSWORD variables to log in to
-# Docker Hub. The variables can be set in the Travis project's configuration
-# for automated builds.
+# The script utilizes $DOCKERHUB_USER and $DOCKERHUB_PASSWORD variables to log
+# in to Docker Hub. The variables can be set in the Travis project's
+# configuration for automated builds.
 #
-
-export REPO=pmem/pmemfile
 
 function usage {
 	echo "Usage:"
 	echo "    push-image.sh <OS-VER>"
 	echo "where <OS-VER>, for example, can be 'ubuntu-16.04', provided " \
-	"a Docker image tagged with ${REPO}:ubuntu-16.04 exists locally."
+	"a Docker image tagged with ${DOCKERHUB_REPO}:ubuntu-16.04 exists locally."
 }
 
 # Check if the first argument is nonempty
@@ -54,8 +52,8 @@ if [[ -z "$1" ]]; then
 	exit 1
 fi
 
-# Check if the image tagged with ${REPO}:OS-VER exists locally
-if [[ ! $(sudo docker images -a | awk -v pattern="^${REPO}:$1\$" \
+# Check if the image tagged with ${DOCKERHUB_REPO}:OS-VER exists locally
+if [[ ! $(sudo docker images -a | awk -v pattern="^${DOCKERHUB_REPO}:$1\$" \
 	'$1":"$2 ~ pattern') ]]
 then
 	echo "ERROR: wrong argument."
@@ -64,7 +62,7 @@ then
 fi
 
 # Log in to the Docker Hub
-sudo docker login -u="${DOCKER_USER}" -p="$DOCKER_PASSWORD"
+sudo docker login -u="${DOCKERHUB_USER}" -p="${DOCKERHUB_PASSWORD}"
 
 # Push the image to the repository
-sudo docker push ${REPO}:$1
+sudo docker push ${DOCKERHUB_REPO}:$1

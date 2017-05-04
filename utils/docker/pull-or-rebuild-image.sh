@@ -47,9 +47,6 @@
 # Docker Hub.
 #
 
-export DH_REPO=pmem/pmemfile
-export GH_REPO=pmem/pmemfile
-
 if [[ -z "$OS" || -z "$OS_VER" ]]; then
 	echo "ERROR: The variables OS and OS_VER have to be set properly " \
              "(eg. OS=ubuntu, OS_VER=16.04)."
@@ -62,7 +59,7 @@ if [[ -z "$HOST_WORKDIR" ]]; then
 	exit 1
 fi
 
-#TRAVIS_COMMIT_RANGE=
+TRAVIS_COMMIT_RANGE=
 # Find all the commits for the current build
 if [[ -n "$TRAVIS_COMMIT_RANGE" ]]; then
 	commits=$(git rev-list $TRAVIS_COMMIT_RANGE)
@@ -91,15 +88,15 @@ for file in $files; do
 		# Rebuild Docker image for the current OS version
 		echo "Rebuilding the Docker image for the Dockerfile.$OS-$OS_VER"
 		pushd $images_dir_name
-		./build-image.sh ${OS}-${OS_VER}
+		./build-image.sh ${DOCKERHUB_REPO} ${OS}-${OS_VER}
 		popd
 
 		# Check if the image has to be pushed to Docker Hub
-		# (i.e. the build is triggered by commits to the ${GH_REPO}
+		# (i.e. the build is triggered by commits to the ${GITHUB_REPO}
 		# repository's master branch, and the Travis build is not
 		# of the "pull_request" type). In that case, create the empty
 		# file.
-		if [[ $TRAVIS_REPO_SLUG == "${GH_REPO}" \
+		if [[ $TRAVIS_REPO_SLUG == "${GITHUB_REPO}" \
 			&& $TRAVIS_BRANCH == "development" \
 			&& $TRAVIS_EVENT_TYPE != "pull_request"
 			&& $MAKE_PKG == "1" ]]
@@ -115,4 +112,4 @@ done
 
 # Getting here means rebuilding the Docker image is not required.
 # Pull the image from Docker Hub.
-sudo docker pull ${DH_REPO}:$OS-$OS_VER
+sudo docker pull ${DOCKERHUB_REPO}:$OS-$OS_VER

@@ -260,7 +260,7 @@ static volatile int pause_at_start;
 pf_constructor void
 pmemfile_preload_constructor(void)
 {
-	if (!libc_hook_in_process_allowed())
+	if (!syscall_hook_in_process_allowed())
 		return;
 
 	check_memfd_syscall();

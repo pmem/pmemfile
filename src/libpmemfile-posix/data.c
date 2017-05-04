@@ -46,6 +46,13 @@
 #include "valgrind_internal.h"
 #include "ctree.h"
 
+/*
+ * expand_to_full_pages
+ * Alters two file offsets to be pmemfile-page aligned. This is not
+ * necessarily the same as memory page alignment!
+ * The resulting offset refer to an interval that contains the original
+ * interval.
+ */
 static void
 expand_to_full_pages(uint64_t *offset, uint64_t *length)
 {
@@ -57,6 +64,14 @@ expand_to_full_pages(uint64_t *offset, uint64_t *length)
 	*length = page_roundup(*length);
 }
 
+/*
+ * narrow_to_full_pages
+ * Alters two file offsets to be pmemfile-page aligned. This is not
+ * necessarily the same as memory page alignment!
+ * The resulting offset refer to an interval that is contained by the original
+ * interval. This new interval can end up being empty, i.e. *length can become
+ * zero.
+ */
 static void
 narrow_to_full_pages(uint64_t *offset, uint64_t *length)
 {
@@ -77,6 +92,9 @@ block_cache_insert_block(struct ctree *c, struct pmemfile_block *block)
 	ctree_insert_unlocked(c, block->offset, (uintptr_t)block);
 }
 
+/*
+ * find_last_block - find the block with the highest offset in the file
+ */
 static struct pmemfile_block *
 find_last_block(const struct pmemfile_vinode *vinode)
 {
@@ -129,6 +147,13 @@ is_offset_in_block(const struct pmemfile_block *block, uint64_t offset)
 	return block->offset <= offset && offset < block->offset + block->size;
 }
 
+/*
+ * is_block_data_initialized
+ * This is just a wrapper around checking a flag. The BLOCK_INITIALIZED flag
+ * in the block metadata is not set when allocating a new block, thus the
+ * underlying memory region (pointed to by block->data) does not need to
+ * be zeroed.
+ */
 static bool
 is_block_data_initialized(const struct pmemfile_block *block)
 {
@@ -234,6 +259,10 @@ file_allocate_block_data(PMEMfilepool *pfp,
 	block->flags = 0;
 }
 
+/*
+ * is_append - is a write operation to be performed on a file going to append
+ *  to the file?
+ */
 static bool
 is_append(struct pmemfile_vinode *vinode, struct pmemfile_inode *inode,
 		uint64_t offset, uint64_t size)
@@ -251,6 +280,12 @@ is_append(struct pmemfile_vinode *vinode, struct pmemfile_inode *inode,
 	return (block->offset + block->size) < (offset + size);
 }
 
+/*
+ * overallocate_size - determines what size to request from pmemobj when
+ *  doing an overallocation
+ *
+ * This is used while appending to a file.
+ */
 static uint64_t
 overallocate_size(uint64_t count)
 {
@@ -266,6 +301,173 @@ overallocate_size(uint64_t count)
 		return count;
 }
 
+/*
+ * vinode_allocate_interval - makes sure an interval in a file is allocated
+ *
+ * This is used in fallocate, truncate, and before writing to a file.
+ * A write to a file refers to an offset, and a length. The interval specified
+ * by offset and length might contain holes (where no block is allocated). This
+ * routine fills those holes, so when actually writing to the file, no checks
+ * allocations need to be made.
+ *
+ * One example:
+ *
+ *  _file offset zero
+ * |                    _ offset                       _ offset + length
+ * |                   |                              |
+ * |                   |                              |
+ * +---------------------------------------------------------------------------
+ *     | block #0 | block #1 |     | block #2 |           | block #3 |
+ *     |          |          |     |          |           |          |
+ * +---------------------------------------------------------------------------
+ *                            ^    ^           ^      ^
+ *                            \    /           \      |
+ *                             \  /             \     |
+ *                              \/               \    |
+ *                            hole between        \   |
+ *                            block#1 & block#2    hole at the
+ *                                                 end of the interval
+ *
+ * The vinode_allocate_interval routine iterates over the existing blocks
+ * which intersect with the interval, and fills any holes found. In the example
+ * above, the allocation of two new blocks is required.
+ *
+ * The iterations of the loop inside vinode_allocate_interval considering
+ * the above example:
+ *
+ * ============================================================================
+ * before iteration #0 :
+ * block points to block #1
+ *
+ *                      _ offset                       _ offset + size
+ *                     |                              |
+ *                     |                              |
+ * +---------------------------------------------------------------------------
+ *     | block #0 | block #1 |     | block #2 |           | block #3 |
+ *     |          |          |     |          |           |          |
+ * +---------------------------------------------------------------------------
+ *
+ * iteration #0:
+ * offset not in a hole
+ * shrink the interval, to exclude the intersection of block#1 and the interval
+ *
+ * ============================================================================
+ * after iteration #0 :
+ * block points to block #1
+ *
+ *                             _offset                 _ offset + size
+ *                            |                       |
+ *                            |                       |
+ * +---------------------------------------------------------------------------
+ *     | block #0 | block #1 |     | block #2 |           | block #3 |
+ *     |          |          |     |          |           |          |
+ * +---------------------------------------------------------------------------
+ *
+ * iteration #1:
+ * In a hole between block#1 and block#2
+ * Allocate a new block (block#4) to cover the left edge of the interval, and
+ *  set block to point to this new block
+ *
+ *
+ *
+ * ============================================================================
+ * after iteration #1 :
+ * block points to block #4
+ *
+ *                             _offset                 _ offset + size
+ *                            |                       |
+ *                            |                       |
+ * +---------------------------------------------------------------------------
+ *     | block #0 | block #1 | b#4 | block #2 |           | block #3 |
+ *     |          |          |     |          |           |          |
+ * +---------------------------------------------------------------------------
+ *
+ * iteration #2:
+ * offset not in a hole
+ * shrink the interval, exclude block #4
+ *
+ * ============================================================================
+ * after iteration #2 :
+ * block points to block #4
+ *
+ *                                   _offset           _ offset + size
+ *                                  |                 |
+ *                                  |                 |
+ * +---------------------------------------------------------------------------
+ *     | block #0 | block #1 | b#4 | block #2 |           | block #3 |
+ *     |          |          |     |          |           |          |
+ * +---------------------------------------------------------------------------
+ *
+ * iteration #3:
+ * offset after between block#4 and block#2, but there is no hole
+ * set block to point to the next block, block#2
+ *
+ * ============================================================================
+ * after iteration #3 :
+ * block points to block #2
+ *
+ *                                   _offset           _ offset + size
+ *                                  |                 |
+ *                                  |                 |
+ * +---------------------------------------------------------------------------
+ *     | block #0 | block #1 | b#4 | block #2 |           | block #3 |
+ *     |          |          |     |          |           |          |
+ * +---------------------------------------------------------------------------
+ *
+ * iteration #4:
+ * offset not in a hole
+ * shrink the interval, exclude block #2
+ *
+ * ============================================================================
+ * after iteration #4 :
+ * block points to block #2
+ *
+ *                                      offset_        _ offset + size
+ *                                             |      |
+ *                                             |      |
+ * +---------------------------------------------------------------------------
+ *     | block #0 | block #1 | b#4 | block #2 |           | block #3 |
+ *     |          |          |     |          |           |          |
+ * +---------------------------------------------------------------------------
+ *
+ * iteration #5:
+ * offset between block#2 and block#3, there is a hole to be filled
+ * allocate a new block (block#5), and set block to point to this new block
+ *
+ * ============================================================================
+ * after iteration #5 :
+ * block points to block #5
+ *
+ *                                      offset_        _ offset + size
+ *                                             |      |
+ *                                             |      |
+ * +---------------------------------------------------------------------------
+ *     | block #0 | block #1 | b#4 | block #2 |block#5|   | block #3 |
+ *     |          |          |     |          |       |   |          |
+ * +---------------------------------------------------------------------------
+ *
+ * iteration #6:
+ * offset not in a hole
+ * shrink the interval, exclude block #5
+ *
+ * ============================================================================
+ * after iteration #6 :
+ * block points to block #5
+ *
+ *                                             offset_ _ offset + size
+ *                                                    |
+ *                                                    |
+ * +---------------------------------------------------------------------------
+ *     | block #0 | block #1 | b#4 | block #2 |block#5|   | block #3 |
+ *     |          |          |     |          |       |   |          |
+ * +---------------------------------------------------------------------------
+ *                                                      ^
+ *                                                      |
+ *                                                      there is a hole left
+ *                                                      after the interval
+ *
+ * The remaining interval has zero size, ending the loop.
+ */
 static void
 vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		uint64_t offset, uint64_t size)
@@ -283,11 +485,80 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 
 	expand_to_full_pages(&offset, &size);
 
+	/*
+	 * Start at block with the highest offset lower than or equal to
+	 * the start of the requested interval.
+	 * This block does not necessarily intersect the interval.
+	 */
 	struct pmemfile_block *block = find_block(vinode, offset);
 
+	/*
+	 * The following loop decreases the size of the interval to be
+	 * processed, until there is nothing more left to process.
+	 * The beginning of the interval (the edge with the lower offset) is
+	 * processed in each iteration.
+	 * At the beginning of each iteration, the offset variable points to
+	 * the current lower edge of the interval, and block points to a block
+	 * at the largest offset lower than or equal to the interval's offset.
+	 *
+	 * If such a block is found, two cases can be distinguished.
+	 *
+	 * 1) The block intersects the interval:
+	 *
+	 *
+	 *           _ offset                       _ offset + length
+	 *          |                              |
+	 *          |                              |
+	 *  +-------------------------------------------------------------
+	 *     | block |
+	 *     |       |
+	 *  +-------------------------------------------------------------
+	 *          ^   ^
+	 *          \___\__intersection
+	 *
+	 *  In this case, the loop can ignore the intersection (there is nothing
+	 *  to allocate there), and go on to the next iteration with a reduced
+	 *  interval, i.e.: the original interval minus the intersection.
+	 *
+	 * 2) The block does not intersect the interval:
+	 *
+	 *                  _ offset                       _ offset + length
+	 *                 |                              |
+	 *                 |                              |
+	 *  +-------------------------------------------------------------
+	 *     | block |
+	 *     |       |
+	 *  +-------------------------------------------------------------
+	 *
+	 *  In this case a new block must be allocated. The new block's file
+	 *  offset is set to the interval's offset.
+	 *   This case is further split into two sub cases:
+	 *    When there is not other block following the one already found,
+	 *    one can try to allocate a block large enough to cover the whole
+	 *    interval.
+	 *    When there is another block following the currently treated
+	 *    blocks, one must fill the hole between these two
+	 *    blocks -- allocating larger space than the block would only waste
+	 *    space.
+	 *
+	 *
+	 * Besides cases 1) and 2), there is the possibility that no appropriate
+	 * block is found.
+	 *
+	 * 3) There are no blocks in the file at all.
+	 *      One must allocate the very first block, hopefully being able to
+	 *      cover the whole interval with this new block.
+	 *
+	 * 4) There are no blocks at or before offset, but there are blocks at
+	 *    higher offsets.
+	 *      One must allocate the very first block. This new first block
+	 *      should not intersect with the original first block, as that
+	 *      would waste space.
+	 */
 	do {
 		if (is_offset_in_block(block, offset)) {
-			/* Not in a hole */
+			/* case 1) */
+			/* Not in a hole, skip over the intersection */
 
 			uint64_t available = block->size;
 			available -= offset - block->offset;
@@ -298,13 +569,15 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			offset += available;
 			size -= available;
 		} else if (block == NULL && vinode->first_block == NULL) {
-			/* File size is zero */
+			/* case 3) */
+			/* File size is zero, no blocks in the file so far */
 
 			block = block_list_insert_after(vinode, NULL);
 			block->offset = offset;
 			file_allocate_block_data(pfp, block, size, over);
 			block_cache_insert_block(vinode->blocks, block);
 		} else if (block == NULL && vinode->first_block != NULL) {
+			/* case 4) */
 			/* In a hole before the first block */
 
 			size_t count = size;
@@ -318,6 +591,7 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			file_allocate_block_data(pfp, block, count, false);
 			block_cache_insert_block(vinode->blocks, block);
 		} else if (TOID_IS_NULL(block->next)) {
+			/* case 2) */
 			/* After the last allocated block */
 
 			block = block_list_insert_after(vinode, block);
@@ -325,7 +599,9 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			file_allocate_block_data(pfp, block, size, over);
 			block_cache_insert_block(vinode->blocks, block);
 		} else {
-			/* In a hole between two allocated blocks */
+			/* case 2) */
+			/* between two allocated blocks */
+			/* potentially in a hole between two allocated blocks */
 
 			struct pmemfile_block *next = D_RW(block->next);
 
@@ -352,6 +628,12 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	} while (size > 0);
 }
 
+/*
+ * find_following_block
+ * Returns the block following the one supplied as argument, according
+ * to file offsets. A NULL pointer as argument is considered to mean the
+ * beginning of the file.
+ */
 static struct pmemfile_block *
 find_following_block(struct pmemfile_vinode *vinode,
 	struct pmemfile_block *block)
@@ -364,6 +646,9 @@ find_following_block(struct pmemfile_vinode *vinode,
 
 enum cpy_direction { read_from_blocks, write_to_blocks };
 
+/*
+ * read_block_range - copy data to user supplied buffer
+ */
 static void
 read_block_range(const struct pmemfile_block *block,
 	uint64_t offset, uint64_t len, char *buf)
@@ -376,7 +661,7 @@ read_block_range(const struct pmemfile_block *block,
 
 	/*
 	 * !is_block_data_initialized(block) means reading from an
-	 * fallocat-ed region in a file, a region that was allocated,
+	 * fallocate-ed region in a file, a region that was allocated,
 	 * but never initialized.
 	 */
 
@@ -388,6 +673,11 @@ read_block_range(const struct pmemfile_block *block,
 	}
 }
 
+/*
+ * read_block_range - copy data from user supplied buffer
+ *
+ * A corresponding block is expected to be already allocated.
+ */
 static void
 write_block_range(PMEMfilepool *pfp, struct pmemfile_block *block,
 	uint64_t offset, uint64_t len, const char *buf)
@@ -425,6 +715,13 @@ write_block_range(PMEMfilepool *pfp, struct pmemfile_block *block,
 	VALGRIND_REMOVE_FROM_TX(data + offset, len);
 }
 
+/*
+ * iterate_on_file_range - loop over a file range, and copy from/to user buffer
+ *
+ * When cpy_direction specifies writing, this routine expects the corresponding
+ * blocks to be already allocated. In case of reading, it is ok to skip holes
+ * between blocks.
+ */
 static struct pmemfile_block *
 iterate_on_file_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		struct pmemfile_block *starting_block, uint64_t offset,
@@ -1397,7 +1694,7 @@ is_block_at_right_edge(struct pmemfile_block *block,
  *         +--------+------------+------------+--------+
  *
  * Note: The zeroed file contents at the left edge in the above drawing
- * must be snapshoted. Without doing this, a failed transaction can leave
+ * must be snapshotted. Without doing this, a failed transaction can leave
  * the file contents in a inconsistent state, e.g.:
  * 1) pmemfile_ftruncate is called in order to make a file smaller,
  * 2) a pmemobj transaction is started
@@ -1580,6 +1877,12 @@ vinode_fallocate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, int mode,
 	return error;
 }
 
+/*
+ * vinode_snapshot
+ * Saves some volatile state in vinode, that can be altered during a
+ * transaction. These volatile data are not restored by pmemobj upon
+ * transaction abort.
+ */
 void
 vinode_snapshot(struct pmemfile_vinode *vinode)
 {
@@ -1587,6 +1890,11 @@ vinode_snapshot(struct pmemfile_vinode *vinode)
 	vinode->snapshot.first_block = vinode->first_block;
 }
 
+/*
+ * vinode_restore_on_abort - vinode_snapshot's counterpart
+ * This must be added to abort handlers, where vinode_snapshot was
+ * called in the transaction.
+ */
 void
 vinode_restore_on_abort(struct pmemfile_vinode *vinode)
 {

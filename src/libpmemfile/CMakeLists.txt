@@ -29,11 +29,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-set(SOURCES
-	fd_pool.c
-	path_resolve.c
-	preload.c
-)
+set(SOURCES path_resolve.c preload.c)
 
 add_c_flag(-Wmissing-field-initializers)
 

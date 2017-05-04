@@ -106,8 +106,6 @@ FATAL(const char *str)
 
 #include "sys_util.h"
 
-#include "fd_pool.h"
-
 #include "preload.h"
 
 static int hook(long syscall_number,
@@ -127,6 +125,10 @@ static pthread_rwlock_t fd_lock = PTHREAD_RWLOCK_INITIALIZER;
 static struct pool_description pools[0x100];
 static int pool_count;
 
+static bool is_memfd_syscall_available;
+
+#define PMEMFILE_MAX_FD 0x8000
+
 /*
  * A separate place to keep track of fds used to hold mount points open, in
  * the previous array. The application should not be aware of these, thus
@@ -136,6 +138,15 @@ static int pool_count;
 static bool mount_point_fds[PMEMFILE_MAX_FD + 1];
 
 static struct fd_association fd_table[PMEMFILE_MAX_FD + 1];
+
+static bool
+is_fd_in_table(long fd)
+{
+	if (fd < 0 || fd > PMEMFILE_MAX_FD)
+		return false;
+
+	return !is_fda_null(fd_table + fd);
+}
 
 static pthread_rwlock_t pmem_cwd_lock = PTHREAD_RWLOCK_INITIALIZER;
 static struct pool_description *volatile cwd_pool;
@@ -175,7 +186,7 @@ fetch_fd(long fd)
 	if ((int)fd == AT_FDCWD) {
 		result.pmem_fda.pool = cwd_pool;
 		result.pmem_fda.file = PMEMFILE_AT_CWD;
-	} else if (fd_pool_has_allocated(fd)) {
+	} else if (is_fd_in_table(fd)) {
 		result.pmem_fda = fd_table[fd];
 	} else {
 		result.pmem_fda.pool = NULL;
@@ -183,6 +194,46 @@ fetch_fd(long fd)
 	}
 
 	return result;
+}
+
+#ifdef SYS_memfd_create
+
+static void
+check_memfd_syscall(void)
+{
+	long fd = syscall_no_intercept(SYS_memfd_create, "check", 0);
+	if (fd >= 0) {
+		is_memfd_syscall_available = true;
+		syscall_no_intercept(SYS_close, fd);
+	}
+}
+
+#else
+
+#define SYS_memfd_create 0
+#define check_memfd_syscall()
+
+#endif
+
+/*
+ * acquire_new_fd - grab a new file descriptor from the kernel
+ */
+static long
+acquire_new_fd(const char *path)
+{
+	long fd;
+
+	if (is_memfd_syscall_available)
+		fd = syscall_no_intercept(SYS_memfd_create, path, 0);
+	else
+		fd = syscall_no_intercept(SYS_open, "/dev/null", O_RDONLY);
+
+	if (fd > PMEMFILE_MAX_FD) {
+		syscall_no_intercept(SYS_close, fd);
+		return -ENFILE;
+	}
+
+	return fd;
 }
 
 static __thread bool reenter = false;
@@ -212,6 +263,7 @@ pmemfile_preload_constructor(void)
 	if (!libc_hook_in_process_allowed())
 		return;
 
+	check_memfd_syscall();
 	log_init(getenv("PMEMFILE_PRELOAD_LOG"),
 			getenv("PMEMFILE_PRELOAD_LOG_TRUNC"));
 
@@ -1017,7 +1069,7 @@ hook(long syscall_number,
 		util_rwlock_wrlock(&fd_lock);
 
 	if (syscall_has_fd_first_arg[syscall_number] &&
-	    !fd_pool_has_allocated(arg0)) {
+	    !is_fd_in_table(arg0)) {
 		/*
 		 * shortcut for write, read, and such so this check doesn't
 		 * need to be copy-pasted into them
@@ -1045,7 +1097,7 @@ hook(long syscall_number,
 static long
 hook_close(long fd)
 {
-	fd_pool_release_fd(fd);
+	(void) syscall_no_intercept(SYS_close, fd);
 
 	pmemfile_close(fd_table[fd].pool->pool, fd_table[fd].file);
 
@@ -1221,7 +1273,7 @@ hook_fchdir(long fd)
 
 	util_rwlock_wrlock(&pmem_cwd_lock);
 
-	if (fd_pool_has_allocated(fd)) {
+	if (is_fd_in_table(fd)) {
 		struct fd_association *where = fd_table + fd;
 		if (pmemfile_fchdir(where->pool->pool, where->file) == 0) {
 			cwd_pool = where->pool;
@@ -1585,7 +1637,7 @@ hook_openat(struct fd_desc at, long arg0, long flags, long mode)
 		    where.at.kernel_fd, where.path, flags, mode);
 
 	/* The fd to represent the pmem resident file for the application */
-	long fd = fd_pool_fetch_new_fd();
+	long fd = acquire_new_fd(path_arg);
 
 	if (fd < 0) { /* error while trying to allocate a new fd */
 		return fd;
@@ -1611,7 +1663,7 @@ hook_openat(struct fd_desc at, long arg0, long flags, long mode)
 			fd_table[fd].file = file;
 			return fd;
 		} else {
-			fd_pool_release_fd(fd);
+			(void) syscall_no_intercept(SYS_close, fd);
 			return check_errno(-errno);
 		}
 	}
@@ -1850,10 +1902,10 @@ hook_fchownat(struct fd_desc at, const char *path,
 static long
 hook_sendfile(long out_fd, long in_fd, off_t *offset, size_t count)
 {
-	if (fd_pool_has_allocated(out_fd))
+	if (is_fd_in_table(out_fd))
 		return check_errno(-ENOTSUP);
 
-	if (fd_pool_has_allocated(in_fd))
+	if (is_fd_in_table(in_fd))
 		return check_errno(-ENOTSUP);
 
 	return syscall_no_intercept(SYS_sendfile, out_fd, in_fd, offset, count);
@@ -1922,10 +1974,10 @@ static long
 hook_splice(long fd_in, loff_t *off_in, long fd_out,
 			loff_t *off_out, size_t len, unsigned flags)
 {
-	if (fd_pool_has_allocated(fd_out))
+	if (is_fd_in_table(fd_out))
 		return check_errno(-ENOTSUP);
 
-	if (fd_pool_has_allocated(fd_in))
+	if (is_fd_in_table(fd_in))
 		return check_errno(-ENOTSUP);
 
 	return syscall_no_intercept(SYS_splice, fd_in, off_in, fd_out, off_out,
@@ -1995,10 +2047,10 @@ static long
 hook_copy_file_range(long fd_in, loff_t *off_in, long fd_out,
 			loff_t *off_out, size_t len, unsigned flags)
 {
-	if (fd_pool_has_allocated(fd_out))
+	if (is_fd_in_table(fd_out))
 		return check_errno(-ENOTSUP);
 
-	if (fd_pool_has_allocated(fd_in))
+	if (is_fd_in_table(fd_in))
 		return check_errno(-ENOTSUP);
 
 	return syscall_no_intercept(SYS_copy_file_range,

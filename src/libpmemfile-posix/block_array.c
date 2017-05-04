@@ -35,6 +35,7 @@
 #include "inode.h"
 #include "internal.h"
 #include "out.h"
+#include "block_array.h"
 
 static void
 update_first_block_info(struct pmemfile_vinode *vinode)

@@ -153,9 +153,17 @@ inode_map_free(struct pmemfile_inode_map *c)
 	for (unsigned i = 0; i < c->sz; ++i) {
 		struct inode_map_bucket *bucket = &c->buckets[i];
 
-		for (unsigned j = 0; j < BUCKET_SIZE; ++j)
-			if (bucket->arr[j].vinode)
+		for (unsigned j = 0; j < BUCKET_SIZE; ++j) {
+			struct pmemfile_vinode *vinode = bucket->arr[j].vinode;
+			if (vinode) {
+#ifdef DEBUG
+				FATAL("memory leak %s", vinode->path ?
+						vinode->path : "unknown path");
+#else
 				FATAL("memory leak");
+#endif
+			}
+		}
 	}
 
 	os_rwlock_destroy(&c->rwlock);

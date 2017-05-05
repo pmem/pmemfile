@@ -1057,6 +1057,82 @@ TEST_F(dirs, rename_noreplace)
 }
 
 static bool
+validate_nlink(PMEMfilepool *pfp, const char *path, pmemfile_nlink_t nlink)
+{
+	pmemfile_stat_t buf;
+	if (pmemfile_lstat(pfp, path, &buf)) {
+		ADD_FAILURE() << strerror(errno);
+		return false;
+	}
+
+	EXPECT_EQ(nlink, buf.st_nlink);
+	if (nlink != buf.st_nlink)
+		return false;
+
+	return true;
+}
+
+TEST_F(dirs, rename_exchange)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir2", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir2/dir3", 0755), 0);
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/f1", 0, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir2/dir3/f2", 0, 0644));
+	ASSERT_EQ(pmemfile_symlink(pfp, "/dir1", "/dirX"), 0);
+
+	/*
+	 * Now:
+	 *  / is a dir (links: . .. /dir1/.. /dir2/..)
+	 *  /dir1 is a dir (links: /dir1 /dir1/.)
+	 *  /dir2 is a dir (links: /dir2 /dir2/. /dir2/dir3/..)
+	 *  /dir2/dir3 is a dir (links: /dir2/dir3 /dir2/dir3/.)
+	 *  /dirX is a symlink to /dir1 (links: /dirX)
+	 */
+
+	ASSERT_TRUE(validate_nlink(pfp, "/", 4));
+	ASSERT_TRUE(validate_nlink(pfp, "/dir1/.", 2));
+	ASSERT_TRUE(validate_nlink(pfp, "/dir2/.", 3));
+	ASSERT_TRUE(validate_nlink(pfp, "/dir2/dir3/.", 2));
+	ASSERT_TRUE(validate_nlink(pfp, "/dirX/.", 2));
+
+	ASSERT_EQ(pmemfile_renameat2(pfp, NULL, "/dir2/dir3", NULL, "/dirX",
+				     PMEMFILE_RENAME_EXCHANGE),
+		  0)
+		<< strerror(errno);
+
+	/*
+	 * Now:
+	 *  / is a dir (links: . .. /dir1/.. /dir2/.. /dirX/..)
+	 *  /dir1 is a dir (links: /dir1 /dir1/.)
+	 *  /dir2 is a dir (links: /dir2 /dir2/.)
+	 *  /dir2/dir3 is a symlink to /dir1 (links: /dir2/dir3)
+	 *  /dirX is a dir (links: /dirX /dirX/.)
+	 */
+
+	pmemfile_stat_t buf;
+	ASSERT_EQ(pmemfile_lstat(pfp, "/dir2/dir3", &buf), 0);
+	ASSERT_TRUE(PMEMFILE_S_ISLNK(buf.st_mode));
+	ASSERT_EQ(pmemfile_lstat(pfp, "/dirX", &buf), 0);
+	ASSERT_TRUE(PMEMFILE_S_ISDIR(buf.st_mode));
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir2/dir3/f2", &buf), -1);
+	EXPECT_EQ(errno, ENOENT);
+	ASSERT_EQ(pmemfile_stat(pfp, "/dirX/f2", &buf), 0);
+
+	ASSERT_TRUE(validate_nlink(pfp, "/", 5));
+	ASSERT_TRUE(validate_nlink(pfp, "/dir1/.", 2));
+	ASSERT_TRUE(validate_nlink(pfp, "/dir2/.", 2));
+	ASSERT_TRUE(validate_nlink(pfp, "/dir2/dir3/.", 2));
+	ASSERT_TRUE(validate_nlink(pfp, "/dirX/.", 2));
+
+	ASSERT_EQ(pmemfile_renameat2(pfp, NULL, "/dir2", NULL, "/dir2/dir3",
+				     PMEMFILE_RENAME_EXCHANGE),
+		  -1);
+	EXPECT_EQ(errno, EINVAL);
+}
+
+static bool
 is_owned(PMEMfilepool *pfp, const char *path, pmemfile_uid_t owner)
 {
 	pmemfile_stat_t st;

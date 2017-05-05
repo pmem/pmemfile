@@ -1341,13 +1341,7 @@ _pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	dirent = NULL;
 	os_rwlock_unlock(&vparent->rwlock);
 
-	if (vparent < vdir) {
-		os_rwlock_wrlock(&vparent->rwlock);
-		os_rwlock_wrlock(&vdir->rwlock);
-	} else {
-		os_rwlock_wrlock(&vdir->rwlock);
-		os_rwlock_wrlock(&vparent->rwlock);
-	}
+	vinode_wrlock2(vparent, vdir);
 
 	/* another thread may have modified vparent, refresh */
 	dirent = vinode_lookup_dirent_by_name_locked(pfp, vparent,

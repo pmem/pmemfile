@@ -626,6 +626,119 @@ inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 }
 
 /*
+ * vinode_rdlock2 -- take READ locks on specified inodes in always
+ * the same order
+ */
+void
+vinode_rdlock2(struct pmemfile_vinode *v1, struct pmemfile_vinode *v2)
+{
+	if (v1 == v2)
+		os_rwlock_rdlock(&v2->rwlock);
+	else if ((uintptr_t)v1 < (uintptr_t)v2) {
+		os_rwlock_rdlock(&v1->rwlock);
+		os_rwlock_rdlock(&v2->rwlock);
+	} else {
+		os_rwlock_rdlock(&v2->rwlock);
+		os_rwlock_rdlock(&v1->rwlock);
+	}
+}
+
+/*
+ * vinode_wrlock2 -- take WRITE locks on specified inodes in always
+ * the same order
+ */
+void
+vinode_wrlock2(struct pmemfile_vinode *v1, struct pmemfile_vinode *v2)
+{
+	if (v1 == v2)
+		os_rwlock_wrlock(&v2->rwlock);
+	else if ((uintptr_t)v1 < (uintptr_t)v2) {
+		os_rwlock_wrlock(&v1->rwlock);
+		os_rwlock_wrlock(&v2->rwlock);
+	} else {
+		os_rwlock_wrlock(&v2->rwlock);
+		os_rwlock_wrlock(&v1->rwlock);
+	}
+}
+
+/*
+ * vinode_unlock2 -- drop locks on specified inodes
+ */
+void
+vinode_unlock2(struct pmemfile_vinode *v1, struct pmemfile_vinode *v2)
+{
+	if (v1 == v2) {
+		os_rwlock_unlock(&v1->rwlock);
+	} else {
+		os_rwlock_unlock(&v1->rwlock);
+		os_rwlock_unlock(&v2->rwlock);
+	}
+}
+
+/*
+ * vinode_cmp -- compares 2 inodes
+ */
+static int
+vinode_cmp(const void *v1, const void *v2)
+{
+	return (int)((intptr_t)*(void **)v1 - (intptr_t)*(void **)v2);
+}
+
+/*
+ * vinode_in_array -- returns true when vinode is already in specified array
+ */
+static bool
+vinode_in_array(const struct pmemfile_vinode *vinode,
+		struct pmemfile_vinode * const *arr,
+		size_t size)
+{
+	for (size_t i = 0; i < size; ++i)
+		if (arr[i] == vinode)
+			return true;
+	return false;
+}
+
+/*
+ * vinode_wrlock4 -- take up to 4 WRITE locks on specified inodes in always
+ * the same order
+ */
+void
+vinode_wrlock4(struct pmemfile_vinode *v[], size_t *N,
+		struct pmemfile_vinode *v1,
+		struct pmemfile_vinode *v2,
+		struct pmemfile_vinode *v3,
+		struct pmemfile_vinode *v4)
+{
+	memset(v, 0, 4 * sizeof(v[0]));
+	size_t n = 0;
+	v[n++] = v1;
+	if (v2 && !vinode_in_array(v2, v, n))
+		v[n++] = v2;
+	if (v3 && !vinode_in_array(v3, v, n))
+		v[n++] = v3;
+	if (v4 && !vinode_in_array(v4, v, n))
+		v[n++] = v4;
+
+	qsort(v, n, sizeof(v[0]), vinode_cmp);
+
+	/* take all locks in order of increasing addresses */
+	for (size_t i = 0; i < n; ++i)
+		os_rwlock_wrlock(&v[i]->rwlock);
+
+	*N = n;
+}
+
+/*
+ * vinode_unlockN -- drop N locks on specified inodes
+ */
+void
+vinode_unlockN(struct pmemfile_vinode *v[], size_t N)
+{
+	for (size_t i = 0; i < N; ++i)
+		os_rwlock_unlock(&v[i]->rwlock);
+}
+
+/*
  * pmemfile_time_to_timespec -- convert between pmemfile_time and timespec
  */
 static inline pmemfile_timespec_t

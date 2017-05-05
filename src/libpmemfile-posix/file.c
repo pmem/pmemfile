@@ -53,23 +53,6 @@
 #include "pool.h"
 #include "util.h"
 
-static int
-vinode_cmp(const void *v1, const void *v2)
-{
-	return (int)((intptr_t)*(void **)v1 - (intptr_t)*(void **)v2);
-}
-
-static bool
-vinode_in_array(const struct pmemfile_vinode *vinode,
-		struct pmemfile_vinode * const *arr,
-		size_t size)
-{
-	for (size_t i = 0; i < size; ++i)
-		if (arr[i] == vinode)
-			return true;
-	return false;
-}
-
 /*
  * is_tmpfile -- returns true if "flags" contains O_TMPFILE flag
  *
@@ -901,13 +884,7 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	dirent = NULL;
 	os_rwlock_unlock(&vparent->rwlock);
 
-	if (vparent < vinode) {
-		os_rwlock_wrlock(&vparent->rwlock);
-		os_rwlock_wrlock(&vinode->rwlock);
-	} else {
-		os_rwlock_wrlock(&vinode->rwlock);
-		os_rwlock_wrlock(&vparent->rwlock);
-	}
+	vinode_wrlock2(vparent, vinode);
 
 	/* another thread may have modified vparent, refresh */
 	dirent = vinode_lookup_dirent_by_name_locked(pfp, vparent,
@@ -1216,15 +1193,7 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	struct pmemfile_vinode *src_parent = src.vinode;
 	struct pmemfile_vinode *dst_parent = dst.vinode;
 
-	if (src_parent == dst_parent)
-		os_rwlock_rdlock(&dst_parent->rwlock);
-	else if (src_parent < dst_parent) {
-		os_rwlock_rdlock(&src_parent->rwlock);
-		os_rwlock_rdlock(&dst_parent->rwlock);
-	} else {
-		os_rwlock_rdlock(&dst_parent->rwlock);
-		os_rwlock_rdlock(&src_parent->rwlock);
-	}
+	vinode_rdlock2(src_parent, dst_parent);
 
 	struct pmemfile_dirent *src_dirent =
 			vinode_lookup_dirent_by_name_locked(pfp, src_parent,
@@ -1232,13 +1201,7 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	if (!src_dirent) {
 		error = errno;
 
-		if (src_parent == dst_parent)
-			os_rwlock_unlock(&dst_parent->rwlock);
-		else {
-			os_rwlock_unlock(&src_parent->rwlock);
-			os_rwlock_unlock(&dst_parent->rwlock);
-		}
-
+		vinode_unlock2(dst_parent, src_parent);
 		goto end_unlocked;
 	}
 
@@ -1266,31 +1229,14 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	src_dirent = NULL;
 	dst_dirent = NULL;
 
-	if (src_parent == dst_parent)
-		os_rwlock_unlock(&dst_parent->rwlock);
-	else {
-		os_rwlock_unlock(&src_parent->rwlock);
-		os_rwlock_unlock(&dst_parent->rwlock);
-	}
+	vinode_unlock2(src_parent, dst_parent);
 
 	/* sort all locks */
 	struct pmemfile_vinode *vinodes[4];
-	size_t vinodes_num = 0;
-
-	memset(vinodes, 0, sizeof(vinodes));
-	vinodes[vinodes_num++] = src_parent;
-	if (!vinode_in_array(dst_parent, vinodes, vinodes_num))
-		vinodes[vinodes_num++] = dst_parent;
-	if (!vinode_in_array(src_vinode, vinodes, vinodes_num))
-		vinodes[vinodes_num++] = src_vinode;
-	if (dst_vinode && !vinode_in_array(dst_vinode, vinodes, vinodes_num))
-		vinodes[vinodes_num++] = dst_vinode;
-
-	qsort(vinodes, vinodes_num, sizeof(vinodes[0]), vinode_cmp);
-
-	/* take all locks in order of increasing addresses */
-	for (size_t i = 0; i < vinodes_num; ++i)
-		os_rwlock_wrlock(&vinodes[i]->rwlock);
+	size_t vinodes_num;
+	vinode_wrlock4(vinodes, &vinodes_num,
+			src_parent, src_vinode,
+			dst_parent, dst_vinode);
 
 	/* another thread may have modified [src|dst]_parent, refresh */
 	src_dirent = vinode_lookup_dirent_by_name_locked(pfp, src_parent,
@@ -1362,8 +1308,7 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	}
 
 end_unlock:
-	for (size_t i = 0; i < vinodes_num; ++i)
-		os_rwlock_unlock(&vinodes[i]->rwlock);
+	vinode_unlockN(vinodes, vinodes_num);
 
 end_unlocked:
 	if (error == 0 && !restart) {

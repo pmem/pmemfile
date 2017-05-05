@@ -1232,11 +1232,6 @@ vinode_rename(PMEMfilepool *pfp,
 	int error = 0;
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		/*
-		 * XXX, when src dir == dst dir we can just update dirent,
-		 * without linking and unlinking
-		 */
-
 		if (dst_dirent) {
 			if (vinode_is_dir(dst_vinode)) {
 				vinode_unlink_dir(pfp, dst_parent, dst_dirent,
@@ -1252,14 +1247,32 @@ vinode_rename(PMEMfilepool *pfp,
 
 		struct pmemfile_time t;
 		file_get_time(&t);
-		vinode_add_dirent(pfp, dst_parent, new_name, new_name_len,
-				src_vinode, t);
 
-		vinode_unlink_file(pfp, src_parent, src_dirent, src_vinode);
+		if (src_parent == dst_parent) {
+			/* optimized rename */
+			pmemobj_tx_add_range_direct(src_dirent->name,
+					new_name_len + 1);
 
-		if (vinode_is_dir(src_vinode) && src_parent != dst_parent)
-			vinode_update_parent(pfp, src_vinode, src_parent,
-					dst_parent);
+			strncpy(src_dirent->name, new_name, new_name_len);
+			src_dirent->name[new_name_len] = '\0';
+
+			/*
+			 * From "stat" man page:
+			 * "st_mtime of a directory is changed by the creation
+			 * or deletion of files in that directory."
+			 */
+			TX_SET_DIRECT(src_parent->inode, mtime, t);
+		} else {
+			vinode_add_dirent(pfp, dst_parent, new_name,
+					new_name_len, src_vinode, t);
+
+			vinode_unlink_file(pfp, src_parent, src_dirent,
+					src_vinode);
+
+			if (vinode_is_dir(src_vinode))
+				vinode_update_parent(pfp, src_vinode,
+						src_parent, dst_parent);
+		}
 	} TX_ONABORT {
 		error = errno;
 	} TX_END

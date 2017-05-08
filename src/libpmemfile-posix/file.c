@@ -961,6 +961,11 @@ pmemfile_unlink(PMEMfilepool *pfp, const char *pathname)
 	return pmemfile_unlinkat(pfp, PMEMFILE_AT_CWD, pathname, 0);
 }
 
+/*
+ * vinode_exchange -- swaps directory entries
+ *
+ * Must NOT be called in transaction.
+ */
 static int
 vinode_exchange(PMEMfilepool *pfp,
 		struct pmemfile_path_info *src,
@@ -969,6 +974,7 @@ vinode_exchange(PMEMfilepool *pfp,
 		struct pmemfile_dirent_info *dst_info)
 {
 	int error = 0;
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
 
 	bool src_is_dir = vinode_is_dir(src_info->vinode);
 	bool dst_is_dir = vinode_is_dir(dst_info->vinode);
@@ -1042,6 +1048,11 @@ vinode_exchange(PMEMfilepool *pfp,
 	return error;
 }
 
+/*
+ * vinode_rename -- renames src/src_info to dst/dst_info
+ *
+ * Must NOT be called in transaction.
+ */
 static int
 vinode_rename(PMEMfilepool *pfp,
 		struct pmemfile_path_info *src,
@@ -1051,6 +1062,7 @@ vinode_rename(PMEMfilepool *pfp,
 		const char *new_path)
 {
 	int error = 0;
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
 
 	size_t new_name_len = component_length(dst->remaining);
 

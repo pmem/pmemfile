@@ -963,9 +963,9 @@ pmemfile_unlink(PMEMfilepool *pfp, const char *pathname)
 
 static int
 vinode_exchange(PMEMfilepool *pfp,
-		struct pmemfile_vinode *src_parent,
+		struct pmemfile_path_info *src,
 		struct pmemfile_dirent_info *src_info,
-		struct pmemfile_vinode *dst_parent,
+		struct pmemfile_path_info *dst,
 		struct pmemfile_dirent_info *dst_info)
 {
 	int error = 0;
@@ -986,21 +986,21 @@ vinode_exchange(PMEMfilepool *pfp,
 		 * If both are regular files or have the same parent, then
 		 * we don't have to do anything.
 		 */
-		if ((src_is_dir || dst_is_dir) && src_parent != dst_parent) {
+		if ((src_is_dir || dst_is_dir) && src->vinode != dst->vinode) {
 			/*
 			 * If only one of them is a directory, then we have to
 			 * update both parent's link count.
 			 */
 			if (src_is_dir != dst_is_dir) {
-				TX_ADD_DIRECT(&src_parent->inode->nlink);
-				TX_ADD_DIRECT(&dst_parent->inode->nlink);
+				TX_ADD_DIRECT(&src->vinode->inode->nlink);
+				TX_ADD_DIRECT(&dst->vinode->inode->nlink);
 
 				if (src_is_dir) {
-					src_parent->inode->nlink--;
-					dst_parent->inode->nlink++;
+					src->vinode->inode->nlink--;
+					dst->vinode->inode->nlink++;
 				} else {
-					src_parent->inode->nlink++;
-					dst_parent->inode->nlink--;
+					src->vinode->inode->nlink++;
+					dst->vinode->inode->nlink--;
 				}
 			}
 
@@ -1011,8 +1011,8 @@ vinode_exchange(PMEMfilepool *pfp,
 					vinode_lookup_dirent_by_name_locked(pfp,
 						src_info->vinode, "..", 2);
 				TX_ADD_DIRECT(&dirent->inode);
-				dirent->inode = dst_parent->tinode;
-				src_info->vinode->parent = dst_parent;
+				dirent->inode = dst->vinode->tinode;
+				src_info->vinode->parent = dst->vinode;
 			}
 
 			if (dst_is_dir) {
@@ -1020,15 +1020,15 @@ vinode_exchange(PMEMfilepool *pfp,
 					vinode_lookup_dirent_by_name_locked(pfp,
 						dst_info->vinode, "..", 2);
 				TX_ADD_DIRECT(&dirent->inode);
-				dirent->inode = src_parent->tinode;
-				dst_info->vinode->parent = src_parent;
+				dirent->inode = src->vinode->tinode;
+				dst_info->vinode->parent = src->vinode;
 			}
 		}
 	} TX_ONABORT {
 		error = errno;
 	} TX_END
 
-	if (!error && src_parent != dst_parent) {
+	if (!error && src->vinode != dst->vinode) {
 		if (src_is_dir) {
 			vinode_ref(pfp, src_info->vinode->parent);
 			vinode_unref(pfp, src_oldparent);
@@ -1044,25 +1044,25 @@ vinode_exchange(PMEMfilepool *pfp,
 
 static int
 vinode_rename(PMEMfilepool *pfp,
-		struct pmemfile_vinode *src_parent,
+		struct pmemfile_path_info *src,
 		struct pmemfile_dirent_info *src_info,
-		struct pmemfile_vinode *dst_parent,
+		struct pmemfile_path_info *dst,
 		struct pmemfile_dirent_info *dst_info,
-		const char *new_path,
-		const char *new_name,
-		size_t new_name_len)
+		const char *new_path)
 {
 	int error = 0;
+
+	size_t new_name_len = component_length(dst->remaining);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (dst_info->dirent) {
 			if (vinode_is_dir(dst_info->vinode)) {
-				vinode_unlink_dir(pfp, dst_parent,
+				vinode_unlink_dir(pfp, dst->vinode,
 						dst_info->dirent,
 						dst_info->vinode,
 						new_path);
 			} else {
-				vinode_unlink_file(pfp, dst_parent,
+				vinode_unlink_file(pfp, dst->vinode,
 						dst_info->dirent,
 						dst_info->vinode);
 			}
@@ -1074,12 +1074,13 @@ vinode_rename(PMEMfilepool *pfp,
 		struct pmemfile_time t;
 		file_get_time(&t);
 
-		if (src_parent == dst_parent) {
+		if (src->vinode == dst->vinode) {
 			/* optimized rename */
 			pmemobj_tx_add_range_direct(src_info->dirent->name,
 					new_name_len + 1);
 
-			strncpy(src_info->dirent->name, new_name, new_name_len);
+			strncpy(src_info->dirent->name, dst->remaining,
+					new_name_len);
 			src_info->dirent->name[new_name_len] = '\0';
 
 			/*
@@ -1087,25 +1088,25 @@ vinode_rename(PMEMfilepool *pfp,
 			 * "st_mtime of a directory is changed by the creation
 			 * or deletion of files in that directory."
 			 */
-			TX_SET_DIRECT(src_parent->inode, mtime, t);
+			TX_SET_DIRECT(src->vinode->inode, mtime, t);
 		} else {
-			vinode_add_dirent(pfp, dst_parent, new_name,
+			vinode_add_dirent(pfp, dst->vinode, dst->remaining,
 					new_name_len, src_info->vinode, t);
 
-			vinode_unlink_file(pfp, src_parent, src_info->dirent,
+			vinode_unlink_file(pfp, src->vinode, src_info->dirent,
 					src_info->vinode);
 
 			if (vinode_is_dir(src_info->vinode))
 				vinode_update_parent(pfp, src_info->vinode,
-						src_parent, dst_parent);
+						src->vinode, dst->vinode);
 		}
 	} TX_ONABORT {
 		error = errno;
 	} TX_END
 
-	if (error == 0 && src_parent != dst_parent &&
+	if (error == 0 && src->vinode != dst->vinode &&
 			vinode_is_dir(src_info->vinode))
-		vinode_unref(pfp, src_parent);
+		vinode_unref(pfp, src->vinode);
 
 	return error;
 }
@@ -1164,8 +1165,6 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	size_t src_namelen = component_length(src.remaining);
 	size_t dst_namelen = component_length(dst.remaining);
 
-	struct pmemfile_vinode *src_parent = src.vinode;
-	struct pmemfile_vinode *dst_parent = dst.vinode;
 	struct pmemfile_vinode *vinodes[4];
 	size_t vinodes_num;
 
@@ -1185,12 +1184,12 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 		goto end;
 	}
 
-	if (!_vinode_can_access(&cred, src_parent, PFILE_WANT_WRITE)) {
+	if (!_vinode_can_access(&cred, src.vinode, PFILE_WANT_WRITE)) {
 		error = EACCES;
 		goto end_unlock;
 	}
 
-	if (!_vinode_can_access(&cred, dst_parent, PFILE_WANT_WRITE)) {
+	if (!_vinode_can_access(&cred, dst.vinode, PFILE_WANT_WRITE)) {
 		error = EACCES;
 		goto end_unlock;
 	}
@@ -1216,8 +1215,8 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	 * more generally, an attempt was made to make a directory
 	 * a subdirectory of itself."
 	 */
-	if (vinode_is_dir(src_info.vinode) && src_parent != dst_parent) {
-		struct pmemfile_vinode *v = dst_parent;
+	if (vinode_is_dir(src_info.vinode) && src.vinode != dst.vinode) {
+		struct pmemfile_vinode *v = dst.vinode;
 		while (v != pfp->root) {
 			if (v == src_info.vinode) {
 				error = EINVAL;
@@ -1228,11 +1227,10 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	}
 
 	if (flags & PMEMFILE_RENAME_EXCHANGE) {
-		error = vinode_exchange(pfp, src_parent, &src_info, dst_parent,
-				&dst_info);
+		error = vinode_exchange(pfp, &src, &src_info, &dst, &dst_info);
 	} else {
-		error = vinode_rename(pfp, src_parent, &src_info, dst_parent,
-				&dst_info, newpath, dst.remaining, dst_namelen);
+		error = vinode_rename(pfp, &src, &src_info, &dst, &dst_info,
+				newpath);
 	}
 
 end_unlock:
@@ -1243,12 +1241,12 @@ end_unlock:
 
 		if (flags & PMEMFILE_RENAME_EXCHANGE) {
 			vinode_clear_debug_path(pfp, dst_info.vinode);
-			vinode_set_debug_path(pfp, src_parent, dst_info.vinode,
+			vinode_set_debug_path(pfp, src.vinode, dst_info.vinode,
 					src.remaining, src_namelen);
 		}
 
 		vinode_clear_debug_path(pfp, src_info.vinode);
-		vinode_set_debug_path(pfp, dst_parent, src_info.vinode,
+		vinode_set_debug_path(pfp, dst.vinode, src_info.vinode,
 				dst.remaining, dst_namelen);
 	}
 

@@ -1351,6 +1351,138 @@ race:
 	return 1;
 }
 
+/*
+ * lock_parents_and_children -- resolve 2 files with respect to parent
+ * directories and lock all 4 inodes in write mode
+ *
+ * Returns 0 on success.
+ * Returns negated errno when failed.
+ * Returns 1 when there was a race.
+ */
+int
+lock_parents_and_children(PMEMfilepool *pfp,
+		struct pmemfile_path_info *src,
+		struct pmemfile_dirent_info *src_info,
+
+		struct pmemfile_path_info *dst,
+		struct pmemfile_dirent_info *dst_info,
+
+		struct pmemfile_vinode *vinodes[4],
+		size_t *vinodes_num)
+{
+	memset(src_info, 0, sizeof(*src_info));
+	memset(dst_info, 0, sizeof(*dst_info));
+
+	size_t src_namelen = component_length(src->remaining);
+	size_t dst_namelen = component_length(dst->remaining);
+
+	/* lock 2 parents in correct order */
+	vinode_rdlock2(src->vinode, dst->vinode);
+
+	/* find source file */
+	src_info->dirent = vinode_lookup_dirent_by_name_locked(pfp, src->vinode,
+				src->remaining, src_namelen);
+	if (!src_info->dirent) {
+		int error = errno;
+
+		vinode_unlock2(src->vinode, dst->vinode);
+
+		return -error;
+	}
+
+	/* get the vinode for found source file */
+	src_info->vinode = inode_ref(pfp, src_info->dirent->inode, src->vinode,
+					NULL, src->remaining, src_namelen);
+	if (!src_info->vinode) {
+		int error = errno;
+
+		vinode_unlock2(src->vinode, dst->vinode);
+
+		return -error;
+	}
+
+	/* find destination file (it may not exist) */
+	dst_info->dirent = vinode_lookup_dirent_by_name_locked(pfp, dst->vinode,
+					dst->remaining, dst_namelen);
+	if (dst_info->dirent) {
+		/* if file exists get the vinode for it */
+		dst_info->vinode = inode_ref(pfp, dst_info->dirent->inode,
+				dst->vinode, NULL, dst->remaining, dst_namelen);
+		if (!dst_info->vinode) {
+			int error = errno;
+
+			vinode_unlock2(src->vinode, dst->vinode);
+
+			vinode_unref(pfp, src_info->vinode);
+			src_info->vinode = NULL;
+
+			return -error;
+		}
+	}
+
+	/* drop the locks on parent */
+	vinode_unlock2(src->vinode, dst->vinode);
+
+	/*
+	 * and now lock all 4 inodes (both parents and children) in correct
+	 * order
+	 */
+	vinode_wrlock4(vinodes, vinodes_num,
+			src->vinode, src_info->vinode,
+			dst->vinode, dst_info->vinode);
+
+	/* another thread may have modified [src|dst]_parent, refresh */
+	src_info->dirent = vinode_lookup_dirent_by_name_locked(pfp, src->vinode,
+			src->remaining, src_namelen);
+
+	dst_info->dirent = vinode_lookup_dirent_by_name_locked(pfp, dst->vinode,
+			dst->remaining, dst_namelen);
+
+	/* now we have to validate the files didn't change */
+
+	/* source file no longer exists */
+	if (!src_info->dirent)
+		goto race;
+
+	/* another thread replaced the source file with another file */
+	if (!TOID_EQUALS(src_info->dirent->inode, src_info->vinode->tinode))
+		goto race;
+
+	/* destination file didn't exist before, now it exists */
+	if (dst_info->vinode == NULL && dst_info->dirent != NULL)
+		goto race;
+
+	/* destination file existed before */
+	if (dst_info->vinode != NULL) {
+		/* but now it doesn't */
+		if (dst_info->dirent == NULL)
+			goto race;
+
+		/* but now path points to another file */
+		if (!TOID_EQUALS(dst_info->dirent->inode,
+				dst_info->vinode->tinode))
+			goto race;
+	}
+
+	return 0;
+
+race:
+	vinode_unlockN(vinodes, *vinodes_num);
+
+	vinode_unref(pfp, src_info->vinode);
+	src_info->vinode = NULL;
+
+	if (dst_info->vinode) {
+		vinode_unref(pfp, dst_info->vinode);
+		dst_info->vinode = NULL;
+	}
+
+	src_info->dirent = NULL;
+	dst_info->dirent = NULL;
+
+	return 1;
+}
+
 int
 _pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		const char *path)

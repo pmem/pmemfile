@@ -133,4 +133,13 @@ pmemfile_dir_size(TOID(struct pmemfile_dir) dir)
 	return page_rounddown(pmemobj_alloc_usable_size(dir.oid));
 }
 
+struct pmemfile_dirent_info {
+	struct pmemfile_vinode *vinode;
+	struct pmemfile_dirent *dirent;
+};
+
+int lock_parent_and_child(PMEMfilepool *pfp,
+		struct pmemfile_path_info *path,
+		struct pmemfile_dirent_info *info);
+
 #endif

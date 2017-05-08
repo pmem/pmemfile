@@ -33,6 +33,7 @@ include(${SRC_DIR}/../posix-helpers.cmake)
 
 setup()
 
-execute(${TEST_EXECUTABLE} ${ops})
+execute(${TEST_EXECUTABLE} ${ops} --gtest_filter=mt.open_close_create_unlink)
+execute(${TEST_EXECUTABLE} ${ops} --gtest_filter=mt.pread)
 
 cleanup()

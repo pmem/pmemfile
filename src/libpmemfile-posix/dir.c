@@ -1206,6 +1206,12 @@ pmemfile_mkdir(PMEMfilepool *pfp, const char *path, pmemfile_mode_t mode)
 	return pmemfile_mkdirat(pfp, PMEMFILE_AT_CWD, path, mode);
 }
 
+/*
+ * vinode_unlink_dir -- unlinks directory "vdir" from directory "vparent"
+ * assuming "dirent" is used for storing this entry
+ *
+ * Must be called in transaction.
+ */
 void
 vinode_unlink_dir(PMEMfilepool *pfp,
 		struct pmemfile_vinode *vparent,
@@ -1216,6 +1222,9 @@ vinode_unlink_dir(PMEMfilepool *pfp,
 	struct pmemfile_inode *iparent = vparent->inode;
 	struct pmemfile_inode *idir = vdir->inode;
 	struct pmemfile_dir *ddir = &idir->file_data.dir;
+
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
 	if (!TOID_IS_NULL(ddir->next)) {
 		LOG(LUSR, "directory %s not empty", path);
 		pmemfile_tx_abort(ENOTEMPTY);

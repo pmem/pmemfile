@@ -59,7 +59,17 @@ if [[ -z "$HOST_WORKDIR" ]]; then
 	exit 1
 fi
 
-TRAVIS_COMMIT_RANGE=
+# Disable rebuilding of docker image for PR between development and master branch.
+# XXX remove once pmemfile is merged to master
+if [ $TRAVIS_REPO_SLUG = "${GITHUB_REPO}" -a $TRAVIS_BRANCH = "master" -a $TRAVIS_EVENT_TYPE = "pull_request" ]; then
+	TRAVIS_COMMIT_RANGE=
+fi
+if [ -n "$TRAVIS_COMMIT_RANGE" ]; then
+	if ! git rev-list $TRAVIS_COMMIT_RANGE; then
+		TRAVIS_COMMIT_RANGE=
+	fi
+fi
+
 # Find all the commits for the current build
 if [[ -n "$TRAVIS_COMMIT_RANGE" ]]; then
 	commits=$(git rev-list $TRAVIS_COMMIT_RANGE)

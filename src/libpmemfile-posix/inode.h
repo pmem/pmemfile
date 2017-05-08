@@ -197,28 +197,6 @@ void vinode_snapshot(struct pmemfile_vinode *vinode);
 void vinode_restore_on_abort(struct pmemfile_vinode *vinode);
 
 
-/*
- * block_list_insert_after -- allocates new block metadata,
- * and inserts it into the linked list of
- * blocks. Does not allocate block->data.
- *
- * Returns the address of the new block metadata.
- */
-struct pmemfile_block *
-block_list_insert_after(struct pmemfile_vinode *vinode,
-			struct pmemfile_block *prev);
-
-/*
- * Removes the block from the linked list of blocks. Deallocates
- * block->data if set, and deallocates the block metadata.
- *
- * Returns a pointer to the preceding block metadata - the one that
- * was the previous block before deallocating.
- */
-struct pmemfile_block *
-block_list_remove(struct pmemfile_vinode *vinode,
-		struct pmemfile_block *block);
-
 static inline TOID(struct pmemfile_block)
 blockp_as_oid(struct pmemfile_block *block)
 {

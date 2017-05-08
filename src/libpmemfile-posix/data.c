@@ -45,6 +45,7 @@
 #include "util.h"
 #include "valgrind_internal.h"
 #include "ctree.h"
+#include "block_array.h"
 
 /*
  * expand_to_full_pages

@@ -185,7 +185,7 @@ main(int argc, char *argv[])
 	if (argc >= 3)
 		ops = atoi(argv[2]);
 
-	T_OUT("ops %d", ops);
+	T_OUT("ops %d\n", ops);
 
 	::testing::InitGoogleTest(&argc, argv);
 	return RUN_ALL_TESTS();

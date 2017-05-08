@@ -1555,7 +1555,7 @@ main(int argc, char *argv[])
 	if (argc >= 3)
 		ops = (size_t)atoll(argv[2]);
 
-	T_OUT("ops %zu", ops);
+	T_OUT("ops %zu\n", ops);
 
 	::testing::InitGoogleTest(&argc, argv);
 	return RUN_ALL_TESTS();

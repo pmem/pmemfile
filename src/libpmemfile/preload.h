@@ -36,6 +36,7 @@
 #include <stdbool.h>
 #include <sys/stat.h>
 #include <stddef.h>
+#include <pthread.h>
 
 struct PMEMfilepool;
 struct PMEMfile;
@@ -71,6 +72,8 @@ struct pool_description {
 	 * before in this process. Should be initialized on first use.
 	 */
 	PMEMfilepool *pool;
+
+	pthread_mutex_t lock;
 };
 
 #define RESOLVE_LAST_SLINK 1

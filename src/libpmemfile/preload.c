@@ -565,6 +565,8 @@ establish_mount_points(const char *config)
 
 		pool_desc->pool = NULL;
 
+		util_mutex_init(&pool_desc->lock);
+
 		++pool_count;
 
 		if (pool_desc->stat.st_ino == kernel_cwd_stat.st_ino) {
@@ -1351,12 +1353,17 @@ log_write(const char *fmt, ...)
 static void
 open_new_pool(struct pool_description *p)
 {
+	util_mutex_lock(&p->lock);
+
 	if (p->pool == NULL) {
-		PMEMfilepool *pfp = pmemfile_pool_open(p->poolfile_path);
-		if (pmemfile_stat(pfp, "/", &p->pmem_stat))
-			FATAL("pmemfile_stat(\"/\") failed!");
-		__atomic_store_n(&p->pool, pfp, __ATOMIC_SEQ_CST);
+		p->pool = pmemfile_pool_open(p->poolfile_path);
+		if (p->pool != NULL) {
+			if (pmemfile_stat(p->pool, "/", &p->pmem_stat))
+				FATAL("pmemfile_stat(\"/\") failed!");
+		}
 	}
+
+	util_mutex_unlock(&p->lock);
 }
 
 /*
@@ -1369,10 +1376,7 @@ lookup_pd_by_inode(struct stat *stat)
 	for (int i = 0; i < pool_count; ++i) {
 		struct pool_description *p = pools + i;
 		if (same_inode(&p->stat, stat)) {
-			PMEMfilepool *pfp;
-
-			pfp = __atomic_load_n(&p->pool, __ATOMIC_SEQ_CST);
-			if (pfp == NULL)
+			if (p->pool == NULL)
 				open_new_pool(p);
 			return p;
 		}
@@ -1391,10 +1395,7 @@ lookup_pd_by_path(const char *path)
 		 * strcmp calls
 		 */
 		if (strcmp(p->mount_point, path) == 0)  {
-			PMEMfilepool *pfp;
-
-			pfp = __atomic_load_n(&p->pool, __ATOMIC_SEQ_CST);
-			if (pfp == NULL)
+			if (p->pool == NULL)
 				open_new_pool(p);
 			return p;
 		}

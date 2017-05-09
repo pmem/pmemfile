@@ -557,6 +557,8 @@ establish_mount_points(const char *config)
 
 		pool_desc->pool = NULL;
 
+		util_mutex_init(&pool_desc->pool_open_lock);
+
 		++pool_count;
 
 		if (pool_desc->stat.st_ino == kernel_cwd_stat.st_ino) {
@@ -1343,12 +1345,18 @@ log_write(const char *fmt, ...)
 static void
 open_new_pool(struct pool_description *p)
 {
+	util_mutex_lock(&p->pool_open_lock);
+
 	if (p->pool == NULL) {
 		PMEMfilepool *pfp = pmemfile_pool_open(p->poolfile_path);
-		if (pmemfile_stat(pfp, "/", &p->pmem_stat))
-			FATAL("pmemfile_stat(\"/\") failed!");
-		__atomic_store_n(&p->pool, pfp, __ATOMIC_SEQ_CST);
+		if (pfp != NULL) {
+			if (pmemfile_stat(pfp, "/", &p->pmem_stat))
+				FATAL("pmemfile_stat(\"/\") failed!");
+			__atomic_store_n(&p->pool, pfp, __ATOMIC_RELEASE);
+		}
 	}
+
+	util_mutex_unlock(&p->pool_open_lock);
 }
 
 /*
@@ -1360,11 +1368,15 @@ lookup_pd_by_inode(struct stat *stat)
 {
 	for (int i = 0; i < pool_count; ++i) {
 		struct pool_description *p = pools + i;
-		if (same_inode(&p->stat, stat)) {
-			PMEMfilepool *pfp;
 
-			pfp = __atomic_load_n(&p->pool, __ATOMIC_SEQ_CST);
-			if (pfp == NULL)
+		/*
+		 * Note: p->stat never changes after lib initialization, thus
+		 * it is safe to read. If a non-null value is read from p->pool,
+		 * the rest of the pool_description struct must be already
+		 * initialized -- and never altered thereafter.
+		 */
+		if (same_inode(&p->stat, stat)) {
+			if (__atomic_load_n(&p->pool, __ATOMIC_ACQUIRE) == NULL)
 				open_new_pool(p);
 			return p;
 		}
@@ -1382,11 +1394,14 @@ lookup_pd_by_path(const char *path)
 		 * XXX: first compare the lengths of the two strings to avoid
 		 * strcmp calls
 		 */
+		/*
+		 * Note: p->mount_point never changes after lib initialization,
+		 * thus it is safe to read. If a non-null value is read from
+		 * p->pool, the rest of the pool_description struct must be
+		 * already initialized -- and never altered thereafter.
+		 */
 		if (strcmp(p->mount_point, path) == 0)  {
-			PMEMfilepool *pfp;
-
-			pfp = __atomic_load_n(&p->pool, __ATOMIC_SEQ_CST);
-			if (pfp == NULL)
+			if (__atomic_load_n(&p->pool, __ATOMIC_ACQUIRE) == NULL)
 				open_new_pool(p);
 			return p;
 		}

@@ -66,6 +66,8 @@
 #include "libsyscall_intercept_hook_point.h"
 #include "libpmemfile-posix.h"
 #include "util.h"
+#include "sys_util.h"
+#include "preload.h"
 
 /*
  * Some syscalls that are missing on older kernels.
@@ -90,23 +92,6 @@
 #define SYS_pwritev2 328
 #endif
 
-static pf_noreturn void
-exit_group_no_intercept(int ret)
-{
-	syscall_no_intercept(SYS_exit_group, ret);
-	__builtin_unreachable();
-}
-
-static inline void
-FATAL(const char *str)
-{
-	syscall_no_intercept(SYS_write, 2, str, strlen(str));
-	exit_group_no_intercept(128 + 7);
-}
-
-#include "sys_util.h"
-
-#include "preload.h"
 
 static int hook(long syscall_number,
 			long arg0, long arg1,

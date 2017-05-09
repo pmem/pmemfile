@@ -66,6 +66,8 @@
 #include "libsyscall_intercept_hook_point.h"
 #include "libpmemfile-posix.h"
 #include "util.h"
+#include "sys_util.h"
+#include "preload.h"
 
 /*
  * Some syscalls that are missing on older kernels.
@@ -90,23 +92,6 @@
 #define SYS_pwritev2 328
 #endif
 
-static pf_noreturn void
-exit_group_no_intercept(int ret)
-{
-	syscall_no_intercept(SYS_exit_group, ret);
-	__builtin_unreachable();
-}
-
-static inline void
-FATAL(const char *str)
-{
-	syscall_no_intercept(SYS_write, 2, str, strlen(str));
-	exit_group_no_intercept(128 + 7);
-}
-
-#include "sys_util.h"
-
-#include "preload.h"
 
 static int hook(long syscall_number,
 			long arg0, long arg1,
@@ -120,14 +105,22 @@ static bool syscall_needs_fd_wlock[0x200];
 static bool syscall_needs_pmem_cwd_rlock[0x200];
 static bool syscall_has_fd_first_arg[0x200];
 
-static pthread_rwlock_t fd_lock = PTHREAD_RWLOCK_INITIALIZER;
-
 static struct pool_description pools[0x100];
 static int pool_count;
 
 static bool is_memfd_syscall_available;
 
 #define PMEMFILE_MAX_FD 0x8000
+
+/*
+ * The associations between user visible fd numbers and
+ * pmemfile pointers. This is a global table, with a single
+ * global lock -- thus reading one fd blocks other threads from
+ * writing to other fds.
+ * XXX - improve this situation
+ */
+static struct fd_association fd_table[PMEMFILE_MAX_FD + 1];
+static pthread_rwlock_t fd_table_lock = PTHREAD_RWLOCK_INITIALIZER;
 
 /*
  * A separate place to keep track of fds used to hold mount points open, in
@@ -137,7 +130,6 @@ static bool is_memfd_syscall_available;
  */
 static bool mount_point_fds[PMEMFILE_MAX_FD + 1];
 
-static struct fd_association fd_table[PMEMFILE_MAX_FD + 1];
 
 static bool
 is_fd_in_table(long fd)
@@ -1064,9 +1056,9 @@ hook(long syscall_number,
 		util_rwlock_rdlock(&pmem_cwd_lock);
 
 	if (syscall_needs_fd_rlock[syscall_number])
-		util_rwlock_rdlock(&fd_lock);
+		util_rwlock_rdlock(&fd_table_lock);
 	else if (syscall_needs_fd_wlock[syscall_number])
-		util_rwlock_wrlock(&fd_lock);
+		util_rwlock_wrlock(&fd_table_lock);
 
 	if (syscall_has_fd_first_arg[syscall_number] &&
 	    !is_fd_in_table(arg0)) {
@@ -1084,7 +1076,7 @@ hook(long syscall_number,
 
 	if (syscall_needs_fd_rlock[syscall_number] ||
 	    syscall_needs_fd_wlock[syscall_number])
-		util_rwlock_unlock(&fd_lock);
+		util_rwlock_unlock(&fd_table_lock);
 
 	if (syscall_needs_pmem_cwd_rlock[syscall_number])
 		util_rwlock_unlock(&pmem_cwd_lock);

@@ -40,6 +40,23 @@
 #include <errno.h>
 #include <pthread.h>
 
+#include "libsyscall_intercept_hook_point.h"
+#include "util.h"
+
+static inline pf_noreturn void
+exit_group_no_intercept(int ret)
+{
+	syscall_no_intercept(SYS_exit_group, ret);
+	__builtin_unreachable();
+}
+
+static inline void
+FATAL(const char *str)
+{
+	syscall_no_intercept(SYS_write, 2, str, strlen(str));
+	exit_group_no_intercept(128 + 7);
+}
+
 /*
  * util_mutex_init -- pthread_mutex_init variant that never fails from
  * caller perspective. If pthread_mutex_init failed, this function aborts

@@ -455,22 +455,30 @@ vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 
 	while (vinode) {
 		struct pmemfile_vinode *to_unregister = NULL;
+		struct pmemfile_vinode *parent = NULL;
+
 		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-			struct pmemfile_vinode *parent = vinode->parent;
-
-			if (vinode_tx_unref(pfp, vinode))
+			if (vinode_tx_unref(pfp, vinode)) {
 				to_unregister = vinode;
-
-			if (to_unregister && vinode != pfp->root)
-				vinode = parent;
-			else
-				vinode = NULL;
-		} TX_ONCOMMIT {
-			if (to_unregister)
-				vinode_unregister_locked(pfp, to_unregister);
+				/*
+				 * We don't need to take the vinode lock to
+				 * read parent because at this point (when
+				 * ref count drops to 0) nobody should have
+				 * access to this vinode.
+				 */
+				parent = vinode->parent;
+			}
 		} TX_ONABORT {
-			FATAL("!");
+			FATAL("!vinode_unref");
 		} TX_END
+
+		if (vinode != pfp->root)
+			vinode = parent;
+		else
+			vinode = NULL;
+
+		if (to_unregister)
+			vinode_unregister_locked(pfp, to_unregister);
 	}
 
 	os_rwlock_unlock(&c->rwlock);

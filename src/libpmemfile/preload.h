@@ -36,6 +36,7 @@
 #include <stdbool.h>
 #include <sys/stat.h>
 #include <stddef.h>
+#include <pthread.h>
 
 struct PMEMfilepool;
 struct PMEMfile;
@@ -63,7 +64,14 @@ struct pool_description {
 	 */
 	struct stat stat;
 
-	struct stat pmem_stat;
+	/*
+	 * All fields above in pool_description are initialized once during
+	 * startup, and never modified later. The fields called pool, and
+	 * pmem_stat are initialized the first time the mount_point is
+	 * referenced in a path. The lock guards the initialization of
+	 * those two fields.
+	 */
+	pthread_mutex_t pool_open_lock;
 
 	/*
 	 * The pmemfile pool associated with this mount point.
@@ -71,6 +79,9 @@ struct pool_description {
 	 * before in this process. Should be initialized on first use.
 	 */
 	PMEMfilepool *pool;
+
+	/* Data about the root directory inside the pmemfile pool */
+	struct stat pmem_stat;
 };
 
 #define RESOLVE_LAST_SLINK 1

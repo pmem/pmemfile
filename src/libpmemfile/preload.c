@@ -1342,20 +1342,42 @@ log_write(const char *fmt, ...)
 	syscall_no_intercept(SYS_write, log_fd, buf, len);
 }
 
+/*
+ * open_new_pool[_under_lock] -- attempts to open a pmemfile_pool
+ * Initializes the fields called pool and pmem_stat in a pool_description
+ * struct. Does nothing if they are already initialized. The most
+ * important part of this initialization is of course calling
+ * pmemfile_pool_open.
+ *
+ * Returns:
+ *  On success: the same pointer as the argument
+ *  If the pool was already open: the same pointer as the argument
+ *  On failure: NULL pointer
+ */
+static void
+open_new_pool_under_lock(struct pool_description *p)
+{
+	PMEMfilepool *pfp;
+
+	if (p->pool != NULL)
+		return; /* already open */
+
+	if ((pfp = pmemfile_pool_open(p->poolfile_path)) == NULL)
+		return; /* failed to open */
+
+	if (pmemfile_stat(pfp, "/", &p->pmem_stat) != 0) {
+		pmemfile_pool_close(pfp);
+		return; /* stat failed */
+	}
+
+	__atomic_store_n(&p->pool, pfp, __ATOMIC_RELEASE);
+}
+
 static void
 open_new_pool(struct pool_description *p)
 {
 	util_mutex_lock(&p->pool_open_lock);
-
-	if (p->pool == NULL) {
-		PMEMfilepool *pfp = pmemfile_pool_open(p->poolfile_path);
-		if (pfp != NULL) {
-			if (pmemfile_stat(pfp, "/", &p->pmem_stat))
-				FATAL("pmemfile_stat(\"/\") failed!");
-			__atomic_store_n(&p->pool, pfp, __ATOMIC_RELEASE);
-		}
-	}
-
+	open_new_pool_under_lock(p);
 	util_mutex_unlock(&p->pool_open_lock);
 }
 

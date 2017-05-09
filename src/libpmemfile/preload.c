@@ -514,7 +514,7 @@ static const char *parse_pool_path(struct pool_description *pool,
 					const char *conf);
 static void open_mount_point(struct pool_description *pool);
 
-static void open_new_pool(struct pool_description *);
+static struct pool_description *open_new_pool(struct pool_description *);
 
 /*
  * establish_mount_points - parse the configuration, which is expected to be a
@@ -570,8 +570,7 @@ establish_mount_points(const char *config)
 		++pool_count;
 
 		if (pool_desc->stat.st_ino == kernel_cwd_stat.st_ino) {
-			open_new_pool(pool_desc);
-			if (pool_desc->pool == NULL) {
+			if (open_new_pool(pool_desc) == NULL) {
 				perror("opening pmemfile pool");
 				exit_group_no_intercept(124);
 			}
@@ -1350,14 +1349,30 @@ log_write(const char *fmt, ...)
 	syscall_no_intercept(SYS_write, log_fd, buf, len);
 }
 
-static void
+/*
+ * open_new_pool -- attempts to open a pmemfile_pool
+ * Initializes the fields called pool and pmem_stat in a pool_description
+ * struct. Does nothing if they are already initialized. The most
+ * important part of this initialization is of course calling
+ * pmemfile_pool_open.
+ *
+ * Returns:
+ *  On success: the same pointer as the argument
+ *  If the pool was already open: the same pointer as the argument
+ *  On failure: NULL pointer
+ */
+static struct pool_description *
 open_new_pool(struct pool_description *p)
 {
+	struct pool_description *ret = p;
+
 	util_mutex_lock(&p->pool_open_lock);
 
 	if (p->pool == NULL) {
 		PMEMfilepool *pfp = pmemfile_pool_open(p->poolfile_path);
-		if (pfp != NULL) {
+		if (pfp == NULL) {
+			ret = NULL;
+		} else {
 			if (pmemfile_stat(pfp, "/", &p->pmem_stat))
 				FATAL("pmemfile_stat(\"/\") failed!");
 			__atomic_store_n(&p->pool, pfp, __ATOMIC_RELEASE);
@@ -1365,6 +1380,8 @@ open_new_pool(struct pool_description *p)
 	}
 
 	util_mutex_unlock(&p->pool_open_lock);
+
+	return ret;
 }
 
 /*
@@ -1385,7 +1402,7 @@ lookup_pd_by_inode(struct stat *stat)
 		 */
 		if (same_inode(&p->stat, stat)) {
 			if (__atomic_load_n(&p->pool, __ATOMIC_ACQUIRE) == NULL)
-				open_new_pool(p);
+				return open_new_pool(p);
 			return p;
 		}
 	}
@@ -1410,7 +1427,7 @@ lookup_pd_by_path(const char *path)
 		 */
 		if (strcmp(p->mount_point, path) == 0)  {
 			if (__atomic_load_n(&p->pool, __ATOMIC_ACQUIRE) == NULL)
-				open_new_pool(p);
+				return open_new_pool(p);
 			return p;
 		}
 	}

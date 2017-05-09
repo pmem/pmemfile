@@ -46,9 +46,9 @@
  * the program.
  */
 static inline void
-util_mutex_init(pthread_mutex_t *m, const pthread_mutexattr_t *mutexattr)
+util_mutex_init(pthread_mutex_t *m)
 {
-	int tmp = pthread_mutex_init(m, mutexattr);
+	int tmp = pthread_mutex_init(m, NULL);
 	if (tmp) {
 		errno = tmp;
 		FATAL("!pthread_mutex_init");

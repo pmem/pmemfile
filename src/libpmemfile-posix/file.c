@@ -1196,6 +1196,11 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 		goto end;
 	}
 
+	if ((flags & PMEMFILE_RENAME_EXCHANGE) && !dst_info.vinode) {
+		error = ENOENT;
+		goto end_unlock;
+	}
+
 	if (!_vinode_can_access(&cred, src.vinode, PFILE_WANT_WRITE)) {
 		error = EACCES;
 		goto end_unlock;

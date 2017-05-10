@@ -1130,6 +1130,11 @@ TEST_F(dirs, rename_exchange)
 				     PMEMFILE_RENAME_EXCHANGE),
 		  -1);
 	EXPECT_EQ(errno, EINVAL);
+
+	ASSERT_EQ(pmemfile_renameat2(pfp, NULL, "/dir2", NULL, "/not_existing",
+				     PMEMFILE_RENAME_EXCHANGE),
+		  -1);
+	EXPECT_EQ(errno, ENOENT);
 }
 
 static bool

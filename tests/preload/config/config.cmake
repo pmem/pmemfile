@@ -36,14 +36,15 @@ setup()
 mkfs(${DIR}/fs 16m)
 
 execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${DIR}/mount_point)
+execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${DIR}/mount_point_wrong)
 execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${DIR}/some_dir)
 execute_process(COMMAND ln -s ../mount_point ${DIR}/some_dir/some_link)
 
 set(ENV{LD_PRELOAD} ${PRELOAD_LIB})
-set(ENV{PMEMFILE_POOLS} ${DIR}/mount_point:${DIR}/fs)
+set(ENV{PMEMFILE_POOLS} "${DIR}/mount_point:${DIR}/fs;${DIR}/mount_point_wrong:${DIR}/invalid")
 set(ENV{PMEMFILE_PRELOAD_LOG} ${BIN_DIR}/pmemfile_preload.log)
 set(ENV{INTERCEPT_LOG} ${BIN_DIR}/intercept.log)
 
-execute_expect_failure(${MAIN_EXECUTABLE} ${DIR}/some_dir/some_link/a)
+execute(${MAIN_EXECUTABLE} ${DIR}/${TEST_PATH})
 
 cleanup()

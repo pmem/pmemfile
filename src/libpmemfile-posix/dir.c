@@ -131,7 +131,7 @@ util_strndup(const char *c, size_t len)
 #endif
 
 /*
- * vinode_set_debug_path_locked -- (internal) sets full path in runtime
+ * vinode_set_debug_path_locked -- sets full path in runtime
  * structures of child_inode based on parent inode and name.
  *
  * Works only in DEBUG mode.
@@ -177,38 +177,34 @@ vinode_set_debug_path_locked(PMEMfilepool *pfp,
 }
 
 /*
- * vinode_set_debug_path -- sets full path in runtime structures
- * of child_inode based on parent inode and name.
+ * vinode_replace_debug_path -- replaces full path in runtime
+ * structures of child_inode based on parent inode and name.
+ *
+ * Works only in DEBUG mode.
  */
 void
-vinode_set_debug_path(PMEMfilepool *pfp,
+vinode_replace_debug_path(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent_vinode,
 		struct pmemfile_vinode *child_vinode,
 		const char *name,
 		size_t namelen)
 {
-	os_rwlock_wrlock(&child_vinode->rwlock);
+	vinode_wrlock2(parent_vinode, child_vinode);
+
+#ifdef DEBUG
+	free(child_vinode->path);
+	child_vinode->path = NULL;
 
 	vinode_set_debug_path_locked(pfp, parent_vinode, child_vinode, name,
 			namelen);
-
-	os_rwlock_unlock(&child_vinode->rwlock);
-}
-
-/*
- * vinode_clear_debug_path -- clears full path in runtime structures
- */
-void
-vinode_clear_debug_path(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
-{
+#else
 	(void) pfp;
-
-	os_rwlock_wrlock(&vinode->rwlock);
-#ifdef DEBUG
-	free(vinode->path);
-	vinode->path = NULL;
+	(void) parent_vinode;
+	(void) name;
+	(void) namelen;
 #endif
-	os_rwlock_unlock(&vinode->rwlock);
+
+	vinode_unlock2(parent_vinode, child_vinode);
 }
 
 /*

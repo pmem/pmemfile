@@ -722,8 +722,7 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 	os_rwlock_unlock(&dst.vinode->rwlock);
 
 	if (error == 0) {
-		vinode_clear_debug_path(pfp, src_vinode);
-		vinode_set_debug_path(pfp, dst.vinode, src_vinode,
+		vinode_replace_debug_path(pfp, dst.vinode, src_vinode,
 				dst.remaining, dst_namelen);
 	}
 
@@ -1276,13 +1275,12 @@ end_unlock:
 		/* update debug information about vinodes */
 
 		if (flags & PMEMFILE_RENAME_EXCHANGE) {
-			vinode_clear_debug_path(pfp, dst_info.vinode);
-			vinode_set_debug_path(pfp, src.vinode, dst_info.vinode,
-					src.remaining, src_namelen);
+			vinode_replace_debug_path(pfp, src.vinode,
+					dst_info.vinode, src.remaining,
+					src_namelen);
 		}
 
-		vinode_clear_debug_path(pfp, src_info.vinode);
-		vinode_set_debug_path(pfp, dst.vinode, src_info.vinode,
+		vinode_replace_debug_path(pfp, dst.vinode, src_info.vinode,
 				dst.remaining, dst_namelen);
 	}
 

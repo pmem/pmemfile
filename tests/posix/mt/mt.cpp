@@ -33,6 +33,7 @@
 /*
  * mt.cpp -- multithreaded test for pmemfile_*
  */
+#include <cstdlib>
 #include <list>
 #include <thread>
 
@@ -287,6 +288,94 @@ TEST_F(mt, rename)
 
 	for (auto &t : threads)
 		t.join();
+}
+
+static void
+rename_helper(const std::string &p1, const std::string &p2)
+{
+	if (pmemfile_rename(global_pfp, p1.c_str(), p2.c_str()) == 0)
+		pmemfile_rename(global_pfp, p2.c_str(), p1.c_str());
+}
+
+static std::vector<std::string>
+get_dirs(void)
+{
+	std::vector<std::string> dirs;
+	dirs.emplace_back("/A");
+	dirs.emplace_back("/A/B");
+	dirs.emplace_back("/A/B/C");
+	dirs.emplace_back("/A/B/C/D");
+	dirs.emplace_back("/A/B/C/D/E");
+	dirs.emplace_back("/A/B/C/D/E/F");
+	dirs.emplace_back("/A/B/C/D/E/F/G");
+	dirs.emplace_back("/A/B/C/D/E/F/G/H");
+	dirs.emplace_back("/1");
+	dirs.emplace_back("/1/2");
+	dirs.emplace_back("/1/2/3");
+	dirs.emplace_back("/1/2/3/4");
+	dirs.emplace_back("/1/2/3/4/5");
+	dirs.emplace_back("/1/2/3/4/5/6");
+	dirs.emplace_back("/1/2/3/4/5/6/7");
+	dirs.emplace_back("/1/2/3/4/5/6/7/8");
+
+	return dirs;
+}
+
+const std::string &
+rand_path(const std::vector<std::string> &dirs)
+{
+	return dirs[(size_t)std::rand() % dirs.size()];
+}
+
+TEST_F(mt, rename_random_paths)
+{
+	test_empty_dir_on_teardown = false;
+	std::vector<std::string> dirs = get_dirs();
+	for (auto p : dirs)
+		ASSERT_EQ(pmemfile_mkdir(pfp, p.c_str(), 0755), 0);
+
+	for (int i = 0; i < ops; ++i) {
+		threads.emplace_back(rename_helper, rand_path(dirs),
+				     rand_path(dirs));
+		threads.emplace_back(rename_helper, rand_path(dirs),
+				     rand_path(dirs));
+		threads.emplace_back(rename_helper, rand_path(dirs),
+				     rand_path(dirs));
+
+		for (auto &t : threads)
+			t.join();
+		threads.clear();
+	}
+}
+
+static void
+exchange_helper(const std::string &p1, const std::string &p2)
+{
+	if (pmemfile_renameat2(global_pfp, NULL, p1.c_str(), NULL, p2.c_str(),
+			       PMEMFILE_RENAME_EXCHANGE))
+		pmemfile_renameat2(global_pfp, NULL, p2.c_str(), NULL,
+				   p1.c_str(), PMEMFILE_RENAME_EXCHANGE);
+}
+
+TEST_F(mt, exchange_random_paths)
+{
+	test_empty_dir_on_teardown = false;
+	std::vector<std::string> dirs = get_dirs();
+	for (auto p : dirs)
+		ASSERT_EQ(pmemfile_mkdir(pfp, p.c_str(), 0755), 0);
+
+	for (int i = 0; i < ops; ++i) {
+		threads.emplace_back(exchange_helper, rand_path(dirs),
+				     rand_path(dirs));
+		threads.emplace_back(exchange_helper, rand_path(dirs),
+				     rand_path(dirs));
+		threads.emplace_back(exchange_helper, rand_path(dirs),
+				     rand_path(dirs));
+
+		for (auto &t : threads)
+			t.join();
+		threads.clear();
+	}
 }
 
 int

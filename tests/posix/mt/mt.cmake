@@ -36,5 +36,7 @@ setup()
 execute(${TEST_EXECUTABLE} ${ops} --gtest_filter=mt.open_close_create_unlink)
 execute(${TEST_EXECUTABLE} ${ops} --gtest_filter=mt.pread)
 execute(${TEST_EXECUTABLE} ${ops} --gtest_filter=mt.rename)
+execute(${TEST_EXECUTABLE} ${ops} --gtest_filter=mt.rename_random_paths)
+execute(${TEST_EXECUTABLE} ${ops} --gtest_filter=mt.exchange_random_paths)
 
 cleanup()

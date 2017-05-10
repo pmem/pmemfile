@@ -689,7 +689,13 @@ vinode_unlock2(struct pmemfile_vinode *v1, struct pmemfile_vinode *v2)
 static int
 vinode_cmp(const void *v1, const void *v2)
 {
-	return (int)((intptr_t)*(void **)v1 - (intptr_t)*(void **)v2);
+	uintptr_t v1num = (uintptr_t)*(void **)v1;
+	uintptr_t v2num = (uintptr_t)*(void **)v2;
+	if (v1num < v2num)
+		return -1;
+	if (v1num > v2num)
+		return 1;
+	return 0;
 }
 
 /*
@@ -728,6 +734,9 @@ vinode_wrlock4(struct pmemfile_vinode *v[], size_t *N,
 		v[n++] = v4;
 
 	qsort(v, n, sizeof(v[0]), vinode_cmp);
+
+	for (size_t i = n - 1; i >= 1; --i)
+		ASSERT(v[i - 1] < v[i]);
 
 	/* take all locks in order of increasing addresses */
 	for (size_t i = 0; i < n; ++i)

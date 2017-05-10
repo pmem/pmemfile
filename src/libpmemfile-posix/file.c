@@ -1123,6 +1123,21 @@ vinode_rename(PMEMfilepool *pfp,
 	return error;
 }
 
+static bool
+dir_is_parent_of(PMEMfilepool *pfp, struct pmemfile_vinode *possible_parent,
+		struct pmemfile_vinode *possible_child)
+{
+	struct pmemfile_vinode *v = possible_child;
+
+	while (v != pfp->root) {
+		if (v == possible_parent)
+			return true;
+		v = v->parent;
+	}
+
+	return false;
+}
+
 static int
 _pmemfile_renameat2(PMEMfilepool *pfp,
 		struct pmemfile_vinode *olddir, const char *oldpath,
@@ -1232,14 +1247,18 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	 * more generally, an attempt was made to make a directory
 	 * a subdirectory of itself."
 	 */
-	if (vinode_is_dir(src_info.vinode) && src.vinode != dst.vinode) {
-		struct pmemfile_vinode *v = dst.vinode;
-		while (v != pfp->root) {
-			if (v == src_info.vinode) {
-				error = EINVAL;
-				goto end_unlock;
-			}
-			v = v->parent;
+	if (src.vinode != dst.vinode) {
+		if (vinode_is_dir(src_info.vinode) &&
+			dir_is_parent_of(pfp, src_info.vinode, dst.vinode)) {
+			error = EINVAL;
+			goto end_unlock;
+		}
+
+		if ((flags & PMEMFILE_RENAME_EXCHANGE) &&
+			vinode_is_dir(dst_info.vinode) &&
+			dir_is_parent_of(pfp, dst_info.vinode, src.vinode)) {
+			error = EINVAL;
+			goto end_unlock;
 		}
 	}
 

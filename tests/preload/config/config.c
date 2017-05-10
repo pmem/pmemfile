@@ -48,9 +48,18 @@ main(int argc, char **argv)
 		return 1;
 
 	errno = 0;
-	open(argv[2], O_CREAT | O_RDWR, 0666);
-	if (errno != EIO)
-		return 1;
+	puts(argv[1]);
+	open(argv[1], O_CREAT | O_RDWR, 0666);
+	if (errno == EIO)
+		puts("open returned EIO");
+	else if (errno == EISDIR)
+		puts("open returned EISDIR");
+	else if (errno == ENOENT)
+		puts("open returned ENOENT");
+	else if (errno == 0)
+		puts("open returned no error");
+	else
+		perror("open returned unexpected errno");
 
 	return 0;
 }

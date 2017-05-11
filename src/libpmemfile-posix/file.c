@@ -1268,21 +1268,21 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 				newpath);
 	}
 
-end_unlock:
-	vinode_unlockN(vinodes, vinodes_num);
-
 	if (error == 0) {
 		/* update debug information about vinodes */
 
 		if (flags & PMEMFILE_RENAME_EXCHANGE) {
-			vinode_replace_debug_path(pfp, src.vinode,
+			vinode_replace_debug_path_locked(pfp, src.vinode,
 					dst_info.vinode, src.remaining,
 					src_namelen);
 		}
 
-		vinode_replace_debug_path(pfp, dst.vinode, src_info.vinode,
-				dst.remaining, dst_namelen);
+		vinode_replace_debug_path_locked(pfp, dst.vinode,
+				src_info.vinode, dst.remaining, dst_namelen);
 	}
+
+end_unlock:
+	vinode_unlockN(vinodes, vinodes_num);
 
 	if (dst_info.vinode)
 		vinode_unref(pfp, dst_info.vinode);

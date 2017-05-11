@@ -1079,7 +1079,7 @@ vinode_rename(PMEMfilepool *pfp,
 			}
 
 			if (dst_info->vinode->inode->nlink == 0)
-				vinode_orphan(pfp, dst_info->vinode);
+				vinode_orphan_unlocked(pfp, dst_info->vinode);
 		}
 
 		struct pmemfile_time t;
@@ -1210,6 +1210,8 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 		goto end;
 	}
 
+	os_rwlock_wrlock(&pfp->super_rwlock);
+
 	if ((flags & PMEMFILE_RENAME_EXCHANGE) && !dst_info.vinode) {
 		error = ENOENT;
 		goto end_unlock;
@@ -1282,6 +1284,7 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	}
 
 end_unlock:
+	os_rwlock_unlock(&pfp->super_rwlock);
 	vinode_unlockN(vinodes, vinodes_num);
 
 	if (dst_info.vinode)

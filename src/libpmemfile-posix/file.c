@@ -1210,7 +1210,8 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 		goto end;
 	}
 
-	os_rwlock_wrlock(&pfp->super_rwlock);
+	if (src.vinode != dst.vinode)
+		os_rwlock_wrlock(&pfp->super_rwlock);
 
 	if ((flags & PMEMFILE_RENAME_EXCHANGE) && !dst_info.vinode) {
 		error = ENOENT;
@@ -1284,7 +1285,8 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	}
 
 end_unlock:
-	os_rwlock_unlock(&pfp->super_rwlock);
+	if (src.vinode != dst.vinode)
+		os_rwlock_unlock(&pfp->super_rwlock);
 	vinode_unlockN(vinodes, vinodes_num);
 
 	if (dst_info.vinode)

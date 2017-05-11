@@ -191,6 +191,7 @@ void vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode);
 void vinode_cleanup(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		bool preserve_errno);
 
+void vinode_orphan_unlocked(PMEMfilepool *pfp, struct pmemfile_vinode *vinode);
 void vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode);
 
 void vinode_snapshot(struct pmemfile_vinode *vinode);

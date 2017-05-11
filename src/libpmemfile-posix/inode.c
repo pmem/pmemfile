@@ -554,9 +554,11 @@ inode_alloc(PMEMfilepool *pfp, uint64_t flags, struct pmemfile_vinode *parent,
  * vinode_orphan -- register specified inode in orphaned_inodes array
  *
  * Must be called in a transaction.
+ *
+ * Assumes superblock lock already has been taken.
  */
 void
-vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
+vinode_orphan_unlocked(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
 	LOG(LDBG, "inode 0x%" PRIx64 " path %s", vinode->tinode.oid.off,
 			pmfi_path(vinode));
@@ -564,13 +566,24 @@ vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 	ASSERTeq(vinode->orphaned.arr, NULL);
 
-	rwlock_tx_wlock(&pfp->super_rwlock);
-
 	TOID(struct pmemfile_inode_array) orphaned =
 			pfp->super->orphaned_inodes;
 
 	inode_array_add(pfp, orphaned, vinode,
 			&vinode->orphaned.arr, &vinode->orphaned.idx);
+}
+
+/*
+ * vinode_orphan -- register specified inode in orphaned_inodes array
+ *
+ * Must be called in a transaction.
+ */
+void
+vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
+{
+	rwlock_tx_wlock(&pfp->super_rwlock);
+
+	vinode_orphan_unlocked(pfp, vinode);
 
 	rwlock_tx_unlock_on_commit(&pfp->super_rwlock);
 }

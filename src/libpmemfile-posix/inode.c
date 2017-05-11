@@ -150,6 +150,8 @@ inode_map_alloc()
 void
 inode_map_free(struct pmemfile_inode_map *c)
 {
+	int ref_leaks = 0;
+
 	for (unsigned i = 0; i < c->sz; ++i) {
 		struct inode_map_bucket *bucket = &c->buckets[i];
 
@@ -157,14 +159,17 @@ inode_map_free(struct pmemfile_inode_map *c)
 			struct pmemfile_vinode *vinode = bucket->arr[j].vinode;
 			if (vinode) {
 #ifdef DEBUG
-				FATAL("memory leak %s", vinode->path ?
-						vinode->path : "unknown path");
-#else
-				FATAL("memory leak");
+				LOG(LDBG, "inode reference leak %s",
+					vinode->path ? vinode->path :
+							"unknown path");
 #endif
+				ref_leaks++;
 			}
 		}
 	}
+
+	if (ref_leaks)
+		FATAL("%d inode reference leaks", ref_leaks);
 
 	os_rwlock_destroy(&c->rwlock);
 	free(c->buckets);

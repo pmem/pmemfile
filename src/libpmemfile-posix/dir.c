@@ -177,20 +177,18 @@ vinode_set_debug_path_locked(PMEMfilepool *pfp,
 }
 
 /*
- * vinode_replace_debug_path -- replaces full path in runtime
+ * vinode_replace_debug_path_locked -- replaces full path in runtime
  * structures of child_inode based on parent inode and name.
  *
  * Works only in DEBUG mode.
  */
 void
-vinode_replace_debug_path(PMEMfilepool *pfp,
+vinode_replace_debug_path_locked(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent_vinode,
 		struct pmemfile_vinode *child_vinode,
 		const char *name,
 		size_t namelen)
 {
-	vinode_wrlock2(parent_vinode, child_vinode);
-
 #ifdef DEBUG
 	free(child_vinode->path);
 	child_vinode->path = NULL;
@@ -203,8 +201,6 @@ vinode_replace_debug_path(PMEMfilepool *pfp,
 	(void) name;
 	(void) namelen;
 #endif
-
-	vinode_unlock2(parent_vinode, child_vinode);
 }
 
 /*

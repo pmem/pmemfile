@@ -93,7 +93,7 @@ void vinode_set_debug_path_locked(PMEMfilepool *pfp,
 		const char *name,
 		size_t namelen);
 
-void vinode_replace_debug_path(PMEMfilepool *pfp,
+void vinode_replace_debug_path_locked(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent_vinode,
 		struct pmemfile_vinode *child_vinode,
 		const char *name,

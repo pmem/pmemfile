@@ -47,10 +47,20 @@ main(int argc, char **argv)
 	if (argc < 2)
 		return 1;
 
+	puts(argv[1]);
 	errno = 0;
-	open(argv[2], O_CREAT | O_RDWR, 0666);
-	if (errno != EIO)
-		return 1;
+	if (open(argv[1], O_CREAT | O_RDWR, 0666) >= 0)
+		puts("no error");
+	else if (errno == EIO)
+		puts("errno = EIO");
+	else if (errno == EISDIR)
+		puts("errno = EISDIR");
+	else if (errno == ENOENT)
+		puts("errno = ENOENT");
+	else if (errno == 0)
+		puts("open returned a negative int, but errno is zero");
+	else
+		perror("open returned unexpected errno");
 
 	return 0;
 }

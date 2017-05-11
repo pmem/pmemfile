@@ -557,6 +557,8 @@ establish_mount_points(const char *config)
 
 		pool_desc->pool = NULL;
 
+		util_mutex_init(&pool_desc->pool_open_lock);
+
 		++pool_count;
 
 		if (pool_desc->stat.st_ino == kernel_cwd_stat.st_ino) {
@@ -1340,15 +1342,43 @@ log_write(const char *fmt, ...)
 	syscall_no_intercept(SYS_write, log_fd, buf, len);
 }
 
+/*
+ * open_new_pool[_under_lock] -- attempts to open a pmemfile_pool
+ * Initializes the fields called pool and pmem_stat in a pool_description
+ * struct. Does nothing if they are already initialized. The most
+ * important part of this initialization is of course calling
+ * pmemfile_pool_open.
+ *
+ * Returns:
+ *  On success: the same pointer as the argument
+ *  If the pool was already open: the same pointer as the argument
+ *  On failure: NULL pointer
+ */
+static void
+open_new_pool_under_lock(struct pool_description *p)
+{
+	PMEMfilepool *pfp;
+
+	if (p->pool != NULL)
+		return; /* already open */
+
+	if ((pfp = pmemfile_pool_open(p->poolfile_path)) == NULL)
+		return; /* failed to open */
+
+	if (pmemfile_stat(pfp, "/", &p->pmem_stat) != 0) {
+		pmemfile_pool_close(pfp);
+		return; /* stat failed */
+	}
+
+	__atomic_store_n(&p->pool, pfp, __ATOMIC_RELEASE);
+}
+
 static void
 open_new_pool(struct pool_description *p)
 {
-	if (p->pool == NULL) {
-		PMEMfilepool *pfp = pmemfile_pool_open(p->poolfile_path);
-		if (pmemfile_stat(pfp, "/", &p->pmem_stat))
-			FATAL("pmemfile_stat(\"/\") failed!");
-		__atomic_store_n(&p->pool, pfp, __ATOMIC_SEQ_CST);
-	}
+	util_mutex_lock(&p->pool_open_lock);
+	open_new_pool_under_lock(p);
+	util_mutex_unlock(&p->pool_open_lock);
 }
 
 /*
@@ -1360,11 +1390,15 @@ lookup_pd_by_inode(struct stat *stat)
 {
 	for (int i = 0; i < pool_count; ++i) {
 		struct pool_description *p = pools + i;
-		if (same_inode(&p->stat, stat)) {
-			PMEMfilepool *pfp;
 
-			pfp = __atomic_load_n(&p->pool, __ATOMIC_SEQ_CST);
-			if (pfp == NULL)
+		/*
+		 * Note: p->stat never changes after lib initialization, thus
+		 * it is safe to read. If a non-null value is read from p->pool,
+		 * the rest of the pool_description struct must be already
+		 * initialized -- and never altered thereafter.
+		 */
+		if (same_inode(&p->stat, stat)) {
+			if (__atomic_load_n(&p->pool, __ATOMIC_ACQUIRE) == NULL)
 				open_new_pool(p);
 			return p;
 		}
@@ -1382,11 +1416,14 @@ lookup_pd_by_path(const char *path)
 		 * XXX: first compare the lengths of the two strings to avoid
 		 * strcmp calls
 		 */
+		/*
+		 * Note: p->mount_point never changes after lib initialization,
+		 * thus it is safe to read. If a non-null value is read from
+		 * p->pool, the rest of the pool_description struct must be
+		 * already initialized -- and never altered thereafter.
+		 */
 		if (strcmp(p->mount_point, path) == 0)  {
-			PMEMfilepool *pfp;
-
-			pfp = __atomic_load_n(&p->pool, __ATOMIC_SEQ_CST);
-			if (pfp == NULL)
+			if (__atomic_load_n(&p->pool, __ATOMIC_ACQUIRE) == NULL)
 				open_new_pool(p);
 			return p;
 		}

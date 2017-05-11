@@ -20,8 +20,8 @@ Inode/vinode accessing rules:
   in ascending order. There are helper functions to do that.
 - Rename and exchange operations require taking up to 4 vinode locks (2 possible
   parents and 2 children).
-- To prevent races between 2 threads doing rename, rename implementation must
-  take the global pool lock.
+- To prevent races between 2 threads doing cross-directory rename,
+  rename implementation must take the global pool lock.
 - Unref does not take the vinode lock, even when reading some of the vinode
   fields. This is safe because it's done only when refcnt drops to 0, when we
   are sure nobody has access to unrefed vinode.

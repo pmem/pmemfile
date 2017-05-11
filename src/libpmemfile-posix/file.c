@@ -705,7 +705,7 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 
 	size_t dst_namelen = component_length(dst.remaining);
 
-	os_rwlock_wrlock(&dst.vinode->rwlock);
+	vinode_wrlock2(dst.vinode, src_vinode);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (!_vinode_can_access(&cred, dst.vinode, PFILE_WANT_WRITE))
@@ -719,12 +719,12 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 		error = errno;
 	} TX_END
 
-	os_rwlock_unlock(&dst.vinode->rwlock);
-
 	if (error == 0) {
-		vinode_replace_debug_path(pfp, dst.vinode, src_vinode,
+		vinode_replace_debug_path_locked(pfp, dst.vinode, src_vinode,
 				dst.remaining, dst_namelen);
 	}
+
+	vinode_unlock2(dst.vinode, src_vinode);
 
 end:
 	path_info_cleanup(pfp, &dst);

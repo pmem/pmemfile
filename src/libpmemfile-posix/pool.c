@@ -83,22 +83,21 @@ initialize_super_block(PMEMfilepool *pfp)
 
 	if (TOID_IS_NULL(super->root_inode)) {
 		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-			pfp->root = vinode_new_dir(pfp, NULL, "/", 1,
-					PMEMFILE_ACCESSPERMS, false, NULL);
-
 			TX_ADD_DIRECT(super);
+			super->root_inode = vinode_new_dir(pfp, NULL, "/", 1,
+					PMEMFILE_ACCESSPERMS);
+
 			super->version = PMEMFILE_SUPER_VERSION(0, 1);
-			super->root_inode = pfp->root->tinode;
 			super->orphaned_inodes =
 					TX_ZNEW(struct pmemfile_inode_array);
 		} TX_ONABORT {
 			error = errno;
 		} TX_END
-	} else {
-		pfp->root = inode_ref(pfp, super->root_inode, NULL, NULL, 0);
-		if (!pfp->root)
-			error = errno;
 	}
+
+	pfp->root = inode_ref(pfp, super->root_inode, NULL, NULL, 0);
+	if (!pfp->root)
+		error = errno;
 
 	if (error) {
 		ERR("!cannot initialize super block");

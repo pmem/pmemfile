@@ -211,18 +211,17 @@ vinode_replace_debug_path_locked(PMEMfilepool *pfp,
  */
 void
 vinode_add_dirent(PMEMfilepool *pfp,
-		struct pmemfile_vinode *parent_vinode,
+		TOID(struct pmemfile_inode) parent_tinode,
 		const char *name,
 		size_t namelen,
-		struct pmemfile_vinode *child_vinode,
+		TOID(struct pmemfile_inode) child_tinode,
 		struct pmemfile_time tm)
 {
 	(void) pfp;
 
-	LOG(LDBG, "parent 0x%" PRIx64 " ppath %s name %.*s "
-			"child_inode 0x%" PRIx64, parent_vinode->tinode.oid.off,
-			pmfi_path(parent_vinode), (int)namelen, name,
-			child_vinode->tinode.oid.off);
+	LOG(LDBG, "parent 0x%" PRIx64 " name %.*s child_inode 0x%" PRIx64,
+		parent_tinode.oid.off, (int)namelen, name,
+		child_tinode.oid.off);
 
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 
@@ -235,7 +234,7 @@ vinode_add_dirent(PMEMfilepool *pfp,
 		FATAL("trying to add dirent with slash: %.*s", (int)namelen,
 				name);
 
-	struct pmemfile_inode *parent = parent_vinode->inode;
+	struct pmemfile_inode *parent = D_RW(parent_tinode);
 
 	/* don't create files in deleted directories */
 	if (parent->nlink == 0) {
@@ -282,27 +281,28 @@ vinode_add_dirent(PMEMfilepool *pfp,
 	pmemobj_tx_add_range_direct(dirent,
 			sizeof(dirent->inode) + namelen + 1);
 
-	dirent->inode = child_vinode->tinode;
+	dirent->inode = child_tinode;
 
 	strncpy(dirent->name, name, namelen);
 	dirent->name[namelen] = '\0';
 
-	TX_ADD_FIELD_DIRECT(child_vinode->inode, nlink);
-	child_vinode->inode->nlink++;
+	struct pmemfile_inode *child_inode = D_RW(child_tinode);
+	TX_ADD_DIRECT(&child_inode->nlink);
+	child_inode->nlink++;
 
 	/*
 	 * From "stat" man page:
 	 * "The field st_ctime is changed by writing or by setting inode
 	 * information (i.e., owner, group, link count, mode, etc.)."
 	 */
-	TX_SET_DIRECT(child_vinode->inode, ctime, tm);
+	TX_SET_DIRECT(child_inode, ctime, tm);
 
 	/*
 	 * From "stat" man page:
 	 * "st_mtime of a directory is changed by the creation
 	 * or deletion of files in that directory."
 	 */
-	TX_SET_DIRECT(parent_vinode->inode, mtime, tm);
+	TX_SET_DIRECT(parent, mtime, tm);
 }
 
 /*
@@ -357,10 +357,9 @@ vinode_update_parent(PMEMfilepool *pfp,
  * Note: caller must hold WRITE lock on parent.
  * Must be called in a transaction.
  */
-struct pmemfile_vinode *
+TOID(struct pmemfile_inode)
 vinode_new_dir(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
-		const char *name, size_t namelen, pmemfile_mode_t mode,
-		bool add_to_parent, volatile bool *parent_refed)
+		const char *name, size_t namelen, pmemfile_mode_t mode)
 {
 	LOG(LDBG, "parent 0x%" PRIx64 " ppath %s new_name %.*s",
 			parent ? parent->tinode.oid.off : 0,
@@ -374,23 +373,23 @@ vinode_new_dir(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 		pmemfile_tx_abort(EINVAL);
 	}
 
-	struct pmemfile_vinode *child = inode_alloc(pfp,
-			PMEMFILE_S_IFDIR | mode, parent, parent_refed,
-			name, namelen);
-	struct pmemfile_time t = child->inode->ctime;
+	TOID(struct pmemfile_inode) tchild =
+			inode_alloc(pfp, PMEMFILE_S_IFDIR | mode);
+	struct pmemfile_inode *child = D_RW(tchild);
+	struct pmemfile_time t = child->ctime;
 
 	/* add . and .. to new directory */
-	vinode_add_dirent(pfp, child, ".", 1, child, t);
+	vinode_add_dirent(pfp, tchild, ".", 1, tchild, t);
 
-	if (parent == NULL) /* special case - root directory */
-		vinode_add_dirent(pfp, child, "..", 2, child, t);
-	else
-		vinode_add_dirent(pfp, child, "..", 2, parent, t);
+	if (parent == NULL) { /* special case - root directory */
+		vinode_add_dirent(pfp, tchild, "..", 2, tchild, t);
+	} else {
+		vinode_add_dirent(pfp, tchild, "..", 2, parent->tinode, t);
+		vinode_add_dirent(pfp, parent->tinode, name, namelen, tchild,
+				t);
+	}
 
-	if (add_to_parent)
-		vinode_add_dirent(pfp, parent, name, namelen, child, t);
-
-	return child;
+	return tchild;
 }
 
 /*
@@ -1114,7 +1113,6 @@ _pmemfile_mkdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	struct pmemfile_vinode *parent = info.vinode;
 	int error = 0;
-	volatile bool parent_refed = false;
 
 	if (info.error) {
 		error = info.error;
@@ -1132,31 +1130,22 @@ _pmemfile_mkdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	os_rwlock_wrlock(&parent->rwlock);
 
-	struct pmemfile_vinode *child = NULL;
-
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (!_vinode_can_access(&cred, parent, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);
 
-		child = vinode_new_dir(pfp, parent, info.remaining, namelen,
-				mode, true, &parent_refed);
+		vinode_new_dir(pfp, parent, info.remaining, namelen, mode);
 	} TX_ONABORT {
 		error = errno;
 	} TX_END
 
 	os_rwlock_unlock(&parent->rwlock);
 
-	if (!error)
-		vinode_unref(pfp, child);
-
 end:
 	path_info_cleanup(pfp, &info);
 	put_cred(&cred);
 
 	if (error) {
-		if (parent_refed)
-			vinode_unref(pfp, parent);
-
 		errno = error;
 		return -1;
 	}

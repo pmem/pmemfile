@@ -177,80 +177,6 @@ check_flags(int flags)
 	return 0;
 }
 
-static struct pmemfile_vinode *
-create_file(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
-		const char *filename, size_t namelen,
-		struct pmemfile_vinode *parent_vinode, int flags,
-		pmemfile_mode_t mode)
-{
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
-
-	rwlock_tx_wlock(&parent_vinode->rwlock);
-
-	if (!_vinode_can_access(cred, parent_vinode, PFILE_WANT_WRITE))
-		pmemfile_tx_abort(EACCES);
-
-	struct pmemfile_vinode *vinode = inode_alloc(pfp,
-			PMEMFILE_S_IFREG | mode,
-			parent_vinode, NULL, filename, namelen);
-
-	if (is_tmpfile(flags))
-		vinode_orphan(pfp, vinode);
-	else
-		vinode_add_dirent(pfp, parent_vinode, filename,
-				namelen, vinode, vinode->inode->ctime);
-
-	rwlock_tx_unlock_on_commit(&parent_vinode->rwlock);
-
-	return vinode;
-}
-
-static void
-open_file(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
-		struct pmemfile_vinode *vinode, int flags)
-{
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
-
-	if (!(flags & PMEMFILE_O_PATH)) {
-		int acc = flags & PMEMFILE_O_ACCMODE;
-
-		if (acc == PMEMFILE_O_ACCMODE)
-			pmemfile_tx_abort(EINVAL);
-
-		int acc2;
-		if (acc == PMEMFILE_O_RDWR)
-			acc2 = PFILE_WANT_READ | PFILE_WANT_WRITE;
-		else if (acc == PMEMFILE_O_RDONLY)
-			acc2 = PFILE_WANT_READ;
-		else
-			acc2 = PFILE_WANT_WRITE;
-
-		if (!vinode_can_access(cred, vinode, acc2))
-			pmemfile_tx_abort(EACCES);
-	}
-
-	if ((flags & PMEMFILE_O_DIRECTORY) && !vinode_is_dir(vinode))
-		pmemfile_tx_abort(ENOTDIR);
-
-	if (flags & PMEMFILE_O_TRUNC) {
-		if (!vinode_is_regular_file(vinode)) {
-			LOG(LUSR, "truncating non regular file");
-			pmemfile_tx_abort(EINVAL);
-		}
-
-		if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_RDONLY) {
-			LOG(LUSR, "O_TRUNC without write permissions");
-			pmemfile_tx_abort(EACCES);
-		}
-
-		rwlock_tx_wlock(&vinode->rwlock);
-
-		vinode_truncate(pfp, vinode, 0);
-
-		rwlock_tx_unlock_on_commit(&vinode->rwlock);
-	}
-}
-
 /*
  * _pmemfile_openat -- open file
  */
@@ -275,7 +201,9 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	pmemfile_mode_t mode = 0;
 
 	/* NOTE: O_TMPFILE contains O_DIRECTORY */
-	if ((flags & PMEMFILE_O_CREAT) || is_tmpfile(flags)) {
+	bool tmpfile = is_tmpfile(flags);
+
+	if ((flags & PMEMFILE_O_CREAT) || tmpfile) {
 		mode = va_arg(ap, pmemfile_mode_t);
 		LOG(LDBG, "mode %o", mode);
 		mode &= PMEMFILE_ALLPERMS;
@@ -286,7 +214,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	PMEMfile *file = NULL;
 
 	struct pmemfile_path_info info;
-	struct pmemfile_vinode *volatile vinode;
+	struct pmemfile_vinode *vinode;
 	struct pmemfile_vinode *vparent;
 	bool path_info_changed;
 	size_t namelen;
@@ -347,7 +275,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto end;
 	}
 
-	if (is_tmpfile(flags)) {
+	if (tmpfile) {
 		if (!vinode) {
 			error = ENOENT;
 			goto end;
@@ -383,42 +311,147 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		}
 	}
 
-	if (is_tmpfile(flags)) {
+	if (tmpfile) {
 		vinode_unref(pfp, vparent);
 		vparent = vinode;
 		vinode = NULL;
 	}
 
-	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		if (vinode == NULL) {
-			vinode = create_file(pfp, &cred, info.remaining,
-					namelen, vparent, flags, mode);
-		} else {
-			open_file(pfp, &cred, vinode, flags);
+	if (vinode) {
+		if (!(flags & PMEMFILE_O_PATH)) {
+			int acc = flags & PMEMFILE_O_ACCMODE;
+
+			if (acc == PMEMFILE_O_ACCMODE) {
+				error = EINVAL;
+				goto end;
+			}
+
+			int acc2;
+			if (acc == PMEMFILE_O_RDWR)
+				acc2 = PFILE_WANT_READ | PFILE_WANT_WRITE;
+			else if (acc == PMEMFILE_O_RDONLY)
+				acc2 = PFILE_WANT_READ;
+			else
+				acc2 = PFILE_WANT_WRITE;
+
+			if (!vinode_can_access(&cred, vinode, acc2)) {
+				error = EACCES;
+				goto end;
+			}
 		}
 
-		file = calloc(1, sizeof(*file));
-		if (!file)
-			pmemfile_tx_abort(errno);
+		if ((flags & PMEMFILE_O_DIRECTORY) && !vinode_is_dir(vinode)) {
+			error = ENOTDIR;
+			goto end;
+		}
 
-		file->vinode = vinode;
+		if (flags & PMEMFILE_O_TRUNC) {
+			if (!vinode_is_regular_file(vinode)) {
+				LOG(LUSR, "truncating non regular file");
+				error = EINVAL;
+				goto end;
+			}
 
-		if (flags & PMEMFILE_O_PATH)
-			file->flags = PFILE_PATH;
-		else if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_RDONLY)
-			file->flags = PFILE_READ;
-		else if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_WRONLY)
-			file->flags = PFILE_WRITE;
-		else if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_RDWR)
-			file->flags = PFILE_READ | PFILE_WRITE;
+			if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_RDONLY) {
+				LOG(LUSR, "O_TRUNC without write permissions");
+				error = EACCES;
+				goto end;
+			}
+		}
+	}
 
-		if (flags & PMEMFILE_O_NOATIME)
-			file->flags |= PFILE_NOATIME;
-		if (flags & PMEMFILE_O_APPEND)
-			file->flags |= PFILE_APPEND;
-	} TX_ONABORT {
+	file = calloc(1, sizeof(*file));
+	if (!file) {
 		error = errno;
-	} TX_END
+		goto end;
+	}
+
+	if (vinode == NULL) {
+		TOID(struct pmemfile_inode) tinode;
+
+		os_rwlock_wrlock(&vparent->rwlock);
+
+		if (!_vinode_can_access(&cred, vparent, PFILE_WANT_WRITE)) {
+			os_rwlock_unlock(&vparent->rwlock);
+			error = EACCES;
+			goto end;
+		}
+
+		if (tmpfile)
+			/* access to orphaned list requires superblock lock */
+			os_rwlock_wrlock(&pfp->super_rwlock);
+
+		struct inode_orphan_info orphan_info;
+
+		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
+			tinode = inode_alloc(pfp, PMEMFILE_S_IFREG | mode);
+
+			if (tmpfile)
+				orphan_info = inode_orphan(pfp, tinode);
+			else
+				vinode_add_dirent(pfp, vparent->tinode,
+					info.remaining, namelen, tinode,
+					D_RO(tinode)->ctime);
+		} TX_ONABORT {
+			error = errno;
+		} TX_END
+
+		if (tmpfile)
+			os_rwlock_unlock(&pfp->super_rwlock);
+
+		if (!error) {
+			/*
+			 * Refing needs to happen before anyone can access this
+			 * inode. vparent write lock guarantees that.
+			 * Without that another thread may unlink this file
+			 * before we ref it and make our tinode invalid.
+			 */
+			vinode = inode_ref(pfp, tinode, vparent, info.remaining,
+					namelen);
+			if (vinode == NULL) {
+				error = errno;
+				goto end;
+			}
+
+			if (tmpfile)
+				vinode->orphaned = orphan_info;
+		}
+
+		os_rwlock_unlock(&vparent->rwlock);
+
+		if (error)
+			goto end;
+
+	} else if (flags & PMEMFILE_O_TRUNC) {
+		os_rwlock_wrlock(&vinode->rwlock);
+
+		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
+			vinode_truncate(pfp, vinode, 0);
+		} TX_ONABORT {
+			error = errno;
+		} TX_END
+
+		os_rwlock_unlock(&vinode->rwlock);
+	}
+
+	if (error)
+		goto end;
+
+	file->vinode = vinode;
+
+	if (flags & PMEMFILE_O_PATH)
+		file->flags = PFILE_PATH;
+	else if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_RDONLY)
+		file->flags = PFILE_READ;
+	else if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_WRONLY)
+		file->flags = PFILE_WRITE;
+	else if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_RDWR)
+		file->flags = PFILE_READ | PFILE_WRITE;
+
+	if (flags & PMEMFILE_O_NOATIME)
+		file->flags |= PFILE_NOATIME;
+	if (flags & PMEMFILE_O_APPEND)
+		file->flags |= PFILE_APPEND;
 
 end:
 	path_info_cleanup(pfp, &info);
@@ -427,6 +460,8 @@ end:
 	if (error) {
 		if (vinode != NULL)
 			vinode_unref(pfp, vinode);
+		if (file)
+			free(file);
 
 		errno = error;
 		LOG(LDBG, "!");
@@ -713,8 +748,8 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 
 		struct pmemfile_time t;
 		file_get_time(&t);
-		vinode_add_dirent(pfp, dst.vinode, dst.remaining, dst_namelen,
-				src_vinode, t);
+		vinode_add_dirent(pfp, dst.vinode->tinode, dst.remaining,
+				dst_namelen, src_vinode->tinode, t);
 	} TX_ONABORT {
 		error = errno;
 	} TX_END
@@ -1101,8 +1136,9 @@ vinode_rename(PMEMfilepool *pfp,
 			 */
 			TX_SET_DIRECT(src->vinode->inode, mtime, t);
 		} else {
-			vinode_add_dirent(pfp, dst->vinode, dst->remaining,
-					new_name_len, src_info->vinode, t);
+			vinode_add_dirent(pfp, dst->vinode->tinode,
+					dst->remaining, new_name_len,
+					src_info->vinode->tinode, t);
 
 			vinode_unlink_file(pfp, src->vinode, src_info->dirent,
 					src_info->vinode);
@@ -1455,19 +1491,17 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 		if (!_vinode_can_access(&cred, vparent, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);
 
-		vinode = inode_alloc(pfp, PMEMFILE_S_IFLNK |
-				PMEMFILE_ACCESSPERMS, vparent, NULL,
-				info.remaining, namelen);
-		struct pmemfile_inode *inode = vinode->inode;
+		TOID(struct pmemfile_inode) tinode = inode_alloc(pfp,
+				PMEMFILE_S_IFLNK | PMEMFILE_ACCESSPERMS);
+		struct pmemfile_inode *inode = D_RW(tinode);
 		pmemobj_memcpy_persist(pfp->pop, inode->file_data.data, target,
 				len);
 		inode->size = len;
 
-		vinode_add_dirent(pfp, vparent, info.remaining, namelen,
-				vinode, inode->ctime);
+		vinode_add_dirent(pfp, vparent->tinode, info.remaining, namelen,
+				tinode, inode->ctime);
 	} TX_ONABORT {
 		error = errno;
-		vinode = NULL;
 	} TX_END
 
 	os_rwlock_unlock(&vparent->rwlock);

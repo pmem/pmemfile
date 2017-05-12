@@ -38,7 +38,7 @@
 
 void inode_array_add(PMEMfilepool *pfp,
 		TOID(struct pmemfile_inode_array) array,
-		struct pmemfile_vinode *inode,
+		TOID(struct pmemfile_inode) tinode,
 		struct pmemfile_inode_array **ins,
 		unsigned *ins_idx);
 void inode_array_unregister(PMEMfilepool *pfp,

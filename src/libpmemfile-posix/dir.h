@@ -75,16 +75,15 @@ bool str_contains(const char *str, size_t len, char c);
 bool more_than_1_component(const char *path);
 size_t component_length(const char *path);
 
-struct pmemfile_vinode *vinode_new_dir(PMEMfilepool *pfp,
+TOID(struct pmemfile_inode) vinode_new_dir(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent, const char *name,
-		size_t namelen, pmemfile_mode_t mode, bool add_to_parent,
-		volatile bool *parent_refed);
+		size_t namelen, pmemfile_mode_t mode);
 
 void vinode_add_dirent(PMEMfilepool *pfp,
-		struct pmemfile_vinode *parent_vinode,
+		TOID(struct pmemfile_inode) parent_tinode,
 		const char *name,
 		size_t namelen,
-		struct pmemfile_vinode *child_vinode,
+		TOID(struct pmemfile_inode) child_tinode,
 		struct pmemfile_time tm);
 
 void vinode_update_parent(PMEMfilepool *pfp,

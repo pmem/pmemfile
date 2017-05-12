@@ -261,27 +261,26 @@ vinode_unregister_locked(PMEMfilepool *pfp,
 }
 
 /*
- * _inode_get -- deals with vinode life time related to inode
+ * inode_ref -- increases inode reference counter
+ *
+ * Assumes inode was not allocated in the same transaction.
+ * Return volatile inode.
  */
-static struct pmemfile_vinode *
-_inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
-		bool is_new, struct pmemfile_vinode *parent,
-		volatile bool *parent_refed,
+struct pmemfile_vinode *
+inode_ref(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
+		struct pmemfile_vinode *parent,
 		const char *name, size_t namelen)
 {
 	struct pmemfile_inode_map *map = pfp->inode_map;
-	int tx = 0;
 	int error = 0;
+
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
 
 	if (D_RO(inode)->version != PMEMFILE_INODE_VERSION(1)) {
 		ERR("unknown inode version 0x%x for inode 0x%" PRIx64,
 				D_RO(inode)->version, inode.oid.off);
-		if (pmemobj_tx_stage() == TX_STAGE_WORK)
-			pmemfile_tx_abort(EINVAL);
-		else {
-			errno = EINVAL;
-			return NULL;
-		}
+		errno = EINVAL;
+		return NULL;
 	}
 
 	os_rwlock_rdlock(&map->rwlock);
@@ -297,11 +296,7 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 	}
 	os_rwlock_unlock(&map->rwlock);
 
-	if (is_new) {
-		rwlock_tx_wlock(&map->rwlock);
-		tx = 1;
-	} else
-		os_rwlock_wrlock(&map->rwlock);
+	os_rwlock_wrlock(&map->rwlock);
 
 	/* recalculate slot, someone could rebuild the hash map */
 	idx = inode_hash(map, inode) % map->sz;
@@ -352,12 +347,8 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 	os_rwlock_init(&vinode->rwlock);
 	vinode->tinode = inode;
 	vinode->inode = D_RW(inode);
-	if (inode_is_dir(vinode->inode) && parent) {
+	if (inode_is_dir(vinode->inode) && parent)
 		vinode->parent = vinode_ref(pfp, parent);
-
-		if (parent_refed)
-			*parent_refed = true;
-	}
 
 	if (parent && name && namelen)
 		vinode_set_debug_path_locked(pfp, parent, vinode, name,
@@ -367,58 +358,14 @@ _inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 	b->arr[empty_slot].vinode = vinode;
 	map->inodes++;
 
-	if (is_new)
-		cb_push_front(TX_STAGE_ONABORT,
-			(cb_basic)vinode_unregister_locked,
-			vinode);
-
 end:
 	__sync_fetch_and_add(&vinode->ref, 1);
-	if (is_new && tx)
-		rwlock_tx_unlock_on_commit(&map->rwlock);
-	else
-		os_rwlock_unlock(&map->rwlock);
+	os_rwlock_unlock(&map->rwlock);
 
 	if (error)
 		errno = error;
 
 	return vinode;
-}
-
-/*
- * inode_ref_new -- increases inode reference counter
- *
- * Assumes inode was allocated in the same transaction.
- * Return volatile inode.
- */
-struct pmemfile_vinode *
-inode_ref_new(PMEMfilepool *pfp,
-		TOID(struct pmemfile_inode) inode,
-		struct pmemfile_vinode *parent,
-		volatile bool *parent_refed,
-		const char *name,
-		size_t namelen)
-{
-	return _inode_get(pfp, inode, true, parent, parent_refed, name,
-			namelen);
-}
-
-/*
- * inode_ref -- increases inode reference counter
- *
- * Assumes inode was not allocated in the same transaction.
- * Return volatile inode.
- */
-struct pmemfile_vinode *
-inode_ref(PMEMfilepool *pfp,
-		TOID(struct pmemfile_inode) inode,
-		struct pmemfile_vinode *parent,
-		const char *name,
-		size_t namelen)
-{
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
-
-	return _inode_get(pfp, inode, false, parent, NULL, name, namelen);
 }
 
 /*
@@ -509,9 +456,8 @@ file_get_time(struct pmemfile_time *t)
  *
  * Must be called in a transaction.
  */
-struct pmemfile_vinode *
-inode_alloc(PMEMfilepool *pfp, uint64_t flags, struct pmemfile_vinode *parent,
-		volatile bool *parent_refed, const char *name, size_t namelen)
+TOID(struct pmemfile_inode)
+inode_alloc(PMEMfilepool *pfp, uint64_t flags)
 {
 	LOG(LDBG, "flags 0x%lx", flags);
 
@@ -547,7 +493,7 @@ inode_alloc(PMEMfilepool *pfp, uint64_t flags, struct pmemfile_vinode *parent,
 		inode->size = sizeof(inode->file_data);
 	}
 
-	return inode_ref_new(pfp, tinode, parent, parent_refed, name, namelen);
+	return tinode;
 }
 
 /*
@@ -569,8 +515,23 @@ vinode_orphan_unlocked(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 	TOID(struct pmemfile_inode_array) orphaned =
 			pfp->super->orphaned_inodes;
 
-	inode_array_add(pfp, orphaned, vinode,
+	inode_array_add(pfp, orphaned, vinode->tinode,
 			&vinode->orphaned.arr, &vinode->orphaned.idx);
+}
+
+struct inode_orphan_info
+inode_orphan(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
+{
+	LOG(LDBG, "inode 0x%" PRIx64, tinode.oid.off);
+
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
+	struct inode_orphan_info info;
+
+	inode_array_add(pfp, pfp->super->orphaned_inodes, tinode, &info.arr,
+			&info.idx);
+
+	return info;
 }
 
 /*

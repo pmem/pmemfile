@@ -176,7 +176,6 @@ void inode_map_free(struct pmemfile_inode_map *c);
 struct pmemfile_vinode *inode_ref(PMEMfilepool *pfp,
 		TOID(struct pmemfile_inode) inode,
 		struct pmemfile_vinode *parent,
-		volatile bool *parent_refed,
 		const char *name,
 		size_t namelen);
 

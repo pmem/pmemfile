@@ -81,11 +81,8 @@ initialize_super_block(PMEMfilepool *pfp)
 		goto inode_map_alloc_fail;
 	}
 
-	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		if (!TOID_IS_NULL(super->root_inode)) {
-			pfp->root = inode_ref(pfp, super->root_inode, NULL,
-					NULL, NULL, 0);
-		} else {
+	if (TOID_IS_NULL(super->root_inode)) {
+		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 			pfp->root = vinode_new_dir(pfp, NULL, "/", 1,
 					PMEMFILE_ACCESSPERMS, false, NULL);
 
@@ -94,21 +91,26 @@ initialize_super_block(PMEMfilepool *pfp)
 			super->root_inode = pfp->root->tinode;
 			super->orphaned_inodes =
 					TX_ZNEW(struct pmemfile_inode_array);
-		}
-		pfp->root->parent = pfp->root;
-#ifdef DEBUG
-		pfp->root->path = strdup("/");
-#endif
-
-		pfp->cwd = vinode_ref(pfp, pfp->root);
-	} TX_ONABORT {
-		error = errno;
-	} TX_END
+		} TX_ONABORT {
+			error = errno;
+		} TX_END
+	} else {
+		pfp->root = inode_ref(pfp, super->root_inode, NULL, NULL, 0);
+		if (!pfp->root)
+			error = errno;
+	}
 
 	if (error) {
 		ERR("!cannot initialize super block");
 		goto tx_err;
 	}
+
+	pfp->root->parent = pfp->root;
+#ifdef DEBUG
+	pfp->root->path = strdup("/");
+#endif
+
+	pfp->cwd = vinode_ref(pfp, pfp->root);
 
 	return 0;
 tx_err:

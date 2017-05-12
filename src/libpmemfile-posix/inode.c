@@ -413,12 +413,12 @@ struct pmemfile_vinode *
 inode_ref(PMEMfilepool *pfp,
 		TOID(struct pmemfile_inode) inode,
 		struct pmemfile_vinode *parent,
-		volatile bool *parent_refed,
 		const char *name,
 		size_t namelen)
 {
-	return _inode_get(pfp, inode, false, parent, parent_refed, name,
-			namelen);
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+
+	return _inode_get(pfp, inode, false, parent, NULL, name, namelen);
 }
 
 /*

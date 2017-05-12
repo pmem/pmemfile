@@ -477,7 +477,8 @@ vinode_lookup_dirent_by_vinode_locked(PMEMfilepool *pfp,
  * vinode_lookup_dirent -- looks up file name in passed directory
  *
  * Takes reference on found inode. Caller must hold reference to parent inode.
- * Does not need transaction.
+ *
+ * Can't be run in transaction.
  */
 struct pmemfile_vinode *
 vinode_lookup_dirent(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
@@ -485,6 +486,7 @@ vinode_lookup_dirent(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 {
 	LOG(LDBG, "parent 0x%" PRIx64 " ppath %s name %s",
 			parent->tinode.oid.off, pmfi_path(parent), name);
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
 
 	if (namelen == 0) {
 		errno = ENOENT;
@@ -509,14 +511,8 @@ vinode_lookup_dirent(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 
 	struct pmemfile_dirent *dirent =
 		vinode_lookup_dirent_by_name_locked(pfp, parent, name, namelen);
-	if (dirent) {
-		bool parent_refed = false;
-		vinode = inode_ref(pfp, dirent->inode, parent, &parent_refed,
-				name, namelen);
-
-		if (!vinode && parent_refed)
-			vinode_unref(pfp, parent);
-	}
+	if (dirent)
+		vinode = inode_ref(pfp, dirent->inode, parent, name, namelen);
 
 end:
 	os_rwlock_unlock(&parent->rwlock);
@@ -1314,7 +1310,7 @@ lock_parent_and_child(PMEMfilepool *pfp,
 
 	/* get the vinode for found file */
 	info->vinode = inode_ref(pfp, info->dirent->inode, path->vinode,
-					NULL, path->remaining, src_namelen);
+					path->remaining, src_namelen);
 	if (!info->vinode) {
 		int error = errno;
 
@@ -1396,7 +1392,7 @@ lock_parents_and_children(PMEMfilepool *pfp,
 
 	/* get the vinode for found source file */
 	src_info->vinode = inode_ref(pfp, src_info->dirent->inode, src->vinode,
-					NULL, src->remaining, src_namelen);
+					src->remaining, src_namelen);
 	if (!src_info->vinode) {
 		int error = errno;
 
@@ -1411,7 +1407,7 @@ lock_parents_and_children(PMEMfilepool *pfp,
 	if (dst_info->dirent) {
 		/* if file exists get the vinode for it */
 		dst_info->vinode = inode_ref(pfp, dst_info->dirent->inode,
-				dst->vinode, NULL, dst->remaining, dst_namelen);
+				dst->vinode, dst->remaining, dst_namelen);
 		if (!dst_info->vinode) {
 			int error = errno;
 

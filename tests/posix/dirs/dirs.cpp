@@ -1026,6 +1026,52 @@ TEST_F(dirs, rename_dir_to_empty)
 				      }));
 }
 
+TEST_F(dirs, renameat)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir2", 0755), 0);
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/f1", 0, 0644));
+
+	PMEMfile *dir1 = pmemfile_open(pfp, "/dir1", PMEMFILE_O_DIRECTORY);
+	PMEMfile *dir2 = pmemfile_open(pfp, "/dir2", PMEMFILE_O_DIRECTORY);
+	ASSERT_NE(dir1, nullptr);
+	ASSERT_NE(dir2, nullptr);
+
+	ASSERT_EQ(pmemfile_renameat(pfp, dir1, "f1", dir2, "ff"), 0)
+		<< strerror(errno);
+
+	pmemfile_stat_t buf;
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir1/f1", &buf), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir2/ff", &buf), 0) << strerror(errno);
+
+	ASSERT_EQ(pmemfile_fchdir(pfp, dir2), 0);
+
+	ASSERT_EQ(pmemfile_renameat(pfp, PMEMFILE_AT_CWD, "ff", dir1, "f2"), 0)
+		<< strerror(errno);
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir2/ff", &buf), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir1/f2", &buf), 0) << strerror(errno);
+
+	ASSERT_EQ(pmemfile_renameat(pfp, dir1, "f2", PMEMFILE_AT_CWD, "f3"), 0)
+		<< strerror(errno);
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir1/f2", &buf), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir2/f3", &buf), 0) << strerror(errno);
+
+	pmemfile_close(pfp, dir1);
+	pmemfile_close(pfp, dir2);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir2/f3"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir2"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
+}
+
 TEST_F(dirs, rename_noreplace)
 {
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);

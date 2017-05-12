@@ -34,14 +34,9 @@
 # install-syscall_intercept.sh - installs libsyscall_intercept
 #
 
-# XXX temporary - clone GBuella's fork of pmem/syscall_intercept
-# Redirect to:
-# git clone https://github.com/pmem/syscall_intercept
-# once it is merged!
-
-git clone https://github.com/GBuella/syscall_intercept syscall_intercept
+git clone https://github.com/pmem/syscall_intercept syscall_intercept
 cd syscall_intercept
-git checkout c52c0812568bc4456399cb5057e8d05382a4e108
+git checkout 570b63868fa49bfd98dded2fd2fb0a80dd1d6e00
 ./utils/build-$1.sh
 if [ "$1" = "deb" ]; then
 	sudo dpkg -i build-deb/libsyscall-*.deb

@@ -436,6 +436,27 @@ vinode_lookup_dirent_by_name_locked(PMEMfilepool *pfp,
 }
 
 /*
+ * vinode_lookup_vinode_by_name_locked -- looks up file name in passed
+ * directory and returns dirent and vinode
+ */
+struct pmemfile_dirent_info
+vinode_lookup_vinode_by_name_locked(PMEMfilepool *pfp,
+		struct pmemfile_vinode *parent, const char *name,
+		size_t namelen)
+{
+	struct pmemfile_dirent_info out;
+	out.dirent =
+		vinode_lookup_dirent_by_name_locked(pfp, parent, name, namelen);
+	if (!out.dirent) {
+		out.vinode = NULL;
+		return out;
+	}
+
+	out.vinode = inode_ref(pfp, out.dirent->inode, parent, name, namelen);
+	return out;
+}
+
+/*
  * vinode_lookup_dirent_by_vinode_locked -- looks up file name in passed
  * directory
  *
@@ -509,10 +530,9 @@ vinode_lookup_dirent(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 		goto end;
 	}
 
-	struct pmemfile_dirent *dirent =
-		vinode_lookup_dirent_by_name_locked(pfp, parent, name, namelen);
-	if (dirent)
-		vinode = inode_ref(pfp, dirent->inode, parent, name, namelen);
+	struct pmemfile_dirent_info info =
+		vinode_lookup_vinode_by_name_locked(pfp, parent, name, namelen);
+	vinode = info.vinode;
 
 end:
 	os_rwlock_unlock(&parent->rwlock);
@@ -1298,19 +1318,8 @@ lock_parent_and_child(PMEMfilepool *pfp,
 	os_rwlock_rdlock(&path->vinode->rwlock);
 
 	/* resolve file */
-	info->dirent = vinode_lookup_dirent_by_name_locked(pfp, path->vinode,
-				path->remaining, src_namelen);
-	if (!info->dirent) {
-		int error = errno;
-
-		os_rwlock_unlock(&path->vinode->rwlock);
-
-		return -error;
-	}
-
-	/* get the vinode for found file */
-	info->vinode = inode_ref(pfp, info->dirent->inode, path->vinode,
-					path->remaining, src_namelen);
+	*info = vinode_lookup_vinode_by_name_locked(pfp, path->vinode,
+			path->remaining, src_namelen);
 	if (!info->vinode) {
 		int error = errno;
 
@@ -1380,19 +1389,8 @@ lock_parents_and_children(PMEMfilepool *pfp,
 	vinode_rdlock2(src->vinode, dst->vinode);
 
 	/* find source file */
-	src_info->dirent = vinode_lookup_dirent_by_name_locked(pfp, src->vinode,
-				src->remaining, src_namelen);
-	if (!src_info->dirent) {
-		int error = errno;
-
-		vinode_unlock2(src->vinode, dst->vinode);
-
-		return -error;
-	}
-
-	/* get the vinode for found source file */
-	src_info->vinode = inode_ref(pfp, src_info->dirent->inode, src->vinode,
-					src->remaining, src_namelen);
+	*src_info = vinode_lookup_vinode_by_name_locked(pfp, src->vinode,
+			src->remaining, src_namelen);
 	if (!src_info->vinode) {
 		int error = errno;
 
@@ -1402,22 +1400,17 @@ lock_parents_and_children(PMEMfilepool *pfp,
 	}
 
 	/* find destination file (it may not exist) */
-	dst_info->dirent = vinode_lookup_dirent_by_name_locked(pfp, dst->vinode,
-					dst->remaining, dst_namelen);
-	if (dst_info->dirent) {
-		/* if file exists get the vinode for it */
-		dst_info->vinode = inode_ref(pfp, dst_info->dirent->inode,
-				dst->vinode, dst->remaining, dst_namelen);
-		if (!dst_info->vinode) {
-			int error = errno;
+	*dst_info = vinode_lookup_vinode_by_name_locked(pfp, dst->vinode,
+			dst->remaining, dst_namelen);
+	if (dst_info->dirent && !dst_info->vinode) {
+		int error = errno;
 
-			vinode_unlock2(src->vinode, dst->vinode);
+		vinode_unlock2(src->vinode, dst->vinode);
 
-			vinode_unref(pfp, src_info->vinode);
-			src_info->vinode = NULL;
+		vinode_unref(pfp, src_info->vinode);
+		src_info->vinode = NULL;
 
-			return -error;
-		}
+		return -error;
 	}
 
 	/* drop the locks on parent */

@@ -51,6 +51,11 @@ struct pmemfile_path_info {
 	int error;
 };
 
+struct pmemfile_dirent_info {
+	struct pmemfile_vinode *vinode;
+	struct pmemfile_dirent *dirent;
+};
+
 void resolve_pathat(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *parent, const char *path,
 		struct pmemfile_path_info *path_info, int flags);
@@ -107,6 +112,11 @@ struct pmemfile_dirent *vinode_lookup_dirent_by_name_locked(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent, const char *name,
 		size_t namelen);
 
+struct pmemfile_dirent_info vinode_lookup_vinode_by_name_locked(
+		PMEMfilepool *pfp,
+		struct pmemfile_vinode *parent, const char *name,
+		size_t namelen);
+
 void vinode_unlink_file(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent,
 		struct pmemfile_dirent *dirent,
@@ -130,11 +140,6 @@ pmemfile_dir_size(TOID(struct pmemfile_dir) dir)
 {
 	return page_rounddown(pmemobj_alloc_usable_size(dir.oid));
 }
-
-struct pmemfile_dirent_info {
-	struct pmemfile_vinode *vinode;
-	struct pmemfile_dirent *dirent;
-};
 
 int lock_parent_and_child(PMEMfilepool *pfp,
 		struct pmemfile_path_info *path,

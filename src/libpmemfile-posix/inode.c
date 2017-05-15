@@ -103,7 +103,7 @@ struct pmemfile_inode_map {
 	uint64_t hash_fun_p;
 
 	/* number of elements in "buckets" */
-	size_t sz;
+	size_t nbuckets;
 
 	/* buckets */
 	struct inode_map_bucket *buckets;
@@ -133,8 +133,8 @@ inode_map_alloc()
 {
 	struct pmemfile_inode_map *c = calloc(1, sizeof(*c));
 
-	c->sz = 2;
-	c->buckets = calloc(1, c->sz * sizeof(c->buckets[0]));
+	c->nbuckets = 2;
+	c->buckets = calloc(1, c->nbuckets * sizeof(c->buckets[0]));
 
 	inode_map_rand_params(c);
 	c->hash_fun_p = 32212254719ULL;
@@ -152,7 +152,7 @@ inode_map_free(struct pmemfile_inode_map *c)
 {
 	int ref_leaks = 0;
 
-	for (unsigned i = 0; i < c->sz; ++i) {
+	for (unsigned i = 0; i < c->nbuckets; ++i) {
 		struct inode_map_bucket *bucket = &c->buckets[i];
 
 		for (unsigned j = 0; j < BUCKET_SIZE; ++j) {
@@ -195,7 +195,7 @@ inode_map_rebuild(struct pmemfile_inode_map *c, size_t new_sz)
 			calloc(1, new_sz * sizeof(new_buckets[0]));
 	size_t idx;
 
-	for (size_t i = 0; i < c->sz; ++i) {
+	for (size_t i = 0; i < c->nbuckets; ++i) {
 		struct inode_map_bucket *b = &c->buckets[i];
 
 		for (unsigned j = 0; j < BUCKET_SIZE; ++j) {
@@ -220,7 +220,7 @@ inode_map_rebuild(struct pmemfile_inode_map *c, size_t new_sz)
 	}
 
 	free(c->buckets);
-	c->sz = new_sz;
+	c->nbuckets = new_sz;
 	c->buckets = new_buckets;
 
 	return true;
@@ -235,7 +235,7 @@ vinode_unregister_locked(PMEMfilepool *pfp,
 {
 	struct pmemfile_inode_map *c = pfp->inode_map;
 
-	size_t idx = inode_hash(c, vinode->tinode) % c->sz;
+	size_t idx = inode_hash(c, vinode->tinode) % c->nbuckets;
 	struct inode_map_bucket *b = &c->buckets[idx];
 	unsigned j;
 	for (j = 0; j < BUCKET_SIZE; ++j) {
@@ -284,7 +284,7 @@ inode_ref(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 	}
 
 	os_rwlock_rdlock(&map->rwlock);
-	size_t idx = inode_hash(map, inode) % map->sz;
+	size_t idx = inode_hash(map, inode) % map->nbuckets;
 
 	struct inode_map_bucket *b = &map->buckets[idx];
 	struct pmemfile_vinode *vinode;
@@ -299,7 +299,7 @@ inode_ref(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 	os_rwlock_wrlock(&map->rwlock);
 
 	/* recalculate slot, someone could rebuild the hash map */
-	idx = inode_hash(map, inode) % map->sz;
+	idx = inode_hash(map, inode) % map->nbuckets;
 
 	/* check again */
 	b = &map->buckets[idx];
@@ -315,7 +315,7 @@ inode_ref(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 
 	int tries = 0;
 	while (empty_slot == UINT32_MAX) {
-		size_t new_sz = map->sz;
+		size_t new_sz = map->nbuckets;
 
 		do {
 			if (map->inodes > 2 * new_sz || tries == 2) {
@@ -327,7 +327,7 @@ inode_ref(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 			}
 		} while (!inode_map_rebuild(map, new_sz));
 
-		idx = inode_hash(map, inode) % map->sz;
+		idx = inode_hash(map, inode) % map->nbuckets;
 		b = &map->buckets[idx];
 
 		for (unsigned j = 0; j < BUCKET_SIZE; ++j) {

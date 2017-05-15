@@ -138,7 +138,7 @@ inode_map_alloc(void)
 		return NULL;
 
 	c->nbuckets = INITIAL_NBUCKETS;
-	c->buckets = calloc(1, c->nbuckets * sizeof(c->buckets[0]));
+	c->buckets = calloc(c->nbuckets, sizeof(c->buckets[0]));
 	if (!c->buckets) {
 		free(c);
 		return NULL;
@@ -203,7 +203,7 @@ static int
 inode_map_rebuild(struct pmemfile_inode_map *c, size_t new_sz)
 {
 	struct inode_map_bucket *new_buckets =
-			calloc(1, new_sz * sizeof(new_buckets[0]));
+			calloc(new_sz, sizeof(new_buckets[0]));
 	size_t idx;
 
 	if (!new_buckets)

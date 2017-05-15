@@ -72,7 +72,7 @@ cb_get(void)
 {
 	struct all_callbacks *c = os_tls_get(callbacks_key);
 	if (!c) {
-		c = calloc(1, sizeof(struct all_callbacks) * MAX_TX_STAGE);
+		c = calloc(MAX_TX_STAGE, sizeof(struct all_callbacks));
 		if (!c)
 			return NULL;
 

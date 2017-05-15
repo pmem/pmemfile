@@ -80,6 +80,8 @@ vinode_ref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 	return vinode;
 }
 
+#define INITIAL_NBUCKETS 2
+#define HASH_P_COEFF 32212254719ULL
 #define BUCKET_SIZE 2
 
 /* hash map bucket */
@@ -133,11 +135,11 @@ inode_map_alloc(void)
 {
 	struct pmemfile_inode_map *c = calloc(1, sizeof(*c));
 
-	c->nbuckets = 2;
+	c->nbuckets = INITIAL_NBUCKETS;
 	c->buckets = calloc(1, c->nbuckets * sizeof(c->buckets[0]));
 
 	inode_map_rand_params(c);
-	c->hash_fun_p = 32212254719ULL;
+	c->hash_fun_p = HASH_P_COEFF;
 
 	os_rwlock_init(&c->rwlock);
 

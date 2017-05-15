@@ -34,6 +34,7 @@
  * pmemfile-posix.c -- library constructor / destructor
  */
 
+#include <limits.h>
 #include "callbacks.h"
 #include "data.h"
 #include "internal.h"
@@ -78,25 +79,15 @@ libpmemfile_posix_init(void)
 
 	char *tmp = getenv("PMEMFILE_BLOCK_SIZE");
 	if (tmp) {
-		/*
-		 * XXX: I don't like parsing arbitrary input with
-		 * such functions.
-		 *
-		 * "...atoll need not affect the value of the integer
-		 * expression errno on an error. If the value of the result
-		 * cannot be represented, the behavior is undefined..."
-		 *
-		 * Also:
-		 * "An atoll is a ring-shaped coral reef, island, or series
-		 * of islets."
-		 */
-		long long tmpll = atoll(tmp);
-		if (tmpll < 0)
+		unsigned long long tmpll = strtoull(tmp, NULL, 0);
+		if (tmpll == ULLONG_MAX) {
+			LOG(LUSR, "Invalid value of PMEMFILE_BLOCK_SIZE");
 			pmemfile_posix_block_size = 0;
-		else if (pmemfile_posix_block_size > MAX_BLOCK_SIZE)
+		} else if (pmemfile_posix_block_size > MAX_BLOCK_SIZE) {
 			pmemfile_posix_block_size = MAX_BLOCK_SIZE;
-		else
+		} else {
 			pmemfile_posix_block_size = page_roundup((size_t)tmpll);
+		}
 	}
 	LOG(LINF, "block size %zu", pmemfile_posix_block_size);
 

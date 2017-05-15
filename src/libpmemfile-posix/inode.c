@@ -134,9 +134,15 @@ struct pmemfile_inode_map *
 inode_map_alloc(void)
 {
 	struct pmemfile_inode_map *c = calloc(1, sizeof(*c));
+	if (!c)
+		return NULL;
 
 	c->nbuckets = INITIAL_NBUCKETS;
 	c->buckets = calloc(1, c->nbuckets * sizeof(c->buckets[0]));
+	if (!c->buckets) {
+		free(c);
+		return NULL;
+	}
 
 	inode_map_rand_params(c);
 	c->hash_fun_p = HASH_P_COEFF;
@@ -189,13 +195,19 @@ inode_hash(struct pmemfile_inode_map *c, TOID(struct pmemfile_inode) inode)
 
 /*
  * inode_map_rebuild -- rebuilds the whole inode hash map
+ *
+ * Returns 0 on success, negative value (-errno) on failure, 1 on hash map
+ * conflict.
  */
-static bool
+static int
 inode_map_rebuild(struct pmemfile_inode_map *c, size_t new_sz)
 {
 	struct inode_map_bucket *new_buckets =
 			calloc(1, new_sz * sizeof(new_buckets[0]));
 	size_t idx;
+
+	if (!new_buckets)
+		return -errno;
 
 	for (size_t i = 0; i < c->nbuckets; ++i) {
 		struct inode_map_bucket *b = &c->buckets[i];
@@ -216,7 +228,7 @@ inode_map_rebuild(struct pmemfile_inode_map *c, size_t new_sz)
 
 			if (k == BUCKET_SIZE) {
 				free(new_buckets);
-				return false;
+				return 1;
 			}
 		}
 	}
@@ -225,7 +237,7 @@ inode_map_rebuild(struct pmemfile_inode_map *c, size_t new_sz)
 	c->nbuckets = new_sz;
 	c->buckets = new_buckets;
 
-	return true;
+	return 0;
 }
 
 /*
@@ -319,6 +331,7 @@ inode_ref(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 	while (empty_slot == UINT32_MAX) {
 		size_t new_sz = map->nbuckets;
 
+		int res;
 		do {
 			if (map->inodes > 2 * new_sz || tries == 2) {
 				new_sz *= 2;
@@ -327,7 +340,12 @@ inode_ref(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 				inode_map_rand_params(map);
 				tries++;
 			}
-		} while (!inode_map_rebuild(map, new_sz));
+		} while ((res = inode_map_rebuild(map, new_sz)) == 1);
+
+		if (res < 0) {
+			error = -res;
+			goto end;
+		}
 
 		idx = inode_hash(map, inode) % map->nbuckets;
 		b = &map->buckets[idx];

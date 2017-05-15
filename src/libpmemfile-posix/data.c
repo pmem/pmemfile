@@ -87,10 +87,17 @@ narrow_to_full_pages(uint64_t *offset, uint64_t *length)
 /*
  * block_cache_insert_block -- inserts block into the tree
  */
-static void
+static int
 block_cache_insert_block(struct ctree *c, struct pmemfile_block *block)
 {
-	ctree_insert_unlocked(c, block->offset, (uintptr_t)block);
+	if (ctree_insert_unlocked(c, block->offset, (uintptr_t)block)) {
+		if (pmemobj_tx_stage() == TX_STAGE_WORK)
+			pmemfile_tx_abort(errno);
+		else
+			return -errno;
+	}
+
+	return 0;
 }
 
 /*
@@ -106,12 +113,12 @@ find_last_block(const struct pmemfile_vinode *vinode)
 /*
  * vinode_rebuild_block_tree -- rebuilds runtime tree of blocks
  */
-static void
+static int
 vinode_rebuild_block_tree(struct pmemfile_vinode *vinode)
 {
 	struct ctree *c = ctree_new();
 	if (!c)
-		return;
+		return -errno;
 	struct pmemfile_block_array *block_array =
 			&vinode->inode->file_data.blocks;
 	struct pmemfile_block *first = NULL;
@@ -123,7 +130,11 @@ vinode_rebuild_block_tree(struct pmemfile_vinode *vinode)
 			if (block->size == 0)
 				break;
 
-			block_cache_insert_block(c, block);
+			int err = block_cache_insert_block(c, block);
+			if (err) {
+				ctree_delete(c);
+				return err;
+			}
 			if (first == NULL || block->offset < first->offset)
 				first = block;
 		}
@@ -133,6 +144,8 @@ vinode_rebuild_block_tree(struct pmemfile_vinode *vinode)
 
 	vinode->first_block = first;
 	vinode->blocks = c;
+
+	return 0;
 }
 
 /*

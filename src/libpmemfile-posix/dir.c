@@ -124,6 +124,8 @@ static inline char *
 util_strndup(const char *c, size_t len)
 {
 	char *cp = malloc(len + 1);
+	if (!cp)
+		return NULL;
 	memcpy(cp, c, len);
 	cp[len] = 0;
 	return cp;
@@ -153,16 +155,22 @@ vinode_set_debug_path_locked(PMEMfilepool *pfp,
 
 	if (parent_vinode == NULL) {
 		child_vinode->path = util_strndup(name, namelen);
+		if (!child_vinode->path)
+			FATAL("!path allocation failed (%d)", 1);
 		return;
 	}
 
 	if (strcmp(parent_vinode->path, "/") == 0) {
 		child_vinode->path = malloc(namelen + 2);
+		if (!child_vinode->path)
+			FATAL("!path allocation failed (%d)", 2);
 		sprintf(child_vinode->path, "/%.*s", (int)namelen, name);
 		return;
 	}
 
 	char *p = malloc(strlen(parent_vinode->path) + 1 + namelen + 1);
+	if (!p)
+		FATAL("!path allocation failed (%d)", 3);
 	sprintf(p, "%s/%.*s", parent_vinode->path, (int)namelen, name);
 	child_vinode->path = p;
 
@@ -953,12 +961,18 @@ resolve_pathat_nested(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 					child->inode->file_data.data;
 			char *new_path = malloc(strlen(symlink_target) + 1 +
 					strlen(slash + 1) + 1);
-			sprintf(new_path, "%s/%s", symlink_target, slash + 1);
+			if (!new_path)
+				path_info->error = errno;
+			else
+				sprintf(new_path, "%s/%s", symlink_target,
+						slash + 1);
 			os_rwlock_unlock(&child->rwlock);
 			vinode_unref(pfp, child);
 
-			resolve_pathat_nested(pfp, cred, parent, new_path,
-					path_info, flags, nest_level + 1);
+			if (!path_info->error)
+				resolve_pathat_nested(pfp, cred, parent,
+						new_path, path_info, flags,
+						nest_level + 1);
 
 			vinode_unref(pfp, parent);
 			free(new_path);

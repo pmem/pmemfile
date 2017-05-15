@@ -36,6 +36,7 @@
  * Runtime pool state.
  */
 
+#include "hash_map.h"
 #include "inode.h"
 #include "layout.h"
 #include "os_thread.h"
@@ -81,7 +82,8 @@ struct pmemfilepool {
 	os_rwlock_t super_rwlock;
 
 	/* map between inodes and vinodes */
-	struct pmemfile_inode_map *inode_map;
+	struct hash_map *inode_map;
+	os_rwlock_t inode_map_rwlock;
 
 	/* current credentials */
 	struct pmemfile_cred cred;

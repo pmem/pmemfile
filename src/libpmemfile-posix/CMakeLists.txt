@@ -37,6 +37,7 @@ set(SOURCES
 	data.c
 	dir.c
 	file.c
+	hash_map.c
 	inode.c
 	inode_array.c
 	locks.c
@@ -54,6 +55,7 @@ set(HEADERS
 	data.h
 	dir.h
 	file.h
+	hash_map.h
 	inode_array.h
 	inode.h
 	internal.h

@@ -39,6 +39,7 @@
 
 #include "callbacks.h"
 #include "dir.h"
+#include "hash_map.h"
 #include "inode.h"
 #include "internal.h"
 #include "locks.h"
@@ -73,8 +74,9 @@ initialize_super_block(PMEMfilepool *pfp)
 	os_rwlock_init(&pfp->cred_rwlock);
 	os_rwlock_init(&pfp->super_rwlock);
 	os_rwlock_init(&pfp->cwd_rwlock);
+	os_rwlock_init(&pfp->inode_map_rwlock);
 
-	pfp->inode_map = inode_map_alloc();
+	pfp->inode_map = hash_map_alloc();
 	if (!pfp->inode_map) {
 		error = errno;
 		ERR("!cannot allocate inode map");
@@ -113,11 +115,12 @@ initialize_super_block(PMEMfilepool *pfp)
 
 	return 0;
 tx_err:
-	inode_map_free(pfp->inode_map);
+	inode_map_free(pfp);
 inode_map_alloc_fail:
 	os_rwlock_destroy(&pfp->super_rwlock);
 	os_rwlock_destroy(&pfp->cwd_rwlock);
 	os_rwlock_destroy(&pfp->cred_rwlock);
+	os_rwlock_destroy(&pfp->inode_map_rwlock);
 	errno = error;
 	return -1;
 }
@@ -305,10 +308,11 @@ pmemfile_pool_close(PMEMfilepool *pfp)
 
 	vinode_unref(pfp, pfp->cwd);
 	vinode_unref(pfp, pfp->root);
-	inode_map_free(pfp->inode_map);
+	inode_map_free(pfp);
 	os_rwlock_destroy(&pfp->cred_rwlock);
 	os_rwlock_destroy(&pfp->super_rwlock);
 	os_rwlock_destroy(&pfp->cwd_rwlock);
+	os_rwlock_destroy(&pfp->inode_map_rwlock);
 
 	pmemobj_close(pfp->pop);
 

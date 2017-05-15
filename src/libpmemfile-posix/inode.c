@@ -389,29 +389,6 @@ end:
 }
 
 /*
- * vinode_tx_unref -- decreases inode reference counter
- *
- * Must be called in a transaction.
- */
-static bool
-vinode_tx_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
-{
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
-
-	if (__sync_sub_and_fetch(&vinode->ref, 1) > 0)
-		return false;
-
-	if (vinode->inode->nlink == 0) {
-		inode_array_unregister(pfp, vinode->orphaned.arr,
-				vinode->orphaned.idx);
-
-		inode_free(pfp, vinode->tinode);
-	}
-
-	return true;
-}
-
-/*
  * vinode_unref -- decreases inode reference counter
  *
  * Can't be called in a transaction.
@@ -430,7 +407,15 @@ vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 		struct pmemfile_vinode *parent = NULL;
 
 		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-			if (vinode_tx_unref(pfp, vinode)) {
+			if (__sync_sub_and_fetch(&vinode->ref, 1) == 0) {
+				if (vinode->inode->nlink == 0) {
+					inode_array_unregister(pfp,
+							vinode->orphaned.arr,
+							vinode->orphaned.idx);
+
+					inode_free(pfp, vinode->tinode);
+				}
+
 				to_unregister = vinode;
 				/*
 				 * We don't need to take the vinode lock to

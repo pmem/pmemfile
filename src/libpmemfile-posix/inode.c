@@ -129,7 +129,7 @@ inode_map_rand_params(struct pmemfile_inode_map *c)
  * inode_map_alloc -- allocates inode hash map
  */
 struct pmemfile_inode_map *
-inode_map_alloc()
+inode_map_alloc(void)
 {
 	struct pmemfile_inode_map *c = calloc(1, sizeof(*c));
 

@@ -84,7 +84,7 @@ Last_errormsg_key_alloc(void)
 }
 
 static inline void
-Last_errormsg_fini()
+Last_errormsg_fini(void)
 {
 	void *p = os_tls_get(Last_errormsg_key);
 	if (p) {
@@ -94,7 +94,7 @@ Last_errormsg_fini()
 }
 
 static inline const char *
-Last_errormsg_get()
+Last_errormsg_get(void)
 {
 	Last_errormsg_key_alloc();
 
@@ -211,7 +211,7 @@ out_init(const char *log_prefix, const char *log_level_var,
  * This is called to close log file before process stop.
  */
 void
-out_fini()
+out_fini(void)
 {
 	if (Out_fp != NULL && Out_fp != stderr) {
 		fclose(Out_fp);

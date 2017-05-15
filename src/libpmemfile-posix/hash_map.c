@@ -57,6 +57,7 @@ struct hash_map {
 	uint32_t hash_fun_a;
 	uint32_t hash_fun_b;
 	uint64_t hash_fun_p;
+	unsigned short seed[3];
 
 	/* number of elements in "buckets" */
 	size_t nbuckets;
@@ -74,11 +75,10 @@ struct hash_map {
 static void
 hash_map_rand_params(struct hash_map *map)
 {
-	/* XXX use independent random pool */
 	do {
-		map->hash_fun_a = (uint32_t)rand();
+		map->hash_fun_a = (uint32_t)nrand48(map->seed);
 	} while (map->hash_fun_a == 0);
-	map->hash_fun_b = (uint32_t)rand();
+	map->hash_fun_b = (uint32_t)nrand48(map->seed);
 }
 
 /*

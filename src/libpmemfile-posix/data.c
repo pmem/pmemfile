@@ -1602,7 +1602,11 @@ pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t offset,
 			break;
 		case PMEMFILE_SEEK_DATA:
 		case PMEMFILE_SEEK_HOLE:
-			os_rwlock_rdlock(&vinode->rwlock);
+			/*
+			 * We may need to rebuild the block tree, so we have to
+			 * take vinode lock in write mode.
+			 */
+			os_rwlock_wrlock(&vinode->rwlock);
 			ret = lseek_seek_data_or_hole(vinode, offset, whence);
 			if (ret < 0) {
 				new_errno = (int)-ret;

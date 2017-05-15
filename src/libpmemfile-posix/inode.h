@@ -102,6 +102,8 @@ struct inode_perms {
 	uint32_t gid;
 };
 
+struct pmemfile_inode_map;
+
 static inline struct inode_perms
 _vinode_get_perms(struct pmemfile_vinode *vinode)
 {

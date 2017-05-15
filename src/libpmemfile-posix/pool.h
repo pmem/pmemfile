@@ -40,8 +40,6 @@
 #include "layout.h"
 #include "os_thread.h"
 
-struct pmemfile_inode_map;
-
 struct pmemfile_cred {
 	/* real user id */
 	pmemfile_uid_t ruid;

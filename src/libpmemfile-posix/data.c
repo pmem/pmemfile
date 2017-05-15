@@ -924,8 +924,11 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 	size_t ret = 0;
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		if (!vinode->blocks)
-			vinode_rebuild_block_tree(vinode);
+		if (!vinode->blocks) {
+			int err = vinode_rebuild_block_tree(vinode);
+			if (err)
+				pmemfile_tx_abort(err);
+		}
 
 		if (file_flags & PFILE_APPEND)
 			offset = inode->size;
@@ -1212,9 +1215,17 @@ pmemfile_preadv_internal(PMEMfilepool *pfp,
 	while (!vinode->blocks) {
 		os_rwlock_unlock(&vinode->rwlock);
 		os_rwlock_wrlock(&vinode->rwlock);
+
+		int err = 0;
 		if (!vinode->blocks)
-			vinode_rebuild_block_tree(vinode);
+			err = vinode_rebuild_block_tree(vinode);
 		os_rwlock_unlock(&vinode->rwlock);
+
+		if (err) {
+			errno = err;
+			return -1;
+		}
+
 		os_rwlock_rdlock(&vinode->rwlock);
 	}
 
@@ -1415,8 +1426,11 @@ static pmemfile_off_t
 lseek_seek_data(struct pmemfile_vinode *vinode, pmemfile_off_t offset,
 		pmemfile_off_t fsize)
 {
-	if (vinode->blocks == NULL)
-		vinode_rebuild_block_tree(vinode);
+	if (vinode->blocks == NULL) {
+		int err = vinode_rebuild_block_tree(vinode);
+		if (err)
+			return err;
+	}
 
 	struct pmemfile_block *block = find_block(vinode, (uint64_t)offset);
 	if (block == NULL) {
@@ -1446,8 +1460,11 @@ static pmemfile_off_t
 lseek_seek_hole(struct pmemfile_vinode *vinode, pmemfile_off_t offset,
 		pmemfile_off_t fsize)
 {
-	if (vinode->blocks == NULL)
-		vinode_rebuild_block_tree(vinode);
+	if (vinode->blocks == NULL) {
+		int err = vinode_rebuild_block_tree(vinode);
+		if (err)
+			return err;
+	}
 
 	struct pmemfile_block *block = find_block(vinode, (uint64_t)offset);
 
@@ -1819,8 +1836,11 @@ vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 
-	if (vinode->blocks == NULL)
-		vinode_rebuild_block_tree(vinode);
+	if (vinode->blocks == NULL) {
+		int err = vinode_rebuild_block_tree(vinode);
+		if (err)
+			pmemfile_tx_abort(err);
+	}
 
 	cb_push_front(TX_STAGE_ONABORT,
 		(cb_basic)vinode_destroy_data_state,
@@ -1867,8 +1887,11 @@ vinode_fallocate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, int mode,
 
 	vinode_snapshot(vinode);
 
-	if (vinode->blocks == NULL)
-		vinode_rebuild_block_tree(vinode);
+	if (vinode->blocks == NULL) {
+		error = vinode_rebuild_block_tree(vinode);
+		if (error)
+			return error;
+	}
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (mode & PMEMFILE_FL_PUNCH_HOLE) {

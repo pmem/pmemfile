@@ -63,9 +63,9 @@
 
 #include <asm-generic/errno.h>
 
+#include "compiler_utils.h"
 #include "libsyscall_intercept_hook_point.h"
 #include "libpmemfile-posix.h"
-#include "util.h"
 #include "sys_util.h"
 #include "preload.h"
 

@@ -47,25 +47,7 @@
 #include "locks.h"
 #include "os_thread.h"
 #include "out.h"
-
-/*
- * pmfi_path -- returns one of the full paths inode can be reached on
- *
- * Only for debugging.
- */
-const char *
-pmfi_path(struct pmemfile_vinode *vinode)
-{
-#ifdef DEBUG
-	if (!vinode)
-		return NULL;
-	if (!vinode->path)
-		LOG(LTRC, "0x%lx: no vinode->path", vinode->tinode.oid.off);
-	return vinode->path;
-#else
-	return NULL;
-#endif
-}
+#include "utils.h"
 
 static void
 log_leak(uint64_t key, void *value)
@@ -246,21 +228,6 @@ vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 }
 
 /*
- * file_get_time -- sets *t to current time
- */
-void
-file_get_time(struct pmemfile_time *t)
-{
-	pmemfile_timespec_t tm;
-	if (clock_gettime(CLOCK_REALTIME, &tm)) {
-		ERR("!clock_gettime");
-		pmemfile_tx_abort(errno);
-	}
-	t->sec = tm.tv_sec;
-	t->nsec = tm.tv_nsec;
-}
-
-/*
  * inode_alloc -- allocates inode
  *
  * Must be called in a transaction.
@@ -276,7 +243,7 @@ inode_alloc(PMEMfilepool *pfp, uint64_t flags)
 	struct pmemfile_inode *inode = D_RW(tinode);
 
 	struct pmemfile_time t;
-	file_get_time(&t);
+	get_current_time(&t);
 
 	inode->version = PMEMFILE_INODE_VERSION(1);
 	inode->flags = flags;

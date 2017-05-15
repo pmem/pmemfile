@@ -36,6 +36,7 @@
 #include "internal.h"
 #include "out.h"
 #include "block_array.h"
+#include "utils.h"
 
 /*
  * update_first_block_info
@@ -164,20 +165,6 @@ allocate_new_block_array(struct pmemfile_vinode *vinode)
 	TX_SET_DIRECT(&vinode->inode->file_data.blocks, next, new);
 	vinode->first_free_block.arr = D_RW(new);
 	vinode->first_free_block.idx = 0;
-}
-
-/*
- * is_zeroed -- check if given memory range is all zero
- */
-static inline bool
-is_zeroed(const void *addr, size_t len)
-{
-	/* XXX optimize */
-	const char *a = (const char *)addr;
-	while (len-- > 0)
-		if (*a++)
-			return false;
-	return true;
 }
 
 /*

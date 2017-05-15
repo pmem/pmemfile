@@ -35,12 +35,13 @@
  */
 
 #include <limits.h>
+
 #include "callbacks.h"
+#include "compiler_utils.h"
 #include "data.h"
 #include "internal.h"
 #include "locks.h"
 #include "out.h"
-#include "util.h"
 #include "valgrind_internal.h"
 
 #define PMEMFILE_POSIX_LOG_PREFIX "libpmemfile-posix"

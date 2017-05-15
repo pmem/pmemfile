@@ -41,7 +41,7 @@
 #include <pthread.h>
 
 #include "libsyscall_intercept_hook_point.h"
-#include "util.h"
+#include "compiler_utils.h"
 
 static inline pf_noreturn void
 exit_group_no_intercept(int ret)

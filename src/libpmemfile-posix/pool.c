@@ -38,16 +38,15 @@
 #include <inttypes.h>
 
 #include "callbacks.h"
+#include "compiler_utils.h"
 #include "dir.h"
 #include "hash_map.h"
 #include "inode.h"
 #include "internal.h"
 #include "locks.h"
+#include "os_thread.h"
 #include "out.h"
 #include "pool.h"
-
-#include "os_thread.h"
-#include "util.h"
 
 /*
  * initialize_super_block -- initializes super block

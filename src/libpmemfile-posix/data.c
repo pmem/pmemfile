@@ -35,6 +35,7 @@
 #include <limits.h>
 
 #include "callbacks.h"
+#include "compiler_utils.h"
 #include "data.h"
 #include "inode.h"
 #include "internal.h"
@@ -42,10 +43,10 @@
 #include "out.h"
 #include "pool.h"
 #include "os_thread.h"
-#include "util.h"
 #include "valgrind_internal.h"
 #include "ctree.h"
 #include "block_array.h"
+#include "utils.h"
 
 /*
  * expand_to_full_pages
@@ -981,7 +982,7 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 
 		if (ret > 0) {
 			struct pmemfile_time tm;
-			file_get_time(&tm);
+			get_current_time(&tm);
 			TX_SET_DIRECT(inode, mtime, tm);
 		}
 	} TX_ONABORT {
@@ -1251,7 +1252,7 @@ pmemfile_preadv_internal(PMEMfilepool *pfp,
 
 	if (update_atime) {
 		struct pmemfile_time tm1d;
-		file_get_time(&tm);
+		get_current_time(&tm);
 		tm1d.nsec = tm.nsec;
 		tm1d.sec = tm.sec - 86400;
 
@@ -1865,7 +1866,7 @@ vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		inode->size = size;
 
 		struct pmemfile_time tm;
-		file_get_time(&tm);
+		get_current_time(&tm);
 		TX_SET_DIRECT(inode, mtime, tm);
 	}
 }

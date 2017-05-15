@@ -47,6 +47,7 @@ set(SOURCES
 	pmemfile-posix.c
 	pool.c
 	stubs.c
+	utils.c
 )
 
 set(HEADERS
@@ -63,6 +64,7 @@ set(HEADERS
 	locks.h
 	out.h
 	pool.h
+	utils.h
 	valgrind_internal.h
 )
 

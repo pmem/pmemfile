@@ -42,11 +42,12 @@
 #include <string.h>
 #include <errno.h>
 
+#include "compiler_utils.h"
 #include "os_thread.h"
 #include "os_util.h"
 #include "out.h"
+
 #include "valgrind_internal.h"
-#include "util.h"
 
 #define UTIL_MAX_ERR_MSG 128
 

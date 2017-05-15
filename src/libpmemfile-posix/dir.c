@@ -41,6 +41,8 @@
 
 #include "callbacks.h"
 #include "dir.h"
+
+#include "compiler_utils.h"
 #include "file.h"
 #include "inode.h"
 #include "inode_array.h"
@@ -48,89 +50,7 @@
 #include "locks.h"
 #include "os_thread.h"
 #include "out.h"
-#include "util.h"
-
-/*
- * str_compare -- compares 2 strings
- *
- * s1 is NUL-terminated,
- * s2 is not - its length is s2n
- */
-static int
-str_compare(const char *s1, const char *s2, size_t s2n)
-{
-	int ret = strncmp(s1, s2, s2n);
-	if (ret)
-		return ret;
-	if (s1[s2n] != 0)
-		return 1;
-	return 0;
-}
-
-/*
- * str_contains -- returns true if string contains specified character in first
- * len bytes
- */
-bool
-str_contains(const char *str, size_t len, char c)
-{
-	for (size_t i = 0; i < len; ++i)
-		if (str[i] == c)
-			return true;
-
-	return false;
-}
-
-/*
- * more_than_1_component -- returns true if path contains more than one
- * component
- *
- * Deals with slashes at the end of path.
- */
-bool
-more_than_1_component(const char *path)
-{
-	path = strchr(path, '/');
-	if (!path)
-		return false;
-
-	while (*path == '/')
-		path++;
-
-	if (*path == 0)
-		return false;
-
-	return true;
-}
-
-/*
- * component_length -- returns number of characters till the end of path
- * component
- */
-size_t
-component_length(const char *path)
-{
-	const char *slash = strchr(path, '/');
-	if (!slash)
-		return strlen(path);
-	return (uintptr_t)slash - (uintptr_t)path;
-}
-
-#ifdef DEBUG
-/*
- * util_strndup -- strndup (GNU extension) replacement
- */
-static inline char *
-util_strndup(const char *c, size_t len)
-{
-	char *cp = malloc(len + 1);
-	if (!cp)
-		return NULL;
-	memcpy(cp, c, len);
-	cp[len] = 0;
-	return cp;
-}
-#endif
+#include "utils.h"
 
 /*
  * vinode_set_debug_path_locked -- sets full path in runtime
@@ -154,7 +74,7 @@ vinode_set_debug_path_locked(PMEMfilepool *pfp,
 		return;
 
 	if (parent_vinode == NULL) {
-		child_vinode->path = util_strndup(name, namelen);
+		child_vinode->path = pmfi_strndup(name, namelen);
 		if (!child_vinode->path)
 			FATAL("!path allocation failed (%d)", 1);
 		return;
@@ -577,7 +497,7 @@ vinode_unlink_file(PMEMfilepool *pfp,
 	pmemobj_tx_add_range_direct(dirent, sizeof(dirent->inode) + 1);
 
 	struct pmemfile_time tm;
-	file_get_time(&tm);
+	get_current_time(&tm);
 
 	if (--inode->nlink > 0) {
 		/*
@@ -1284,7 +1204,7 @@ vinode_unlink_dir(PMEMfilepool *pfp,
 	iparent->nlink--;
 
 	struct pmemfile_time tm;
-	file_get_time(&tm);
+	get_current_time(&tm);
 
 	/*
 	 * From "stat" man page:

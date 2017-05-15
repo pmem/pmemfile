@@ -33,7 +33,7 @@
 #define _GNU_SOURCE
 
 #include "libpmemfile-posix.h"
-#include "util.h"
+#include "compiler_utils.h"
 
 #include <dirent.h>
 #include <fcntl.h>

@@ -44,6 +44,7 @@
 #include "dir.h"
 #include "file.h"
 
+#include "compiler_utils.h"
 #include "inode.h"
 #include "inode_array.h"
 #include "internal.h"
@@ -51,7 +52,7 @@
 #include "os_thread.h"
 #include "out.h"
 #include "pool.h"
-#include "util.h"
+#include "utils.h"
 
 /*
  * is_tmpfile -- returns true if "flags" contains O_TMPFILE flag
@@ -747,7 +748,7 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 			pmemfile_tx_abort(EACCES);
 
 		struct pmemfile_time t;
-		file_get_time(&t);
+		get_current_time(&t);
 		vinode_add_dirent(pfp, dst.vinode->tinode, dst.remaining,
 				dst_namelen, src_vinode->tinode, t);
 	} TX_ONABORT {
@@ -1118,7 +1119,7 @@ vinode_rename(PMEMfilepool *pfp,
 		}
 
 		struct pmemfile_time t;
-		file_get_time(&t);
+		get_current_time(&t);
 
 		if (src->vinode == dst->vinode) {
 			/* optimized rename */

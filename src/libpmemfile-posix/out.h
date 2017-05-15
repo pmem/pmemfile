@@ -41,7 +41,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-#include "util.h"
+#include "compiler_utils.h"
 
 /*
  * Suppress errors which are after appropriate ASSERT* macro for nondebug

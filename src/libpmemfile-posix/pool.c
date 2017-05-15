@@ -137,6 +137,7 @@ cleanup_orphanded_inodes_single(PMEMfilepool *pfp,
 
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 
+	TX_ADD(single);
 	struct pmemfile_inode_array *op = D_RW(single);
 	for (unsigned i = 0; op->used && i < NUMINODES_PER_ENTRY; ++i) {
 		if (TOID_IS_NULL(op->inodes[i]))
@@ -175,12 +176,6 @@ cleanup_orphaned_inodes(PMEMfilepool *pfp,
 		for (; !TOID_IS_NULL(single); single = D_RO(single)->next) {
 			last = single;
 
-			/*
-			 * Both used and unused arrays will be changed. Used
-			 * here, unused in the following loop.
-			 */
-			TX_ADD(single);
-
 			if (D_RO(single)->used > 0)
 				cleanup_orphanded_inodes_single(pfp, single);
 		}
@@ -194,6 +189,7 @@ cleanup_orphaned_inodes(PMEMfilepool *pfp,
 				last = prev;
 			}
 
+			TX_ADD_FIELD(last, next);
 			D_RW(last)->next =
 					TOID_NULL(struct pmemfile_inode_array);
 		}

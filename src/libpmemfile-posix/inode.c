@@ -97,7 +97,11 @@ inode_map_free(PMEMfilepool *pfp)
 }
 
 /*
- * inode_ref -- returns volatile inode for inode
+ * inode_ref -- returns volatile inode for persistent inode
+ *
+ * If inode already exists in the map it will just increase its reference
+ * counter. If it doesn't it will atomically allocate, insert vinode into
+ * a map and set its reference counter.
  *
  * Can't be called from transaction.
  */

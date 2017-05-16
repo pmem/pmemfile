@@ -547,6 +547,10 @@ vinode_unlink_file(PMEMfilepool *pfp,
 	ASSERT(inode->nlink > 0);
 
 	TX_ADD_FIELD(tinode, nlink);
+	/*
+	 * Snapshot inode and the first byte of a name (because we are going
+	 * to overwrite just one byte) using one call.
+	 */
 	pmemobj_tx_add_range_direct(dirent, sizeof(dirent->inode) + 1);
 
 	struct pmemfile_time tm;

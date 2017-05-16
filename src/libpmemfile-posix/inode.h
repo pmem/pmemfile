@@ -102,8 +102,6 @@ struct inode_perms {
 	uint32_t gid;
 };
 
-struct pmemfile_inode_map;
-
 static inline struct inode_perms
 _vinode_get_perms(struct pmemfile_vinode *vinode)
 {
@@ -161,8 +159,6 @@ void inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode);
 
 struct pmemfile_vinode *vinode_ref(PMEMfilepool *pfp,
 		struct pmemfile_vinode *vinode);
-
-struct pmemfile_inode_map *inode_map_alloc(void);
 
 void inode_map_free(PMEMfilepool *pfp);
 

@@ -1191,8 +1191,7 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	size_t src_namelen = component_length(src.remaining);
 	size_t dst_namelen = component_length(dst.remaining);
 
-	struct pmemfile_vinode *vinodes[4];
-	size_t vinodes_num;
+	struct pmemfile_vinode *vinodes[5];
 
 	struct pmemfile_dirent_info src_info, dst_info;
 
@@ -1202,7 +1201,7 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	 */
 	do {
 		error = lock_parents_and_children(pfp, &src, &src_info, &dst,
-				&dst_info, vinodes, &vinodes_num);
+				&dst_info, vinodes);
 	} while (error == 1);
 
 	if (error < 0) {
@@ -1287,7 +1286,7 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 end_unlock:
 	if (src.vinode != dst.vinode)
 		os_rwlock_unlock(&pfp->super_rwlock);
-	vinode_unlockN(vinodes, vinodes_num);
+	vinode_unlockN(vinodes);
 
 	if (dst_info.vinode)
 		vinode_unref(pfp, dst_info.vinode);

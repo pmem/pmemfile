@@ -731,11 +731,11 @@ vinode_in_array(const struct pmemfile_vinode *vinode,
 }
 
 /*
- * vinode_wrlock4 -- take up to 4 WRITE locks on specified inodes in always
- * the same order
+ * vinode_wrlockN -- take up to 4 WRITE locks on specified inodes in ascending
+ * order and fill "v" with those inodes. "v" is NULL-terminated.
  */
 void
-vinode_wrlock4(struct pmemfile_vinode *v[], size_t *N,
+vinode_wrlockN(struct pmemfile_vinode *v[static 5],
 		struct pmemfile_vinode *v1,
 		struct pmemfile_vinode *v2,
 		struct pmemfile_vinode *v3,
@@ -749,6 +749,7 @@ vinode_wrlock4(struct pmemfile_vinode *v[], size_t *N,
 		v[n++] = v3;
 	if (v4 && !vinode_in_array(v4, v, n))
 		v[n++] = v4;
+	v[n] = NULL;
 
 	qsort(v, n, sizeof(v[0]), vinode_cmp);
 
@@ -756,20 +757,20 @@ vinode_wrlock4(struct pmemfile_vinode *v[], size_t *N,
 		ASSERT(v[i - 1] < v[i]);
 
 	/* take all locks in order of increasing addresses */
-	for (size_t i = 0; i < n; ++i)
-		os_rwlock_wrlock(&v[i]->rwlock);
-
-	*N = n;
+	size_t i = 0;
+	while (v[i])
+		os_rwlock_wrlock(&v[i++]->rwlock);
 }
 
 /*
- * vinode_unlockN -- drop N locks on specified inodes
+ * vinode_unlockN -- drop locks on specified inodes
  */
 void
-vinode_unlockN(struct pmemfile_vinode *v[], size_t N)
+vinode_unlockN(struct pmemfile_vinode *v[static 5])
 {
-	for (size_t i = 0; i < N; ++i)
-		os_rwlock_unlock(&v[i]->rwlock);
+	size_t i = 0;
+	while (v[i])
+		os_rwlock_unlock(&v[i++]->rwlock);
 }
 
 /*

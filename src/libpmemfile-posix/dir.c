@@ -1372,8 +1372,7 @@ lock_parents_and_children(PMEMfilepool *pfp,
 		struct pmemfile_path_info *dst,
 		struct pmemfile_dirent_info *dst_info,
 
-		struct pmemfile_vinode *vinodes[4],
-		size_t *vinodes_num)
+		struct pmemfile_vinode *vinodes[static 5])
 {
 	memset(src_info, 0, sizeof(*src_info));
 	memset(dst_info, 0, sizeof(*dst_info));
@@ -1432,7 +1431,7 @@ lock_parents_and_children(PMEMfilepool *pfp,
 	 * and now lock all 4 inodes (both parents and children) in correct
 	 * order
 	 */
-	vinode_wrlock4(vinodes, vinodes_num,
+	vinode_wrlockN(vinodes,
 			src->vinode, src_info->vinode,
 			dst->vinode, dst_info->vinode);
 
@@ -1472,7 +1471,7 @@ lock_parents_and_children(PMEMfilepool *pfp,
 	return 0;
 
 race:
-	vinode_unlockN(vinodes, *vinodes_num);
+	vinode_unlockN(vinodes);
 
 	vinode_unref(pfp, src_info->vinode);
 	src_info->vinode = NULL;

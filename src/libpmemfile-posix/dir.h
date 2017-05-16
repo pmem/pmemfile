@@ -147,7 +147,6 @@ int lock_parents_and_children(PMEMfilepool *pfp,
 		struct pmemfile_path_info *dst,
 		struct pmemfile_dirent_info *dst_info,
 
-		struct pmemfile_vinode *vinodes[4],
-		size_t *vinodes_num);
+		struct pmemfile_vinode *vinodes[static 5]);
 
 #endif

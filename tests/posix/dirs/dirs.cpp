@@ -240,6 +240,11 @@ TEST_F(dirs, lots_of_files)
 		ASSERT_EQ(ret, 0) << strerror(errno);
 	}
 
+	/*
+	 * For now pmemfile doesn't reclaim inode/dirent space when unlinking
+	 * files and it's not easy to calculate how big an inode space is, so
+	 * for now verify only when number of files is known.
+	 */
 	if (ops == 100)
 		EXPECT_TRUE(test_compare_dirs(pfp, "/",
 					      std::vector<pmemfile_ls>{

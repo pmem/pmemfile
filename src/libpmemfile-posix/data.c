@@ -1224,6 +1224,15 @@ pmemfile_preadv_internal(PMEMfilepool *pfp,
 
 	struct pmemfile_inode *inode = vinode->inode;
 
+	/*
+	 * We want read to be performed under read lock, but we need the block
+	 * tree to exist. If it doesn't exist we have to drop the lock we hold,
+	 * take it in write mode (because other thread may want to do the same),
+	 * check that it doesn't exist (another thread may already did that),
+	 * drop the lock again, take it in read mode and check AGAIN (because
+	 * another thread may have destroyed the block tree while we weren't
+	 * holding the lock).
+	 */
 	os_rwlock_rdlock(&vinode->rwlock);
 	while (!vinode->blocks) {
 		os_rwlock_unlock(&vinode->rwlock);

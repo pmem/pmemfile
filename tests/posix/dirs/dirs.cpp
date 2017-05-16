@@ -217,7 +217,7 @@ TEST_F(dirs, lots_of_files)
 	memset(buf, 0xff, sizeof(buf));
 
 	for (size_t i = 0; i < ops; ++i) {
-		sprintf(buf, "/file%04lu", i);
+		sprintf(buf, "/file%04zu", i);
 
 		f = pmemfile_open(pfp, buf, PMEMFILE_O_CREAT | PMEMFILE_O_EXCL |
 					  PMEMFILE_O_WRONLY,
@@ -253,7 +253,7 @@ TEST_F(dirs, mkdir_rmdir_unlink_errors)
 	char buf[1001];
 
 	for (size_t i = 0; i < ops; ++i) {
-		sprintf(buf, "/dir%04lu", i);
+		sprintf(buf, "/dir%04zu", i);
 
 		ASSERT_EQ(pmemfile_mkdir(pfp, buf, 0755), 0);
 

@@ -102,8 +102,8 @@ struct pmemfilepool {
 bool can_access(const struct pmemfile_cred *cred,
 		struct inode_perms perms,
 		int acc);
-int get_cred(PMEMfilepool *pfp, struct pmemfile_cred *cred);
-void put_cred(struct pmemfile_cred *cred);
+int cred_acquire(PMEMfilepool *pfp, struct pmemfile_cred *cred);
+void cred_release(struct pmemfile_cred *cred);
 
 bool vinode_can_access(const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *vinode, int acc);

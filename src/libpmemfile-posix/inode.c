@@ -631,7 +631,7 @@ _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto ret;
 	}
 
-	if (get_cred(pfp, &cred)) {
+	if (cred_acquire(pfp, &cred)) {
 		error = errno;
 		goto ret;
 	}
@@ -653,7 +653,7 @@ _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 end:
 	path_info_cleanup(pfp, &info);
-	put_cred(&cred);
+	cred_release(&cred);
 
 	if (vinode)
 		vinode_unref(pfp, vinode);

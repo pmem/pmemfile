@@ -1041,7 +1041,7 @@ _pmemfile_mkdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 {
 	struct pmemfile_path_info info;
 	struct pmemfile_cred cred;
-	if (get_cred(pfp, &cred))
+	if (cred_acquire(pfp, &cred))
 		return -1;
 
 	resolve_pathat(pfp, &cred, dir, path, &info, 0);
@@ -1079,7 +1079,7 @@ _pmemfile_mkdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 end:
 	path_info_cleanup(pfp, &info);
-	put_cred(&cred);
+	cred_release(&cred);
 
 	if (error) {
 		errno = error;
@@ -1407,7 +1407,7 @@ _pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 {
 	struct pmemfile_path_info info;
 	struct pmemfile_cred cred;
-	if (get_cred(pfp, &cred))
+	if (cred_acquire(pfp, &cred))
 		return -1;
 
 	resolve_pathat(pfp, &cred, dir, path, &info, 0);
@@ -1489,7 +1489,7 @@ vdir_end:
 
 end:
 	path_info_cleanup(pfp, &info);
-	put_cred(&cred);
+	cred_release(&cred);
 
 	if (error) {
 		errno = error;
@@ -1573,7 +1573,7 @@ pmemfile_chdir(PMEMfilepool *pfp, const char *path)
 		errno = ENOENT;
 		return -1;
 	}
-	if (get_cred(pfp, &cred))
+	if (cred_acquire(pfp, &cred))
 		return -1;
 
 	at = pool_get_dir_for_path(pfp, PMEMFILE_AT_CWD, path, &at_unref);
@@ -1592,7 +1592,7 @@ pmemfile_chdir(PMEMfilepool *pfp, const char *path)
 
 end:
 	path_info_cleanup(pfp, &info);
-	put_cred(&cred);
+	cred_release(&cred);
 
 	if (at_unref)
 		vinode_unref(pfp, at);
@@ -1619,10 +1619,10 @@ pmemfile_fchdir(PMEMfilepool *pfp, PMEMfile *dir)
 
 	int ret;
 	struct pmemfile_cred cred;
-	if (get_cred(pfp, &cred))
+	if (cred_acquire(pfp, &cred))
 		return -1;
 	ret = _pmemfile_chdir(pfp, &cred, vinode_ref(pfp, dir->vinode));
-	put_cred(&cred);
+	cred_release(&cred);
 	return ret;
 }
 

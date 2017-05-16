@@ -76,7 +76,7 @@ initialize_super_block(PMEMfilepool *pfp)
 	os_rwlock_init(&pfp->inode_map_rwlock);
 
 	struct pmemfile_cred cred;
-	if (get_cred(pfp, &cred)) {
+	if (cred_acquire(pfp, &cred)) {
 		error = errno;
 		goto get_cred_fail;
 	}
@@ -117,13 +117,13 @@ initialize_super_block(PMEMfilepool *pfp)
 #endif
 
 	pfp->cwd = vinode_ref(pfp, pfp->root);
-	put_cred(&cred);
+	cred_release(&cred);
 
 	return 0;
 tx_err:
 	inode_map_free(pfp);
 inode_map_alloc_fail:
-	put_cred(&cred);
+	cred_release(&cred);
 get_cred_fail:
 	os_rwlock_destroy(&pfp->super_rwlock);
 	os_rwlock_destroy(&pfp->cwd_rwlock);
@@ -447,10 +447,10 @@ copy_cred(struct pmemfile_cred *dst_cred, const struct pmemfile_cred *src_cred)
 }
 
 /*
- * get_cred -- gets current credentials in a safe way
+ * cred_acquire -- gets current credentials in a safe way
  */
 int
-get_cred(PMEMfilepool *pfp, struct pmemfile_cred *cred)
+cred_acquire(PMEMfilepool *pfp, struct pmemfile_cred *cred)
 {
 	int ret;
 	os_rwlock_rdlock(&pfp->cred_rwlock);
@@ -460,10 +460,10 @@ get_cred(PMEMfilepool *pfp, struct pmemfile_cred *cred)
 }
 
 /*
- * put_cred -- frees credentials obtained with "get_cred"
+ * cred_release -- frees credentials obtained with "get_cred"
  */
 void
-put_cred(struct pmemfile_cred *cred)
+cred_release(struct pmemfile_cred *cred)
 {
 	free(cred->groups);
 	memset(cred, 0, sizeof(*cred));

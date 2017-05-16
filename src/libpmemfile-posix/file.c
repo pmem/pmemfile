@@ -1209,6 +1209,18 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 		goto end;
 	}
 
+	/*
+	 * 2 threads doing:
+	 * rename("/a/b", "/1/2/3/4/5")
+	 * rename("/1/2/", "/a/b/c/d/e")
+	 * could race with each other creating this situation:
+	 * /1
+	 * /a
+	 * and unreachable cycle 3/4/c/d with "d" as parent of "3".
+	 *
+	 * Prevent this from happening by taking the file system lock for
+	 * cross-directory renames.
+	 */
 	if (src.vinode != dst.vinode)
 		os_rwlock_wrlock(&pfp->super_rwlock);
 

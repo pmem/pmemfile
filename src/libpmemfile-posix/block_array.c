@@ -159,7 +159,7 @@ allocate_new_block_array(struct pmemfile_vinode *vinode)
 	D_RW(new)->length = (uint32_t)
 			((page_rounddown(pmemobj_alloc_usable_size(new.oid)) -
 			sizeof(struct pmemfile_block_array)) /
-			sizeof(struct pmemfile_block));
+			sizeof(struct pmemfile_block_desc));
 
 	D_RW(new)->next = vinode->inode->file_data.blocks.next;
 	TX_SET_DIRECT(&vinode->inode->file_data.blocks, next, new);
@@ -190,7 +190,7 @@ allocate_new_block_array(struct pmemfile_vinode *vinode)
  *          \__return the address of this pmemfile_block
  *
  */
-static struct pmemfile_block *
+static struct pmemfile_block_desc *
 acquire_new_entry(struct pmemfile_vinode *vinode)
 {
 	if (!has_free_block_entry(vinode))
@@ -199,7 +199,7 @@ acquire_new_entry(struct pmemfile_vinode *vinode)
 	ASSERT(has_free_block_entry(vinode));
 
 	struct block_info *binfo = &vinode->first_free_block;
-	struct pmemfile_block *block = binfo->arr->blocks + binfo->idx++;
+	struct pmemfile_block_desc *block = binfo->arr->blocks + binfo->idx++;
 
 	ASSERT(is_zeroed(block, sizeof(*block)));
 
@@ -220,14 +220,14 @@ acquire_new_entry(struct pmemfile_vinode *vinode)
  * Returns a pointer to the free slot found.
  *
  */
-struct pmemfile_block *
+struct pmemfile_block_desc *
 block_list_insert_after(struct pmemfile_vinode *vinode,
-			struct pmemfile_block *prev)
+			struct pmemfile_block_desc *prev)
 {
 	/* lazy init vinode->first_free_block */
 	update_first_block_info(vinode);
 
-	struct pmemfile_block *block = acquire_new_entry(vinode);
+	struct pmemfile_block_desc *block = acquire_new_entry(vinode);
 
 	if (prev == NULL) {
 		if (vinode->first_block != NULL) {
@@ -240,7 +240,7 @@ block_list_insert_after(struct pmemfile_vinode *vinode,
 		block->prev = blockp_as_oid(prev);
 		block->next = prev->next;
 		TX_SET_DIRECT(prev, next, blockp_as_oid(block));
-		struct pmemfile_block *next = D_RW(block->next);
+		struct pmemfile_block_desc *next = D_RW(block->next);
 		if (next != NULL)
 			TX_SET_DIRECT(next, prev, blockp_as_oid(block));
 	}
@@ -253,7 +253,7 @@ block_list_insert_after(struct pmemfile_vinode *vinode,
  * Returns a pointer to last (last in terms of allocated most recently) block
  * metadata. This is always the block right before the first free block.
  */
-static struct pmemfile_block *
+static struct pmemfile_block_desc *
 last_used_block(struct pmemfile_vinode *vinode)
 {
 	struct block_info *binfo = &vinode->first_free_block;
@@ -268,7 +268,7 @@ last_used_block(struct pmemfile_vinode *vinode)
  * Note: does not deallocate the block metadata, only unlinks it.
  */
 static void
-unlink_block(struct pmemfile_block *block)
+unlink_block(struct pmemfile_block_desc *block)
 {
 	if (!TOID_IS_NULL(block->prev))
 		TX_SET(block->prev, next, block->next);
@@ -289,7 +289,7 @@ unlink_block(struct pmemfile_block *block)
  * after this operation.
  */
 static void
-relocate_block(struct pmemfile_block *dst, struct pmemfile_block *src)
+relocate_block(struct pmemfile_block_desc *dst, struct pmemfile_block_desc *src)
 {
 	ASSERT(dst != src);
 
@@ -406,18 +406,18 @@ remove_first_block_array(struct pmemfile_vinode *vinode)
  *
  *
  */
-struct pmemfile_block *
+struct pmemfile_block_desc *
 block_list_remove(struct pmemfile_vinode *vinode,
-		struct pmemfile_block *block)
+		struct pmemfile_block_desc *block)
 {
-	struct pmemfile_block *prev;
+	struct pmemfile_block_desc *prev;
 
 	/* lazy init vinode->first_free_block */
 	update_first_block_info(vinode);
 
 	ASSERT(vinode->first_free_block.idx > 0);
 
-	struct pmemfile_block *moving_block = last_used_block(vinode);
+	struct pmemfile_block_desc *moving_block = last_used_block(vinode);
 
 	unlink_block(block);
 

@@ -258,7 +258,7 @@ inode_alloc(PMEMfilepool *pfp, struct pmemfile_cred *cred, uint64_t flags)
 		inode->file_data.blocks.length =
 				(sizeof(inode->file_data) -
 				sizeof(inode->file_data.blocks)) /
-				sizeof(struct pmemfile_block);
+				sizeof(struct pmemfile_block_desc);
 	else if (inode_is_dir(inode)) {
 		inode->file_data.dir.num_elements =
 				(sizeof(inode->file_data) -

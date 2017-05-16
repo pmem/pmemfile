@@ -78,7 +78,7 @@ struct pmemfile_vinode {
 	} first_free_block;
 
 	/* first used block */
-	struct pmemfile_block *first_block;
+	struct pmemfile_block_desc *first_block;
 
 	/* tree mapping offsets to blocks */
 	struct ctree *blocks;
@@ -86,7 +86,7 @@ struct pmemfile_vinode {
 	/* space for volatile snapshots */
 	struct {
 		struct block_info first_free_block;
-		struct pmemfile_block *first_block;
+		struct pmemfile_block_desc *first_block;
 	} snapshot;
 };
 
@@ -193,10 +193,10 @@ void vinode_wrlockN(struct pmemfile_vinode *v[static 5],
 		struct pmemfile_vinode *v4);
 void vinode_unlockN(struct pmemfile_vinode *v[static 5]);
 
-static inline TOID(struct pmemfile_block)
-blockp_as_oid(struct pmemfile_block *block)
+static inline TOID(struct pmemfile_block_desc)
+blockp_as_oid(struct pmemfile_block_desc *block)
 {
-	return (TOID(struct pmemfile_block))pmemobj_oid(block);
+	return (TOID(struct pmemfile_block_desc))pmemobj_oid(block);
 }
 
 #endif

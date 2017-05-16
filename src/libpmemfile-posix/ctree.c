@@ -73,7 +73,6 @@ struct node_leaf {
 
 struct ctree {
 	void *root;
-	os_mutex_t lock;
 };
 
 /*
@@ -97,8 +96,6 @@ ctree_new(void)
 	struct ctree *t = malloc(sizeof(*t));
 	if (t == NULL)
 		return NULL;
-
-	os_mutex_init(&t->lock);
 
 	t->root = NULL;
 
@@ -130,8 +127,6 @@ ctree_delete(struct ctree *t)
 {
 	ctree_clear_unlocked(t);
 
-	os_mutex_destroy(&t->lock);
-
 	free(t);
 }
 
@@ -152,17 +147,6 @@ ctree_clear_unlocked(struct ctree *t)
 }
 
 /*
- * ctree_clear -- removes all elements from the tree
- */
-void
-ctree_clear(struct ctree *t)
-{
-	os_mutex_lock(&t->lock);
-	ctree_clear_unlocked(t);
-	os_mutex_unlock(&t->lock);
-}
-
-/*
  * ctree_delete_cb -- cleanups and frees crit-bit tree instance
  */
 void
@@ -170,8 +154,6 @@ ctree_delete_cb(struct ctree *t, ctree_destroy_cb cb, void *ctx)
 {
 	if (t->root)
 		ctree_free_internal_recursive(t->root, cb, ctx);
-
-	os_mutex_destroy(&t->lock);
 
 	free(t);
 }
@@ -248,18 +230,6 @@ error_internal_malloc:
 }
 
 /*
- * ctree_insert -- inserts a new key into the tree
- */
-int
-ctree_insert(struct ctree *t, uint64_t key, uint64_t value)
-{
-	os_mutex_lock(&t->lock);
-	int ret = ctree_insert_unlocked(t, key, value);
-	os_mutex_unlock(&t->lock);
-	return ret;
-}
-
-/*
  * ctree_find_unlocked -- searches for an equal key in the tree
  */
 uint64_t
@@ -277,18 +247,6 @@ ctree_find_unlocked(struct ctree *t, uint64_t key)
 		return key;
 	else
 		return 0;
-}
-
-/*
- * ctree_find -- searches for an equal key in the tree
- */
-uint64_t
-ctree_find(struct ctree *t, uint64_t key)
-{
-	os_mutex_lock(&t->lock);
-	uint64_t ret = ctree_find_unlocked(t, key);
-	os_mutex_unlock(&t->lock);
-	return ret;
 }
 
 /*
@@ -343,18 +301,6 @@ out:
 }
 
 /*
- * ctree_find_le -- searches for a (less or equal) key in the tree
- */
-uint64_t
-ctree_find_le(struct ctree *t, uint64_t *key)
-{
-	os_mutex_lock(&t->lock);
-	uint64_t ret = ctree_find_le_unlocked(t, key);
-	os_mutex_unlock(&t->lock);
-	return ret;
-}
-
-/*
  * ctree_remove_leaf -- (internal) removes provided root leaf
  */
 static void
@@ -402,18 +348,6 @@ ctree_remove_max_unlocked(struct ctree *t, uint64_t *key, uint64_t *value)
 	ctree_remove_leaf(t, dst, p);
 
 	return 0;
-}
-
-/*
- * ctree_remove_max -- removes the biggest element from the tree
- */
-int
-ctree_remove_max(struct ctree *t, uint64_t *key, uint64_t *value)
-{
-	os_mutex_lock(&t->lock);
-	int ret = ctree_remove_max_unlocked(t, key, value);
-	os_mutex_unlock(&t->lock);
-	return ret;
 }
 
 /*
@@ -515,37 +449,10 @@ out:
 }
 
 /*
- * ctree_remove -- removes a (greater or equal) key from the tree
- */
-uint64_t
-ctree_remove(struct ctree *t, uint64_t key, int eq)
-{
-	os_mutex_lock(&t->lock);
-	uint64_t ret = ctree_remove_unlocked(t, key, eq);
-	os_mutex_unlock(&t->lock);
-	return ret;
-}
-
-/*
  * ctree_is_empty_unlocked -- checks whether the tree is empty
  */
 int
 ctree_is_empty_unlocked(struct ctree *t)
 {
 	return t->root == NULL;
-}
-
-/*
- * ctree_is_empty -- checks whether the tree is empty
- */
-int
-ctree_is_empty(struct ctree *t)
-{
-	os_mutex_lock(&t->lock);
-
-	int ret = ctree_is_empty_unlocked(t);
-
-	os_mutex_unlock(&t->lock);
-
-	return ret;
 }

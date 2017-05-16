@@ -42,7 +42,7 @@ struct pmemfile_path_info {
 	 * Vinode of the last reachable component in the path, except for
 	 * the last part.
 	 */
-	struct pmemfile_vinode *vinode;
+	struct pmemfile_vinode *parent;
 
 	/* remaining part of the path */
 	char *remaining;

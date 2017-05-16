@@ -435,9 +435,9 @@ block_list_remove(struct pmemfile_vinode *vinode,
 	if (moving_block != block) {
 		if (vinode->first_block == moving_block)
 			vinode->first_block = block;
-		ctree_remove_unlocked(vinode->blocks, moving_block->offset, 1);
+		ctree_remove(vinode->blocks, moving_block->offset, 1);
 		relocate_block(block, moving_block);
-		if (ctree_insert_unlocked(vinode->blocks, block->offset,
+		if (ctree_insert(vinode->blocks, block->offset,
 		    (uint64_t)block))
 			pmemfile_tx_abort(errno);
 	}

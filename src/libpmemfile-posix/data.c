@@ -91,7 +91,7 @@ narrow_to_full_pages(uint64_t *offset, uint64_t *length)
 static int
 block_cache_insert_block(struct ctree *c, struct pmemfile_block_desc *block)
 {
-	if (ctree_insert_unlocked(c, block->offset, (uintptr_t)block)) {
+	if (ctree_insert(c, block->offset, (uintptr_t)block)) {
 		if (pmemobj_tx_stage() == TX_STAGE_WORK)
 			pmemfile_tx_abort(errno);
 		else
@@ -108,7 +108,7 @@ static struct pmemfile_block_desc *
 find_last_block(const struct pmemfile_vinode *vinode)
 {
 	uint64_t off = UINT64_MAX;
-	return (void *)(uintptr_t)ctree_find_le_unlocked(vinode->blocks, &off);
+	return (void *)(uintptr_t)ctree_find_le(vinode->blocks, &off);
 }
 
 /*
@@ -185,7 +185,7 @@ is_block_data_initialized(const struct pmemfile_block_desc *block)
 static struct pmemfile_block_desc *
 find_block(struct pmemfile_vinode *vinode, uint64_t off)
 {
-	return (void *)(uintptr_t)ctree_find_le_unlocked(vinode->blocks, &off);
+	return (void *)(uintptr_t)ctree_find_le(vinode->blocks, &off);
 }
 
 /*
@@ -1764,7 +1764,7 @@ vinode_remove_interval(struct pmemfile_vinode *vinode,
 			 * --+-------+-------+----------------+-----
 			 *           | block |
 			 */
-			ctree_remove_unlocked(vinode->blocks, block->offset, 1);
+			ctree_remove(vinode->blocks, block->offset, 1);
 			block = block_list_remove(vinode, block);
 
 		} else if (is_interval_contained_by_block(block, offset, len)) {

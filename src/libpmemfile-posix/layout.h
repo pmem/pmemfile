@@ -190,6 +190,7 @@ struct pmemfile_inode {
 	} file_data;
 };
 
+/* number of inodes for pmemfile_inode_array to fit in 4kB */
 #define NUMINODES_PER_ENTRY 249
 
 struct pmemfile_inode_array {

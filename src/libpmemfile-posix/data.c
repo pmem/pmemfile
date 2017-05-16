@@ -312,18 +312,18 @@ is_append(struct pmemfile_vinode *vinode, struct pmemfile_inode *inode,
  * This is used while appending to a file.
  */
 static uint64_t
-overallocate_size(uint64_t count)
+overallocate_size(uint64_t size)
 {
-	if (count <= 4096)
+	if (size <= 4096)
 		return 16 * 1024;
-	else if (count <= 64 * 1024)
+	else if (size <= 64 * 1024)
 		return 256 * 1024;
-	else if (count <= 1024 * 1024)
+	else if (size <= 1024 * 1024)
 		return 4 * 1024 * 1024;
-	else if (count <= 64 * 1024 * 1024)
+	else if (size <= 64 * 1024 * 1024)
 		return 64 * 1024 * 1024;
 	else
-		return count;
+		return size;
 }
 
 /*

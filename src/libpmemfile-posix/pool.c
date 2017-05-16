@@ -134,35 +134,38 @@ get_cred_fail:
 }
 
 /*
- * cleanup_orphanded_inodes_single -- cleans up one batch of inodes
+ * cleanup_orphaned_inodes_single -- cleans up one batch of inodes
  *
  * Must be called in a transaction.
  */
 static void
-cleanup_orphanded_inodes_single(PMEMfilepool *pfp,
-		TOID(struct pmemfile_inode_array) single)
+cleanup_orphaned_inodes_single(PMEMfilepool *pfp,
+		struct pmemfile_inode_array *arr)
 {
-	LOG(LDBG, "pfp %p arr 0x%" PRIx64, pfp, single.oid.off);
+	LOG(LDBG, "pfp %p", pfp);
 
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 
-	TX_ADD(single);
-	struct pmemfile_inode_array *op = D_RW(single);
-	for (unsigned i = 0; op->used && i < NUMINODES_PER_ENTRY; ++i) {
-		if (TOID_IS_NULL(op->inodes[i]))
+	if (arr->used == 0)
+		return;
+
+	TX_ADD_DIRECT(arr);
+
+	for (unsigned i = 0; arr->used && i < NUMINODES_PER_ENTRY; ++i) {
+		if (TOID_IS_NULL(arr->inodes[i]))
 			continue;
 
 		LOG(LINF, "closing inode left by previous run");
 
-		ASSERTeq(D_RW(op->inodes[i])->nlink, 0);
-		inode_free(pfp, op->inodes[i]);
+		ASSERTeq(D_RW(arr->inodes[i])->nlink, 0);
+		inode_free(pfp, arr->inodes[i]);
 
-		op->inodes[i] = TOID_NULL(struct pmemfile_inode);
+		arr->inodes[i] = TOID_NULL(struct pmemfile_inode);
 
-		op->used--;
+		arr->used--;
 	}
 
-	ASSERTeq(op->used, 0);
+	ASSERTeq(arr->used, 0);
 }
 
 /*
@@ -173,34 +176,29 @@ cleanup_orphanded_inodes_single(PMEMfilepool *pfp,
  */
 static void
 cleanup_orphaned_inodes(PMEMfilepool *pfp,
-		TOID(struct pmemfile_inode_array) single)
+		TOID(struct pmemfile_inode_array) arr)
 {
 	LOG(LDBG, "pfp %p", pfp);
 
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
 
+	struct pmemfile_inode_array *first = D_RW(arr);
+
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		TOID(struct pmemfile_inode_array) last = single;
+		cleanup_orphaned_inodes_single(pfp, first);
 
-		for (; !TOID_IS_NULL(single); single = D_RO(single)->next) {
-			last = single;
+		TOID(struct pmemfile_inode_array) tcur = first->next;
+		TX_ADD_DIRECT(&first->next);
+		first->next = TOID_NULL(struct pmemfile_inode_array);
 
-			if (D_RO(single)->used > 0)
-				cleanup_orphanded_inodes_single(pfp, single);
-		}
+		struct pmemfile_inode_array *cur = D_RW(tcur);
 
-		if (!TOID_IS_NULL(last)) {
-			TOID(struct pmemfile_inode_array) prev;
-
-			while (!TOID_IS_NULL(D_RO(last)->prev)) {
-				prev = D_RO(last)->prev;
-				TX_FREE(last);
-				last = prev;
-			}
-
-			TX_ADD_FIELD(last, next);
-			D_RW(last)->next =
-					TOID_NULL(struct pmemfile_inode_array);
+		while (cur) {
+			cleanup_orphaned_inodes_single(pfp, cur);
+			TOID(struct pmemfile_inode_array) tmp = cur->next;
+			TX_FREE(tcur);
+			tcur = tmp;
+			cur = D_RW(tcur);
 		}
 	} TX_ONABORT {
 		FATAL("!cannot cleanup list of previously deleted files");

@@ -326,18 +326,62 @@ vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 }
 
 /*
- * dir_assert_no_dirents -- checks that directory has no entries
+ * inode_free_dir -- frees on media structures assuming inode is a directory
  */
 static void
-dir_assert_no_dirents(struct pmemfile_dir *dir)
+inode_free_dir(struct pmemfile_inode *inode)
 {
-	for (uint32_t i = 0; i < dir->num_elements; ++i)
-		if (dir->dirents[i].inode.oid.off)
-			FATAL("Trying to free non-empty directory");
+	struct pmemfile_dir *dir = &inode->file_data.dir;
+	TOID(struct pmemfile_dir) tdir = TOID_NULL(struct pmemfile_dir);
+
+	while (dir != NULL) {
+		/* should have been caught earlier */
+		for (uint32_t i = 0; i < dir->num_elements; ++i)
+			if (dir->dirents[i].inode.oid.off)
+				FATAL("Trying to free non-empty directory");
+
+		TOID(struct pmemfile_dir) next = dir->next;
+		if (!TOID_IS_NULL(tdir))
+			TX_FREE(tdir);
+		tdir = next;
+		dir = D_RW(tdir);
+	}
 }
 
 /*
- * file_inode_free -- frees inode
+ * inode_free_reg_file -- frees on media structures assuming inode is a regular
+ * file
+ */
+static void
+inode_free_reg_file(struct pmemfile_inode *inode)
+{
+	struct pmemfile_block_array *arr = &inode->file_data.blocks;
+	TOID(struct pmemfile_block_array) tarr =
+			TOID_NULL(struct pmemfile_block_array);
+
+	while (arr != NULL) {
+		for (unsigned i = 0; i < arr->length; ++i)
+			TX_FREE(arr->blocks[i].data);
+
+		TOID(struct pmemfile_block_array) next = arr->next;
+		if (!TOID_IS_NULL(tarr))
+			TX_FREE(tarr);
+		tarr = next;
+		arr = D_RW(tarr);
+	}
+}
+
+/*
+ * inode_free_symlink -- frees on media structures assuming inode is a symlink
+ */
+static void
+inode_free_symlink(struct pmemfile_inode *inode)
+{
+	/* nothing to be done */
+}
+
+/*
+ * inode_free -- frees inode
  *
  * Must be called in a transaction.
  */
@@ -351,40 +395,16 @@ inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 
 	struct pmemfile_inode *inode = D_RW(tinode);
-	if (inode_is_dir(inode)) {
-		struct pmemfile_dir *dir = &inode->file_data.dir;
-		TOID(struct pmemfile_dir) tdir = TOID_NULL(struct pmemfile_dir);
 
-		while (dir != NULL) {
-			/* should have been caught earlier */
-			dir_assert_no_dirents(dir);
-
-			TOID(struct pmemfile_dir) next = dir->next;
-			if (!TOID_IS_NULL(tdir))
-				TX_FREE(tdir);
-			tdir = next;
-			dir = D_RW(tdir);
-		}
-	} else if (inode_is_regular_file(inode)) {
-		struct pmemfile_block_array *arr = &inode->file_data.blocks;
-		TOID(struct pmemfile_block_array) tarr =
-				TOID_NULL(struct pmemfile_block_array);
-
-		while (arr != NULL) {
-			for (unsigned i = 0; i < arr->length; ++i)
-				TX_FREE(arr->blocks[i].data);
-
-			TOID(struct pmemfile_block_array) next = arr->next;
-			if (!TOID_IS_NULL(tarr))
-				TX_FREE(tarr);
-			tarr = next;
-			arr = D_RW(tarr);
-		}
-	} else if (inode_is_symlink(inode)) {
-		/* nothing to be done */
-	} else {
+	if (inode_is_dir(inode))
+		inode_free_dir(inode);
+	else if (inode_is_regular_file(inode))
+		inode_free_reg_file(inode);
+	else if (inode_is_symlink(inode))
+		inode_free_symlink(inode);
+	else
 		FATAL("unknown inode type 0x%lx", inode->flags);
-	}
+
 	TX_FREE(tinode);
 }
 

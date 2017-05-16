@@ -156,6 +156,7 @@ allocate_new_block_array(struct pmemfile_vinode *vinode)
 
 	TOID(struct pmemfile_block_array) new =
 			TX_ZALLOC(struct pmemfile_block_array, FILE_PAGE_SIZE);
+	COMPILE_ERROR_ON(FILE_PAGE_SIZE < sizeof(struct pmemfile_block_array));
 	D_RW(new)->length = (uint32_t)
 			((page_rounddown(pmemobj_alloc_usable_size(new.oid)) -
 			sizeof(struct pmemfile_block_array)) /

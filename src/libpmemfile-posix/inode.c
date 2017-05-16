@@ -741,7 +741,6 @@ vinode_wrlock4(struct pmemfile_vinode *v[], size_t *N,
 		struct pmemfile_vinode *v3,
 		struct pmemfile_vinode *v4)
 {
-	memset(v, 0, 4 * sizeof(v[0]));
 	size_t n = 0;
 	v[n++] = v1;
 	if (v2 && !vinode_in_array(v2, v, n))

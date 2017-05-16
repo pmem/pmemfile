@@ -206,10 +206,11 @@ cleanup_orphaned_inodes(PMEMfilepool *pfp,
 }
 
 /*
- * pmemfile_mkfs -- create pmem file system on specified file
+ * pmemfile_pool_create -- create pmem file system on specified file
  */
 PMEMfilepool *
-pmemfile_mkfs(const char *pathname, size_t poolsize, pmemfile_mode_t mode)
+pmemfile_pool_create(const char *pathname, size_t poolsize,
+		pmemfile_mode_t mode)
 {
 	LOG(LDBG, "pathname %s poolsize %zu mode %o", pathname, poolsize, mode);
 

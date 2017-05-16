@@ -41,8 +41,8 @@ create_pool(const char *path)
 {
 	char tmp[PMEMFILE_PATH_MAX];
 	sprintf(tmp, "%s/pool", path);
-	return pmemfile_mkfs(tmp, 8 * 1024 * 1024,
-			     PMEMFILE_S_IWUSR | PMEMFILE_S_IRUSR);
+	return pmemfile_pool_create(tmp, 8 * 1024 * 1024,
+				    PMEMFILE_S_IWUSR | PMEMFILE_S_IRUSR);
 }
 
 static PMEMfilepool *

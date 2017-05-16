@@ -165,7 +165,7 @@ main(int argc, char *argv[])
 
 	size = parse_size(argv[optind + 1]);
 
-	PMEMfilepool *pool = pmemfile_mkfs(path, size,
+	PMEMfilepool *pool = pmemfile_pool_create(path, size,
 			PMEMFILE_S_IWUSR | PMEMFILE_S_IRUSR);
 	if (pool == NULL) {
 		perror("pmemfile_mkfs ");

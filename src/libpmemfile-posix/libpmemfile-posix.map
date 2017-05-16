@@ -79,11 +79,11 @@
 		pmemfile_lutimes;
 		pmemfile_mkdir;
 		pmemfile_mkdirat;
-		pmemfile_mkfs;
 		pmemfile_open_parent;
 		pmemfile_open;
 		pmemfile_openat;
 		pmemfile_pool_close;
+		pmemfile_pool_create;
 		pmemfile_pool_open;
 		pmemfile_posix_fallocate;
 		pmemfile_pread;

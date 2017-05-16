@@ -153,7 +153,9 @@ static inline bool vinode_is_symlink(struct pmemfile_vinode *vinode)
 	return inode_is_symlink(vinode->inode);
 }
 
-TOID(struct pmemfile_inode) inode_alloc(PMEMfilepool *pfp, uint64_t flags);
+struct pmemfile_cred;
+TOID(struct pmemfile_inode) inode_alloc(PMEMfilepool *pfp,
+		struct pmemfile_cred *cred, uint64_t flags);
 
 void inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode);
 

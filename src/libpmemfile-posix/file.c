@@ -385,7 +385,8 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		struct inode_orphan_info orphan_info;
 
 		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-			tinode = inode_alloc(pfp, PMEMFILE_S_IFREG | mode);
+			tinode = inode_alloc(pfp, &cred,
+					PMEMFILE_S_IFREG | mode);
 
 			if (tmpfile)
 				orphan_info = inode_orphan(pfp, tinode);
@@ -1492,7 +1493,7 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 		if (!_vinode_can_access(&cred, vparent, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);
 
-		TOID(struct pmemfile_inode) tinode = inode_alloc(pfp,
+		TOID(struct pmemfile_inode) tinode = inode_alloc(pfp, &cred,
 				PMEMFILE_S_IFLNK | PMEMFILE_ACCESSPERMS);
 		struct pmemfile_inode *inode = D_RW(tinode);
 		pmemobj_memcpy_persist(pfp->pop, inode->file_data.data, target,

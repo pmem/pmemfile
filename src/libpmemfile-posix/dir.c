@@ -287,7 +287,8 @@ vinode_update_parent(PMEMfilepool *pfp,
  */
 TOID(struct pmemfile_inode)
 vinode_new_dir(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
-		const char *name, size_t namelen, pmemfile_mode_t mode)
+		const char *name, size_t namelen, struct pmemfile_cred *cred,
+		pmemfile_mode_t mode)
 {
 	LOG(LDBG, "parent 0x%" PRIx64 " ppath %s new_name %.*s",
 			parent ? parent->tinode.oid.off : 0,
@@ -302,7 +303,7 @@ vinode_new_dir(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 	}
 
 	TOID(struct pmemfile_inode) tchild =
-			inode_alloc(pfp, PMEMFILE_S_IFDIR | mode);
+			inode_alloc(pfp, cred, PMEMFILE_S_IFDIR | mode);
 	struct pmemfile_inode *child = D_RW(tchild);
 	struct pmemfile_time t = child->ctime;
 
@@ -1068,7 +1069,8 @@ _pmemfile_mkdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		if (!_vinode_can_access(&cred, parent, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);
 
-		vinode_new_dir(pfp, parent, info.remaining, namelen, mode);
+		vinode_new_dir(pfp, parent, info.remaining, namelen, &cred,
+				mode);
 	} TX_ONABORT {
 		error = errno;
 	} TX_END

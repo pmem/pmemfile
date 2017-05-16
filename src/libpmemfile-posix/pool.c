@@ -75,6 +75,12 @@ initialize_super_block(PMEMfilepool *pfp)
 	os_rwlock_init(&pfp->cwd_rwlock);
 	os_rwlock_init(&pfp->inode_map_rwlock);
 
+	struct pmemfile_cred cred;
+	if (get_cred(pfp, &cred)) {
+		error = errno;
+		goto get_cred_fail;
+	}
+
 	pfp->inode_map = hash_map_alloc();
 	if (!pfp->inode_map) {
 		error = errno;
@@ -86,7 +92,7 @@ initialize_super_block(PMEMfilepool *pfp)
 		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 			TX_ADD_DIRECT(super);
 			super->root_inode = vinode_new_dir(pfp, NULL, "/", 1,
-					PMEMFILE_ACCESSPERMS);
+					&cred, PMEMFILE_ACCESSPERMS);
 
 			super->version = PMEMFILE_SUPER_VERSION(0, 1);
 			super->orphaned_inodes =
@@ -111,11 +117,14 @@ initialize_super_block(PMEMfilepool *pfp)
 #endif
 
 	pfp->cwd = vinode_ref(pfp, pfp->root);
+	put_cred(&cred);
 
 	return 0;
 tx_err:
 	inode_map_free(pfp);
 inode_map_alloc_fail:
+	put_cred(&cred);
+get_cred_fail:
 	os_rwlock_destroy(&pfp->super_rwlock);
 	os_rwlock_destroy(&pfp->cwd_rwlock);
 	os_rwlock_destroy(&pfp->cred_rwlock);

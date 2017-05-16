@@ -233,7 +233,7 @@ vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
  * Must be called in a transaction.
  */
 TOID(struct pmemfile_inode)
-inode_alloc(PMEMfilepool *pfp, uint64_t flags)
+inode_alloc(PMEMfilepool *pfp, struct pmemfile_cred *cred, uint64_t flags)
 {
 	LOG(LDBG, "flags 0x%lx", flags);
 
@@ -251,10 +251,8 @@ inode_alloc(PMEMfilepool *pfp, uint64_t flags)
 	inode->mtime = t;
 	inode->atime = t;
 	inode->nlink = 0;
-	os_rwlock_rdlock(&pfp->cred_rwlock);
-	inode->uid = pfp->cred.euid;
-	inode->gid = pfp->cred.egid;
-	os_rwlock_unlock(&pfp->cred_rwlock);
+	inode->uid = cred->euid;
+	inode->gid = cred->egid;
 
 	if (inode_is_regular_file(inode))
 		inode->file_data.blocks.length =

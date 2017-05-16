@@ -77,7 +77,8 @@ size_t component_length(const char *path);
 
 TOID(struct pmemfile_inode) vinode_new_dir(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent, const char *name,
-		size_t namelen, pmemfile_mode_t mode);
+		size_t namelen, struct pmemfile_cred *cred,
+		pmemfile_mode_t mode);
 
 void vinode_add_dirent(PMEMfilepool *pfp,
 		TOID(struct pmemfile_inode) parent_tinode,

@@ -92,6 +92,7 @@
 #define SYS_pwritev2 328
 #endif
 
+#define MAX_SYSCALLS 0x200
 
 static int hook(long syscall_number,
 			long arg0, long arg1,
@@ -99,11 +100,11 @@ static int hook(long syscall_number,
 			long arg4, long arg5,
 			long *result);
 
-static bool syscall_number_filter[0x200];
-static bool syscall_needs_fd_rlock[0x200];
-static bool syscall_needs_fd_wlock[0x200];
-static bool syscall_needs_pmem_cwd_rlock[0x200];
-static bool syscall_has_fd_first_arg[0x200];
+static bool syscall_number_filter[MAX_SYSCALLS];
+static bool syscall_needs_fd_rlock[MAX_SYSCALLS];
+static bool syscall_needs_fd_wlock[MAX_SYSCALLS];
+static bool syscall_needs_pmem_cwd_rlock[MAX_SYSCALLS];
+static bool syscall_has_fd_first_arg[MAX_SYSCALLS];
 
 static struct pool_description pools[0x100];
 static int pool_count;

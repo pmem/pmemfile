@@ -131,7 +131,7 @@ util_strndup(const char *c, size_t len)
 #endif
 
 /*
- * vinode_set_debug_path_locked -- (internal) sets full path in runtime
+ * vinode_set_debug_path_locked -- sets full path in runtime
  * structures of child_inode based on parent inode and name.
  *
  * Works only in DEBUG mode.
@@ -177,38 +177,30 @@ vinode_set_debug_path_locked(PMEMfilepool *pfp,
 }
 
 /*
- * vinode_set_debug_path -- sets full path in runtime structures
- * of child_inode based on parent inode and name.
+ * vinode_replace_debug_path_locked -- replaces full path in runtime
+ * structures of child_inode based on parent inode and name.
+ *
+ * Works only in DEBUG mode.
  */
 void
-vinode_set_debug_path(PMEMfilepool *pfp,
+vinode_replace_debug_path_locked(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent_vinode,
 		struct pmemfile_vinode *child_vinode,
 		const char *name,
 		size_t namelen)
 {
-	os_rwlock_wrlock(&child_vinode->rwlock);
+#ifdef DEBUG
+	free(child_vinode->path);
+	child_vinode->path = NULL;
 
 	vinode_set_debug_path_locked(pfp, parent_vinode, child_vinode, name,
 			namelen);
-
-	os_rwlock_unlock(&child_vinode->rwlock);
-}
-
-/*
- * vinode_clear_debug_path -- clears full path in runtime structures
- */
-void
-vinode_clear_debug_path(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
-{
+#else
 	(void) pfp;
-
-	os_rwlock_wrlock(&vinode->rwlock);
-#ifdef DEBUG
-	free(vinode->path);
-	vinode->path = NULL;
+	(void) parent_vinode;
+	(void) name;
+	(void) namelen;
 #endif
-	os_rwlock_unlock(&vinode->rwlock);
 }
 
 /*
@@ -314,6 +306,52 @@ vinode_add_dirent(PMEMfilepool *pfp,
 }
 
 /*
+ * vinode_update_parent -- update .. entry of "vinode" from "src_parent" to
+ * "dst_parent"
+ */
+void
+vinode_update_parent(PMEMfilepool *pfp,
+		struct pmemfile_vinode *vinode,
+		struct pmemfile_vinode *src_parent,
+		struct pmemfile_vinode *dst_parent)
+{
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
+	struct pmemfile_dir *dir = &vinode->inode->file_data.dir;
+
+	struct pmemfile_dirent *dirent = NULL;
+
+	do {
+		for (uint32_t i = 0; i < dir->num_elements; ++i) {
+			if (strcmp(dir->dirents[i].name, "..") == 0) {
+				dirent = &dir->dirents[i];
+				break;
+			}
+		}
+
+		if (dirent)
+			break;
+
+		dir = D_RW(dir->next);
+	} while (dir);
+
+	ASSERTne(dirent, NULL);
+	ASSERT(TOID_EQUALS(dirent->inode, src_parent->tinode));
+	ASSERTeq(vinode->parent, src_parent);
+
+	TX_ADD_DIRECT(&src_parent->inode->nlink);
+	src_parent->inode->nlink--;
+
+	TX_ADD_DIRECT(&dst_parent->inode->nlink);
+	dst_parent->inode->nlink++;
+
+	TX_ADD_DIRECT(&dirent->inode);
+	dirent->inode = dst_parent->tinode;
+
+	vinode->parent = vinode_ref(pfp, dst_parent);
+}
+
+/*
  * vinode_new_dir -- creates new directory relative to parent
  *
  * Note: caller must hold WRITE lock on parent.
@@ -360,7 +398,7 @@ vinode_new_dir(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
  *
  * Caller must hold lock on parent.
  */
-static struct pmemfile_dirent *
+struct pmemfile_dirent *
 vinode_lookup_dirent_by_name_locked(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent, const char *name,
 		size_t namelen)
@@ -487,58 +525,44 @@ end:
 }
 
 /*
- * vinode_unlink_dirent -- removes dirent from directory
+ * vinode_unlink_file -- removes file dirent from directory
  *
- * Must be called in a transaction. Caller must have exclusive access to parent
- * inode, eg by locking parent in WRITE mode.
+ * Must be called in a transaction. Caller must have exclusive access to both
+ * parent and child inode by locking them in WRITE mode.
  */
 void
-vinode_unlink_dirent(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
-		const char *name, size_t namelen,
-		struct pmemfile_vinode *volatile *vinode,
-		volatile bool *parent_refed, bool abort_on_ENOENT)
+vinode_unlink_file(PMEMfilepool *pfp,
+		struct pmemfile_vinode *parent,
+		struct pmemfile_dirent *dirent,
+		struct pmemfile_vinode *vinode)
 {
-	LOG(LDBG, "parent 0x%" PRIx64 " ppath %s name %.*s",
-			parent->tinode.oid.off, pmfi_path(parent), (int)namelen,
-			name);
+	LOG(LDBG, "parent 0x%" PRIx64 " ppath %s name %s",
+		parent->tinode.oid.off, pmfi_path(parent), dirent->name);
 
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
-
-	struct pmemfile_dirent *dirent =
-			vinode_lookup_dirent_by_name_locked(pfp, parent, name,
-					namelen);
-	if (!dirent) {
-		if (errno == ENOENT && !abort_on_ENOENT)
-			return;
-		pmemfile_tx_abort(errno);
-	}
 
 	TOID(struct pmemfile_inode) tinode = dirent->inode;
 	struct pmemfile_inode *inode = D_RW(tinode);
 
-	if (inode_is_dir(inode))
-		pmemfile_tx_abort(EISDIR);
-
-	*vinode = inode_ref(pfp, tinode, parent, parent_refed, NULL, 0);
-	rwlock_tx_wlock(&(*vinode)->rwlock);
-
 	ASSERT(inode->nlink > 0);
 
 	TX_ADD_FIELD(tinode, nlink);
+	/*
+	 * Snapshot inode and the first byte of a name (because we are going
+	 * to overwrite just one byte) using one call.
+	 */
 	pmemobj_tx_add_range_direct(dirent, sizeof(dirent->inode) + 1);
 
 	struct pmemfile_time tm;
 	file_get_time(&tm);
 
-	if (--inode->nlink == 0)
-		vinode_orphan(pfp, *vinode);
-	else {
+	if (--inode->nlink > 0) {
 		/*
 		 * From "stat" man page:
 		 * "The field st_ctime is changed by writing or by setting inode
 		 * information (i.e., owner, group, link count, mode, etc.)."
 		 */
-		TX_SET_DIRECT((*vinode)->inode, ctime, tm);
+		TX_SET_DIRECT(vinode->inode, ctime, tm);
 	}
 	/*
 	 * From "stat" man page:
@@ -546,8 +570,6 @@ vinode_unlink_dirent(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 	 * or deletion of files in that directory."
 	 */
 	TX_SET_DIRECT(parent->inode, mtime, tm);
-
-	rwlock_tx_unlock_on_commit(&(*vinode)->rwlock);
 
 	dirent->name[0] = '\0';
 	dirent->inode = TOID_NULL(struct pmemfile_inode);
@@ -1180,6 +1202,291 @@ pmemfile_mkdir(PMEMfilepool *pfp, const char *path, pmemfile_mode_t mode)
 	return pmemfile_mkdirat(pfp, PMEMFILE_AT_CWD, path, mode);
 }
 
+/*
+ * vinode_unlink_dir -- unlinks directory "vdir" from directory "vparent"
+ * assuming "dirent" is used for storing this entry
+ *
+ * Must be called in transaction.
+ */
+void
+vinode_unlink_dir(PMEMfilepool *pfp,
+		struct pmemfile_vinode *vparent,
+		struct pmemfile_dirent *dirent,
+		struct pmemfile_vinode *vdir,
+		const char *path)
+{
+	struct pmemfile_inode *iparent = vparent->inode;
+	struct pmemfile_inode *idir = vdir->inode;
+	struct pmemfile_dir *ddir = &idir->file_data.dir;
+
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
+	if (!TOID_IS_NULL(ddir->next)) {
+		LOG(LUSR, "directory %s not empty", path);
+		pmemfile_tx_abort(ENOTEMPTY);
+	}
+
+	struct pmemfile_dirent *dirdot = &ddir->dirents[0];
+	struct pmemfile_dirent *dirdotdot = &ddir->dirents[1];
+
+	ASSERTeq(strcmp(dirdot->name, "."), 0);
+	ASSERT(TOID_EQUALS(dirdot->inode, vdir->tinode));
+
+	ASSERTeq(strcmp(dirdotdot->name, ".."), 0);
+	ASSERT(TOID_EQUALS(dirdotdot->inode, vparent->tinode));
+
+	for (uint32_t i = 2; i < ddir->num_elements; ++i) {
+		struct pmemfile_dirent *d = &ddir->dirents[i];
+
+		if (!TOID_IS_NULL(d->inode)) {
+			LOG(LUSR, "directory %s not empty", path);
+			pmemfile_tx_abort(ENOTEMPTY);
+		}
+	}
+
+	pmemobj_tx_add_range_direct(dirdot, sizeof(dirdot->inode) + 1);
+	dirdot->name[0] = '\0';
+	dirdot->inode = TOID_NULL(struct pmemfile_inode);
+
+	pmemobj_tx_add_range_direct(dirdotdot,
+			sizeof(dirdotdot->inode) + 1);
+	dirdotdot->name[0] = '\0';
+	dirdotdot->inode = TOID_NULL(struct pmemfile_inode);
+
+	ASSERTeq(idir->nlink, 2);
+	TX_ADD_DIRECT(&idir->nlink);
+	idir->nlink = 0;
+
+	pmemobj_tx_add_range_direct(dirent, sizeof(dirent->inode) + 1);
+	dirent->name[0] = '\0';
+	dirent->inode = TOID_NULL(struct pmemfile_inode);
+
+	TX_ADD_DIRECT(&iparent->nlink);
+	iparent->nlink--;
+
+	struct pmemfile_time tm;
+	file_get_time(&tm);
+
+	/*
+	 * From "stat" man page:
+	 * "The field st_ctime is changed by writing or by setting inode
+	 * information (i.e., owner, group, link count, mode, etc.)."
+	 */
+	TX_SET_DIRECT(iparent, ctime, tm);
+
+	/*
+	 * From "stat" man page:
+	 * "st_mtime of a directory is changed by the creation
+	 * or deletion of files in that directory."
+	 */
+	TX_SET_DIRECT(iparent, mtime, tm);
+}
+
+/*
+ * lock_parent_and_child -- resolve file with respect to parent directory and
+ * lock both inodes in write mode
+ *
+ * Returns 0 on success.
+ * Returns negated errno when failed.
+ * Returns 1 when there was a race.
+ */
+int
+lock_parent_and_child(PMEMfilepool *pfp,
+		struct pmemfile_path_info *path,
+		struct pmemfile_dirent_info *info)
+{
+	memset(info, 0, sizeof(*info));
+
+	size_t src_namelen = component_length(path->remaining);
+
+	os_rwlock_rdlock(&path->vinode->rwlock);
+
+	/* resolve file */
+	info->dirent = vinode_lookup_dirent_by_name_locked(pfp, path->vinode,
+				path->remaining, src_namelen);
+	if (!info->dirent) {
+		int error = errno;
+
+		os_rwlock_unlock(&path->vinode->rwlock);
+
+		return -error;
+	}
+
+	/* get the vinode for found file */
+	info->vinode = inode_ref(pfp, info->dirent->inode, path->vinode,
+					NULL, path->remaining, src_namelen);
+	if (!info->vinode) {
+		int error = errno;
+
+		os_rwlock_unlock(&path->vinode->rwlock);
+
+		return -error;
+	}
+
+	/* drop the lock on parent */
+	os_rwlock_unlock(&path->vinode->rwlock);
+
+	/* and now lock both inodes in correct order */
+	vinode_wrlock2(path->vinode, info->vinode);
+
+	/* another thread may have modified parent, refresh */
+	info->dirent = vinode_lookup_dirent_by_name_locked(pfp, path->vinode,
+			path->remaining, src_namelen);
+
+	/* now we have to validate the file didn't change */
+
+	/* file no longer exists */
+	if (!info->dirent)
+		goto race;
+
+	/* another thread replaced the file with another file */
+	if (!TOID_EQUALS(info->dirent->inode, info->vinode->tinode))
+		goto race;
+
+	return 0;
+
+race:
+	vinode_unlock2(path->vinode, info->vinode);
+
+	vinode_unref(pfp, info->vinode);
+	info->vinode = NULL;
+
+	info->dirent = NULL;
+
+	return 1;
+}
+
+/*
+ * lock_parents_and_children -- resolve 2 files with respect to parent
+ * directories and lock all 4 inodes in write mode
+ *
+ * Returns 0 on success.
+ * Returns negated errno when failed.
+ * Returns 1 when there was a race.
+ */
+int
+lock_parents_and_children(PMEMfilepool *pfp,
+		struct pmemfile_path_info *src,
+		struct pmemfile_dirent_info *src_info,
+
+		struct pmemfile_path_info *dst,
+		struct pmemfile_dirent_info *dst_info,
+
+		struct pmemfile_vinode *vinodes[static 5])
+{
+	memset(src_info, 0, sizeof(*src_info));
+	memset(dst_info, 0, sizeof(*dst_info));
+
+	size_t src_namelen = component_length(src->remaining);
+	size_t dst_namelen = component_length(dst->remaining);
+
+	/* lock 2 parents in correct order */
+	vinode_rdlock2(src->vinode, dst->vinode);
+
+	/* find source file */
+	src_info->dirent = vinode_lookup_dirent_by_name_locked(pfp, src->vinode,
+				src->remaining, src_namelen);
+	if (!src_info->dirent) {
+		int error = errno;
+
+		vinode_unlock2(src->vinode, dst->vinode);
+
+		return -error;
+	}
+
+	/* get the vinode for found source file */
+	src_info->vinode = inode_ref(pfp, src_info->dirent->inode, src->vinode,
+					NULL, src->remaining, src_namelen);
+	if (!src_info->vinode) {
+		int error = errno;
+
+		vinode_unlock2(src->vinode, dst->vinode);
+
+		return -error;
+	}
+
+	/* find destination file (it may not exist) */
+	dst_info->dirent = vinode_lookup_dirent_by_name_locked(pfp, dst->vinode,
+					dst->remaining, dst_namelen);
+	if (dst_info->dirent) {
+		/* if file exists get the vinode for it */
+		dst_info->vinode = inode_ref(pfp, dst_info->dirent->inode,
+				dst->vinode, NULL, dst->remaining, dst_namelen);
+		if (!dst_info->vinode) {
+			int error = errno;
+
+			vinode_unlock2(src->vinode, dst->vinode);
+
+			vinode_unref(pfp, src_info->vinode);
+			src_info->vinode = NULL;
+
+			return -error;
+		}
+	}
+
+	/* drop the locks on parent */
+	vinode_unlock2(src->vinode, dst->vinode);
+
+	/*
+	 * and now lock all 4 inodes (both parents and children) in correct
+	 * order
+	 */
+	vinode_wrlockN(vinodes,
+			src->vinode, src_info->vinode,
+			dst->vinode, dst_info->vinode);
+
+	/* another thread may have modified [src|dst]_parent, refresh */
+	src_info->dirent = vinode_lookup_dirent_by_name_locked(pfp, src->vinode,
+			src->remaining, src_namelen);
+
+	dst_info->dirent = vinode_lookup_dirent_by_name_locked(pfp, dst->vinode,
+			dst->remaining, dst_namelen);
+
+	/* now we have to validate the files didn't change */
+
+	/* source file no longer exists */
+	if (!src_info->dirent)
+		goto race;
+
+	/* another thread replaced the source file with another file */
+	if (!TOID_EQUALS(src_info->dirent->inode, src_info->vinode->tinode))
+		goto race;
+
+	/* destination file didn't exist before, now it exists */
+	if (dst_info->vinode == NULL && dst_info->dirent != NULL)
+		goto race;
+
+	/* destination file existed before */
+	if (dst_info->vinode != NULL) {
+		/* but now it doesn't */
+		if (dst_info->dirent == NULL)
+			goto race;
+
+		/* but now path points to another file */
+		if (!TOID_EQUALS(dst_info->dirent->inode,
+				dst_info->vinode->tinode))
+			goto race;
+	}
+
+	return 0;
+
+race:
+	vinode_unlockN(vinodes);
+
+	vinode_unref(pfp, src_info->vinode);
+	src_info->vinode = NULL;
+
+	if (dst_info->vinode) {
+		vinode_unref(pfp, dst_info->vinode);
+		dst_info->vinode = NULL;
+	}
+
+	src_info->dirent = NULL;
+	dst_info->dirent = NULL;
+
+	return 1;
+}
+
 int
 _pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		const char *path)
@@ -1191,8 +1498,6 @@ _pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	resolve_pathat(pfp, &cred, dir, path, &info, 0);
 
-	struct pmemfile_vinode *vparent = info.vinode;
-	struct pmemfile_vinode *vdir = NULL;
 	int error = 0;
 
 	if (info.error) {
@@ -1218,127 +1523,59 @@ _pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	}
 
 	if (namelen == 0) {
-		ASSERT(vparent == pfp->root);
+		ASSERT(info.vinode == pfp->root);
 		error = EBUSY;
 		goto end;
 	}
 
-	struct pmemfile_inode *iparent = vparent->inode;
 
-	os_rwlock_wrlock(&vparent->rwlock);
+	struct pmemfile_dirent_info dirent_info;
+	/*
+	 * lock_parent_and_child can race with another thread messing with
+	 * parent directory. Loop as long as race occurs.
+	 */
+	do {
+		error = lock_parent_and_child(pfp, &info, &dirent_info);
+	} while (error == 1);
 
-	struct pmemfile_dirent *dirent =
-			vinode_lookup_dirent_by_name_locked(pfp, vparent,
-						info.remaining, namelen);
-	if (!dirent) {
-		error = ENOENT;
-		goto vparent_end;
+	if (error < 0) {
+		error = -error;
+		goto end;
 	}
 
-	vdir = inode_ref(pfp, dirent->inode, vparent, NULL, info.remaining,
-			namelen);
-	if (!vdir) {
-		error = errno;
-		goto vparent_end;
-	}
-
-	if (!vinode_is_dir(vdir)) {
+	if (!vinode_is_dir(dirent_info.vinode)) {
 		error = ENOTDIR;
-		goto vparent_end;
+		goto vdir_end;
 	}
 
-	if (vdir == pfp->root) {
+	if (dirent_info.vinode == pfp->root) {
 		error = EBUSY;
-		goto vparent_end;
+		goto vdir_end;
 	}
 
-	if (!_vinode_can_access(&cred, vparent, PFILE_WANT_WRITE)) {
+	if (!_vinode_can_access(&cred, info.vinode, PFILE_WANT_WRITE)) {
 		error = EACCES;
-		goto vparent_end;
+		goto vdir_end;
 	}
-
-	os_rwlock_wrlock(&vdir->rwlock);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		struct pmemfile_inode *idir = vdir->inode;
-		struct pmemfile_dir *ddir = &idir->file_data.dir;
-		if (!TOID_IS_NULL(ddir->next)) {
-			LOG(LUSR, "directory %s not empty", path);
-			pmemfile_tx_abort(ENOTEMPTY);
-		}
+		vinode_unlink_dir(pfp, info.vinode, dirent_info.dirent,
+				dirent_info.vinode, path);
 
-		struct pmemfile_dirent *dirdot = &ddir->dirents[0];
-		struct pmemfile_dirent *dirdotdot = &ddir->dirents[1];
-
-		ASSERTeq(strcmp(dirdot->name, "."), 0);
-		ASSERT(TOID_EQUALS(dirdot->inode, vdir->tinode));
-
-		ASSERTeq(strcmp(dirdotdot->name, ".."), 0);
-		ASSERT(TOID_EQUALS(dirdotdot->inode, vparent->tinode));
-
-
-		for (uint32_t i = 2; i < ddir->num_elements; ++i) {
-			struct pmemfile_dirent *d = &ddir->dirents[i];
-
-			if (!TOID_IS_NULL(d->inode)) {
-				LOG(LUSR, "directory %s not empty", path);
-				pmemfile_tx_abort(ENOTEMPTY);
-			}
-		}
-
-		pmemobj_tx_add_range_direct(dirdot, sizeof(dirdot->inode) + 1);
-		dirdot->name[0] = '\0';
-		dirdot->inode = TOID_NULL(struct pmemfile_inode);
-
-		pmemobj_tx_add_range_direct(dirdotdot,
-				sizeof(dirdotdot->inode) + 1);
-		dirdotdot->name[0] = '\0';
-		dirdotdot->inode = TOID_NULL(struct pmemfile_inode);
-
-		ASSERTeq(idir->nlink, 2);
-		TX_ADD_DIRECT(&idir->nlink);
-		idir->nlink = 0;
-
-		pmemobj_tx_add_range_direct(dirent, sizeof(dirent->inode) + 1);
-		dirent->name[0] = '\0';
-		dirent->inode = TOID_NULL(struct pmemfile_inode);
-
-		TX_ADD_DIRECT(&iparent->nlink);
-		iparent->nlink--;
-
-		vinode_orphan(pfp, vdir);
-
-		struct pmemfile_time tm;
-		file_get_time(&tm);
-
-		/*
-		 * From "stat" man page:
-		 * "The field st_ctime is changed by writing or by setting inode
-		 * information (i.e., owner, group, link count, mode, etc.)."
-		 */
-		TX_SET_DIRECT(iparent, ctime, tm);
-
-		/*
-		 * From "stat" man page:
-		 * "st_mtime of a directory is changed by the creation
-		 * or deletion of files in that directory."
-		 */
-		TX_SET_DIRECT(iparent, mtime, tm);
+		vinode_orphan(pfp, dirent_info.vinode);
 	} TX_ONABORT {
 		error = errno;
 	} TX_END
 
-	os_rwlock_unlock(&vdir->rwlock);
+vdir_end:
+	vinode_unlock2(dirent_info.vinode, info.vinode);
 
-vparent_end:
-	os_rwlock_unlock(&vparent->rwlock);
+	if (dirent_info.vinode)
+		vinode_unref(pfp, dirent_info.vinode);
 
 end:
 	path_info_cleanup(pfp, &info);
 	put_cred(&cred);
-
-	if (vdir)
-		vinode_unref(pfp, vdir);
 
 	if (error) {
 		errno = error;

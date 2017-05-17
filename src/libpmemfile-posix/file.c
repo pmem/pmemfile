@@ -37,6 +37,7 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
+#include <stdlib.h>
 
 #include "callbacks.h"
 #include "data.h"
@@ -704,7 +705,7 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 
 	size_t dst_namelen = component_length(dst.remaining);
 
-	os_rwlock_wrlock(&dst.vinode->rwlock);
+	vinode_wrlock2(dst.vinode, src_vinode);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (!_vinode_can_access(&cred, dst.vinode, PFILE_WANT_WRITE))
@@ -718,13 +719,12 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 		error = errno;
 	} TX_END
 
-	os_rwlock_unlock(&dst.vinode->rwlock);
-
 	if (error == 0) {
-		vinode_clear_debug_path(pfp, src_vinode);
-		vinode_set_debug_path(pfp, dst.vinode, src_vinode,
+		vinode_replace_debug_path_locked(pfp, dst.vinode, src_vinode,
 				dst.remaining, dst_namelen);
 	}
+
+	vinode_unlock2(dst.vinode, src_vinode);
 
 end:
 	path_info_cleanup(pfp, &dst);
@@ -843,46 +843,62 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	struct pmemfile_path_info info;
 	resolve_pathat(pfp, &cred, dir, pathname, &info, 0);
-	struct pmemfile_vinode *vparent = info.vinode;
-	struct pmemfile_vinode *volatile vinode = NULL;
-	volatile bool parent_refed = false;
 
 	if (info.error) {
 		error = info.error;
 		goto end;
 	}
 
-	size_t namelen = component_length(info.remaining);
-
 	if (strchr(info.remaining, '/')) {
 		error = ENOTDIR;
 		goto end;
 	}
 
-	os_rwlock_wrlock(&vparent->rwlock);
+	struct pmemfile_dirent_info dirent_info;
+	/*
+	 * lock_parent_and_child can race with another thread messing with
+	 * parent directory. Loop as long as race occurs.
+	 */
+	do {
+		error = lock_parent_and_child(pfp, &info, &dirent_info);
+	} while (error == 1);
+
+	if (error < 0) {
+		error = -error;
+		goto end;
+	}
+
+	if (!_vinode_can_access(&cred, info.vinode, PFILE_WANT_WRITE)) {
+		error = EACCES;
+		goto end_vinode;
+	}
+
+	if (vinode_is_dir(dirent_info.vinode)) {
+		error = EISDIR;
+		goto end_vinode;
+	}
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		if (!_vinode_can_access(&cred, vparent, PFILE_WANT_WRITE))
-			pmemfile_tx_abort(EACCES);
+		vinode_unlink_file(pfp, info.vinode, dirent_info.dirent,
+				dirent_info.vinode);
 
-		vinode_unlink_dirent(pfp, vparent, info.remaining, namelen,
-				&vinode, &parent_refed, true);
+		if (dirent_info.vinode->inode->nlink == 0)
+			vinode_orphan(pfp, dirent_info.vinode);
 	} TX_ONABORT {
 		error = errno;
 	} TX_END
 
-	os_rwlock_unlock(&vparent->rwlock);
+end_vinode:
+	vinode_unlock2(dirent_info.vinode, info.vinode);
+
+	if (dirent_info.vinode)
+		vinode_unref(pfp, dirent_info.vinode);
 
 end:
 	path_info_cleanup(pfp, &info);
 	put_cred(&cred);
 
-	if (vinode)
-		vinode_unref(pfp, vinode);
-
 	if (error) {
-		if (parent_refed)
-			vinode_unref(pfp, vparent);
 		errno = error;
 		return -1;
 	}
@@ -944,6 +960,183 @@ pmemfile_unlink(PMEMfilepool *pfp, const char *pathname)
 	return pmemfile_unlinkat(pfp, PMEMFILE_AT_CWD, pathname, 0);
 }
 
+/*
+ * vinode_exchange -- swaps directory entries
+ *
+ * Must NOT be called in transaction.
+ */
+static int
+vinode_exchange(PMEMfilepool *pfp,
+		struct pmemfile_path_info *src,
+		struct pmemfile_dirent_info *src_info,
+		struct pmemfile_path_info *dst,
+		struct pmemfile_dirent_info *dst_info)
+{
+	int error = 0;
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+
+	bool src_is_dir = vinode_is_dir(src_info->vinode);
+	bool dst_is_dir = vinode_is_dir(dst_info->vinode);
+
+	struct pmemfile_vinode *src_oldparent = src_info->vinode->parent;
+	struct pmemfile_vinode *dst_oldparent = dst_info->vinode->parent;
+
+	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
+		TX_ADD_DIRECT(&src_info->dirent->inode);
+		TX_ADD_DIRECT(&dst_info->dirent->inode);
+		src_info->dirent->inode = dst_info->vinode->tinode;
+		dst_info->dirent->inode = src_info->vinode->tinode;
+
+		/*
+		 * If both are regular files or have the same parent, then
+		 * we don't have to do anything.
+		 */
+		if ((src_is_dir || dst_is_dir) && src->vinode != dst->vinode) {
+			/*
+			 * If only one of them is a directory, then we have to
+			 * update both parent's link count.
+			 */
+			if (src_is_dir != dst_is_dir) {
+				TX_ADD_DIRECT(&src->vinode->inode->nlink);
+				TX_ADD_DIRECT(&dst->vinode->inode->nlink);
+
+				if (src_is_dir) {
+					src->vinode->inode->nlink--;
+					dst->vinode->inode->nlink++;
+				} else {
+					src->vinode->inode->nlink++;
+					dst->vinode->inode->nlink--;
+				}
+			}
+
+			/* Update ".." entries of exchanged directories. */
+
+			if (src_is_dir) {
+				struct pmemfile_dirent *dirent =
+					vinode_lookup_dirent_by_name_locked(pfp,
+						src_info->vinode, "..", 2);
+				TX_ADD_DIRECT(&dirent->inode);
+				dirent->inode = dst->vinode->tinode;
+				src_info->vinode->parent = dst->vinode;
+			}
+
+			if (dst_is_dir) {
+				struct pmemfile_dirent *dirent =
+					vinode_lookup_dirent_by_name_locked(pfp,
+						dst_info->vinode, "..", 2);
+				TX_ADD_DIRECT(&dirent->inode);
+				dirent->inode = src->vinode->tinode;
+				dst_info->vinode->parent = src->vinode;
+			}
+		}
+	} TX_ONABORT {
+		error = errno;
+	} TX_END
+
+	if (!error && src->vinode != dst->vinode) {
+		if (src_is_dir) {
+			vinode_ref(pfp, src_info->vinode->parent);
+			vinode_unref(pfp, src_oldparent);
+		}
+		if (dst_is_dir) {
+			vinode_ref(pfp, dst_info->vinode->parent);
+			vinode_unref(pfp, dst_oldparent);
+		}
+	}
+
+	return error;
+}
+
+/*
+ * vinode_rename -- renames src/src_info to dst/dst_info
+ *
+ * Must NOT be called in transaction.
+ */
+static int
+vinode_rename(PMEMfilepool *pfp,
+		struct pmemfile_path_info *src,
+		struct pmemfile_dirent_info *src_info,
+		struct pmemfile_path_info *dst,
+		struct pmemfile_dirent_info *dst_info,
+		const char *new_path)
+{
+	int error = 0;
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+
+	size_t new_name_len = component_length(dst->remaining);
+
+	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
+		if (dst_info->dirent) {
+			if (vinode_is_dir(dst_info->vinode)) {
+				vinode_unlink_dir(pfp, dst->vinode,
+						dst_info->dirent,
+						dst_info->vinode,
+						new_path);
+			} else {
+				vinode_unlink_file(pfp, dst->vinode,
+						dst_info->dirent,
+						dst_info->vinode);
+			}
+
+			if (dst_info->vinode->inode->nlink == 0)
+				vinode_orphan_unlocked(pfp, dst_info->vinode);
+		}
+
+		struct pmemfile_time t;
+		file_get_time(&t);
+
+		if (src->vinode == dst->vinode) {
+			/* optimized rename */
+			pmemobj_tx_add_range_direct(src_info->dirent->name,
+					new_name_len + 1);
+
+			strncpy(src_info->dirent->name, dst->remaining,
+					new_name_len);
+			src_info->dirent->name[new_name_len] = '\0';
+
+			/*
+			 * From "stat" man page:
+			 * "st_mtime of a directory is changed by the creation
+			 * or deletion of files in that directory."
+			 */
+			TX_SET_DIRECT(src->vinode->inode, mtime, t);
+		} else {
+			vinode_add_dirent(pfp, dst->vinode, dst->remaining,
+					new_name_len, src_info->vinode, t);
+
+			vinode_unlink_file(pfp, src->vinode, src_info->dirent,
+					src_info->vinode);
+
+			if (vinode_is_dir(src_info->vinode))
+				vinode_update_parent(pfp, src_info->vinode,
+						src->vinode, dst->vinode);
+		}
+	} TX_ONABORT {
+		error = errno;
+	} TX_END
+
+	if (error == 0 && src->vinode != dst->vinode &&
+			vinode_is_dir(src_info->vinode))
+		vinode_unref(pfp, src->vinode);
+
+	return error;
+}
+
+static bool
+dir_is_parent_of(PMEMfilepool *pfp, struct pmemfile_vinode *possible_parent,
+		struct pmemfile_vinode *possible_child)
+{
+	struct pmemfile_vinode *v = possible_child;
+
+	while (v != pfp->root) {
+		if (v == possible_parent)
+			return true;
+		v = v->parent;
+	}
+
+	return false;
+}
+
 static int
 _pmemfile_renameat2(PMEMfilepool *pfp,
 		struct pmemfile_vinode *olddir, const char *oldpath,
@@ -952,8 +1145,25 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 {
 	LOG(LDBG, "oldpath %s newpath %s", oldpath, newpath);
 
-	if (flags) {
-		LOG(LSUP, "0 flags supported in rename");
+#define PMEMFILE_RENAME_KNOWN_FLAGS ((unsigned)(PMEMFILE_RENAME_EXCHANGE | \
+		PMEMFILE_RENAME_NOREPLACE | PMEMFILE_RENAME_WHITEOUT))
+
+	if (flags & ~PMEMFILE_RENAME_KNOWN_FLAGS) {
+		LOG(LSUP, "unknown flag %u",
+				flags & ~PMEMFILE_RENAME_KNOWN_FLAGS);
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (flags & PMEMFILE_RENAME_WHITEOUT) {
+		LOG(LSUP, "RENAME_WHITEOUT is not supported");
+		errno = EINVAL;
+		return -1;
+	}
+
+	if ((flags & (PMEMFILE_RENAME_EXCHANGE | PMEMFILE_RENAME_NOREPLACE)) ==
+		(PMEMFILE_RENAME_EXCHANGE | PMEMFILE_RENAME_NOREPLACE)) {
+		LOG(LUSR, "both RENAME_EXCHANGE and RENAME_NOREPLACE are set");
 		errno = EINVAL;
 		return -1;
 	}
@@ -961,12 +1171,6 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	struct pmemfile_cred cred;
 	if (get_cred(pfp, &cred))
 		return -1;
-
-	struct pmemfile_vinode *volatile dst_unlinked = NULL;
-	struct pmemfile_vinode *volatile src_unlinked = NULL;
-	volatile bool dst_parent_refed = false;
-	volatile bool src_parent_refed = false;
-	struct pmemfile_vinode *src_vinode = NULL, *dst_vinode = NULL;
 
 	struct pmemfile_path_info src, dst;
 	resolve_pathat(pfp, &cred, olddir, oldpath, &src, 0);
@@ -987,107 +1191,127 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 	size_t src_namelen = component_length(src.remaining);
 	size_t dst_namelen = component_length(dst.remaining);
 
-	src_vinode = vinode_lookup_dirent(pfp, src.vinode, src.remaining,
-			src_namelen, 0);
-	if (!src_vinode) {
+	struct pmemfile_vinode *vinodes[5];
+
+	struct pmemfile_dirent_info src_info, dst_info;
+
+	/*
+	 * lock_parents_and_children can race with another thread messing with
+	 * source or destination directory. Loop as long as race occurs.
+	 */
+	do {
+		error = lock_parents_and_children(pfp, &src, &src_info, &dst,
+				&dst_info, vinodes);
+	} while (error == 1);
+
+	if (error < 0) {
+		error = -error;
+		goto end;
+	}
+
+	/*
+	 * 2 threads doing:
+	 * rename("/a/b", "/1/2/3/4/5")
+	 * rename("/1/2/", "/a/b/c/d/e")
+	 * could race with each other creating this situation:
+	 * /1
+	 * /a
+	 * and unreachable cycle 3/4/c/d with "d" as parent of "3".
+	 *
+	 * Prevent this from happening by taking the file system lock for
+	 * cross-directory renames.
+	 */
+	if (src.vinode != dst.vinode)
+		os_rwlock_wrlock(&pfp->super_rwlock);
+
+	if ((flags & PMEMFILE_RENAME_EXCHANGE) && !dst_info.vinode) {
 		error = ENOENT;
-		goto end;
+		goto end_unlock;
 	}
 
-	dst_vinode = vinode_lookup_dirent(pfp, dst.vinode, dst.remaining,
-			dst_namelen, 0);
-
-	struct pmemfile_vinode *src_parent = src.vinode;
-	struct pmemfile_vinode *dst_parent = dst.vinode;
-
-	if (vinode_is_dir(src_vinode)) {
-		LOG(LSUP, "renaming directories is not supported yet");
-		error = ENOTSUP;
-		goto end;
+	if (!_vinode_can_access(&cred, src.vinode, PFILE_WANT_WRITE)) {
+		error = EACCES;
+		goto end_unlock;
 	}
 
-	if (src_parent == dst_parent)
-		os_rwlock_wrlock(&dst_parent->rwlock);
-	else if (src_parent < dst_parent) {
-		os_rwlock_wrlock(&src_parent->rwlock);
-		os_rwlock_wrlock(&dst_parent->rwlock);
+	if (!_vinode_can_access(&cred, dst.vinode, PFILE_WANT_WRITE)) {
+		error = EACCES;
+		goto end_unlock;
+	}
+
+	/*
+	 * From "rename" manpage:
+	 * "If oldpath and newpath are existing hard links referring to
+	 * the same file, then rename() does nothing, and returns a success
+	 * status."
+	 */
+	if (dst_info.vinode == src_info.vinode)
+		goto end_unlock;
+
+	/* destination file exists and user asked us to fail when it does */
+	if (dst_info.dirent && (flags & PMEMFILE_RENAME_NOREPLACE)) {
+		error = EEXIST;
+		goto end_unlock;
+	}
+
+	/*
+	 * From "rename" manpage:
+	 * "EINVAL The new pathname contained a path prefix of the old, or,
+	 * more generally, an attempt was made to make a directory
+	 * a subdirectory of itself."
+	 */
+	if (src.vinode != dst.vinode) {
+		if (vinode_is_dir(src_info.vinode) &&
+			dir_is_parent_of(pfp, src_info.vinode, dst.vinode)) {
+			error = EINVAL;
+			goto end_unlock;
+		}
+
+		if ((flags & PMEMFILE_RENAME_EXCHANGE) &&
+			vinode_is_dir(dst_info.vinode) &&
+			dir_is_parent_of(pfp, dst_info.vinode, src.vinode)) {
+			error = EINVAL;
+			goto end_unlock;
+		}
+	}
+
+	if (flags & PMEMFILE_RENAME_EXCHANGE) {
+		error = vinode_exchange(pfp, &src, &src_info, &dst, &dst_info);
 	} else {
-		os_rwlock_wrlock(&dst_parent->rwlock);
-		os_rwlock_wrlock(&src_parent->rwlock);
+		error = vinode_rename(pfp, &src, &src_info, &dst, &dst_info,
+				newpath);
 	}
-
-	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		/*
-		 * XXX, when src dir == dst dir we can just update dirent,
-		 * without linking and unlinking
-		 */
-
-		if (!_vinode_can_access(&cred, src_parent, PFILE_WANT_WRITE))
-			pmemfile_tx_abort(EACCES);
-
-		if (!_vinode_can_access(&cred, dst_parent, PFILE_WANT_WRITE))
-			pmemfile_tx_abort(EACCES);
-
-		vinode_unlink_dirent(pfp, dst_parent, dst.remaining,
-				dst_namelen, &dst_unlinked, &dst_parent_refed,
-				false);
-
-		struct pmemfile_time t;
-		file_get_time(&t);
-		vinode_add_dirent(pfp, dst_parent, dst.remaining, dst_namelen,
-				src_vinode, t);
-
-		vinode_unlink_dirent(pfp, src_parent, src.remaining,
-				src_namelen, &src_unlinked, &src_parent_refed,
-				true);
-
-		if (src_unlinked != src_vinode)
-			/* XXX restart? lookups under lock? */
-			pmemfile_tx_abort(ENOENT);
-
-	} TX_ONABORT {
-		error = errno;
-	} TX_END
-
-	if (src_parent == dst_parent)
-		os_rwlock_unlock(&dst_parent->rwlock);
-	else {
-		os_rwlock_unlock(&src_parent->rwlock);
-		os_rwlock_unlock(&dst_parent->rwlock);
-	}
-
-	if (dst_parent_refed)
-		vinode_unref(pfp, dst_parent);
-
-	if (src_parent_refed)
-		vinode_unref(pfp, src_parent);
-
-	if (dst_unlinked)
-		vinode_unref(pfp, dst_unlinked);
-
-	if (src_unlinked)
-		vinode_unref(pfp, src_unlinked);
 
 	if (error == 0) {
-		vinode_clear_debug_path(pfp, src_vinode);
-		vinode_set_debug_path(pfp, dst.vinode, src_vinode,
-				dst.remaining, dst_namelen);
+		/* update debug information about vinodes */
+
+		if (flags & PMEMFILE_RENAME_EXCHANGE) {
+			vinode_replace_debug_path_locked(pfp, src.vinode,
+					dst_info.vinode, src.remaining,
+					src_namelen);
+		}
+
+		vinode_replace_debug_path_locked(pfp, dst.vinode,
+				src_info.vinode, dst.remaining, dst_namelen);
 	}
+
+end_unlock:
+	if (src.vinode != dst.vinode)
+		os_rwlock_unlock(&pfp->super_rwlock);
+	vinode_unlockN(vinodes);
+
+	if (dst_info.vinode)
+		vinode_unref(pfp, dst_info.vinode);
+
+	if (src_info.vinode)
+		vinode_unref(pfp, src_info.vinode);
 
 end:
 	path_info_cleanup(pfp, &dst);
 	path_info_cleanup(pfp, &src);
 	put_cred(&cred);
 
-	if (dst_vinode)
-		vinode_unref(pfp, dst_vinode);
-	if (src_vinode)
-		vinode_unref(pfp, src_vinode);
-
 	if (error) {
-		if (dst_parent_refed)
-			vinode_unref(pfp, dst.vinode);
-
 		errno = error;
 		return -1;
 	}

@@ -33,6 +33,6 @@ include(${SRC_DIR}/../posix-helpers.cmake)
 
 setup()
 
-execute(${TEST_EXECUTABLE} ${ops})
+execute(${TEST_EXECUTABLE} ${ops} ${filter})
 
 cleanup()

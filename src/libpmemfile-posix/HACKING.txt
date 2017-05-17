@@ -1,0 +1,39 @@
+Inode/vinode accessing rules:
+- When accessing vinode or inode you must hold a reference on vinode.
+- Unless there's a good reason to not do this, refing should be done outside of
+  pmemobj transaction.
+- It's safe to ref in the transaction if there's nothing after ref that can
+  abort.
+  If transaction can fail after ref, you need to handle that and unref it.
+  Also in this case you have to deal with inode_ref sometimes taking a reference
+  on its parent (if it's a directory).
+  This is very fragile and tricky, so refing inside of transaction is highly
+  discouraged.
+- Unrefs must be done outside of transaction. There's no other option.
+- Lock in vinode protects both vinode and inode.
+- You have to take the vinode lock at least in "read" mode if you want to read
+  any field in vinode or inode (of course with an exception of refcnt and lock
+  itself).
+- You have to take the vinode lock in "write" mode if you want to modify vinode
+  or inode.
+- If you want to modify multiple vinodes/inodes you have to take their locks
+  in ascending order. There are helper functions to do that.
+- Rename and exchange operations require taking up to 4 vinode locks (2 possible
+  parents and 2 children).
+- To prevent races between 2 threads doing cross-directory rename,
+  rename implementation must take the global pool lock.
+- Unref does not take the vinode lock, even when reading some of the vinode
+  fields. This is safe because it's done only when refcnt drops to 0, when we
+  are sure nobody has access to unrefed vinode.
+- That also means that initial ref (inode_ref) and all unrefs need to take
+  the inode map lock in write mode.
+
+Other stuff:
+- All transactions should use cb_queue as callback, just in case anything in
+  the transaction will use callbacks.
+- If you take a lock that protects persistent memory structures in transaction
+  you have to keep this lock until the end of transaction.
+- If you modify any runtime data in transaction you need to rollback them on
+  tx abort, because only persistent memory is tracked by transaction.
+  It's better to avoid modifying runtime structures inside of transaction and
+  do that after commit.

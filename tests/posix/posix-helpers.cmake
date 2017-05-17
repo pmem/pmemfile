@@ -65,9 +65,9 @@ function(execute name)
 	endif()
 
 	string(REPLACE ";" " " TRACE_STR "${TRACE}")
-	message(STATUS "Executing: ${TRACE_STR} ${name} ${DIR} ${ARGV1}")
+	message(STATUS "Executing: ${TRACE_STR} ${name} ${DIR} ${ARGN}")
 
-	execute_process(COMMAND ${TRACE} ${name} ${DIR} ${ARGV1}
+	execute_process(COMMAND ${TRACE} ${name} ${DIR} ${ARGN}
 			RESULT_VARIABLE HAD_ERROR
 			OUTPUT_FILE ${BIN_DIR}/${TRACER}.out
 			ERROR_FILE ${BIN_DIR}/${TRACER}.err)
@@ -86,5 +86,14 @@ function(execute name)
 
 	if(EXISTS ${SRC_DIR}/${TRACER}.err.match)
 		match(${BIN_DIR}/${TRACER}.err ${SRC_DIR}/${TRACER}.err.match)
+	endif()
+
+	if ($ENV{DUMP_STDOUT})
+		file(READ ${BIN_DIR}/${TRACER}.out OUT)
+		message(STATUS "Stdout:\n${OUT}")
+	endif()
+	if ($ENV{DUMP_STDERR})
+		file(READ ${BIN_DIR}/${TRACER}.err ERR)
+		message(STATUS "Stderr:\n${ERR}")
 	endif()
 endfunction()

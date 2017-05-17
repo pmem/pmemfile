@@ -191,11 +191,21 @@ void vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode);
 void vinode_cleanup(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		bool preserve_errno);
 
+void vinode_orphan_unlocked(PMEMfilepool *pfp, struct pmemfile_vinode *vinode);
 void vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode);
 
 void vinode_snapshot(struct pmemfile_vinode *vinode);
 void vinode_restore_on_abort(struct pmemfile_vinode *vinode);
 
+void vinode_rdlock2(struct pmemfile_vinode *v1, struct pmemfile_vinode *v2);
+void vinode_wrlock2(struct pmemfile_vinode *v1, struct pmemfile_vinode *v2);
+void vinode_unlock2(struct pmemfile_vinode *v1, struct pmemfile_vinode *v2);
+void vinode_wrlockN(struct pmemfile_vinode *v[static 5],
+		struct pmemfile_vinode *v1,
+		struct pmemfile_vinode *v2,
+		struct pmemfile_vinode *v3,
+		struct pmemfile_vinode *v4);
+void vinode_unlockN(struct pmemfile_vinode *v[static 5]);
 
 static inline TOID(struct pmemfile_block)
 blockp_as_oid(struct pmemfile_block *block)

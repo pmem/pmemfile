@@ -98,18 +98,25 @@ build_test(file_rw rw/rw.cpp)
 build_test(file_stat stat/stat.cpp)
 build_test(file_symlinks symlinks/symlinks.cpp)
 
-function(add_test_generic name tracer)
+function(add_test_with_filter name filter tracer)
 	set(vg_tracers memcheck helgrind drd pmemcheck)
+	if ("${filter}" STREQUAL "")
+		set(filter_postfix)
+		set(filter_cmd)
+	else()
+		set(filter_postfix _${filter})
+		set(filter_cmd -Dfilter=--gtest_filter=${name}.${filter})
+	endif()
 
 	if ((NOT VALGRIND_FOUND) AND ${tracer} IN_LIST vg_tracers)
-		add_test(NAME ${name}_${tracer}_SKIPPED_BECAUSE_OF_MISSING_VALGRIND
+		add_test(NAME ${name}${filter_postfix}_${tracer}_SKIPPED_BECAUSE_OF_MISSING_VALGRIND
 			COMMAND true)
 		return()
 	endif()
 
 	if(${tracer} STREQUAL pmemcheck)
 		if (VALGRIND_PMEMCHECK_NOT_FOUND)
-			add_test(NAME ${name}_${tracer}_SKIPPED_BECAUSE_OF_MISSING_PMEMCHECK
+			add_test(NAME ${name}${filter_postfix}_${tracer}_SKIPPED_BECAUSE_OF_MISSING_PMEMCHECK
 				COMMAND true)
 			return()
 		endif()
@@ -119,20 +126,25 @@ function(add_test_generic name tracer)
 		return()
 	endif()
 
-	add_test(NAME ${name}_${tracer}
+	add_test(NAME ${name}${filter_postfix}_${tracer}
 		COMMAND ${CMAKE_COMMAND}
 			${GLOBAL_TEST_ARGS}
-			-DTEST_NAME=${name}_${tracer}
+			-DTEST_NAME=${name}${filter_postfix}_${tracer}
 			-DSRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/${name}
-			-DBIN_DIR=${CMAKE_CURRENT_BINARY_DIR}/${name}_${tracer}
+			-DBIN_DIR=${CMAKE_CURRENT_BINARY_DIR}/${name}${filter_postfix}_${tracer}
 			-DTEST_EXECUTABLE=$<TARGET_FILE:file_${name}>
 			-DTRACER=${tracer}
 			-DLONG_TESTS=${LONG_TESTS}
-			${ARGV2}
+			${ARGV3}
+			${filter_cmd}
 			-P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/${name}.cmake)
 
-	set_tests_properties(${name}_${tracer} PROPERTIES
-		ENVIRONMENT "LC_ALL=C;PATH=$ENV{PATH};${ARGV3}")
+	set_tests_properties(${name}${filter_postfix}_${tracer} PROPERTIES
+		ENVIRONMENT "LC_ALL=C;PATH=$ENV{PATH};${ARGV4}")
+endfunction()
+
+function(add_test_generic name tracer)
+	add_test_with_filter(${name} "" ${tracer} ${ARGN})
 endfunction()
 
 add_test_generic(basic none)
@@ -144,17 +156,35 @@ add_test_generic(crash none)
 
 add_test_generic(dirs none)
 add_test_generic(dirs memcheck)
-add_test_generic(dirs pmemcheck)
+add_test_generic(dirs helgrind  -Dops=10)
+add_test_generic(dirs drd)
+add_test_generic(dirs pmemcheck -Dops=10)
 
 add_test_generic(getdents none)
 add_test_generic(getdents memcheck)
 add_test_generic(getdents pmemcheck)
 
-add_test_generic(mt none      -Dops=10000)
-add_test_generic(mt memcheck  -Dops=10)
-add_test_generic(mt helgrind  -Dops=20)
-add_test_generic(mt drd       -Dops=20)
-add_test_generic(mt pmemcheck -Dops=50)
+function(add_mt_test tracer ops)
+	add_test_with_filter(mt open_close_create_unlink ${tracer} -Dops=${ops})
+	add_test_with_filter(mt pread                    ${tracer} -Dops=${ops})
+	add_test_with_filter(mt rename                   ${tracer} -Dops=${ops})
+	add_test_with_filter(mt rename_random_paths      ${tracer} -Dops=${ops})
+	add_test_with_filter(mt exchange_random_paths    ${tracer} -Dops=${ops})
+endfunction()
+
+if(LONG_TESTS)
+	add_mt_test(none      100000)
+	add_mt_test(memcheck  10000)
+	add_mt_test(helgrind  500)
+	add_mt_test(drd       2000)
+	add_mt_test(pmemcheck 500)
+else()
+	add_mt_test(none      10000)
+	add_mt_test(memcheck  10)
+	add_mt_test(helgrind  20)
+	add_mt_test(drd       20)
+	add_mt_test(pmemcheck 50)
+endif()
 
 add_test_generic(openp none)
 add_test_generic(openp memcheck)

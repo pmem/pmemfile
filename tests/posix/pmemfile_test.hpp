@@ -63,9 +63,11 @@ is_zeroed(const void *addr, size_t len)
 	return 1;
 }
 
+/* XXX move these functions to pmemfile_test class and get rid of pfp arg */
+
 /* pmemfile stuff */
-bool test_pmemfile_create(PMEMfilepool *pfp, const char *path, int flags,
-			  pmemfile_mode_t mode);
+bool test_pmemfile_create(PMEMfilepool *pfp, const char *path, int flags = 0,
+			  pmemfile_mode_t mode = 0777);
 /* utilities */
 
 class pmemfile_ls {

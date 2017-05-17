@@ -150,13 +150,26 @@ inode_map_alloc()
 void
 inode_map_free(struct pmemfile_inode_map *c)
 {
+	int ref_leaks = 0;
+
 	for (unsigned i = 0; i < c->sz; ++i) {
 		struct inode_map_bucket *bucket = &c->buckets[i];
 
-		for (unsigned j = 0; j < BUCKET_SIZE; ++j)
-			if (bucket->arr[j].vinode)
-				FATAL("memory leak");
+		for (unsigned j = 0; j < BUCKET_SIZE; ++j) {
+			struct pmemfile_vinode *vinode = bucket->arr[j].vinode;
+			if (vinode) {
+#ifdef DEBUG
+				LOG(LDBG, "inode reference leak %s",
+					vinode->path ? vinode->path :
+							"unknown path");
+#endif
+				ref_leaks++;
+			}
+		}
 	}
+
+	if (ref_leaks)
+		FATAL("%d inode reference leaks", ref_leaks);
 
 	os_rwlock_destroy(&c->rwlock);
 	free(c->buckets);
@@ -447,22 +460,30 @@ vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 
 	while (vinode) {
 		struct pmemfile_vinode *to_unregister = NULL;
+		struct pmemfile_vinode *parent = NULL;
+
 		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-			struct pmemfile_vinode *parent = vinode->parent;
-
-			if (vinode_tx_unref(pfp, vinode))
+			if (vinode_tx_unref(pfp, vinode)) {
 				to_unregister = vinode;
-
-			if (to_unregister && vinode != pfp->root)
-				vinode = parent;
-			else
-				vinode = NULL;
-		} TX_ONCOMMIT {
-			if (to_unregister)
-				vinode_unregister_locked(pfp, to_unregister);
+				/*
+				 * We don't need to take the vinode lock to
+				 * read parent because at this point (when
+				 * ref count drops to 0) nobody should have
+				 * access to this vinode.
+				 */
+				parent = vinode->parent;
+			}
 		} TX_ONABORT {
-			FATAL("!");
+			FATAL("!vinode_unref");
 		} TX_END
+
+		if (vinode != pfp->root)
+			vinode = parent;
+		else
+			vinode = NULL;
+
+		if (to_unregister)
+			vinode_unregister_locked(pfp, to_unregister);
 	}
 
 	os_rwlock_unlock(&c->rwlock);
@@ -533,9 +554,11 @@ inode_alloc(PMEMfilepool *pfp, uint64_t flags, struct pmemfile_vinode *parent,
  * vinode_orphan -- register specified inode in orphaned_inodes array
  *
  * Must be called in a transaction.
+ *
+ * Assumes superblock lock already has been taken.
  */
 void
-vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
+vinode_orphan_unlocked(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
 	LOG(LDBG, "inode 0x%" PRIx64 " path %s", vinode->tinode.oid.off,
 			pmfi_path(vinode));
@@ -543,13 +566,24 @@ vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 	ASSERTeq(vinode->orphaned.arr, NULL);
 
-	rwlock_tx_wlock(&pfp->super_rwlock);
-
 	TOID(struct pmemfile_inode_array) orphaned =
 			pfp->super->orphaned_inodes;
 
 	inode_array_add(pfp, orphaned, vinode,
 			&vinode->orphaned.arr, &vinode->orphaned.idx);
+}
+
+/*
+ * vinode_orphan -- register specified inode in orphaned_inodes array
+ *
+ * Must be called in a transaction.
+ */
+void
+vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
+{
+	rwlock_tx_wlock(&pfp->super_rwlock);
+
+	vinode_orphan_unlocked(pfp, vinode);
 
 	rwlock_tx_unlock_on_commit(&pfp->super_rwlock);
 }
@@ -615,6 +649,128 @@ inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 		FATAL("unknown inode type 0x%lx", inode->flags);
 	}
 	TX_FREE(tinode);
+}
+
+/*
+ * vinode_rdlock2 -- take READ locks on specified inodes in always
+ * the same order
+ */
+void
+vinode_rdlock2(struct pmemfile_vinode *v1, struct pmemfile_vinode *v2)
+{
+	if (v1 == v2)
+		os_rwlock_rdlock(&v2->rwlock);
+	else if ((uintptr_t)v1 < (uintptr_t)v2) {
+		os_rwlock_rdlock(&v1->rwlock);
+		os_rwlock_rdlock(&v2->rwlock);
+	} else {
+		os_rwlock_rdlock(&v2->rwlock);
+		os_rwlock_rdlock(&v1->rwlock);
+	}
+}
+
+/*
+ * vinode_wrlock2 -- take WRITE locks on specified inodes in always
+ * the same order
+ */
+void
+vinode_wrlock2(struct pmemfile_vinode *v1, struct pmemfile_vinode *v2)
+{
+	if (v1 == v2)
+		os_rwlock_wrlock(&v2->rwlock);
+	else if ((uintptr_t)v1 < (uintptr_t)v2) {
+		os_rwlock_wrlock(&v1->rwlock);
+		os_rwlock_wrlock(&v2->rwlock);
+	} else {
+		os_rwlock_wrlock(&v2->rwlock);
+		os_rwlock_wrlock(&v1->rwlock);
+	}
+}
+
+/*
+ * vinode_unlock2 -- drop locks on specified inodes
+ */
+void
+vinode_unlock2(struct pmemfile_vinode *v1, struct pmemfile_vinode *v2)
+{
+	if (v1 == v2) {
+		os_rwlock_unlock(&v1->rwlock);
+	} else {
+		os_rwlock_unlock(&v1->rwlock);
+		os_rwlock_unlock(&v2->rwlock);
+	}
+}
+
+/*
+ * vinode_cmp -- compares 2 inodes
+ */
+static int
+vinode_cmp(const void *v1, const void *v2)
+{
+	uintptr_t v1num = (uintptr_t)*(void **)v1;
+	uintptr_t v2num = (uintptr_t)*(void **)v2;
+	if (v1num < v2num)
+		return -1;
+	if (v1num > v2num)
+		return 1;
+	return 0;
+}
+
+/*
+ * vinode_in_array -- returns true when vinode is already in specified array
+ */
+static bool
+vinode_in_array(const struct pmemfile_vinode *vinode,
+		struct pmemfile_vinode * const *arr,
+		size_t size)
+{
+	for (size_t i = 0; i < size; ++i)
+		if (arr[i] == vinode)
+			return true;
+	return false;
+}
+
+/*
+ * vinode_wrlockN -- take up to 4 WRITE locks on specified inodes in ascending
+ * order and fill "v" with those inodes. "v" is NULL-terminated.
+ */
+void
+vinode_wrlockN(struct pmemfile_vinode *v[static 5],
+		struct pmemfile_vinode *v1,
+		struct pmemfile_vinode *v2,
+		struct pmemfile_vinode *v3,
+		struct pmemfile_vinode *v4)
+{
+	size_t n = 0;
+	v[n++] = v1;
+	if (v2 && !vinode_in_array(v2, v, n))
+		v[n++] = v2;
+	if (v3 && !vinode_in_array(v3, v, n))
+		v[n++] = v3;
+	if (v4 && !vinode_in_array(v4, v, n))
+		v[n++] = v4;
+	v[n] = NULL;
+
+	qsort(v, n, sizeof(v[0]), vinode_cmp);
+
+	for (size_t i = n - 1; i >= 1; --i)
+		ASSERT(v[i - 1] < v[i]);
+
+	/* take all locks in order of increasing addresses */
+	size_t i = 0;
+	while (v[i])
+		os_rwlock_wrlock(&v[i++]->rwlock);
+}
+
+/*
+ * vinode_unlockN -- drop locks on specified inodes
+ */
+void
+vinode_unlockN(struct pmemfile_vinode *v[static 5])
+{
+	size_t i = 0;
+	while (v[i])
+		os_rwlock_unlock(&v[i++]->rwlock);
 }
 
 /*

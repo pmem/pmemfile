@@ -36,6 +36,8 @@
 
 #include "pmemfile_test.hpp"
 
+static size_t ops = 100;
+
 class dirs : public pmemfile_test {
 public:
 	dirs() : pmemfile_test(256 * 1024 * 1024)
@@ -214,8 +216,8 @@ TEST_F(dirs, lots_of_files)
 	ASSERT_TRUE(test_empty_dir(pfp, "/"));
 	memset(buf, 0xff, sizeof(buf));
 
-	for (size_t i = 0; i < 100; ++i) {
-		sprintf(buf, "/file%04lu", i);
+	for (size_t i = 0; i < ops; ++i) {
+		sprintf(buf, "/file%04zu", i);
 
 		f = pmemfile_open(pfp, buf, PMEMFILE_O_CREAT | PMEMFILE_O_EXCL |
 					  PMEMFILE_O_WRONLY,
@@ -231,26 +233,32 @@ TEST_F(dirs, lots_of_files)
 				       "test1: after one iter"));
 	}
 
-	for (int i = 0; i < 100; ++i) {
-		sprintf(buf, "/file%04d", i);
+	for (size_t i = 0; i < ops; ++i) {
+		sprintf(buf, "/file%04zu", i);
 
 		ret = pmemfile_unlink(pfp, buf);
 		ASSERT_EQ(ret, 0) << strerror(errno);
 	}
 
-	EXPECT_TRUE(
-		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
-						    {040777, 2, 32680, "."},
-						    {040777, 2, 32680, ".."},
-					    }));
+	/*
+	 * For now pmemfile doesn't reclaim inode/dirent space when unlinking
+	 * files and it's not easy to calculate how big an inode space is, so
+	 * for now verify only when number of files is known.
+	 */
+	if (ops == 100)
+		EXPECT_TRUE(test_compare_dirs(pfp, "/",
+					      std::vector<pmemfile_ls>{
+						      {040777, 2, 32680, "."},
+						      {040777, 2, 32680, ".."},
+					      }));
 }
 
 TEST_F(dirs, mkdir_rmdir_unlink_errors)
 {
 	char buf[1001];
 
-	for (size_t i = 0; i < 100; ++i) {
-		sprintf(buf, "/dir%04lu", i);
+	for (size_t i = 0; i < ops; ++i) {
+		sprintf(buf, "/dir%04zu", i);
 
 		ASSERT_EQ(pmemfile_mkdir(pfp, buf, 0755), 0);
 
@@ -258,7 +266,7 @@ TEST_F(dirs, mkdir_rmdir_unlink_errors)
 				       "test2: after one iter"));
 	}
 
-	ASSERT_TRUE(list_files(pfp, "/", 100 + 2, 1, "test2: after loop"));
+	ASSERT_TRUE(list_files(pfp, "/", ops + 2, 1, "test2: after loop"));
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir0007/another_directory", 0755), 0);
 
 	errno = 0;
@@ -273,7 +281,7 @@ TEST_F(dirs, mkdir_rmdir_unlink_errors)
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir2333/aaaa", 0755), -1);
 	EXPECT_EQ(errno, ENOENT);
 
-	ASSERT_TRUE(list_files(pfp, "/", 100 + 2, 1, "test2: after2"));
+	ASSERT_TRUE(list_files(pfp, "/", ops + 2, 1, "test2: after2"));
 
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/file", PMEMFILE_O_EXCL, 0644));
 
@@ -283,15 +291,19 @@ TEST_F(dirs, mkdir_rmdir_unlink_errors)
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file"), 0);
 
-	ASSERT_TRUE(list_files(pfp, "/", 100 + 2, 1, "test2: after3"));
+	ASSERT_TRUE(list_files(pfp, "/", ops + 2, 1, "test2: after3"));
 
-	errno = 0;
-	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir0100"), -1);
-	EXPECT_EQ(errno, ENOENT);
+	if (ops >= 100) {
+		errno = 0;
+		ASSERT_EQ(pmemfile_rmdir(pfp, "/dir0100"), -1);
+		EXPECT_EQ(errno, ENOENT);
+	}
 
-	errno = 0;
-	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir0099/inside"), -1);
-	EXPECT_EQ(errno, ENOENT);
+	if (ops >= 99) {
+		errno = 0;
+		ASSERT_EQ(pmemfile_rmdir(pfp, "/dir0099/inside"), -1);
+		EXPECT_EQ(errno, ENOENT);
+	}
 
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/file", PMEMFILE_O_EXCL, 0644));
 
@@ -319,8 +331,8 @@ TEST_F(dirs, mkdir_rmdir_unlink_errors)
 
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir0007/another_directory"), 0);
 
-	for (int i = 0; i < 100; ++i) {
-		sprintf(buf, "/dir%04d", i);
+	for (size_t i = 0; i < ops; ++i) {
+		sprintf(buf, "/dir%04zu", i);
 
 		ASSERT_EQ(pmemfile_rmdir(pfp, buf), 0);
 	}
@@ -696,8 +708,489 @@ TEST_F(dirs, file_renames)
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir2"), 0);
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
 
+	/*
+	 * From "rename" manpage:
+	 * "If oldpath and newpath are existing hard links referring to
+	 * the same file, then rename() does nothing, and returns a success
+	 * status."
+	 */
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/file1", 0, 0755));
+	ASSERT_EQ(pmemfile_link(pfp, "/file1", "/file2"), 0);
+	ASSERT_EQ(pmemfile_rename(pfp, "/file1", "/file2"), 0);
+	pmemfile_stat_t stat_buf;
+	ASSERT_EQ(pmemfile_stat(pfp, "/file1", &stat_buf), 0);
+	ASSERT_EQ(pmemfile_stat(pfp, "/file2", &stat_buf), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file2"), 0);
+
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/"), -1);
 	EXPECT_EQ(errno, EBUSY);
+}
+
+TEST_F(dirs, file_renames_lock_files_in_different_order)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir2", 0755), 0);
+
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/file1", 0, 0755));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/file2", 0, 0755));
+
+	/*
+	 * We have to keep these files open for duration of the test, to not
+	 * let pmemfile free the underlying vinodes, so that helgrind can notice
+	 * we are locking them in wrong order.
+	 */
+	PMEMfile *f1 = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDONLY);
+	PMEMfile *f2 = pmemfile_open(pfp, "/file2", PMEMFILE_O_RDONLY);
+	ASSERT_NE(f1, nullptr);
+	ASSERT_NE(f2, nullptr);
+
+	ASSERT_EQ(pmemfile_link(pfp, "/file1", "/dir1/file1"), 0);
+	ASSERT_EQ(pmemfile_link(pfp, "/file2", "/dir2/file2"), 0);
+
+	/* file1 -> file2 */
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir1/file1", "/dir2/file2"), 0);
+
+	/* restore the initial situation */
+	ASSERT_EQ(pmemfile_link(pfp, "/file1", "/dir1/file1"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir2/file2"), 0);
+	ASSERT_EQ(pmemfile_link(pfp, "/file2", "/dir2/file2"), 0);
+
+	/* file2 -> file1 */
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir2/file2", "/dir1/file1"), 0);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir1/file1"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file2"), 0);
+
+	pmemfile_close(pfp, f1);
+	pmemfile_close(pfp, f2);
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir2"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
+}
+
+TEST_F(dirs, file_renames_in_same_tree)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1/dir2", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1/dir2/dir3", 0755), 0);
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/dir2/dir3/file", 0, 0755));
+	ASSERT_EQ(
+		pmemfile_rename(pfp, "/dir1/dir2/dir3/file", "/dir1/dir2/file"),
+		0);
+	ASSERT_EQ(
+		pmemfile_rename(pfp, "/dir1/dir2/file", "/dir1/dir2/dir3/file"),
+		0);
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir1/dir2/dir3/file", "/dir1/file"),
+		  0);
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir1/file", "/dir1/dir2/dir3/file"),
+		  0);
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir1/dir2/dir3/file", "/file"), 0);
+	ASSERT_EQ(pmemfile_rename(pfp, "/file", "/dir1/file"), 0);
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir1/file", "/dir1/dir2/file"), 0);
+	ASSERT_EQ(
+		pmemfile_rename(pfp, "/dir1/dir2/file", "/dir1/dir2/dir3/file"),
+		0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir1/dir2/dir3/file"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1/dir2/dir3"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1/dir2"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
+}
+
+static bool
+same_inode(PMEMfilepool *pfp, const char *path, const pmemfile_stat_t *tmpl)
+{
+	pmemfile_stat_t buf;
+	if (pmemfile_stat(pfp, path, &buf)) {
+		ADD_FAILURE() << strerror(errno);
+		return false;
+	}
+
+	if (buf.st_dev != tmpl->st_dev || buf.st_ino != tmpl->st_ino) {
+		ADD_FAILURE() << "(" << buf.st_dev << ", " << buf.st_ino
+			      << ") != (" << tmpl->st_dev << ", "
+			      << tmpl->st_ino << ")";
+		return false;
+	}
+
+	return true;
+}
+
+TEST_F(dirs, rename_dir)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1/dir2", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1/dir2/dir3", 0755), 0);
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/f1", 0, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/dir2/f2", 0, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/dir2/dir3/f3", 0, 0644));
+
+	pmemfile_stat_t root_stat, dir1_stat, dir2_stat, dir3_stat;
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/", &root_stat), 0);
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir1", &dir1_stat), 0);
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir1/dir2", &dir2_stat), 0);
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir1/dir2/dir3", &dir3_stat), 0);
+
+	EXPECT_TRUE(
+		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
+						    {040777, 3, 4008, "."},
+						    {040777, 3, 4008, ".."},
+						    {040755, 3, 4008, "dir1"},
+					    }));
+
+	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1",
+				      std::vector<pmemfile_ls>{
+					      {040755, 3, 4008, "."},
+					      {040777, 3, 4008, ".."},
+					      {040755, 3, 4008, "dir2"},
+					      {0100644, 1, 0, "f1"},
+				      }));
+
+	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1/dir2",
+				      std::vector<pmemfile_ls>{
+					      {040755, 3, 4008, "."},
+					      {040755, 3, 4008, ".."},
+					      {040755, 2, 4008, "dir3"},
+					      {0100644, 1, 0, "f2"},
+				      }));
+
+	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1/dir2/dir3",
+				      std::vector<pmemfile_ls>{
+					      {040755, 2, 4008, "."},
+					      {040755, 3, 4008, ".."},
+					      {0100644, 1, 0, "f3"},
+				      }));
+
+	EXPECT_TRUE(same_inode(pfp, "/dir1/dir2/dir3/..", &dir2_stat));
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir1/dir2/dir3", "/dir1/dir2/dir31"),
+		  0)
+		<< strerror(errno);
+
+	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1/dir2",
+				      std::vector<pmemfile_ls>{
+					      {040755, 3, 4008, "."},
+					      {040755, 3, 4008, ".."},
+					      {040755, 2, 4008, "dir31"},
+					      {0100644, 1, 0, "f2"},
+				      }));
+
+	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1/dir2/dir31",
+				      std::vector<pmemfile_ls>{
+					      {040755, 2, 4008, "."},
+					      {040755, 3, 4008, ".."},
+					      {0100644, 1, 0, "f3"},
+				      }));
+
+	EXPECT_TRUE(same_inode(pfp, "/dir1/dir2", &dir2_stat));
+	EXPECT_TRUE(same_inode(pfp, "/dir1/dir2/dir31", &dir3_stat));
+	EXPECT_TRUE(same_inode(pfp, "/dir1/dir2/dir31/.", &dir3_stat));
+	EXPECT_TRUE(same_inode(pfp, "/dir1/dir2/dir31/..", &dir2_stat));
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir1/dir2", "/dir1/dir21"), 0)
+		<< strerror(errno);
+
+	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1",
+				      std::vector<pmemfile_ls>{
+					      {040755, 3, 4008, "."},
+					      {040777, 3, 4008, ".."},
+					      {040755, 3, 4008, "dir21"},
+					      {0100644, 1, 0, "f1"},
+				      }));
+
+	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1/dir21",
+				      std::vector<pmemfile_ls>{
+					      {040755, 3, 4008, "."},
+					      {040755, 3, 4008, ".."},
+					      {040755, 2, 4008, "dir31"},
+					      {0100644, 1, 0, "f2"},
+				      }));
+
+	EXPECT_TRUE(same_inode(pfp, "/dir1/dir21", &dir2_stat));
+	EXPECT_TRUE(same_inode(pfp, "/dir1/dir21/.", &dir2_stat));
+	EXPECT_TRUE(same_inode(pfp, "/dir1/dir21/..", &dir1_stat));
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir1", "/dir11"), 0)
+		<< strerror(errno);
+
+	EXPECT_TRUE(
+		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
+						    {040777, 3, 4008, "."},
+						    {040777, 3, 4008, ".."},
+						    {040755, 3, 4008, "dir11"},
+					    }));
+
+	EXPECT_TRUE(test_compare_dirs(pfp, "/dir11",
+				      std::vector<pmemfile_ls>{
+					      {040755, 3, 4008, "."},
+					      {040777, 3, 4008, ".."},
+					      {040755, 3, 4008, "dir21"},
+					      {0100644, 1, 0, "f1"},
+				      }));
+
+	EXPECT_TRUE(same_inode(pfp, "/dir11", &dir1_stat));
+	EXPECT_TRUE(same_inode(pfp, "/dir11/.", &dir1_stat));
+	EXPECT_TRUE(same_inode(pfp, "/dir11/..", &root_stat));
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir11/dir21/dir31/f3"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir11/dir21/f2"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir11/f1"), 0);
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir11/dir21/dir31"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir11/dir21"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir11"), 0);
+}
+
+TEST_F(dirs, move_dirs_between_dirs)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1/dir2", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1/dir2/dir3", 0755), 0);
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/f1", 0, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/dir2/f2", 0, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/dir2/dir3/f3", 0, 0644));
+
+	pmemfile_stat_t root_stat, dir1_stat, dir2_stat, dir3_stat;
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/", &root_stat), 0);
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir1", &dir1_stat), 0);
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir1/dir2", &dir2_stat), 0);
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir1/dir2/dir3", &dir3_stat), 0);
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir1", "/dir1/dir2/dirX"), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	EXPECT_TRUE(
+		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
+						    {040777, 3, 4008, "."},
+						    {040777, 3, 4008, ".."},
+						    {040755, 3, 4008, "dir1"},
+					    }));
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir1/dir2/dir3", "/dir1/dir3"), 0)
+		<< strerror(errno);
+
+	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1",
+				      std::vector<pmemfile_ls>{
+					      {040755, 4, 4008, "."},
+					      {040777, 3, 4008, ".."},
+					      {040755, 2, 4008, "dir2"},
+					      {0100644, 1, 0, "f1"},
+					      {040755, 2, 4008, "dir3"},
+				      }));
+
+	EXPECT_TRUE(same_inode(pfp, "/dir1/dir3", &dir3_stat));
+	EXPECT_TRUE(same_inode(pfp, "/dir1/dir3/..", &dir1_stat));
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir1/dir3/f3"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir1/dir2/f2"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir1/f1"), 0);
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1/dir3"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1/dir2"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
+}
+
+TEST_F(dirs, rename_dir_to_empty)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_empty", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_not_empty", 0755), 0);
+
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir/f1", 0, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir_not_empty/f2", 0, 0644));
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir", "/dir_not_empty"), -1);
+	EXPECT_EQ(errno, ENOTEMPTY); // or EEXIST
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir", "/dir_empty"), 0)
+		<< strerror(errno);
+
+	EXPECT_TRUE(test_compare_dirs(
+		pfp, "/", std::vector<pmemfile_ls>{
+				  {040777, 4, 4008, "."},
+				  {040777, 4, 4008, ".."},
+				  {040755, 2, 4008, "dir_empty"},
+				  {040755, 2, 4008, "dir_not_empty"},
+			  }));
+
+	EXPECT_TRUE(test_compare_dirs(pfp, "/dir_empty",
+				      std::vector<pmemfile_ls>{
+					      {040755, 2, 4008, "."},
+					      {040777, 4, 4008, ".."},
+					      {0100644, 1, 0, "f1"},
+				      }));
+
+	EXPECT_TRUE(test_compare_dirs(pfp, "/dir_not_empty",
+				      std::vector<pmemfile_ls>{
+					      {040755, 2, 4008, "."},
+					      {040777, 4, 4008, ".."},
+					      {0100644, 1, 0, "f2"},
+				      }));
+}
+
+TEST_F(dirs, renameat)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir2", 0755), 0);
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/f1", 0, 0644));
+
+	PMEMfile *dir1 = pmemfile_open(pfp, "/dir1", PMEMFILE_O_DIRECTORY);
+	PMEMfile *dir2 = pmemfile_open(pfp, "/dir2", PMEMFILE_O_DIRECTORY);
+	ASSERT_NE(dir1, nullptr);
+	ASSERT_NE(dir2, nullptr);
+
+	ASSERT_EQ(pmemfile_renameat(pfp, dir1, "f1", dir2, "ff"), 0)
+		<< strerror(errno);
+
+	pmemfile_stat_t buf;
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir1/f1", &buf), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir2/ff", &buf), 0) << strerror(errno);
+
+	ASSERT_EQ(pmemfile_fchdir(pfp, dir2), 0);
+
+	ASSERT_EQ(pmemfile_renameat(pfp, PMEMFILE_AT_CWD, "ff", dir1, "f2"), 0)
+		<< strerror(errno);
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir2/ff", &buf), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir1/f2", &buf), 0) << strerror(errno);
+
+	ASSERT_EQ(pmemfile_renameat(pfp, dir1, "f2", PMEMFILE_AT_CWD, "f3"), 0)
+		<< strerror(errno);
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir1/f2", &buf), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir2/f3", &buf), 0) << strerror(errno);
+
+	pmemfile_close(pfp, dir1);
+	pmemfile_close(pfp, dir2);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir2/f3"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir2"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
+}
+
+TEST_F(dirs, rename_noreplace)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir2", 0755), 0);
+
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/f1", 0, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir2/f2", 0, 0644));
+
+	ASSERT_EQ(pmemfile_renameat2(pfp, NULL, "/dir1/f1", NULL, "/dir2/f2",
+				     PMEMFILE_RENAME_NOREPLACE),
+		  -1);
+	EXPECT_EQ(errno, EEXIST);
+
+	ASSERT_EQ(
+		pmemfile_renameat2(pfp, NULL, "/dir1/f1", NULL, "/dir2/f2", 0),
+		0)
+		<< strerror(errno);
+
+	ASSERT_EQ(pmemfile_renameat2(pfp, NULL, "/dir2", NULL, "/dir1",
+				     PMEMFILE_RENAME_NOREPLACE),
+		  -1);
+	EXPECT_EQ(errno, EEXIST);
+
+	ASSERT_EQ(pmemfile_renameat2(pfp, NULL, "/dir2", NULL, "/dir1", 0), 0);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir1/f2"), 0);
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
+}
+
+static bool
+validate_nlink(PMEMfilepool *pfp, const char *path, pmemfile_nlink_t nlink)
+{
+	pmemfile_stat_t buf;
+	if (pmemfile_lstat(pfp, path, &buf)) {
+		ADD_FAILURE() << strerror(errno);
+		return false;
+	}
+
+	EXPECT_EQ(nlink, buf.st_nlink);
+	if (nlink != buf.st_nlink)
+		return false;
+
+	return true;
+}
+
+TEST_F(dirs, rename_exchange)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir2", 0755), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir2/dir3", 0755), 0);
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/f1", 0, 0644));
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir2/dir3/f2", 0, 0644));
+	ASSERT_EQ(pmemfile_symlink(pfp, "/dir1", "/dirX"), 0);
+
+	/*
+	 * Now:
+	 *  / is a dir (links: . .. /dir1/.. /dir2/..)
+	 *  /dir1 is a dir (links: /dir1 /dir1/.)
+	 *  /dir2 is a dir (links: /dir2 /dir2/. /dir2/dir3/..)
+	 *  /dir2/dir3 is a dir (links: /dir2/dir3 /dir2/dir3/.)
+	 *  /dirX is a symlink to /dir1 (links: /dirX)
+	 */
+
+	ASSERT_TRUE(validate_nlink(pfp, "/", 4));
+	ASSERT_TRUE(validate_nlink(pfp, "/dir1/.", 2));
+	ASSERT_TRUE(validate_nlink(pfp, "/dir2/.", 3));
+	ASSERT_TRUE(validate_nlink(pfp, "/dir2/dir3/.", 2));
+	ASSERT_TRUE(validate_nlink(pfp, "/dirX/.", 2));
+
+	ASSERT_EQ(pmemfile_renameat2(pfp, NULL, "/dir2/dir3", NULL, "/dirX",
+				     PMEMFILE_RENAME_EXCHANGE),
+		  0)
+		<< strerror(errno);
+
+	/*
+	 * Now:
+	 *  / is a dir (links: . .. /dir1/.. /dir2/.. /dirX/..)
+	 *  /dir1 is a dir (links: /dir1 /dir1/.)
+	 *  /dir2 is a dir (links: /dir2 /dir2/.)
+	 *  /dir2/dir3 is a symlink to /dir1 (links: /dir2/dir3)
+	 *  /dirX is a dir (links: /dirX /dirX/.)
+	 */
+
+	pmemfile_stat_t buf;
+	ASSERT_EQ(pmemfile_lstat(pfp, "/dir2/dir3", &buf), 0);
+	ASSERT_TRUE(PMEMFILE_S_ISLNK(buf.st_mode));
+	ASSERT_EQ(pmemfile_lstat(pfp, "/dirX", &buf), 0);
+	ASSERT_TRUE(PMEMFILE_S_ISDIR(buf.st_mode));
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir2/dir3/f2", &buf), -1);
+	EXPECT_EQ(errno, ENOENT);
+	ASSERT_EQ(pmemfile_stat(pfp, "/dirX/f2", &buf), 0);
+
+	ASSERT_TRUE(validate_nlink(pfp, "/", 5));
+	ASSERT_TRUE(validate_nlink(pfp, "/dir1/.", 2));
+	ASSERT_TRUE(validate_nlink(pfp, "/dir2/.", 2));
+	ASSERT_TRUE(validate_nlink(pfp, "/dir2/dir3/.", 2));
+	ASSERT_TRUE(validate_nlink(pfp, "/dirX/.", 2));
+
+	ASSERT_EQ(pmemfile_renameat2(pfp, NULL, "/dir2", NULL, "/dir2/dir3",
+				     PMEMFILE_RENAME_EXCHANGE),
+		  -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	ASSERT_EQ(pmemfile_renameat2(pfp, NULL, "/dir2/dir3", NULL, "/dir2",
+				     PMEMFILE_RENAME_EXCHANGE),
+		  -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	ASSERT_EQ(pmemfile_renameat2(pfp, NULL, "/dir2", NULL, "/not_existing",
+				     PMEMFILE_RENAME_EXCHANGE),
+		  -1);
+	EXPECT_EQ(errno, ENOENT);
 }
 
 static bool
@@ -1114,11 +1607,16 @@ main(int argc, char *argv[])
 	START();
 
 	if (argc < 2) {
-		fprintf(stderr, "usage: %s global_path", argv[0]);
+		fprintf(stderr, "usage: %s global_path [ops]", argv[0]);
 		exit(1);
 	}
 
 	global_path = argv[1];
+
+	if (argc >= 3)
+		ops = (size_t)atoll(argv[2]);
+
+	T_OUT("ops %zu\n", ops);
 
 	::testing::InitGoogleTest(&argc, argv);
 	return RUN_ALL_TESTS();

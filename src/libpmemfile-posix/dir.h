@@ -82,31 +82,41 @@ void vinode_add_dirent(PMEMfilepool *pfp,
 		struct pmemfile_vinode *child_vinode,
 		struct pmemfile_time tm);
 
+void vinode_update_parent(PMEMfilepool *pfp,
+		struct pmemfile_vinode *vinode,
+		struct pmemfile_vinode *src_parent,
+		struct pmemfile_vinode *dst_parent);
+
 void vinode_set_debug_path_locked(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent_vinode,
 		struct pmemfile_vinode *child_vinode,
 		const char *name,
 		size_t namelen);
 
-void vinode_set_debug_path(PMEMfilepool *pfp,
+void vinode_replace_debug_path_locked(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent_vinode,
 		struct pmemfile_vinode *child_vinode,
 		const char *name,
 		size_t namelen);
 
-void vinode_clear_debug_path(PMEMfilepool *pfp, struct pmemfile_vinode *vinode);
-
 struct pmemfile_vinode *vinode_lookup_dirent(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent, const char *name,
 		size_t namelen, int flags);
 
-void vinode_unlink_dirent(PMEMfilepool *pfp,
+struct pmemfile_dirent *vinode_lookup_dirent_by_name_locked(PMEMfilepool *pfp,
+		struct pmemfile_vinode *parent, const char *name,
+		size_t namelen);
+
+void vinode_unlink_file(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent,
-		const char *name,
-		size_t namelen,
-		struct pmemfile_vinode *volatile *vinode,
-		volatile bool *parent_refed,
-		bool abort_on_ENOENT);
+		struct pmemfile_dirent *dirent,
+		struct pmemfile_vinode *vinode);
+
+void vinode_unlink_dir(PMEMfilepool *pfp,
+		struct pmemfile_vinode *vparent,
+		struct pmemfile_dirent *dirent,
+		struct pmemfile_vinode *vdir,
+		const char *path);
 
 struct pmemfile_vinode *pool_get_cwd(PMEMfilepool *pfp);
 struct pmemfile_vinode *pool_get_dir_for_path(PMEMfilepool *pfp, PMEMfile *dir,
@@ -120,5 +130,23 @@ pmemfile_dir_size(TOID(struct pmemfile_dir) dir)
 {
 	return page_rounddown(pmemobj_alloc_usable_size(dir.oid));
 }
+
+struct pmemfile_dirent_info {
+	struct pmemfile_vinode *vinode;
+	struct pmemfile_dirent *dirent;
+};
+
+int lock_parent_and_child(PMEMfilepool *pfp,
+		struct pmemfile_path_info *path,
+		struct pmemfile_dirent_info *info);
+
+int lock_parents_and_children(PMEMfilepool *pfp,
+		struct pmemfile_path_info *src,
+		struct pmemfile_dirent_info *src_info,
+
+		struct pmemfile_path_info *dst,
+		struct pmemfile_dirent_info *dst_info,
+
+		struct pmemfile_vinode *vinodes[static 5]);
 
 #endif

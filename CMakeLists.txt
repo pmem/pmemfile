@@ -101,15 +101,16 @@ include_directories(include)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 11)
 
+# Checks whether flag is supported by current C compiler and appends it to the relevant cmake variable.
+# 1st argument is a flag
+# 2nd (optional) argument is a build type (debug, release, relwithdebinfo)
 macro(add_c_flag flag)
-	if(${ARGC} GREATER 2)
-		set(check_name ${ARGV2})
-	else()
-		string(REPLACE - _ flag2 ${flag})
-		set(check_name C_HAS_${flag2})
-	endif()
+	string(REPLACE - _ flag2 ${flag})
+	string(REPLACE " " _ flag2 ${flag2})
+	string(REPLACE = "_" flag2 ${flag2})
+	set(check_name "C_HAS_${flag2}")
 
-	check_c_compiler_flag("${flag}" ${check_name})
+	check_c_compiler_flag("${flag}" "${check_name}")
 
 	if (${${check_name}})
 		if (${ARGC} EQUAL 1)
@@ -120,13 +121,14 @@ macro(add_c_flag flag)
 	endif()
 endmacro()
 
+# Checks whether flag is supported by current C++ compiler and appends it to the relevant cmake variable.
+# 1st argument is a flag
+# 2nd (optional) argument is a build type (debug, release, relwithdebinfo)
 macro(add_cxx_flag flag)
-	if(${ARGC} GREATER 2)
-		set(check_name ${ARGV2})
-	else()
-		string(REPLACE - _ flag2 ${flag})
-		set(check_name CXX_HAS_${flag2})
-	endif()
+	string(REPLACE - _ flag2 ${flag})
+	string(REPLACE " " _ flag2 ${flag2})
+	string(REPLACE = "_" flag2 ${flag2})
+	set(check_name "CXX_HAS_${flag2}")
 
 	check_cxx_compiler_flag(${flag} ${check_name})
 
@@ -183,8 +185,8 @@ add_cxx_flag(-ggdb RELWITHDEBINFO)
 add_c_flag(-fno-omit-frame-pointer RELWITHDEBINFO)
 add_cxx_flag(-fno-omit-frame-pointer RELWITHDEBINFO)
 
-add_c_flag("-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2" RELEASE C_CAN_FORTIFY)
-add_cxx_flag("-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2" RELEASE CXX_CAN_FORTIFY)
+add_c_flag("-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2" RELEASE)
+add_cxx_flag("-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2" RELEASE)
 
 add_c_flag(-D_LARGEFILE64_SOURCE)
 add_cxx_flag(-D_LARGEFILE64_SOURCE)

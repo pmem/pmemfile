@@ -37,6 +37,7 @@
 #include <sys/stat.h>
 #include <stddef.h>
 #include <pthread.h>
+#include <linux/limits.h>
 
 struct PMEMfilepool;
 struct PMEMfile;
@@ -45,15 +46,15 @@ struct pool_description {
 	/*
 	 * A path where the mount point is - a directory must exist at this path
 	 */
-	char mount_point[0x1000];
+	char mount_point[PATH_MAX];
 
 	/* The canonical parent directory of the mount point */
-	char mount_point_parent[0x1000];
+	char mount_point_parent[PATH_MAX];
 
 	size_t len_mount_point_parent;
 
 	/* Where the actual pmemfile pool is */
-	char poolfile_path[0x1000];
+	char poolfile_path[PATH_MAX];
 
 	/* Keep the mount point directory open */
 	long fd;
@@ -121,7 +122,7 @@ struct resolved_path {
 
 	struct fd_desc at;
 
-	char path[0x1000];
+	char path[PATH_MAX];
 	size_t path_len;
 };
 

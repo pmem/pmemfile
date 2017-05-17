@@ -70,7 +70,7 @@
 #include "preload.h"
 
 /*
- * Some syscalls that are missing on older kernels.
+ * Some syscalls that are not exported by older libc's.
  */
 #ifndef SYS_renameat2
 #define SYS_renameat2 316

@@ -110,7 +110,7 @@ resolve_symlink(struct resolved_path *result,
 		}
 	}
 
-	if (! *is_last_component)
+	if (!(*is_last_component))
 		result->path[*end] = '/';
 
 	if (link_len < 0 || (size_t)link_len >= sizeof(link_buf)) {

@@ -50,6 +50,10 @@
 
 #include "preload.h"
 
+/*
+ * get_stat - stat equivalent, fills a struct stat by asking
+ * either the kernel, or libpmemfile-posix.
+ */
 static int
 get_stat(struct resolved_path *result, struct stat *buf)
 {
@@ -81,6 +85,14 @@ get_stat(struct resolved_path *result, struct stat *buf)
 	}
 }
 
+/*
+ * resolve_symlink - replaces the last component of a path with
+ * the symlink's target.
+ *
+ * The last component is expected to be a symlink. If the symlinks
+ * target is an absolute path, then of course the whole path is
+ * replaced.
+ */
 static void
 resolve_symlink(struct resolved_path *result,
 		size_t *resolved, size_t *end, size_t *size,
@@ -96,15 +108,21 @@ resolve_symlink(struct resolved_path *result,
 			result->at.kernel_fd,
 			result->path,
 			link_buf,
-			sizeof(link_buf));
+			sizeof(link_buf) - 1);
+
+		if (link_len < 0) {
+			result->error_code = -link_len;
+			return;
+		}
 	} else {
 		link_len = pmemfile_readlinkat(result->at.pmem_fda.pool->pool,
 				result->at.pmem_fda.file,
 				result->path,
 				link_buf,
-				sizeof(link_buf));
+				sizeof(link_buf) - 1);
 
-		if (link_len < 0 && errno != 0) {
+		if (link_len < 0) {
+			assert(errno != 0);
 			result->error_code = -errno;
 			return;
 		}
@@ -113,10 +131,13 @@ resolve_symlink(struct resolved_path *result,
 	if (! *is_last_component)
 		result->path[*end] = '/';
 
-	if (link_len < 0 || (size_t)link_len >= sizeof(link_buf)) {
-		result->error_code = -ENOMEM;
-		return;
-	}
+	/*
+	 * If the link target doesn't fit in this buffer, readlinkat
+	 * is expected to return ENAMETOOLONG.
+	 */
+	assert((size_t)link_len < sizeof(link_buf));
+	assert(link_len > 0);
+
 	link_buf[link_len] = '\0';
 
 	size_t link_insert;
@@ -196,6 +217,11 @@ resolve_symlink(struct resolved_path *result,
 		result->at.pmem_fda.pool = NULL;
 }
 
+/*
+ * enter_pool - continue resolving the remaining part of path
+ * inside a pmemfile pool.
+ *
+ */
 static void
 enter_pool(struct resolved_path *result, struct pool_description *pool,
 		size_t *resolved, size_t end, size_t *size)
@@ -211,6 +237,11 @@ enter_pool(struct resolved_path *result, struct pool_description *pool,
 	result->path[*size] = '\0';
 }
 
+/*
+ * exit_pool - continue resolving the remaining part of path by asking
+ * the kernel.
+ * E.g.: after refering a ".." entry at the root of a pmemfile pool.
+ */
 static void
 exit_pool(struct resolved_path *result, size_t resolved, size_t *size)
 {
@@ -220,15 +251,14 @@ exit_pool(struct resolved_path *result, size_t resolved, size_t *size)
 	*size -= resolved;
 }
 
-static size_t
-skip_slashes(const char *path, size_t resolved)
-{
-	for (; path[resolved] == '/'; ++resolved)
-		;
-
-	return resolved;
-}
-
+/*
+ * resolve_path - the main logic for resolving paths containing arbitary
+ * combinations of path components in the kernel's vfs and pmemfile pools.
+ *
+ * The at argument describes the starting directory of the path resolution,
+ * It can refer to either a directory in pmemfile pool, or a directory accessed
+ * via the kernel.
+ */
 void
 resolve_path(struct fd_desc at,
 			const char *path,
@@ -243,7 +273,7 @@ resolve_path(struct fd_desc at,
 	result->at = at;
 	result->error_code = 0;
 
-	size_t resolved; /* How many chars are resolved already? */
+	size_t resolved = 0; /* How many chars are resolved already? */
 	size_t size; /* The length of the whole path to be resolved. */
 	bool last_component_is_dir = false;
 
@@ -273,9 +303,9 @@ resolve_path(struct fd_desc at,
 	 * This code is too convoluted, and new bugs are found in it weekly.
 	 * Must be rewritten after the holidays.
 	 */
-	for (resolved = skip_slashes(result->path, 0);
+	for (resolved = strspn(result->path, "/");
 	    result->path[resolved] != '\0' && result->error_code == 0;
-	    resolved = skip_slashes(result->path, resolved)) {
+	    resolved += strspn(result->path, "/")) {
 		size_t end = resolved;
 
 		while (result->path[end] != '\0' && result->path[end] != '/')

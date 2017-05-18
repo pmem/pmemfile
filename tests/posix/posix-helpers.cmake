@@ -40,12 +40,12 @@ function(cleanup)
 endfunction()
 
 function(execute name)
-	if(${TESTS_USE_FORCED_PMEM})
+	if(TESTS_USE_FORCED_PMEM)
 		set(ENV{PMEM_IS_PMEM_FORCE} 1)
 	endif()
 
 	if(${TRACER} STREQUAL pmemcheck)
-		if(${TESTS_USE_FORCED_PMEM})
+		if(TESTS_USE_FORCED_PMEM)
 			# pmemcheck runs really slow with pmem, disable it
 			set(ENV{PMEM_IS_PMEM_FORCE} 0)
 		endif()
@@ -71,7 +71,7 @@ function(execute name)
 			RESULT_VARIABLE HAD_ERROR
 			OUTPUT_FILE ${BIN_DIR}/${TRACER}.out
 			ERROR_FILE ${BIN_DIR}/${TRACER}.err)
-	if(${TESTS_USE_FORCED_PMEM})
+	if(TESTS_USE_FORCED_PMEM)
 		unset(ENV{PMEM_IS_PMEM_FORCE})
 	endif()
 

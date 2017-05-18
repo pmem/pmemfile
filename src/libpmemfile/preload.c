@@ -229,22 +229,11 @@ acquire_new_fd(const char *path)
 }
 
 static __thread bool reenter = false;
-/*
- * This way the default can be overridden from the command line during
- * a build, without altering the source. As a second option, it can be
- * overridden using a environment variable at runtime.
- */
-#ifndef PMEMFILE_DEFAULT_USE_SYMLINK_STRICT
-#define PMEMFILE_DEFAULT_USE_SYMLINK_STRICT false
-#endif
-
-static bool use_stricter_symlink_resolver = PMEMFILE_DEFAULT_USE_SYMLINK_STRICT;
 
 static void log_init(const char *path, const char *trunc);
 static void log_write(const char *fmt, ...) pf_printf_like(1, 2);
 
 static void establish_mount_points(const char *);
-static void setup_strict_symlink_flag(const char *);
 static void init_hooking(void);
 
 static volatile int pause_at_start;
@@ -261,9 +250,6 @@ pmemfile_preload_constructor(void)
 
 	const char *env_str = getenv("PMEMFILE_EXIT_ON_NOT_SUPPORTED");
 	exit_on_ENOTSUP = env_str ? env_str[0] == '1' : 0;
-
-	/* establish_mount_points already needs to have the flag set up */
-	setup_strict_symlink_flag(getenv("PMEMFILE_USE_SYMLINK_STRICT"));
 
 	establish_mount_points(getenv("PMEMFILE_POOLS"));
 
@@ -288,16 +274,6 @@ pmemfile_preload_constructor(void)
 		perror("chdir");
 		exit(1);
 	}
-}
-
-static void
-setup_strict_symlink_flag(const char *e)
-{
-	/*
-	 * Only overwrite the default when explicitly requested by an env var.
-	 */
-	if (e != NULL)
-		use_stricter_symlink_resolver = (e[0] != '0');
 }
 
 static void

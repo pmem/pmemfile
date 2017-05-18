@@ -34,7 +34,7 @@ include(${SRC_DIR}/../../helpers.cmake)
 function(setup)
 	common_setup()
 
-	if(${TESTS_USE_FORCED_PMEM})
+	if(TESTS_USE_FORCED_PMEM)
 		set(ENV{PMEM_IS_PMEM_FORCE} 1)
 	endif()
 endfunction()
@@ -42,7 +42,7 @@ endfunction()
 function(cleanup)
 	unset(ENV{LD_PRELOAD})
 
-	if(${TESTS_USE_FORCED_PMEM})
+	if(TESTS_USE_FORCED_PMEM)
 		unset(ENV{PMEM_IS_PMEM_FORCE})
 	endif()
 

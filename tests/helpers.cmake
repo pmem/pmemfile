@@ -43,14 +43,23 @@ function(common_cleanup)
 endfunction()
 
 function(mkfs path size)
+	if(PRELOAD_LIB)
+		unset(ENV{LD_PRELOAD})
+	endif()
 	execute_process(COMMAND ${MKFS_EXECUTABLE} ${path} ${size}
 			RESULT_VARIABLE HAD_ERROR)
 	if(HAD_ERROR)
 		message(FATAL_ERROR "mkfs(${path}, ${size}) failed: ${HAD_ERROR}")
 	endif()
+	if(PRELOAD_LIB)
+		set(ENV{LD_PRELOAD} ${PRELOAD_LIB})
+	endif()
 endfunction()
 
 function(match log_file match_file)
+	if(PRELOAD_LIB)
+		unset(ENV{LD_PRELOAD})
+	endif()
 	execute_process(COMMAND
 			${PERL_EXECUTABLE} ${MATCH_SCRIPT} -o ${log_file} ${match_file}
 			RESULT_VARIABLE MATCH_ERROR)
@@ -58,14 +67,23 @@ function(match log_file match_file)
 	if(MATCH_ERROR)
 		message(FATAL_ERROR "Log does not match: ${MATCH_ERROR}")
 	endif()
+	if(PRELOAD_LIB)
+		set(ENV{LD_PRELOAD} ${PRELOAD_LIB})
+	endif()
 endfunction()
 
 function(pf_cat pool file out)
+	if(PRELOAD_LIB)
+		unset(ENV{LD_PRELOAD})
+	endif()
 	execute_process(COMMAND ${CAT_EXECUTABLE} ${pool} ${file}
 		OUTPUT_FILE ${out}
 		RESULT_VARIABLE res)
 	if(res)
 		message(FATAL_ERROR "pmemfile-cat(${pool}, ${file}) failed: ${res}")
+	endif()
+	if(PRELOAD_LIB)
+		set(ENV{LD_PRELOAD} ${PRELOAD_LIB})
 	endif()
 endfunction()
 

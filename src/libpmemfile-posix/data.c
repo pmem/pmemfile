@@ -330,8 +330,8 @@ overallocate_size(uint64_t size)
  * This is used in fallocate, truncate, and before writing to a file.
  * A write to a file refers to an offset, and a length. The interval specified
  * by offset and length might contain holes (where no block is allocated). This
- * routine fills those holes, so when actually writing to the file, no checks
- * allocations need to be made.
+ * routine fills those holes, so when actually writing to the file, no
+ * allocation checks need to be made.
  *
  * One example:
  *
@@ -556,7 +556,7 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	 *  In this case a new block must be allocated. The new block's file
 	 *  offset is set to the interval's offset.
 	 *   This case is further split into two sub cases:
-	 *    When there is not other block following the one already found,
+	 *    When there is no other block following the one already found,
 	 *    one can try to allocate a block large enough to cover the whole
 	 *    interval.
 	 *    When there is another block following the currently treated

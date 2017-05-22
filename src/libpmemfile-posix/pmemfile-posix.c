@@ -80,8 +80,9 @@ libpmemfile_posix_init(void)
 
 	char *tmp = getenv("PMEMFILE_BLOCK_SIZE");
 	if (tmp) {
-		unsigned long long tmpll = strtoull(tmp, NULL, 0);
-		if (tmpll == ULLONG_MAX) {
+		char *end;
+		unsigned long long tmpll = strtoull(tmp, &end, 0);
+		if (tmp[0] == '\0' || tmpll == ULLONG_MAX || end[0] != '\0') {
 			LOG(LUSR, "Invalid value of PMEMFILE_BLOCK_SIZE");
 			pmemfile_posix_block_size = 0;
 		} else if (pmemfile_posix_block_size > MAX_BLOCK_SIZE) {

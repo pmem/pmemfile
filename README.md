@@ -39,6 +39,7 @@ Pmemfile-specific cmake variables:
 * TRACE_TESTS=1 - dumps more info when test fails (requires cmake >= 3.4)
 * TESTS_USE_FORCED_PMEM=1 - allows tests to force enable or force disable use of optimized flush in libpmemobj (to speed them up)
 * SANITIZERS=1 - enables AddressSanitizer and UndefinedBehaviorSanitizer (only for debugging)
+* USE_SYSTEM_GTEST enables the use system installed gtest (gtest is downloaded from github by default)
 
 # Package for Debian-based distros
 ```sh

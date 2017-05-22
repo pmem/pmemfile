@@ -32,5 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Everything in this source tree is covered by the previous license
 with the following exceptions:
 
-* utils/cstyle (used only during development) licensed under CDDL.
-* cmake/cmake_uninstall.cmake.in licensed under Creative Commons.
+* utils/cstyle (used only during development) is licensed under CDDL.
+* cmake/cmake_uninstall.cmake.in is licensed under Creative Commons.
+* tests/posix/gtest.cmake (used only during development) is licensed
+  under Apache License 2.0

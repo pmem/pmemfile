@@ -35,30 +35,13 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 include(FindThreads)
 include(ExternalProject)
-set(GTEST_VERSION 1.8.0)
 
-if(EXISTS ${CMAKE_SOURCE_DIR}/googletest-${GTEST_VERSION}.zip)
-	set(GTEST_URL ${CMAKE_SOURCE_DIR}/googletest-${GTEST_VERSION}.zip)
-else()
-	set(GTEST_URL https://github.com/google/googletest/archive/release-${GTEST_VERSION}.zip)
+include(gtest.cmake)
+if(NOT GTEST_FOUND)
+	message(FATAL "unable to locate gtest, tests can not be built")
 endif()
-ExternalProject_Add(
-	gtest
-	URL ${GTEST_URL}
-	DOWNLOAD_NAME googletest-${GTEST_VERSION}.zip
-	DOWNLOAD_DIR ${CMAKE_SOURCE_DIR}
-	PREFIX ${CMAKE_CURRENT_BINARY_DIR}/gtest
-	INSTALL_COMMAND ""
-	CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-)
-ExternalProject_Get_Property(gtest source_dir binary_dir)
-add_library(libgtest IMPORTED STATIC GLOBAL)
-add_dependencies(libgtest gtest)
-set_target_properties(libgtest PROPERTIES
-	"IMPORTED_LOCATION" "${binary_dir}/googlemock/gtest/libgtest.a"
-	"IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
-)
-include_directories("${source_dir}/googletest/include")
+
+include_directories(${GTEST_INCLUDE_DIRS})
 
 include_directories(.)
 if(LIBUNWIND_FOUND)
@@ -66,9 +49,8 @@ if(LIBUNWIND_FOUND)
 endif()
 
 add_library(pmemfile_test STATIC pmemfile_test.cpp)
+target_link_libraries(pmemfile_test ${GTEST_LIBRARIES})
 add_library(test_backtrace STATIC ../test_backtrace.c)
-
-add_dependencies(pmemfile_test libgtest)
 
 add_cppstyle("tests-posix-test")
 add_check_whitespace("tests-posix-test" ${CMAKE_CURRENT_SOURCE_DIR}/*.*pp)
@@ -80,7 +62,7 @@ function(build_test name srcs)
 	add_cppstyle(tests-posix-${name} ${CMAKE_CURRENT_SOURCE_DIR}/${srcs})
 	add_check_whitespace(tests-posix-${name} ${CMAKE_CURRENT_SOURCE_DIR}/${srcs})
 	add_executable(${name} ${srcs})
-	target_link_libraries(${name} pmemfile-posix_shared pmemfile_test test_backtrace libgtest)
+	target_link_libraries(${name} pmemfile-posix_shared pmemfile_test test_backtrace)
 	if(LIBUNWIND_FOUND)
 		target_link_libraries(${name} ${LIBUNWIND_LIBRARIES} ${CMAKE_DL_LIBS})
 	endif()

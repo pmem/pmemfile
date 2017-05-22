@@ -505,6 +505,10 @@ establish_mount_points(const char *config)
 {
 	char cwd[0x400];
 
+	/*
+	 * The establish_mount_points routine must know about the CWD, to be
+	 * aware of the case when the mount point is the same as the CWD.
+	 */
 	if (getcwd(cwd, sizeof(cwd)) == NULL) {
 		perror("getcwd");
 		exit_group_no_intercept(124);
@@ -544,6 +548,13 @@ establish_mount_points(const char *config)
 
 		++pool_count;
 
+		/*
+		 * If the current working directory is a mount point, then
+		 * the corresponding pmemfile pool must opened at startup.
+		 * Normally, a pool is only opened the first time it is
+		 * accessed, but without doing this, the first access would
+		 * never be noticed.
+		 */
 		if (pool_desc->stat.st_ino == kernel_cwd_stat.st_ino) {
 			open_new_pool(pool_desc);
 			if (pool_desc->pool == NULL) {

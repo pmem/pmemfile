@@ -731,111 +731,114 @@ dispatch_syscall(long syscall_number,
 			long arg2, long arg3,
 			long arg4, long arg5)
 {
+	switch (syscall_number) {
+
 	/* Use pmemfile_openat to implement open, create, openat */
-	if (syscall_number == SYS_open)
+	case SYS_open:
 		return hook_openat(cwd_desc(), arg0, arg1, arg2);
 
-	if (syscall_number == SYS_creat)
+	case SYS_creat:
 		return hook_openat(cwd_desc(), arg0,
 				O_WRONLY | O_CREAT | O_TRUNC, arg1);
 
-	if (syscall_number == SYS_openat)
+	case SYS_openat:
 		return hook_openat(fetch_fd(arg0), arg1, arg2, arg3);
 
-	if (syscall_number == SYS_rename)
+	case SYS_rename:
 		return hook_renameat2(cwd_desc(), (const char *)arg0,
 					cwd_desc(), (const char *)arg1, 0);
 
-	if (syscall_number == SYS_renameat)
+	case SYS_renameat:
 		return hook_renameat2(fetch_fd(arg0), (const char *)arg1,
 					fetch_fd(arg2), (const char *)arg3, 0);
 
-	if (syscall_number == SYS_renameat2)
+	case SYS_renameat2:
 		return hook_renameat2(fetch_fd(arg0), (const char *)arg1,
 					fetch_fd(arg2), (const char *)arg3,
 					(unsigned)arg4);
 
-	/* Use pmemfile_linkat to implement link, linkat */
-	if (syscall_number == SYS_link)
+	case SYS_link:
+		/* Use pmemfile_linkat to implement link */
 		return hook_linkat(cwd_desc(), arg0, cwd_desc(), arg1, 0);
 
-	if (syscall_number == SYS_linkat)
+	case SYS_linkat:
 		return hook_linkat(fetch_fd(arg0), arg1, fetch_fd(arg2), arg3,
 		    arg4);
 
-	/* Use pmemfile_unlinkat to implement unlink, unlinkat, rmdir */
-	if (syscall_number == SYS_unlink)
+	case SYS_unlink:
+		/* Use pmemfile_unlinkat to implement unlink */
 		return hook_unlinkat(cwd_desc(), arg0, 0);
 
-	if (syscall_number == SYS_unlinkat)
+	case SYS_unlinkat:
 		return hook_unlinkat(fetch_fd(arg0), arg1, arg2);
 
-	if (syscall_number == SYS_rmdir)
+	case SYS_rmdir:
+		/* Use pmemfile_unlinkat to implement rmdir */
 		return hook_unlinkat(cwd_desc(), arg0, AT_REMOVEDIR);
 
-	/* Use pmemfile_mkdirat to implement mkdir, mkdirat */
-	if (syscall_number == SYS_mkdir)
+	case SYS_mkdir:
+		/* Use pmemfile_mkdirat to implement mkdir */
 		return hook_mkdirat(cwd_desc(), arg0, arg1);
 
-	if (syscall_number == SYS_mkdirat)
+	case SYS_mkdirat:
 		return hook_mkdirat(fetch_fd(arg0), arg1, arg2);
 
-	/* Use pmemfile_faccessat to implement access, faccessat */
-	if (syscall_number == SYS_access)
+	case SYS_access:
+		/* Use pmemfile_faccessat to implement access */
 		return hook_faccessat(cwd_desc(), arg0, 0);
 
-	if (syscall_number == SYS_faccessat)
+	case SYS_faccessat:
 		return hook_faccessat(fetch_fd(arg0), arg1, arg2);
 
 	/*
 	 * The newfstatat syscall implements both stat and lstat.
-	 * Linux calls it: newfstatat ( I guess there was an old one )
+	 * Linux calls it: newfstatat ( I guess there was an old one :
 	 * POSIX / libc interfaces call it: fstatat
 	 * pmemfile calls it: pmemfile_fstatat
 	 *
 	 * fstat is unique.
 	 */
-	if (syscall_number == SYS_stat)
+	case SYS_stat:
 		return hook_newfstatat(cwd_desc(), arg0, arg1, 0);
 
-	if (syscall_number == SYS_lstat)
+	case SYS_lstat:
 		return hook_newfstatat(cwd_desc(), arg0, arg1,
 		    AT_SYMLINK_NOFOLLOW);
 
-	if (syscall_number == SYS_newfstatat)
+	case SYS_newfstatat:
 		return hook_newfstatat(fetch_fd(arg0), arg1, arg2, arg3);
 
-	if (syscall_number == SYS_fstat)
+	case SYS_fstat:
 		return hook_fstat(arg0, arg1);
 
 	/*
 	 * Some simpler ( in terms of argument processing ) syscalls,
 	 * which don't require path resolution.
 	 */
-	if (syscall_number == SYS_close)
+	case SYS_close:
 		return hook_close(arg0);
 
-	if (syscall_number == SYS_write)
+	case SYS_write:
 		return hook_write(arg0, (const char *)arg1, (size_t)arg2);
 
-	if (syscall_number == SYS_read)
+	case SYS_read:
 		return hook_read(arg0, (char *)arg1, (size_t)arg2);
 
-	if (syscall_number == SYS_lseek)
+	case SYS_lseek:
 		return hook_lseek(arg0, arg1, (int)arg2);
 
-	if (syscall_number == SYS_pread64)
+	case SYS_pread64:
 		return hook_pread64(arg0, (char *)arg1,
 		    (size_t)arg2, (off_t)arg3);
 
-	if (syscall_number == SYS_pwrite64)
+	case SYS_pwrite64:
 		return hook_pwrite64(arg0, (const char *)arg1,
 		    (size_t)arg2, (off_t)arg3);
 
-	if (syscall_number == SYS_getdents)
+	case SYS_getdents:
 		return hook_getdents(arg0, arg1, (unsigned)arg2);
 
-	if (syscall_number == SYS_getdents64)
+	case SYS_getdents64:
 		return hook_getdents64(arg0, arg1, (unsigned)arg2);
 
 	/*
@@ -843,105 +846,105 @@ dispatch_syscall(long syscall_number,
 	 * actually call pmemfile-posix. Some of them do need path resolution,
 	 * fgetxattr and fsetxattr don't.
 	 */
-	if (syscall_number == SYS_getxattr)
+	case SYS_getxattr:
 		return hook_getxattr(arg0, arg1, arg2, arg3,
 		    RESOLVE_LAST_SLINK);
 
-	if (syscall_number == SYS_lgetxattr)
+	case SYS_lgetxattr:
 		return hook_getxattr(arg0, arg1, arg2, arg3,
 		    NO_RESOLVE_LAST_SLINK);
 
-	if (syscall_number == SYS_setxattr)
+	case SYS_setxattr:
 		return hook_setxattr(arg0, arg1, arg2, arg3, arg4,
 		    RESOLVE_LAST_SLINK);
 
-	if (syscall_number == SYS_lsetxattr)
+	case SYS_lsetxattr:
 		return hook_setxattr(arg0, arg1, arg2, arg3, arg4,
 		    NO_RESOLVE_LAST_SLINK);
 
-	if (syscall_number == SYS_fgetxattr)
+	case SYS_fgetxattr:
 		return 0;
 
-	if (syscall_number == SYS_fsetxattr)
+	case SYS_fsetxattr:
 		return check_errno(-ENOTSUP);
 
-	if (syscall_number == SYS_fcntl)
+	case SYS_fcntl:
 		return hook_fcntl(arg0, (int)arg1, arg2);
 
-	if (syscall_number == SYS_syncfs)
+	case SYS_syncfs:
 		return 0;
 
-	if (syscall_number == SYS_fdatasync)
+	case SYS_fdatasync:
 		return 0;
 
-	if (syscall_number == SYS_fsync)
+	case SYS_fsync:
 		return 0;
 
-	if (syscall_number == SYS_flock)
+	case SYS_flock:
 		return hook_flock(arg0, (int)arg1);
 
-	if (syscall_number == SYS_truncate)
+	case SYS_truncate:
 		return hook_truncate((const char *)arg0, arg1);
 
-	if (syscall_number == SYS_ftruncate)
+	case SYS_ftruncate:
 		return hook_ftruncate(arg0, arg1);
 
-	if (syscall_number == SYS_symlink)
+	case SYS_symlink:
 		return hook_symlinkat((const char *)arg0,
 					cwd_desc(), (const char *)arg1);
 
-	if (syscall_number == SYS_symlinkat)
+	case SYS_symlinkat:
 		return hook_symlinkat((const char *)arg0,
 					fetch_fd(arg1), (const char *)arg2);
 
-	if (syscall_number == SYS_chmod)
+	case SYS_chmod:
 		return hook_fchmodat(cwd_desc(), (const char *)arg0,
 					(mode_t)arg1);
 
-	if (syscall_number == SYS_fchmod)
+	case SYS_fchmod:
 		return hook_fchmod(arg0, (mode_t)arg1);
 
-	if (syscall_number == SYS_fchmodat)
+	case SYS_fchmodat:
 		return hook_fchmodat(fetch_fd(arg0), (const char *)arg1,
 					(mode_t)arg2);
 
-	if (syscall_number == SYS_chown)
+	case SYS_chown:
 		return hook_fchownat(cwd_desc(), (const char *)arg0,
 					(uid_t)arg1, (gid_t)arg2, 0);
 
-	if (syscall_number == SYS_lchown)
+	case SYS_lchown:
 		return hook_fchownat(cwd_desc(), (const char *)arg0,
 					(uid_t)arg1, (gid_t)arg2,
 					AT_SYMLINK_NOFOLLOW);
 
-	if (syscall_number == SYS_fchown)
+	case SYS_fchown:
 		return hook_fchown(arg0, (uid_t)arg1, (gid_t)arg2);
 
-	if (syscall_number == SYS_fchownat)
+	case SYS_fchownat:
 		return hook_fchownat(fetch_fd(arg0), (const char *)arg1,
 					(uid_t)arg2, (gid_t)arg3, (int)arg4);
 
-	if (syscall_number == SYS_fallocate)
+	case SYS_fallocate:
 		return hook_fallocate(arg0, (int)arg1,
 					(off_t)arg2, (off_t)arg3);
 
-	if (syscall_number == SYS_fadvise64)
+	case SYS_fadvise64:
 		return 0;
 
-	if (syscall_number == SYS_mmap ||
-	    syscall_number == SYS_readv ||
-	    syscall_number == SYS_writev ||
-	    syscall_number == SYS_dup ||
-	    syscall_number == SYS_dup2 ||
-	    syscall_number == SYS_dup3 ||
-	    syscall_number == SYS_flistxattr ||
-	    syscall_number == SYS_fremovexattr ||
-	    syscall_number == SYS_preadv2 ||
-	    syscall_number == SYS_pwritev2 ||
-	    syscall_number == SYS_readahead)
+	case SYS_mmap:
+	case SYS_readv:
+	case SYS_writev:
+	case SYS_dup:
+	case SYS_dup2:
+	case SYS_dup3:
+	case SYS_flistxattr:
+	case SYS_fremovexattr:
+	case SYS_preadv2:
+	case SYS_pwritev2:
+	case SYS_readahead:
 		return check_errno(-ENOTSUP);
 
-	if (syscall_number == SYS_sendfile)
+	case SYS_sendfile:
 		return hook_sendfile(arg0, arg1, (off_t *)arg2, (size_t)arg3);
 
 	/*
@@ -951,59 +954,61 @@ dispatch_syscall(long syscall_number,
 	 * resident, -ENOTSUP is returned, otherwise, the call is forwarded
 	 * to the kernel.
 	 */
-	if (syscall_number == SYS_chroot ||
-	    syscall_number == SYS_listxattr ||
-	    syscall_number == SYS_removexattr ||
-	    syscall_number == SYS_utime ||
-	    syscall_number == SYS_utimes)
+	case SYS_chroot:
+	case SYS_listxattr:
+	case SYS_removexattr:
+	case SYS_utime:
+	case SYS_utimes:
 		return nosup_syscall_with_path(syscall_number,
 		    arg0, RESOLVE_LAST_SLINK,
 		    arg0, arg1, arg2, arg3, arg4, arg5);
 
-	if (syscall_number == SYS_llistxattr ||
-	    syscall_number == SYS_lremovexattr)
+	case SYS_llistxattr:
+	case SYS_lremovexattr:
 		return nosup_syscall_with_path(syscall_number,
 		    arg0, NO_RESOLVE_LAST_SLINK,
 		    arg0, arg1, arg2, arg3, arg4, arg5);
 
-	if (syscall_number == SYS_readlink)
+	case SYS_readlink:
 		return hook_readlinkat(cwd_desc(), (const char *)arg0,
 		    (char *)arg1, (size_t)arg2);
 
-	if (syscall_number == SYS_readlinkat)
+	case SYS_readlinkat:
 		return hook_readlinkat(cwd_desc(), (const char *)arg0,
 		    (char *)arg1, (size_t)arg2);
 
-	if (syscall_number == SYS_splice)
+	case SYS_splice:
 		return hook_splice(arg0, (loff_t *)arg1,
 				arg2, (loff_t *)arg3,
 				(size_t)arg4, (unsigned)arg5);
 
-	if (syscall_number == SYS_futimesat)
+	case SYS_futimesat:
 		return hook_futimesat(fetch_fd(arg0), (const char *)arg1,
 			(const struct timeval *)arg2);
 
-	if (syscall_number == SYS_name_to_handle_at)
+	case SYS_name_to_handle_at:
 		return hook_name_to_handle_at(fetch_fd(arg0),
 		    (const char *)arg1, (struct file_handle *)arg2,
 		    (int *)arg3, (int)arg4);
 
-	if (syscall_number == SYS_execve)
+	case SYS_execve:
 		return hook_execveat(cwd_desc(), (const char *)arg0,
 		    (char *const *)arg1, (char *const *)arg2, 0);
 
-	if (syscall_number == SYS_execveat)
+	case SYS_execveat:
 		return hook_execveat(fetch_fd(arg0), (const char *)arg1,
 		    (char *const *)arg2, (char *const *)arg3, (int)arg4);
 
-	if (syscall_number == SYS_copy_file_range)
+	case SYS_copy_file_range:
 		return hook_copy_file_range(arg0, (loff_t *)arg1,
 		    arg2, (loff_t *)arg3, (size_t)arg4, (unsigned)arg5);
 
-	/* Did we miss something? */
-	assert(false);
-	return syscall_no_intercept(syscall_number,
-	    arg0, arg1, arg2, arg3, arg4, arg5);
+	default:
+		/* Did we miss something? */
+		assert(false);
+		return syscall_no_intercept(syscall_number,
+		    arg0, arg1, arg2, arg3, arg4, arg5);
+	}
 }
 
 static int

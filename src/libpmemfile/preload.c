@@ -254,7 +254,7 @@ pmemfile_preload_constructor(void)
 	establish_mount_points(getenv("PMEMFILE_POOLS"));
 
 	if (pool_count == 0)
-		/* No pools mounted. TODO: prevent syscall interception */
+		/* No pools mounted. XXX prevent syscall interception */
 		return;
 
 	if (getenv("PMEMFILE_PRELOAD_PAUSE_AT_START")) {

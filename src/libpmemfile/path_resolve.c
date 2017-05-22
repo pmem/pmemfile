@@ -32,7 +32,7 @@
 
 /*
  * Gosh, this path resolving was pain to write.
- * TODO: clean up this whole file, and add some more explanations.
+ * XXX: clean up this whole file, and add some more explanations.
  */
 
 #include <assert.h>

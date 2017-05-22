@@ -157,7 +157,7 @@ static long check_errno(long e)
 }
 
 static struct fd_desc
-cwd_desc()
+cwd_desc(void)
 {
 	struct fd_desc result;
 
@@ -228,6 +228,13 @@ acquire_new_fd(const char *path)
 	return fd;
 }
 
+/*
+ * The reenter flag allows pmemfile to prevent the hooking of its own
+ * syscalls. E.g. while handling an open syscall, libpmemfile might
+ * call pmemfile_pool_open, which in turn uses an open syscall internally.
+ * This internally used open syscall is once again forwarded to libpmemfile,
+ * but using this flag libpmemfile can notice this case of reentering itself.
+ */
 static __thread bool reenter = false;
 
 static void log_init(const char *path, const char *trunc);
@@ -511,13 +518,13 @@ establish_mount_points(const char *config)
 
 	assert(pool_count == 0);
 
-	if (config == NULL || config[0] == 0) {
+	if (config == NULL || config[0] == '\0') {
 		log_write("No mount point");
 		return;
 	}
 
 	do {
-		if ((size_t)pool_count >= sizeof(pools) / sizeof(pools[0]))
+		if ((size_t)pool_count >= ARRAY_SIZE(pools))
 			config_error();
 
 		struct pool_description *pool_desc = pools + pool_count;

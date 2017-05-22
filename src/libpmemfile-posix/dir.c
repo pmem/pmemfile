@@ -132,13 +132,13 @@ vinode_replace_debug_path_locked(PMEMfilepool *pfp,
 }
 
 /*
- * vinode_add_dirent -- adds child inode to parent directory
+ * inode_add_dirent -- adds child inode to parent directory
  *
  * Must be called in a transaction. Caller must have exclusive access to parent
  * inode, by locking parent in WRITE mode.
  */
 void
-vinode_add_dirent(PMEMfilepool *pfp,
+inode_add_dirent(PMEMfilepool *pfp,
 		TOID(struct pmemfile_inode) parent_tinode,
 		const char *name,
 		size_t namelen,
@@ -308,13 +308,13 @@ vinode_new_dir(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 	struct pmemfile_time t = child->ctime;
 
 	/* add . and .. to new directory */
-	vinode_add_dirent(pfp, tchild, ".", 1, tchild, t);
+	inode_add_dirent(pfp, tchild, ".", 1, tchild, t);
 
 	if (parent == NULL) { /* special case - root directory */
-		vinode_add_dirent(pfp, tchild, "..", 2, tchild, t);
+		inode_add_dirent(pfp, tchild, "..", 2, tchild, t);
 	} else {
-		vinode_add_dirent(pfp, tchild, "..", 2, parent->tinode, t);
-		vinode_add_dirent(pfp, parent->tinode, name, namelen, tchild,
+		inode_add_dirent(pfp, tchild, "..", 2, parent->tinode, t);
+		inode_add_dirent(pfp, parent->tinode, name, namelen, tchild,
 				t);
 	}
 

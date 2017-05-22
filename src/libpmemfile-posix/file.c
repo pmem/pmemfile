@@ -391,7 +391,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 			if (tmpfile)
 				orphan_info = inode_orphan(pfp, tinode);
 			else
-				vinode_add_dirent(pfp, vparent->tinode,
+				inode_add_dirent(pfp, vparent->tinode,
 					info.remaining, namelen, tinode,
 					D_RO(tinode)->ctime);
 		} TX_ONABORT {
@@ -750,7 +750,7 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 
 		struct pmemfile_time t;
 		get_current_time(&t);
-		vinode_add_dirent(pfp, dst.parent->tinode, dst.remaining,
+		inode_add_dirent(pfp, dst.parent->tinode, dst.remaining,
 				dst_namelen, src_vinode->tinode, t);
 	} TX_ONABORT {
 		error = errno;
@@ -1138,7 +1138,7 @@ vinode_rename(PMEMfilepool *pfp,
 			 */
 			TX_SET_DIRECT(src->parent->inode, mtime, t);
 		} else {
-			vinode_add_dirent(pfp, dst->parent->tinode,
+			inode_add_dirent(pfp, dst->parent->tinode,
 					dst->remaining, new_name_len,
 					src_info->vinode->tinode, t);
 
@@ -1500,7 +1500,7 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 				len);
 		inode->size = len;
 
-		vinode_add_dirent(pfp, vparent->tinode, info.remaining, namelen,
+		inode_add_dirent(pfp, vparent->tinode, info.remaining, namelen,
 				tinode, inode->ctime);
 	} TX_ONABORT {
 		error = errno;

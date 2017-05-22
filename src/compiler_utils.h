@@ -74,6 +74,7 @@ extern "C" {
 #define pf_constructor static __attribute__((constructor))
 #define pf_destructor static __attribute__((destructor))
 #define pf_used_var __attribute__((used))
+#define pf_warn_unused_result __attribute__((warn_unused_result))
 
 #ifdef __cplusplus
 }

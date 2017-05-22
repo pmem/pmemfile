@@ -38,6 +38,7 @@
 #define LIBPMEMOBJ_CTREE_H 1
 
 #include <stdint.h>
+#include "compiler_utils.h"
 
 struct ctree;
 
@@ -48,7 +49,8 @@ void ctree_delete_cb(struct ctree *t, ctree_destroy_cb cb, void *ctx);
 
 void ctree_clear(struct ctree *t);
 
-int ctree_insert(struct ctree *t, uint64_t key, uint64_t value);
+pf_warn_unused_result int ctree_insert(struct ctree *t, uint64_t key,
+		uint64_t value);
 
 uint64_t ctree_find(struct ctree *t, uint64_t key);
 

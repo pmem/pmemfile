@@ -181,7 +181,7 @@ add_flag("-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2" RELEASE)
 
 add_flag(-D_LARGEFILE64_SOURCE)
 
-option(SANITIZERS "enable AddressSanitizer and UndefinedBehaviorSanitizer (debugging)" OFF)
+option(SANITIZERS "enable AddressSanitizer and UndefinedBehaviorSanitizer (debugging) (incompatible with BUILD_LIBPMEMFILE=ON)" OFF)
 
 if(SANITIZERS)
 	if(BUILD_LIBPMEMFILE)

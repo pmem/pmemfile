@@ -2,7 +2,6 @@
 layout: "manual"
 Content-Style: 'text/css'
 title: libpmemfile-posix(3)
-header: PMEM Library
 date: "pmemfile-posix API version 0.1.0
 ---[comment]: <> (Copyright 2017, Intel Corporation)
 

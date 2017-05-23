@@ -53,7 +53,14 @@ LD_PRELOAD=libpmemfile.so <invoke application via cli>
 ```
 
 # DESCRIPTION #
-**Pmemfile** is a user space persistent memory file system which is automatically enabled for an application when the **libpmemfile** library is pre-loaded into the application environment as shown in the **SYNOPSIS** section.  **Pmemfile** provides applications nearly transparent direct access to persistent memory resident files. **Pmemfile**, when enabled as described, provides intercept points for the standard Linux glibc interfaces. There are some exceptions to the standard glibc behavior with **Pmemfile** and these are described in this man page.
+**Pmemfile** is a user space persistent memory file system which is
+automatically enabled for an application when the **libpmemfile** library is
+pre-loaded into the application environment as shown in the **SYNOPSIS**
+section.  **Pmemfile** provides applications nearly transparent direct access
+to persistent memory resident files. **Pmemfile**, when enabled as described,
+provides intercept points for the standard Linux glibc interfaces. There are
+some exceptions to the standard glibc behavior with **Pmemfile** and these are
+described in this man page.
 
 # EXCEPTIONS TO POSIX SUPPORT #
 This section outlines the exceptions to the specified file operations.

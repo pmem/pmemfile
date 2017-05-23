@@ -31,47 +31,25 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #
-# build.sh - runs a Docker container from a Docker image with environment
-#            prepared for building this project.
+# run-coverage.sh - is called inside a Docker container;
+#		starts a build of PMEMFILE project
 #
 
-if [[ -z "$OS" || -z "$OS_VER" ]]; then
-	echo "ERROR: The variables OS and OS_VER have to be set properly " \
-		"(eg. OS=ubuntu, OS_VER=16.04)."
-	exit 1
-fi
+# Build all and run tests
+cd $WORKDIR
+cp /googletest-1.8.0.zip .
 
-if [[ -z "$HOST_WORKDIR" ]]; then
-	echo "ERROR: The variable HOST_WORKDIR has to contain a path to " \
-		"the root of this project on the host machine"
-	exit 1
-fi
+mkdir build
+cd build
+cmake .. -DDEVELOPER_MODE=1 \
+		-DCMAKE_BUILD_TYPE=Debug \
+		-DTRACE_TESTS=1 \
+		-DTESTS_USE_FORCED_PMEM=1 \
+		-DCMAKE_C_FLAGS=-coverage \
+		-DCMAKE_CXX_FLAGS=-coverage
 
-imageName=${DOCKERHUB_REPO}:${OS}-${OS_VER}
-containerName=pmemfile-${OS}-${OS_VER}
-
-if [[ $MAKE_PKG -eq 0 ]] ; then command="./run-build.sh"; fi
-if [[ $MAKE_PKG -eq 1 ]] ; then command="./run-build-package.sh"; fi
-if [[ $COVERAGE -eq 1 ]] ; then command="./run-coverage.sh"; ci_env=`bash <(curl -s https://codecov.io/env)`; fi
-
-WORKDIR=/pmemfile
-
-# Run a container with
-#  - environment variables set (--env)
-#  - host directory containing pmemfile source mounted (-v)
-#  - working directory set (-w)
-sudo docker run --rm --privileged=true --name=$containerName -ti \
-	$ci_env \
-	--env http_proxy=$http_proxy \
-	--env https_proxy=$https_proxy \
-	--env COMPILER=$COMPILER \
-	--env WORKDIR=$WORKDIR \
-	--env TRAVIS=$TRAVIS \
-	--env TRAVIS_COMMIT_RANGE=$TRAVIS_COMMIT_RANGE \
-	--env TRAVIS_COMMIT=$TRAVIS_COMMIT \
-	--env TRAVIS_REPO_SLUG=$TRAVIS_REPO_SLUG \
-	--env TRAVIS_BRANCH=$TRAVIS_BRANCH \
-	--env TRAVIS_EVENT_TYPE=$TRAVIS_EVENT_TYPE \
-	-v $HOST_WORKDIR:$WORKDIR \
-	-w $WORKDIR/utils/docker \
-	$imageName $command
+make -j2
+ctest -E "_memcheck|_drd|_helgrind|_pmemcheck" -j2 --output-on-failure
+bash <(curl -s https://codecov.io/bash)
+cd ..
+rm -r build

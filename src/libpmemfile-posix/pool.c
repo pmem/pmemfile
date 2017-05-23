@@ -38,15 +38,15 @@
 #include <inttypes.h>
 
 #include "callbacks.h"
+#include "compiler_utils.h"
 #include "dir.h"
+#include "hash_map.h"
 #include "inode.h"
 #include "internal.h"
 #include "locks.h"
+#include "os_thread.h"
 #include "out.h"
 #include "pool.h"
-
-#include "os_thread.h"
-#include "util.h"
 
 /*
  * initialize_super_block -- initializes super block
@@ -73,83 +73,99 @@ initialize_super_block(PMEMfilepool *pfp)
 	os_rwlock_init(&pfp->cred_rwlock);
 	os_rwlock_init(&pfp->super_rwlock);
 	os_rwlock_init(&pfp->cwd_rwlock);
+	os_rwlock_init(&pfp->inode_map_rwlock);
 
-	pfp->inode_map = inode_map_alloc();
+	struct pmemfile_cred cred;
+	if (cred_acquire(pfp, &cred)) {
+		error = errno;
+		goto get_cred_fail;
+	}
+
+	pfp->inode_map = hash_map_alloc();
 	if (!pfp->inode_map) {
 		error = errno;
 		ERR("!cannot allocate inode map");
 		goto inode_map_alloc_fail;
 	}
 
-	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		if (!TOID_IS_NULL(super->root_inode)) {
-			pfp->root = inode_ref(pfp, super->root_inode, NULL,
-					NULL, NULL, 0);
-		} else {
-			pfp->root = vinode_new_dir(pfp, NULL, "/", 1,
-					PMEMFILE_ACCESSPERMS, false, NULL);
-
+	if (TOID_IS_NULL(super->root_inode)) {
+		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 			TX_ADD_DIRECT(super);
+			super->root_inode = vinode_new_dir(pfp, NULL, "/", 1,
+					&cred, PMEMFILE_ACCESSPERMS);
+
 			super->version = PMEMFILE_SUPER_VERSION(0, 1);
-			super->root_inode = pfp->root->tinode;
 			super->orphaned_inodes =
 					TX_ZNEW(struct pmemfile_inode_array);
-		}
-		pfp->root->parent = pfp->root;
-#ifdef DEBUG
-		pfp->root->path = strdup("/");
-#endif
+		} TX_ONABORT {
+			error = errno;
+		} TX_END
+	}
 
-		pfp->cwd = vinode_ref(pfp, pfp->root);
-	} TX_ONABORT {
+	pfp->root = inode_ref(pfp, super->root_inode, NULL, NULL, 0);
+	if (!pfp->root)
 		error = errno;
-	} TX_END
 
 	if (error) {
 		ERR("!cannot initialize super block");
 		goto tx_err;
 	}
 
+	pfp->root->parent = pfp->root;
+#ifdef DEBUG
+	pfp->root->path = strdup("/");
+#endif
+
+	pfp->cwd = vinode_ref(pfp, pfp->root);
+	cred_release(&cred);
+
 	return 0;
 tx_err:
-	inode_map_free(pfp->inode_map);
+	inode_map_free(pfp);
 inode_map_alloc_fail:
+	cred_release(&cred);
+get_cred_fail:
 	os_rwlock_destroy(&pfp->super_rwlock);
 	os_rwlock_destroy(&pfp->cwd_rwlock);
 	os_rwlock_destroy(&pfp->cred_rwlock);
+	os_rwlock_destroy(&pfp->inode_map_rwlock);
 	errno = error;
 	return -1;
 }
 
 /*
- * cleanup_orphanded_inodes_single -- cleans up one batch of inodes
+ * cleanup_orphaned_inodes_single -- cleans up one batch of inodes
  *
  * Must be called in a transaction.
  */
 static void
-cleanup_orphanded_inodes_single(PMEMfilepool *pfp,
-		TOID(struct pmemfile_inode_array) single)
+cleanup_orphaned_inodes_single(PMEMfilepool *pfp,
+		struct pmemfile_inode_array *arr)
 {
-	LOG(LDBG, "pfp %p arr 0x%" PRIx64, pfp, single.oid.off);
+	LOG(LDBG, "pfp %p", pfp);
 
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 
-	struct pmemfile_inode_array *op = D_RW(single);
-	for (unsigned i = 0; op->used && i < NUMINODES_PER_ENTRY; ++i) {
-		if (TOID_IS_NULL(op->inodes[i]))
+	if (arr->used == 0)
+		return;
+
+	TX_ADD_DIRECT(arr);
+
+	for (unsigned i = 0; arr->used && i < NUMINODES_PER_ENTRY; ++i) {
+		if (TOID_IS_NULL(arr->inodes[i]))
 			continue;
 
 		LOG(LINF, "closing inode left by previous run");
 
-		ASSERTeq(D_RW(op->inodes[i])->nlink, 0);
-		inode_free(pfp, op->inodes[i]);
+		ASSERTeq(D_RW(arr->inodes[i])->nlink, 0);
+		inode_free(pfp, arr->inodes[i]);
 
-		op->inodes[i] = TOID_NULL(struct pmemfile_inode);
+		arr->inodes[i] = TOID_NULL(struct pmemfile_inode);
 
-		op->used--;
+		arr->used--;
 	}
 
-	ASSERTeq(op->used, 0);
+	ASSERTeq(arr->used, 0);
 }
 
 /*
@@ -160,39 +176,29 @@ cleanup_orphanded_inodes_single(PMEMfilepool *pfp,
  */
 static void
 cleanup_orphaned_inodes(PMEMfilepool *pfp,
-		TOID(struct pmemfile_inode_array) single)
+		TOID(struct pmemfile_inode_array) arr)
 {
 	LOG(LDBG, "pfp %p", pfp);
 
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
 
+	struct pmemfile_inode_array *first = D_RW(arr);
+
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		TOID(struct pmemfile_inode_array) last = single;
+		cleanup_orphaned_inodes_single(pfp, first);
 
-		for (; !TOID_IS_NULL(single); single = D_RO(single)->next) {
-			last = single;
+		TOID(struct pmemfile_inode_array) tcur = first->next;
+		TX_ADD_DIRECT(&first->next);
+		first->next = TOID_NULL(struct pmemfile_inode_array);
 
-			/*
-			 * Both used and unused arrays will be changed. Used
-			 * here, unused in the following loop.
-			 */
-			TX_ADD(single);
+		struct pmemfile_inode_array *cur = D_RW(tcur);
 
-			if (D_RO(single)->used > 0)
-				cleanup_orphanded_inodes_single(pfp, single);
-		}
-
-		if (!TOID_IS_NULL(last)) {
-			TOID(struct pmemfile_inode_array) prev;
-
-			while (!TOID_IS_NULL(D_RO(last)->prev)) {
-				prev = D_RO(last)->prev;
-				TX_FREE(last);
-				last = prev;
-			}
-
-			D_RW(last)->next =
-					TOID_NULL(struct pmemfile_inode_array);
+		while (cur) {
+			cleanup_orphaned_inodes_single(pfp, cur);
+			TOID(struct pmemfile_inode_array) tmp = cur->next;
+			TX_FREE(tcur);
+			tcur = tmp;
+			cur = D_RW(tcur);
 		}
 	} TX_ONABORT {
 		FATAL("!cannot cleanup list of previously deleted files");
@@ -200,10 +206,11 @@ cleanup_orphaned_inodes(PMEMfilepool *pfp,
 }
 
 /*
- * pmemfile_mkfs -- create pmem file system on specified file
+ * pmemfile_pool_create -- create pmem file system on specified file
  */
 PMEMfilepool *
-pmemfile_mkfs(const char *pathname, size_t poolsize, pmemfile_mode_t mode)
+pmemfile_pool_create(const char *pathname, size_t poolsize,
+		pmemfile_mode_t mode)
 {
 	LOG(LDBG, "pathname %s poolsize %zu mode %o", pathname, poolsize, mode);
 
@@ -304,10 +311,11 @@ pmemfile_pool_close(PMEMfilepool *pfp)
 
 	vinode_unref(pfp, pfp->cwd);
 	vinode_unref(pfp, pfp->root);
-	inode_map_free(pfp->inode_map);
+	inode_map_free(pfp);
 	os_rwlock_destroy(&pfp->cred_rwlock);
 	os_rwlock_destroy(&pfp->super_rwlock);
 	os_rwlock_destroy(&pfp->cwd_rwlock);
+	os_rwlock_destroy(&pfp->inode_map_rwlock);
 
 	pmemobj_close(pfp->pop);
 
@@ -440,10 +448,10 @@ copy_cred(struct pmemfile_cred *dst_cred, const struct pmemfile_cred *src_cred)
 }
 
 /*
- * get_cred -- gets current credentials in a safe way
+ * cred_acquire -- gets current credentials in a safe way
  */
 int
-get_cred(PMEMfilepool *pfp, struct pmemfile_cred *cred)
+cred_acquire(PMEMfilepool *pfp, struct pmemfile_cred *cred)
 {
 	int ret;
 	os_rwlock_rdlock(&pfp->cred_rwlock);
@@ -453,10 +461,10 @@ get_cred(PMEMfilepool *pfp, struct pmemfile_cred *cred)
 }
 
 /*
- * put_cred -- frees credentials obtained with "get_cred"
+ * cred_release -- frees credentials obtained with "get_cred"
  */
 void
-put_cred(struct pmemfile_cred *cred)
+cred_release(struct pmemfile_cred *cred)
 {
 	free(cred->groups);
 	memset(cred, 0, sizeof(*cred));

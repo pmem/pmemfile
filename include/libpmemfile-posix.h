@@ -197,7 +197,7 @@ typedef struct stat pmemfile_stat_t;
 
 #define PMEMFILE_AT_CWD ((PMEMfile *)(((unsigned char *)0) - 1))
 
-PMEMfilepool *pmemfile_mkfs(const char *pathname, size_t poolsize,
+PMEMfilepool *pmemfile_pool_create(const char *pathname, size_t poolsize,
 		pmemfile_mode_t mode);
 
 PMEMfilepool *pmemfile_pool_open(const char *pathname);

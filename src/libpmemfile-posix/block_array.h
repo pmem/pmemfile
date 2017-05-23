@@ -33,7 +33,7 @@
 #ifndef PMEMFILE_BLOCK_ARRAY_H
 #define PMEMFILE_BLOCK_ARRAY_H
 
-struct pmemfile_block;
+struct pmemfile_block_desc;
 struct pmemfile_vinode;
 
 /*
@@ -43,9 +43,9 @@ struct pmemfile_vinode;
  *
  * Returns the address of the new block metadata.
  */
-struct pmemfile_block *
+struct pmemfile_block_desc *
 block_list_insert_after(struct pmemfile_vinode *vinode,
-			struct pmemfile_block *prev);
+			struct pmemfile_block_desc *prev);
 
 /*
  * Removes the block from the linked list of blocks. Deallocates
@@ -54,8 +54,8 @@ block_list_insert_after(struct pmemfile_vinode *vinode,
  * Returns a pointer to the preceding block metadata - the one that
  * was the previous block before deallocating.
  */
-struct pmemfile_block *
+struct pmemfile_block_desc *
 block_list_remove(struct pmemfile_vinode *vinode,
-		struct pmemfile_block *block);
+		struct pmemfile_block_desc *block);
 
 #endif

@@ -63,14 +63,14 @@
 
 #include <asm-generic/errno.h>
 
+#include "compiler_utils.h"
 #include "libsyscall_intercept_hook_point.h"
 #include "libpmemfile-posix.h"
-#include "util.h"
 #include "sys_util.h"
 #include "preload.h"
 
 /*
- * Some syscalls that are missing on older kernels.
+ * Some syscalls that are not exported by older libc's.
  */
 #ifndef SYS_renameat2
 #define SYS_renameat2 316
@@ -92,6 +92,7 @@
 #define SYS_pwritev2 328
 #endif
 
+#define SYSCALL_ARRAY_SIZE 0x200
 
 static int hook(long syscall_number,
 			long arg0, long arg1,
@@ -99,11 +100,11 @@ static int hook(long syscall_number,
 			long arg4, long arg5,
 			long *result);
 
-static bool syscall_number_filter[0x200];
-static bool syscall_needs_fd_rlock[0x200];
-static bool syscall_needs_fd_wlock[0x200];
-static bool syscall_needs_pmem_cwd_rlock[0x200];
-static bool syscall_has_fd_first_arg[0x200];
+static bool syscall_number_filter[SYSCALL_ARRAY_SIZE];
+static bool syscall_needs_fd_rlock[SYSCALL_ARRAY_SIZE];
+static bool syscall_needs_fd_wlock[SYSCALL_ARRAY_SIZE];
+static bool syscall_needs_pmem_cwd_rlock[SYSCALL_ARRAY_SIZE];
+static bool syscall_has_fd_first_arg[SYSCALL_ARRAY_SIZE];
 
 static struct pool_description pools[0x100];
 static int pool_count;

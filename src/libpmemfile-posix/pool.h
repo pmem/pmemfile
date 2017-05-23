@@ -36,11 +36,10 @@
  * Runtime pool state.
  */
 
+#include "hash_map.h"
 #include "inode.h"
 #include "layout.h"
 #include "os_thread.h"
-
-struct pmemfile_inode_map;
 
 struct pmemfile_cred {
 	/* real user id */
@@ -83,7 +82,8 @@ struct pmemfilepool {
 	os_rwlock_t super_rwlock;
 
 	/* map between inodes and vinodes */
-	struct pmemfile_inode_map *inode_map;
+	struct hash_map *inode_map;
+	os_rwlock_t inode_map_rwlock;
 
 	/* current credentials */
 	struct pmemfile_cred cred;
@@ -102,8 +102,8 @@ struct pmemfilepool {
 bool can_access(const struct pmemfile_cred *cred,
 		struct inode_perms perms,
 		int acc);
-int get_cred(PMEMfilepool *pfp, struct pmemfile_cred *cred);
-void put_cred(struct pmemfile_cred *cred);
+int cred_acquire(PMEMfilepool *pfp, struct pmemfile_cred *cred);
+void cred_release(struct pmemfile_cred *cred);
 
 bool vinode_can_access(const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *vinode, int acc);

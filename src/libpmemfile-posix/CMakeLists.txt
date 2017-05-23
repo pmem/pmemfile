@@ -37,6 +37,7 @@ set(SOURCES
 	data.c
 	dir.c
 	file.c
+	hash_map.c
 	inode.c
 	inode_array.c
 	locks.c
@@ -46,6 +47,7 @@ set(SOURCES
 	pmemfile-posix.c
 	pool.c
 	stubs.c
+	utils.c
 )
 
 set(HEADERS
@@ -54,6 +56,7 @@ set(HEADERS
 	data.h
 	dir.h
 	file.h
+	hash_map.h
 	inode_array.h
 	inode.h
 	internal.h
@@ -61,6 +64,7 @@ set(HEADERS
 	locks.h
 	out.h
 	pool.h
+	utils.h
 	valgrind_internal.h
 )
 

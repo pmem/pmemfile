@@ -46,7 +46,7 @@
  */
 static bool
 inode_array_add_single(struct pmemfile_inode_array *cur,
-		struct pmemfile_vinode *vinode,
+		TOID(struct pmemfile_inode) tinode,
 		struct pmemfile_inode_array **ins,
 		unsigned *ins_idx)
 {
@@ -59,7 +59,7 @@ inode_array_add_single(struct pmemfile_inode_array *cur,
 		mutex_tx_unlock_on_abort(&cur->mtx);
 
 		TX_ADD_DIRECT(&cur->inodes[i]);
-		cur->inodes[i] = vinode->tinode;
+		cur->inodes[i] = tinode;
 
 		TX_ADD_DIRECT(&cur->used);
 		cur->used++;
@@ -83,7 +83,7 @@ inode_array_add_single(struct pmemfile_inode_array *cur,
 void
 inode_array_add(PMEMfilepool *pfp,
 		TOID(struct pmemfile_inode_array) array,
-		struct pmemfile_vinode *vinode,
+		TOID(struct pmemfile_inode) tinode,
 		struct pmemfile_inode_array **ins,
 		unsigned *ins_idx)
 {
@@ -96,8 +96,8 @@ inode_array_add(PMEMfilepool *pfp,
 		pmemobj_mutex_lock_nofail(pfp->pop, &cur->mtx);
 
 		if (cur->used < NUMINODES_PER_ENTRY)
-			found = inode_array_add_single(cur,
-					vinode, ins, ins_idx);
+			found = inode_array_add_single(cur, tinode, ins,
+					ins_idx);
 
 		bool modified = false;
 		if (!found) {

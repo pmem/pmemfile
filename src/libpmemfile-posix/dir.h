@@ -42,13 +42,18 @@ struct pmemfile_path_info {
 	 * Vinode of the last reachable component in the path, except for
 	 * the last part.
 	 */
-	struct pmemfile_vinode *vinode;
+	struct pmemfile_vinode *parent;
 
 	/* remaining part of the path */
 	char *remaining;
 
 	/* error code */
 	int error;
+};
+
+struct pmemfile_dirent_info {
+	struct pmemfile_vinode *vinode;
+	struct pmemfile_dirent *dirent;
 };
 
 void resolve_pathat(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
@@ -70,16 +75,16 @@ bool str_contains(const char *str, size_t len, char c);
 bool more_than_1_component(const char *path);
 size_t component_length(const char *path);
 
-struct pmemfile_vinode *vinode_new_dir(PMEMfilepool *pfp,
+TOID(struct pmemfile_inode) vinode_new_dir(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent, const char *name,
-		size_t namelen, pmemfile_mode_t mode, bool add_to_parent,
-		volatile bool *parent_refed);
+		size_t namelen, struct pmemfile_cred *cred,
+		pmemfile_mode_t mode);
 
-void vinode_add_dirent(PMEMfilepool *pfp,
-		struct pmemfile_vinode *parent_vinode,
+void inode_add_dirent(PMEMfilepool *pfp,
+		TOID(struct pmemfile_inode) parent_tinode,
 		const char *name,
 		size_t namelen,
-		struct pmemfile_vinode *child_vinode,
+		TOID(struct pmemfile_inode) child_tinode,
 		struct pmemfile_time tm);
 
 void vinode_update_parent(PMEMfilepool *pfp,
@@ -107,6 +112,11 @@ struct pmemfile_dirent *vinode_lookup_dirent_by_name_locked(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent, const char *name,
 		size_t namelen);
 
+struct pmemfile_dirent_info vinode_lookup_vinode_by_name_locked(
+		PMEMfilepool *pfp,
+		struct pmemfile_vinode *parent, const char *name,
+		size_t namelen);
+
 void vinode_unlink_file(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent,
 		struct pmemfile_dirent *dirent,
@@ -130,11 +140,6 @@ pmemfile_dir_size(TOID(struct pmemfile_dir) dir)
 {
 	return page_rounddown(pmemobj_alloc_usable_size(dir.oid));
 }
-
-struct pmemfile_dirent_info {
-	struct pmemfile_vinode *vinode;
-	struct pmemfile_dirent *dirent;
-};
 
 int lock_parent_and_child(PMEMfilepool *pfp,
 		struct pmemfile_path_info *path,

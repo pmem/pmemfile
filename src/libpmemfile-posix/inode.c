@@ -40,30 +40,111 @@
 #include "callbacks.h"
 #include "data.h"
 #include "dir.h"
+#include "hash_map.h"
 #include "inode.h"
 #include "inode_array.h"
 #include "internal.h"
 #include "locks.h"
 #include "os_thread.h"
 #include "out.h"
+#include "utils.h"
 
-/*
- * pmfi_path -- returns one of the full paths inode can be reached on
- *
- * Only for debugging.
- */
-const char *
-pmfi_path(struct pmemfile_vinode *vinode)
+static void
+log_leak(uint64_t key, void *value)
 {
 #ifdef DEBUG
-	if (!vinode)
-		return NULL;
-	if (!vinode->path)
-		LOG(LTRC, "0x%lx: no vinode->path", vinode->tinode.oid.off);
-	return vinode->path;
+	(void) key;
+	struct pmemfile_vinode *vinode = value;
+	LOG(LDBG, "inode reference leak %s", vinode->path ? vinode->path :
+				"unknown path");
 #else
-	return NULL;
+	(void) key;
+	(void) value;
 #endif
+}
+
+/*
+ * inode_map_free -- destroys inode hash map
+ */
+void
+inode_map_free(PMEMfilepool *pfp)
+{
+	struct hash_map *map = pfp->inode_map;
+	int ref_leaks = hash_map_traverse(map, log_leak);
+	if (ref_leaks)
+		FATAL("%d inode reference leaks", ref_leaks);
+
+	hash_map_free(map);
+	pfp->inode_map = NULL;
+}
+
+/*
+ * inode_ref -- returns volatile inode for persistent inode
+ *
+ * If inode already exists in the map it will just increase its reference
+ * counter. If it doesn't it will atomically allocate, insert vinode into
+ * a map and set its reference counter.
+ *
+ * Can't be called from transaction.
+ */
+struct pmemfile_vinode *
+inode_ref(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
+		struct pmemfile_vinode *parent,
+		const char *name, size_t namelen)
+{
+	struct hash_map *map = pfp->inode_map;
+
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+
+	if (D_RO(inode)->version != PMEMFILE_INODE_VERSION(1)) {
+		ERR("unknown inode version 0x%x for inode 0x%" PRIx64,
+				D_RO(inode)->version, inode.oid.off);
+		errno = EINVAL;
+		return NULL;
+	}
+
+	os_rwlock_rdlock(&pfp->inode_map_rwlock);
+
+	struct pmemfile_vinode *vinode =
+			hash_map_get(map, inode.oid.off);
+	if (vinode)
+		goto end;
+
+	os_rwlock_unlock(&pfp->inode_map_rwlock);
+
+	vinode = calloc(1, sizeof(*vinode));
+	if (!vinode) {
+		ERR("!can't allocate vinode");
+		return NULL;
+	}
+
+	os_rwlock_wrlock(&pfp->inode_map_rwlock);
+
+	struct pmemfile_vinode *put =
+			hash_map_put(map, inode.oid.off, vinode);
+	/* have we managed to insert vinode into hash map? */
+	if (put == vinode) {
+		/* finish initialization */
+		os_rwlock_init(&vinode->rwlock);
+		vinode->tinode = inode;
+		vinode->inode = D_RW(inode);
+		if (inode_is_dir(vinode->inode) && parent)
+			vinode->parent = vinode_ref(pfp, parent);
+
+		if (parent && name && namelen)
+			vinode_set_debug_path_locked(pfp, parent, vinode, name,
+					namelen);
+	} else {
+		/* another thread did it first - use it */
+		free(vinode);
+		vinode = put;
+	}
+
+end:
+	__sync_fetch_and_add(&vinode->ref, 1);
+	os_rwlock_unlock(&pfp->inode_map_rwlock);
+
+	return vinode;
 }
 
 /*
@@ -80,370 +161,6 @@ vinode_ref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 	return vinode;
 }
 
-#define BUCKET_SIZE 2
-
-/* hash map bucket */
-struct inode_map_bucket {
-	struct {
-		/* persistent inode */
-		TOID(struct pmemfile_inode) pinode;
-
-		/* volatile inode */
-		struct pmemfile_vinode *vinode;
-	} arr[BUCKET_SIZE];
-};
-
-/* inode->vinode hash map */
-struct pmemfile_inode_map {
-	os_rwlock_t rwlock;
-
-	/* hash function coefficients */
-	uint32_t hash_fun_a;
-	uint32_t hash_fun_b;
-	uint64_t hash_fun_p;
-
-	/* number of elements in "buckets" */
-	size_t sz;
-
-	/* buckets */
-	struct inode_map_bucket *buckets;
-
-	/* number of used slots */
-	size_t inodes;
-};
-
-/*
- * inode_map_rand_params -- randomizes coefficients of the hashing function
- */
-static void
-inode_map_rand_params(struct pmemfile_inode_map *c)
-{
-	/* XXX use independent random pool */
-	do {
-		c->hash_fun_a = (uint32_t)rand();
-	} while (c->hash_fun_a == 0);
-	c->hash_fun_b = (uint32_t)rand();
-}
-
-/*
- * inode_map_alloc -- allocates inode hash map
- */
-struct pmemfile_inode_map *
-inode_map_alloc()
-{
-	struct pmemfile_inode_map *c = calloc(1, sizeof(*c));
-
-	c->sz = 2;
-	c->buckets = calloc(1, c->sz * sizeof(c->buckets[0]));
-
-	inode_map_rand_params(c);
-	c->hash_fun_p = 32212254719ULL;
-
-	os_rwlock_init(&c->rwlock);
-
-	return c;
-}
-
-/*
- * inode_map_free -- destroys inode hash map
- */
-void
-inode_map_free(struct pmemfile_inode_map *c)
-{
-	int ref_leaks = 0;
-
-	for (unsigned i = 0; i < c->sz; ++i) {
-		struct inode_map_bucket *bucket = &c->buckets[i];
-
-		for (unsigned j = 0; j < BUCKET_SIZE; ++j) {
-			struct pmemfile_vinode *vinode = bucket->arr[j].vinode;
-			if (vinode) {
-#ifdef DEBUG
-				LOG(LDBG, "inode reference leak %s",
-					vinode->path ? vinode->path :
-							"unknown path");
-#endif
-				ref_leaks++;
-			}
-		}
-	}
-
-	if (ref_leaks)
-		FATAL("%d inode reference leaks", ref_leaks);
-
-	os_rwlock_destroy(&c->rwlock);
-	free(c->buckets);
-	free(c);
-}
-
-/*
- * inode_hash -- returns hash value of the inode
- */
-static inline size_t
-inode_hash(struct pmemfile_inode_map *c, TOID(struct pmemfile_inode) inode)
-{
-	return (c->hash_fun_a * inode.oid.off + c->hash_fun_b) % c->hash_fun_p;
-}
-
-/*
- * inode_map_rebuild -- rebuilds the whole inode hash map
- */
-static bool
-inode_map_rebuild(struct pmemfile_inode_map *c, size_t new_sz)
-{
-	struct inode_map_bucket *new_buckets =
-			calloc(1, new_sz * sizeof(new_buckets[0]));
-	size_t idx;
-
-	for (size_t i = 0; i < c->sz; ++i) {
-		struct inode_map_bucket *b = &c->buckets[i];
-
-		for (unsigned j = 0; j < BUCKET_SIZE; ++j) {
-			if (b->arr[j].pinode.oid.off == 0)
-				continue;
-
-			idx = inode_hash(c, b->arr[j].pinode) % new_sz;
-			struct inode_map_bucket *newbucket = &new_buckets[idx];
-			unsigned k;
-			for (k = 0; k < BUCKET_SIZE; ++k) {
-				if (newbucket->arr[k].pinode.oid.off == 0) {
-					newbucket->arr[k] = b->arr[j];
-					break;
-				}
-			}
-
-			if (k == BUCKET_SIZE) {
-				free(new_buckets);
-				return false;
-			}
-		}
-	}
-
-	free(c->buckets);
-	c->sz = new_sz;
-	c->buckets = new_buckets;
-
-	return true;
-}
-
-/*
- * vinode_unregister_locked -- removes vinode from inode map
- */
-static void
-vinode_unregister_locked(PMEMfilepool *pfp,
-		struct pmemfile_vinode *vinode)
-{
-	struct pmemfile_inode_map *c = pfp->inode_map;
-
-	size_t idx = inode_hash(c, vinode->tinode) % c->sz;
-	struct inode_map_bucket *b = &c->buckets[idx];
-	unsigned j;
-	for (j = 0; j < BUCKET_SIZE; ++j) {
-		if (b->arr[j].vinode == vinode) {
-			memset(&b->arr[j], 0, sizeof(b->arr[j]));
-			break;
-		}
-	}
-
-	if (j == BUCKET_SIZE)
-		FATAL("vinode not found");
-
-	c->inodes--;
-
-	vinode_destroy_data_state(pfp, vinode);
-
-#ifdef DEBUG
-	/* "path" field is defined only in DEBUG builds */
-	free(vinode->path);
-#endif
-	os_rwlock_destroy(&vinode->rwlock);
-	free(vinode);
-}
-
-/*
- * _inode_get -- deals with vinode life time related to inode
- */
-static struct pmemfile_vinode *
-_inode_get(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
-		bool is_new, struct pmemfile_vinode *parent,
-		volatile bool *parent_refed,
-		const char *name, size_t namelen)
-{
-	struct pmemfile_inode_map *map = pfp->inode_map;
-	int tx = 0;
-	int error = 0;
-
-	if (D_RO(inode)->version != PMEMFILE_INODE_VERSION(1)) {
-		ERR("unknown inode version 0x%x for inode 0x%" PRIx64,
-				D_RO(inode)->version, inode.oid.off);
-		if (pmemobj_tx_stage() == TX_STAGE_WORK)
-			pmemfile_tx_abort(EINVAL);
-		else {
-			errno = EINVAL;
-			return NULL;
-		}
-	}
-
-	os_rwlock_rdlock(&map->rwlock);
-	size_t idx = inode_hash(map, inode) % map->sz;
-
-	struct inode_map_bucket *b = &map->buckets[idx];
-	struct pmemfile_vinode *vinode;
-	for (unsigned j = 0; j < BUCKET_SIZE; ++j) {
-		if (TOID_EQUALS(b->arr[j].pinode, inode)) {
-			vinode = b->arr[j].vinode;
-			goto end;
-		}
-	}
-	os_rwlock_unlock(&map->rwlock);
-
-	if (is_new) {
-		rwlock_tx_wlock(&map->rwlock);
-		tx = 1;
-	} else
-		os_rwlock_wrlock(&map->rwlock);
-
-	/* recalculate slot, someone could rebuild the hash map */
-	idx = inode_hash(map, inode) % map->sz;
-
-	/* check again */
-	b = &map->buckets[idx];
-	unsigned empty_slot = UINT32_MAX;
-	for (unsigned j = 0; j < BUCKET_SIZE; ++j) {
-		if (TOID_EQUALS(b->arr[j].pinode, inode)) {
-			vinode = b->arr[j].vinode;
-			goto end;
-		}
-		if (empty_slot == UINT32_MAX && b->arr[j].pinode.oid.off == 0)
-			empty_slot = j;
-	}
-
-	int tries = 0;
-	while (empty_slot == UINT32_MAX) {
-		size_t new_sz = map->sz;
-
-		do {
-			if (map->inodes > 2 * new_sz || tries == 2) {
-				new_sz *= 2;
-				tries = 0;
-			} else {
-				inode_map_rand_params(map);
-				tries++;
-			}
-		} while (!inode_map_rebuild(map, new_sz));
-
-		idx = inode_hash(map, inode) % map->sz;
-		b = &map->buckets[idx];
-
-		for (unsigned j = 0; j < BUCKET_SIZE; ++j) {
-			if (b->arr[j].pinode.oid.off == 0) {
-				empty_slot = j;
-				break;
-			}
-		}
-	}
-
-	vinode = calloc(1, sizeof(*vinode));
-	if (!vinode) {
-		error = errno;
-		goto end;
-	}
-
-	os_rwlock_init(&vinode->rwlock);
-	vinode->tinode = inode;
-	vinode->inode = D_RW(inode);
-	if (inode_is_dir(vinode->inode) && parent) {
-		vinode->parent = vinode_ref(pfp, parent);
-
-		if (parent_refed)
-			*parent_refed = true;
-	}
-
-	if (parent && name && namelen)
-		vinode_set_debug_path_locked(pfp, parent, vinode, name,
-				namelen);
-
-	b->arr[empty_slot].pinode = inode;
-	b->arr[empty_slot].vinode = vinode;
-	map->inodes++;
-
-	if (is_new)
-		cb_push_front(TX_STAGE_ONABORT,
-			(cb_basic)vinode_unregister_locked,
-			vinode);
-
-end:
-	__sync_fetch_and_add(&vinode->ref, 1);
-	if (is_new && tx)
-		rwlock_tx_unlock_on_commit(&map->rwlock);
-	else
-		os_rwlock_unlock(&map->rwlock);
-
-	if (error)
-		errno = error;
-
-	return vinode;
-}
-
-/*
- * inode_ref_new -- increases inode reference counter
- *
- * Assumes inode was allocated in the same transaction.
- * Return volatile inode.
- */
-struct pmemfile_vinode *
-inode_ref_new(PMEMfilepool *pfp,
-		TOID(struct pmemfile_inode) inode,
-		struct pmemfile_vinode *parent,
-		volatile bool *parent_refed,
-		const char *name,
-		size_t namelen)
-{
-	return _inode_get(pfp, inode, true, parent, parent_refed, name,
-			namelen);
-}
-
-/*
- * inode_ref -- increases inode reference counter
- *
- * Assumes inode was not allocated in the same transaction.
- * Return volatile inode.
- */
-struct pmemfile_vinode *
-inode_ref(PMEMfilepool *pfp,
-		TOID(struct pmemfile_inode) inode,
-		struct pmemfile_vinode *parent,
-		volatile bool *parent_refed,
-		const char *name,
-		size_t namelen)
-{
-	return _inode_get(pfp, inode, false, parent, parent_refed, name,
-			namelen);
-}
-
-/*
- * vinode_tx_unref -- decreases inode reference counter
- *
- * Must be called in a transaction.
- */
-static bool
-vinode_tx_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
-{
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
-
-	if (__sync_sub_and_fetch(&vinode->ref, 1) > 0)
-		return false;
-
-	if (vinode->inode->nlink == 0) {
-		inode_array_unregister(pfp, vinode->orphaned.arr,
-				vinode->orphaned.idx);
-
-		inode_free(pfp, vinode->tinode);
-	}
-
-	return true;
-}
-
 /*
  * vinode_unref -- decreases inode reference counter
  *
@@ -454,16 +171,22 @@ vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
 
-	struct pmemfile_inode_map *c = pfp->inode_map;
-
-	os_rwlock_wrlock(&c->rwlock);
+	os_rwlock_wrlock(&pfp->inode_map_rwlock);
 
 	while (vinode) {
 		struct pmemfile_vinode *to_unregister = NULL;
 		struct pmemfile_vinode *parent = NULL;
 
 		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-			if (vinode_tx_unref(pfp, vinode)) {
+			if (__sync_sub_and_fetch(&vinode->ref, 1) == 0) {
+				if (vinode->inode->nlink == 0) {
+					inode_array_unregister(pfp,
+							vinode->orphaned.arr,
+							vinode->orphaned.idx);
+
+					inode_free(pfp, vinode->tinode);
+				}
+
 				to_unregister = vinode;
 				/*
 				 * We don't need to take the vinode lock to
@@ -482,26 +205,26 @@ vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 		else
 			vinode = NULL;
 
-		if (to_unregister)
-			vinode_unregister_locked(pfp, to_unregister);
+		if (to_unregister) {
+			struct hash_map *map = pfp->inode_map;
+
+			if (hash_map_remove(map,
+					to_unregister->tinode.oid.off,
+					to_unregister))
+				FATAL("vinode not found");
+
+			vinode_destroy_data_state(pfp, to_unregister);
+
+#ifdef DEBUG
+			/* "path" field is defined only in DEBUG builds */
+			free(to_unregister->path);
+#endif
+			os_rwlock_destroy(&to_unregister->rwlock);
+			free(to_unregister);
+		}
 	}
 
-	os_rwlock_unlock(&c->rwlock);
-}
-
-/*
- * file_get_time -- sets *t to current time
- */
-void
-file_get_time(struct pmemfile_time *t)
-{
-	pmemfile_timespec_t tm;
-	if (clock_gettime(CLOCK_REALTIME, &tm)) {
-		ERR("!clock_gettime");
-		pmemfile_tx_abort(errno);
-	}
-	t->sec = tm.tv_sec;
-	t->nsec = tm.tv_nsec;
+	os_rwlock_unlock(&pfp->inode_map_rwlock);
 }
 
 /*
@@ -509,9 +232,8 @@ file_get_time(struct pmemfile_time *t)
  *
  * Must be called in a transaction.
  */
-struct pmemfile_vinode *
-inode_alloc(PMEMfilepool *pfp, uint64_t flags, struct pmemfile_vinode *parent,
-		volatile bool *parent_refed, const char *name, size_t namelen)
+TOID(struct pmemfile_inode)
+inode_alloc(PMEMfilepool *pfp, struct pmemfile_cred *cred, uint64_t flags)
 {
 	LOG(LDBG, "flags 0x%lx", flags);
 
@@ -521,7 +243,7 @@ inode_alloc(PMEMfilepool *pfp, uint64_t flags, struct pmemfile_vinode *parent,
 	struct pmemfile_inode *inode = D_RW(tinode);
 
 	struct pmemfile_time t;
-	file_get_time(&t);
+	get_current_time(&t);
 
 	inode->version = PMEMFILE_INODE_VERSION(1);
 	inode->flags = flags;
@@ -529,16 +251,14 @@ inode_alloc(PMEMfilepool *pfp, uint64_t flags, struct pmemfile_vinode *parent,
 	inode->mtime = t;
 	inode->atime = t;
 	inode->nlink = 0;
-	os_rwlock_rdlock(&pfp->cred_rwlock);
-	inode->uid = pfp->cred.euid;
-	inode->gid = pfp->cred.egid;
-	os_rwlock_unlock(&pfp->cred_rwlock);
+	inode->uid = cred->euid;
+	inode->gid = cred->egid;
 
 	if (inode_is_regular_file(inode))
 		inode->file_data.blocks.length =
 				(sizeof(inode->file_data) -
 				sizeof(inode->file_data.blocks)) /
-				sizeof(struct pmemfile_block);
+				sizeof(struct pmemfile_block_desc);
 	else if (inode_is_dir(inode)) {
 		inode->file_data.dir.num_elements =
 				(sizeof(inode->file_data) -
@@ -547,7 +267,7 @@ inode_alloc(PMEMfilepool *pfp, uint64_t flags, struct pmemfile_vinode *parent,
 		inode->size = sizeof(inode->file_data);
 	}
 
-	return inode_ref_new(pfp, tinode, parent, parent_refed, name, namelen);
+	return tinode;
 }
 
 /*
@@ -569,8 +289,23 @@ vinode_orphan_unlocked(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 	TOID(struct pmemfile_inode_array) orphaned =
 			pfp->super->orphaned_inodes;
 
-	inode_array_add(pfp, orphaned, vinode,
+	inode_array_add(pfp, orphaned, vinode->tinode,
 			&vinode->orphaned.arr, &vinode->orphaned.idx);
+}
+
+struct inode_orphan_info
+inode_orphan(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
+{
+	LOG(LDBG, "inode 0x%" PRIx64, tinode.oid.off);
+
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
+	struct inode_orphan_info info;
+
+	inode_array_add(pfp, pfp->super->orphaned_inodes, tinode, &info.arr,
+			&info.idx);
+
+	return info;
 }
 
 /*
@@ -589,18 +324,62 @@ vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 }
 
 /*
- * dir_assert_no_dirents -- checks that directory has no entries
+ * inode_free_dir -- frees on media structures assuming inode is a directory
  */
 static void
-dir_assert_no_dirents(struct pmemfile_dir *dir)
+inode_free_dir(struct pmemfile_inode *inode)
 {
-	for (uint32_t i = 0; i < dir->num_elements; ++i)
-		if (dir->dirents[i].inode.oid.off)
-			FATAL("Trying to free non-empty directory");
+	struct pmemfile_dir *dir = &inode->file_data.dir;
+	TOID(struct pmemfile_dir) tdir = TOID_NULL(struct pmemfile_dir);
+
+	while (dir != NULL) {
+		/* should have been caught earlier */
+		for (uint32_t i = 0; i < dir->num_elements; ++i)
+			if (dir->dirents[i].inode.oid.off)
+				FATAL("Trying to free non-empty directory");
+
+		TOID(struct pmemfile_dir) next = dir->next;
+		if (!TOID_IS_NULL(tdir))
+			TX_FREE(tdir);
+		tdir = next;
+		dir = D_RW(tdir);
+	}
 }
 
 /*
- * file_inode_free -- frees inode
+ * inode_free_reg_file -- frees on media structures assuming inode is a regular
+ * file
+ */
+static void
+inode_free_reg_file(struct pmemfile_inode *inode)
+{
+	struct pmemfile_block_array *arr = &inode->file_data.blocks;
+	TOID(struct pmemfile_block_array) tarr =
+			TOID_NULL(struct pmemfile_block_array);
+
+	while (arr != NULL) {
+		for (unsigned i = 0; i < arr->length; ++i)
+			TX_FREE(arr->blocks[i].data);
+
+		TOID(struct pmemfile_block_array) next = arr->next;
+		if (!TOID_IS_NULL(tarr))
+			TX_FREE(tarr);
+		tarr = next;
+		arr = D_RW(tarr);
+	}
+}
+
+/*
+ * inode_free_symlink -- frees on media structures assuming inode is a symlink
+ */
+static void
+inode_free_symlink(struct pmemfile_inode *inode)
+{
+	/* nothing to be done */
+}
+
+/*
+ * inode_free -- frees inode
  *
  * Must be called in a transaction.
  */
@@ -614,40 +393,16 @@ inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 
 	struct pmemfile_inode *inode = D_RW(tinode);
-	if (inode_is_dir(inode)) {
-		struct pmemfile_dir *dir = &inode->file_data.dir;
-		TOID(struct pmemfile_dir) tdir = TOID_NULL(struct pmemfile_dir);
 
-		while (dir != NULL) {
-			/* should have been caught earlier */
-			dir_assert_no_dirents(dir);
-
-			TOID(struct pmemfile_dir) next = dir->next;
-			if (!TOID_IS_NULL(tdir))
-				TX_FREE(tdir);
-			tdir = next;
-			dir = D_RW(tdir);
-		}
-	} else if (inode_is_regular_file(inode)) {
-		struct pmemfile_block_array *arr = &inode->file_data.blocks;
-		TOID(struct pmemfile_block_array) tarr =
-				TOID_NULL(struct pmemfile_block_array);
-
-		while (arr != NULL) {
-			for (unsigned i = 0; i < arr->length; ++i)
-				TX_FREE(arr->blocks[i].data);
-
-			TOID(struct pmemfile_block_array) next = arr->next;
-			if (!TOID_IS_NULL(tarr))
-				TX_FREE(tarr);
-			tarr = next;
-			arr = D_RW(tarr);
-		}
-	} else if (inode_is_symlink(inode)) {
-		/* nothing to be done */
-	} else {
+	if (inode_is_dir(inode))
+		inode_free_dir(inode);
+	else if (inode_is_regular_file(inode))
+		inode_free_reg_file(inode);
+	else if (inode_is_symlink(inode))
+		inode_free_symlink(inode);
+	else
 		FATAL("unknown inode type 0x%lx", inode->flags);
-	}
+
 	TX_FREE(tinode);
 }
 
@@ -876,7 +631,7 @@ _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto ret;
 	}
 
-	if (get_cred(pfp, &cred)) {
+	if (cred_acquire(pfp, &cred)) {
 		error = errno;
 		goto ret;
 	}
@@ -898,7 +653,7 @@ _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 end:
 	path_info_cleanup(pfp, &info);
-	put_cred(&cred);
+	cred_release(&cred);
 
 	if (vinode)
 		vinode_unref(pfp, vinode);

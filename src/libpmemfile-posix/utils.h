@@ -1,6 +1,5 @@
 /*
- * Copyright 2014-2017, Intel Corporation
- * Copyright (c) 2016, Microsoft Corporation. All rights reserved.
+ * Copyright 2016-2017, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,52 +30,23 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*
- * util.h -- internal definitions for util module
- */
+#ifndef PMEMFILE_UTILS_H
+#define PMEMFILE_UTILS_H
 
-#ifndef PMEMFILE_UTIL_H
-#define PMEMFILE_UTIL_H 1
+#include "inode.h"
+#include "layout.h"
 
-#ifdef __cplusplus
-extern "C" {
+void get_current_time(struct pmemfile_time *t);
+
+bool is_zeroed(const void *addr, size_t len);
+
+int str_compare(const char *s1, const char *s2, size_t s2n);
+bool str_contains(const char *str, size_t len, char c);
+bool more_than_1_component(const char *path);
+size_t component_length(const char *path);
+
+char *pmfi_strndup(const char *c, size_t len);
+
+const char *pmfi_path(struct pmemfile_vinode *vinode);
+
 #endif
-
-/*
- * Macro calculates number of elements in given table
- */
-#ifndef ARRAY_SIZE
-#define ARRAY_SIZE(x)	(sizeof(x) / sizeof((x)[0]))
-#endif
-
-#if !defined(likely)
-#if defined(__GNUC__)
-#define likely(x) __builtin_expect(!!(x), 1)
-#define unlikely(x) __builtin_expect(!!(x), 0)
-#else
-#define likely(x) (!!(x))
-#define unlikely(x) (!!(x))
-#endif
-#endif
-
-#ifndef _WIN32
-#define DIR_SEPARATOR '/'
-#else
-#define DIR_SEPARATOR '\\'
-#endif
-
-#define COMPILE_ERROR_ON(cond) ((void)sizeof(char[(cond) ? -1 : 1]))
-
-#define pf_always_inline __attribute__((always_inline)) inline
-#define pf_printf_like(fmt_arg_num, arg_num) \
-	__attribute__((format(printf, fmt_arg_num, arg_num)))
-#define pf_noreturn __attribute__((noreturn))
-#define pf_constructor static __attribute__((constructor))
-#define pf_destructor static __attribute__((destructor))
-#define pf_used_var __attribute__((used))
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* util.h */

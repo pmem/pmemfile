@@ -65,8 +65,8 @@ struct pmemfile_vinode {
 	/* parent directory, valid only for directories */
 	struct pmemfile_vinode *parent;
 
-	/* pointer to the array of opened inodes */
-	struct {
+	/* pointer to the array of orphaned inodes */
+	struct inode_orphan_info {
 		struct pmemfile_inode_array *arr;
 		unsigned idx;
 	} orphaned;
@@ -78,7 +78,7 @@ struct pmemfile_vinode {
 	} first_free_block;
 
 	/* first used block */
-	struct pmemfile_block *first_block;
+	struct pmemfile_block_desc *first_block;
 
 	/* tree mapping offsets to blocks */
 	struct ctree *blocks;
@@ -86,7 +86,7 @@ struct pmemfile_vinode {
 	/* space for volatile snapshots */
 	struct {
 		struct block_info first_free_block;
-		struct pmemfile_block *first_block;
+		struct pmemfile_block_desc *first_block;
 	} snapshot;
 };
 
@@ -153,43 +153,29 @@ static inline bool vinode_is_symlink(struct pmemfile_vinode *vinode)
 	return inode_is_symlink(vinode->inode);
 }
 
-void file_get_time(struct pmemfile_time *t);
-
-struct pmemfile_vinode *inode_alloc(PMEMfilepool *pfp,
-		uint64_t flags,
-		struct pmemfile_vinode *parent,
-		volatile bool *parent_refed,
-		const char *name,
-		size_t namelen);
+struct pmemfile_cred;
+TOID(struct pmemfile_inode) inode_alloc(PMEMfilepool *pfp,
+		struct pmemfile_cred *cred, uint64_t flags);
 
 void inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode);
-
-const char *pmfi_path(struct pmemfile_vinode *vinode);
 
 struct pmemfile_vinode *vinode_ref(PMEMfilepool *pfp,
 		struct pmemfile_vinode *vinode);
 
-struct pmemfile_inode_map *inode_map_alloc(void);
-
-void inode_map_free(struct pmemfile_inode_map *c);
+void inode_map_free(PMEMfilepool *pfp);
 
 struct pmemfile_vinode *inode_ref(PMEMfilepool *pfp,
 		TOID(struct pmemfile_inode) inode,
 		struct pmemfile_vinode *parent,
-		volatile bool *parent_refed,
-		const char *name,
-		size_t namelen);
-
-struct pmemfile_vinode *inode_ref_new(PMEMfilepool *pfp,
-		TOID(struct pmemfile_inode) inode,
-		struct pmemfile_vinode *parent,
-		volatile bool *parent_refed,
 		const char *name,
 		size_t namelen);
 
 void vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode);
 void vinode_cleanup(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		bool preserve_errno);
+
+struct inode_orphan_info inode_orphan(PMEMfilepool *pfp,
+		TOID(struct pmemfile_inode) tinode);
 
 void vinode_orphan_unlocked(PMEMfilepool *pfp, struct pmemfile_vinode *vinode);
 void vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode);
@@ -207,10 +193,10 @@ void vinode_wrlockN(struct pmemfile_vinode *v[static 5],
 		struct pmemfile_vinode *v4);
 void vinode_unlockN(struct pmemfile_vinode *v[static 5]);
 
-static inline TOID(struct pmemfile_block)
-blockp_as_oid(struct pmemfile_block *block)
+static inline TOID(struct pmemfile_block_desc)
+blockp_as_oid(struct pmemfile_block_desc *block)
 {
-	return (TOID(struct pmemfile_block))pmemobj_oid(block);
+	return (TOID(struct pmemfile_block_desc))pmemobj_oid(block);
 }
 
 #endif

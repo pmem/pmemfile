@@ -1,5 +1,6 @@
 /*
- * Copyright 2016-2017, Intel Corporation
+ * Copyright 2014-2017, Intel Corporation
+ * Copyright (c) 2016, Microsoft Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,56 +30,54 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef PMEMFILE_FILE_H
-#define PMEMFILE_FILE_H
 
 /*
- * Runtime state structures.
+ * util.h -- internal definitions for util module
  */
 
-#include <stddef.h>
-#include "inode.h"
-#include "layout.h"
-#include "os_thread.h"
+#ifndef PMEMFILE_UTIL_H
+#define PMEMFILE_UTIL_H 1
 
-struct ctree;
-
-#define PFILE_READ (1ULL << 0)
-#define PFILE_WRITE (1ULL << 1)
-#define PFILE_NOATIME (1ULL << 2)
-#define PFILE_APPEND (1ULL << 3)
-#define PFILE_PATH (1ULL << 4)
-
-/* file handle */
-struct pmemfile_file {
-	/* volatile inode */
-	struct pmemfile_vinode *vinode;
-
-	/*
-	 * Protects against changes to offset / position cache from multiple
-	 * threads.
-	 */
-	os_mutex_t mutex;
-
-	/* flags */
-	uint64_t flags;
-
-	/* requested/current position */
-	size_t offset;
-
-	/* current position cache, the latest block used */
-	struct pmemfile_block_desc *block_pointer_cache;
-
-	/* current position cache if directory */
-	struct pmemfile_dir_pos {
-		/* current directory list */
-		struct pmemfile_dir *dir;
-
-		/* id of the current directory list */
-		unsigned dir_id;
-	} dir_pos;
-};
-
-const char *file_check_pathname(const char *pathname);
-
+#ifdef __cplusplus
+extern "C" {
 #endif
+
+/*
+ * Macro calculates number of elements in given table
+ */
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(x)	(sizeof(x) / sizeof((x)[0]))
+#endif
+
+#if !defined(likely)
+#if defined(__GNUC__)
+#define likely(x) __builtin_expect(!!(x), 1)
+#define unlikely(x) __builtin_expect(!!(x), 0)
+#else
+#define likely(x) (!!(x))
+#define unlikely(x) (!!(x))
+#endif
+#endif
+
+#ifndef _WIN32
+#define DIR_SEPARATOR '/'
+#else
+#define DIR_SEPARATOR '\\'
+#endif
+
+#define COMPILE_ERROR_ON(cond) ((void)sizeof(char[(cond) ? -1 : 1]))
+
+#define pf_always_inline __attribute__((always_inline)) inline
+#define pf_printf_like(fmt_arg_num, arg_num) \
+	__attribute__((format(printf, fmt_arg_num, arg_num)))
+#define pf_noreturn __attribute__((noreturn))
+#define pf_constructor static __attribute__((constructor))
+#define pf_destructor static __attribute__((destructor))
+#define pf_used_var __attribute__((used))
+#define pf_warn_unused_result __attribute__((warn_unused_result))
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* util.h */

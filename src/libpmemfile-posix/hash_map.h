@@ -29,56 +29,23 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef PMEMFILE_FILE_H
-#define PMEMFILE_FILE_H
+#ifndef PMEMFILE_HASHMAP_H
+#define PMEMFILE_HASHMAP_H
 
-/*
- * Runtime state structures.
- */
+#include <stdint.h>
 
-#include <stddef.h>
-#include "inode.h"
-#include "layout.h"
-#include "os_thread.h"
+struct hash_map;
+typedef void (*hash_map_cb)(uint64_t, void *);
 
-struct ctree;
+struct hash_map *hash_map_alloc(void);
+void hash_map_free(struct hash_map *map);
 
-#define PFILE_READ (1ULL << 0)
-#define PFILE_WRITE (1ULL << 1)
-#define PFILE_NOATIME (1ULL << 2)
-#define PFILE_APPEND (1ULL << 3)
-#define PFILE_PATH (1ULL << 4)
+int hash_map_traverse(struct hash_map *c, hash_map_cb fun);
 
-/* file handle */
-struct pmemfile_file {
-	/* volatile inode */
-	struct pmemfile_vinode *vinode;
+int hash_map_remove(struct hash_map *map, uint64_t key, void *value);
 
-	/*
-	 * Protects against changes to offset / position cache from multiple
-	 * threads.
-	 */
-	os_mutex_t mutex;
+void *hash_map_get(struct hash_map *map, uint64_t key);
 
-	/* flags */
-	uint64_t flags;
-
-	/* requested/current position */
-	size_t offset;
-
-	/* current position cache, the latest block used */
-	struct pmemfile_block_desc *block_pointer_cache;
-
-	/* current position cache if directory */
-	struct pmemfile_dir_pos {
-		/* current directory list */
-		struct pmemfile_dir *dir;
-
-		/* id of the current directory list */
-		unsigned dir_id;
-	} dir_pos;
-};
-
-const char *file_check_pathname(const char *pathname);
-
+void *hash_map_put(struct hash_map *map,
+		uint64_t key, void *value);
 #endif

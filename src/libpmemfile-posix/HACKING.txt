@@ -1,15 +1,6 @@
 Inode/vinode accessing rules:
 - When accessing vinode or inode you must hold a reference on vinode.
-- Unless there's a good reason to not do this, refing should be done outside of
-  pmemobj transaction.
-- It's safe to ref in the transaction if there's nothing after ref that can
-  abort.
-  If transaction can fail after ref, you need to handle that and unref it.
-  Also in this case you have to deal with inode_ref sometimes taking a reference
-  on its parent (if it's a directory).
-  This is very fragile and tricky, so refing inside of transaction is highly
-  discouraged.
-- Unrefs must be done outside of transaction. There's no other option.
+- Refing and unrefing inodes must be done outside of pmemobj transaction.
 - Lock in vinode protects both vinode and inode.
 - You have to take the vinode lock at least in "read" mode if you want to read
   any field in vinode or inode (of course with an exception of refcnt and lock

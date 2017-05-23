@@ -35,11 +35,10 @@
  */
 
 #include "callbacks.h"
+#include "compiler_utils.h"
 #include "internal.h"
 #include "os_thread.h"
 #include "out.h"
-#include "util.h"
-
 #include <errno.h>
 
 struct tx_callback {
@@ -72,11 +71,16 @@ cb_get(void)
 {
 	struct all_callbacks *c = os_tls_get(callbacks_key);
 	if (!c) {
-		c = calloc(1, sizeof(struct all_callbacks) * MAX_TX_STAGE);
+		c = calloc(MAX_TX_STAGE, sizeof(struct all_callbacks));
+		if (!c)
+			return NULL;
+
 		int ret = os_tls_set(callbacks_key, c);
 		if (ret) {
+			free(c);
 			errno = ret;
-			FATAL("!os_tls_set");
+			ERR("!os_tls_set");
+			return NULL;
 		}
 	}
 
@@ -132,6 +136,8 @@ cb_push_back(enum pobj_tx_stage stage, cb_basic func, void *arg)
 
 	cb_check(__func__);
 	struct all_callbacks *cbs = cb_get();
+	if (!cbs)
+		pmemobj_tx_abort(errno);
 
 	return cb_append(&cbs[stage].forward, func, arg);
 }
@@ -147,6 +153,8 @@ cb_push_front(enum pobj_tx_stage stage, cb_basic func, void *arg)
 
 	cb_check(__func__);
 	struct all_callbacks *cbs = cb_get();
+	if (!cbs)
+		pmemobj_tx_abort(errno);
 
 	return cb_append(&cbs[stage].backward, func, arg);
 }
@@ -217,6 +225,13 @@ cb_queue(PMEMobjpool *pop, enum pobj_tx_stage stage, void *arg)
 	struct tx_callback_array *cb;
 	unsigned num_callbacks;
 	struct all_callbacks *file_callbacks = cb_get();
+	if (!file_callbacks) {
+		if (stage == TX_STAGE_WORK)
+			pmemobj_tx_abort(errno);
+		else
+			/* not possible */
+			FATAL("unable to allocate callbacks list");
+	}
 
 	cb = &file_callbacks[stage].backward;
 	num_callbacks = cb->used;

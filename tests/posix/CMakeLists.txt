@@ -88,6 +88,7 @@ add_check_whitespace("tests-posix-test" ${CMAKE_CURRENT_SOURCE_DIR}/*.*pp)
 add_cstyle(tests-posix-test_bt ${CMAKE_CURRENT_SOURCE_DIR}/../test_backtrace.c)
 add_check_whitespace(tests-posix-test_bt ${CMAKE_CURRENT_SOURCE_DIR}/../test_backtrace.c)
 
+# Builds test ${name} using ${srcs} as sources
 function(build_test name srcs)
 	add_cppstyle(tests-posix-${name} ${CMAKE_CURRENT_SOURCE_DIR}/${srcs})
 	add_check_whitespace(tests-posix-${name} ${CMAKE_CURRENT_SOURCE_DIR}/${srcs})
@@ -110,6 +111,9 @@ build_test(file_rw rw/rw.cpp)
 build_test(file_stat stat/stat.cpp)
 build_test(file_symlinks symlinks/symlinks.cpp)
 
+# Configures test ${name} using tracer ${tracer} and gtest filter ${filter}
+# Optional next argument is passed as is to test.
+# Optional next argument is appended to environment variables.
 function(add_test_with_filter name filter tracer)
 	set(vg_tracers memcheck helgrind drd pmemcheck)
 	if ("${filter}" STREQUAL "")

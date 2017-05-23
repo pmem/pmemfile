@@ -45,7 +45,7 @@ date: "pmemfile-posix API version 0.1.0
 [FILE STATUS](#file-status)<br />
 
 # NAME #
-**libpmemfile-posix**-- user space persistent memory file system
+**libpmemfile-posix** - user space persistent memory aware file system API
 
 # SYNOPSIS #
 ```c

@@ -228,7 +228,8 @@ function(add_cstyle name)
 				${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 	else()
 		add_custom_target(cstyle-${name}
-			COMMAND ${CMAKE_SOURCE_DIR}/utils/cstyle ${ARGN})
+			COMMAND ${PERL_EXECUTABLE}
+				${CMAKE_SOURCE_DIR}/utils/cstyle ${ARGN})
 	endif()
 	add_dependencies(cstyle cstyle-${name})
 endfunction()

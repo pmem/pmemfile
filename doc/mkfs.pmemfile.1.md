@@ -46,4 +46,4 @@ date: mkfs.pmemfile API version 0.1.0
 
 # NAME #
 
-**mkfs.pmemfile** -- create an pmemfile filesystem
+**mkfs.pmemfile** -- create a pmemfile filesystem

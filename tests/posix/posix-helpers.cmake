@@ -39,6 +39,10 @@ function(cleanup)
 	common_cleanup()
 endfunction()
 
+# Executes test command ${name} and verifies its status.
+# First argument of the command is test directory name.
+# Optional function arguments are passed as consecutive arguments to
+# the command.
 function(execute name)
 	if(TESTS_USE_FORCED_PMEM)
 		set(ENV{PMEM_IS_PMEM_FORCE} 1)

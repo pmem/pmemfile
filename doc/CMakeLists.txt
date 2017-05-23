@@ -36,6 +36,8 @@ endif()
 
 add_custom_target(manpages)
 
+# Generates manpage-${name} target and attaches it to "manpages".
+# This target translates manpage ${name}.md from markdown to groff.
 function(generate_manpage name)
 	add_custom_target(manpage-${name}
 			COMMAND ${CMAKE_SOURCE_DIR}/utils/md2man.sh
@@ -47,6 +49,8 @@ endfunction()
 
 add_custom_target(man2txts)
 
+# Generates man2txt-${name} target and attaches it to "man2txts".
+# This target translates manpage ${name}.md from markdown to text file.
 function(generate_man2txt name)
 	add_custom_target(man2txt-${name}
 			COMMAND man

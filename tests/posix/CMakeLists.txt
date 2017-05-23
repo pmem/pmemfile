@@ -42,23 +42,36 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/googletest-${GTEST_VERSION}.zip)
 else()
 	set(GTEST_URL https://github.com/google/googletest/archive/release-${GTEST_VERSION}.zip)
 endif()
+
+set(GTEST_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/gtest)
+set(GTEST_BINARY_DIR ${GTEST_PREFIX}/src/gtest-build)
+set(GTEST_SOURCE_DIR ${GTEST_PREFIX}/src/gtest)
+
 ExternalProject_Add(
 	gtest
 	URL ${GTEST_URL}
+	PREFIX ${GTEST_PREFIX}
+	BINARY_DIR ${GTEST_BINARY_DIR}
+	SOURCE_DIR ${GTEST_SOURCE_DIR}
 	DOWNLOAD_NAME googletest-${GTEST_VERSION}.zip
 	DOWNLOAD_DIR ${CMAKE_SOURCE_DIR}
-	PREFIX ${CMAKE_CURRENT_BINARY_DIR}/gtest
 	INSTALL_COMMAND ""
-	CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+	CMAKE_ARGS
+		-DBUILD_GTEST=ON
+		-DBUILD_GMOCK=OFF
+		-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+		-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+		-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+		-G ${CMAKE_GENERATOR}
+	BUILD_BYPRODUCTS "${GTEST_BINARY_DIR}/googletest/${CMAKE_STATIC_LIBRARY_PREFIX}gtest${CMAKE_STATIC_LIBRARY_SUFFIX}"
 )
-ExternalProject_Get_Property(gtest source_dir binary_dir)
 add_library(libgtest IMPORTED STATIC GLOBAL)
 add_dependencies(libgtest gtest)
 set_target_properties(libgtest PROPERTIES
-	"IMPORTED_LOCATION" "${binary_dir}/googlemock/gtest/libgtest.a"
-	"IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
+	IMPORTED_LOCATION "${GTEST_BINARY_DIR}/googletest/${CMAKE_STATIC_LIBRARY_PREFIX}gtest${CMAKE_STATIC_LIBRARY_SUFFIX}"
+	IMPORTED_LINK_INTERFACE_LIBRARIES "${CMAKE_THREAD_LIBS_INIT}"
 )
-include_directories("${source_dir}/googletest/include")
+include_directories("${GTEST_SOURCE_DIR}/googletest/include")
 
 include_directories(.)
 if(LIBUNWIND_FOUND)
@@ -67,8 +80,7 @@ endif()
 
 add_library(pmemfile_test STATIC pmemfile_test.cpp)
 add_library(test_backtrace STATIC ../test_backtrace.c)
-
-add_dependencies(pmemfile_test libgtest)
+target_link_libraries(pmemfile_test PRIVATE libgtest)
 
 add_cppstyle("tests-posix-test")
 add_check_whitespace("tests-posix-test" ${CMAKE_CURRENT_SOURCE_DIR}/*.*pp)
@@ -80,7 +92,7 @@ function(build_test name srcs)
 	add_cppstyle(tests-posix-${name} ${CMAKE_CURRENT_SOURCE_DIR}/${srcs})
 	add_check_whitespace(tests-posix-${name} ${CMAKE_CURRENT_SOURCE_DIR}/${srcs})
 	add_executable(${name} ${srcs})
-	target_link_libraries(${name} pmemfile-posix_shared pmemfile_test test_backtrace libgtest)
+	target_link_libraries(${name} pmemfile-posix_shared pmemfile_test test_backtrace)
 	if(LIBUNWIND_FOUND)
 		target_link_libraries(${name} ${LIBUNWIND_LIBRARIES} ${CMAKE_DL_LIBS})
 	endif()

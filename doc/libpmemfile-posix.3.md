@@ -140,7 +140,7 @@ O_NOCTTY
 	Not supported.
 
 O_PATH
-	This flag will behave the same as is documented in the open()
+	This flag will behave the same as is documented in the open(2)
 	man-page. However, the use of the file descriptor returned as a
 	result  of  this flag cannot be used to pass to another process
 	via a UNIX domain socket. Sockets are not supported.

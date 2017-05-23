@@ -194,7 +194,7 @@ _RETURN VALUE_
 _ERRORS_
 ```
 EACCESS Execute permission is denied for pmem resident files. Otherwise
-as defined in the execve() manpage.
+as defined in the execve(2) manpage.
 ```
 
 

@@ -33,7 +33,7 @@
 .\" OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .SH NAME
 .PP
-\f[B]Pmemfile\f[] \- persistent memory file system.
+\f[B]Pmemfile\f[] \- user space persistent memory aware file system
 .SH SYNOPSIS
 .IP
 .nf
@@ -51,10 +51,10 @@ LD_PRELOAD=libpmemfile.so\ <invoke\ application\ via\ cli>
 .fi
 .SH DESCRIPTION
 .PP
-\f[B]Pmemfile\f[] is a user space transactional persistent memory file
-system which is automatically enabled for an application when the
-\f[B]libpmemfile\f[] library is pre\-loaded into the application
-environment as shown in the \f[B]SYNOPSIS\f[] section.
+\f[B]Pmemfile\f[] is a user space persistent memory file system which is
+automatically enabled for an application when the \f[B]libpmemfile\f[]
+library is pre\-loaded into the application environment as shown in the
+\f[B]SYNOPSIS\f[] section.
 \f[B]Pmemfile\f[] provides applications nearly transparent direct access
 to persistent memory resident files.
 \f[B]Pmemfile\f[], when enabled as described, provides intercept points

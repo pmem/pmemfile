@@ -2,7 +2,6 @@
 layout: manual
 Content-Style: 'text/css'
 title: pmemfile(1)
-header: PMEMFile
 date: pmemfile API version 0.1.0
 ...
 

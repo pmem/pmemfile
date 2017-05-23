@@ -1,5 +1,8 @@
 # pmemfile
 
+[![Build Status](https://travis-ci.org/pmem/pmemfile.svg?branch=development)](https://travis-ci.org/pmem/pmemfile)
+[![Coverage Status](https://codecov.io/github/pmem/pmemfile/coverage.svg?branch=development)](https://codecov.io/gh/pmem/pmemfile/branch/development)
+
 Pmemfile project's goal is to provide low-overhead userspace implementation of
 file APIs using persistent memory.
 It consists of 2 major compoments:

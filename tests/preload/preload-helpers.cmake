@@ -31,6 +31,7 @@
 
 include(${SRC_DIR}/../../helpers.cmake)
 
+# Prepares environment for test execution.
 function(setup)
 	common_setup()
 
@@ -39,6 +40,7 @@ function(setup)
 	endif()
 endfunction()
 
+# Cleans up environment.
 function(cleanup)
 	unset(ENV{LD_PRELOAD})
 

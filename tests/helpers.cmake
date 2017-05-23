@@ -31,6 +31,7 @@
 
 set(DIR ${PARENT_DIR}/${TEST_NAME})
 
+# Prepares environment for test execution.
 function(common_setup)
 	execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${PARENT_DIR}/${TEST_NAME})
 	execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${PARENT_DIR}/${TEST_NAME})
@@ -38,10 +39,12 @@ function(common_setup)
 	execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${BIN_DIR})
 endfunction()
 
+# Cleans up environment.
 function(common_cleanup)
 	execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${PARENT_DIR}/${TEST_NAME})
 endfunction()
 
+# Creates pool.
 function(mkfs path size)
 	unset(TEMP_STORE_LD_PRELOAD)
 	if(ENV{LD_PRELOAD})
@@ -58,6 +61,7 @@ function(mkfs path size)
 	endif()
 endfunction()
 
+# Verifies ${log_file} matches ${match_file} using "match".
 function(match log_file match_file)
 	unset(TEMP_STORE_LD_PRELOAD)
 	if(ENV{LD_PRELOAD})
@@ -76,6 +80,7 @@ function(match log_file match_file)
 	endif()
 endfunction()
 
+# Gets the content of file using pmemfile-cat and returns in out variable.
 function(pf_cat pool file out)
 	unset(TEMP_STORE_LD_PRELOAD)
 	if(ENV{LD_PRELOAD})
@@ -93,6 +98,7 @@ function(pf_cat pool file out)
 	endif()
 endfunction()
 
+# Generic command executor which handles failures.
 function(execute cmd)
 	execute_process(COMMAND ${cmd} ${ARGN}
 			RESULT_VARIABLE res)
@@ -101,6 +107,7 @@ function(execute cmd)
 	endif()
 endfunction()
 
+# Generic command executor which handles failures and returns command output.
 function(execute_with_output out cmd)
 	execute_process(COMMAND ${cmd} ${ARGN}
 			OUTPUT_FILE ${out}
@@ -110,6 +117,7 @@ function(execute_with_output out cmd)
 	endif()
 endfunction()
 
+# Executes command expecting it to fail.
 function(execute_expect_failure cmd)
 	execute_process(COMMAND ${cmd} ${ARGN}
 			RESULT_VARIABLE res)
@@ -118,14 +126,17 @@ function(execute_expect_failure cmd)
 	endif()
 endfunction()
 
+# Compares 2 files using "cmp" command.
 function(cmp file1 file2)
 	execute(cmp ${file1} ${file2})
 endfunction()
 
+# Gets file content using "cat" command.
 function(cat in out)
 	execute_with_output(${out} cat ${in})
 endfunction()
 
+# List files in directory in semi-parsable format.
 function(list_files out dir)
 	execute_process(COMMAND ls -a -l -G -g --time-style=+ ${dir}
 			COMMAND sed "s/\\s\\+/ /g"
@@ -140,14 +151,17 @@ function(list_files out dir)
 	endif()
 endfunction()
 
+# Creates directory using "mkdir" command.
 function(mkdir dir)
 	execute(mkdir ${dir})
 endfunction()
 
+# Creates directory using "mkdir" command expecting it to fail.
 function(mkdir_expect_failure dir)
 	execute_expect_failure(mkdir ${dir})
 endfunction()
 
+# removes directory using "rmdir" command.
 function(rmdir dir)
 	execute(rmdir ${dir})
 endfunction()

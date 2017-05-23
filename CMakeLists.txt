@@ -101,7 +101,8 @@ include_directories(include)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 11)
 
-# Checks whether flag is supported by current C compiler and appends it to the relevant cmake variable.
+# Checks whether flag is supported by current C compiler and appends
+# it to the relevant cmake variable.
 # 1st argument is a flag
 # 2nd (optional) argument is a build type (debug, release, relwithdebinfo)
 macro(add_c_flag flag)
@@ -121,7 +122,8 @@ macro(add_c_flag flag)
 	endif()
 endmacro()
 
-# Checks whether flag is supported by current C++ compiler and appends it to the relevant cmake variable.
+# Checks whether flag is supported by current C++ compiler and appends
+# it to the relevant cmake variable.
 # 1st argument is a flag
 # 2nd (optional) argument is a build type (debug, release, relwithdebinfo)
 macro(add_cxx_flag flag)
@@ -141,7 +143,8 @@ macro(add_cxx_flag flag)
 	endif()
 endmacro()
 
-# Checks whether flag is supported by current C & C++ compilers and appends it to the relevant cmake variables.
+# Checks whether flag is supported by current C & C++ compilers and appends
+# it to the relevant cmake variables.
 # 1st argument is a flag
 # 2nd (optional) argument is a build type (debug, release, relwithdebinfo)
 macro(add_flag flag)
@@ -219,6 +222,11 @@ endif(DEVELOPER_MODE)
 
 add_executable(check_license EXCLUDE_FROM_ALL utils/check_license/check-license.c)
 
+# Generates cstyle-$name target and attaches it as a dependency of global
+# "cstyle" target. This target verifies C style of files in current source dir.
+# If more arguments are used, then they are used as files to be checked
+# instead.
+# ${name} must be unique.
 function(add_cstyle name)
 	if(${ARGC} EQUAL 1)
 		add_custom_target(cstyle-${name}
@@ -234,6 +242,13 @@ function(add_cstyle name)
 	add_dependencies(cstyle cstyle-${name})
 endfunction()
 
+# Generates cppstyle-$name and cppformat-$name targets and attaches them
+# as dependencies of global "cstyle" and "cppformat" targets.
+# cppstyle-$name target verifies C++ style of files in current source dir.
+# cppformat-$name target reformats files in current source dir.
+# If more arguments are used, then they are used as files to be checked
+# instead.
+# ${name} must be unique.
 function(add_cppstyle name)
 	if(NOT CLANG_FORMAT)
 		return()
@@ -277,6 +292,12 @@ function(add_cppstyle name)
 	add_dependencies(cppformat cppformat-${name})
 endfunction()
 
+# Generates check-whitespace-$name target and attaches it as a dependency
+# of global "check-whitespace" target. This target verifies C files in current
+# source dir do not have any whitespace errors.
+# If more arguments are used, then they are used as files to be checked
+# instead.
+# ${name} must be unique.
 function(add_check_whitespace name)
 	if(${ARGC} EQUAL 1)
 		add_custom_target(check-whitespace-${name}

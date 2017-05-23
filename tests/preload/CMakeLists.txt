@@ -38,6 +38,7 @@ add_cstyle(tests-preload-config ${CMAKE_CURRENT_SOURCE_DIR}/config/config.c)
 add_check_whitespace(tests-preload-basic ${CMAKE_CURRENT_SOURCE_DIR}/basic/basic.c)
 add_check_whitespace(tests-preload-config ${CMAKE_CURRENT_SOURCE_DIR}/config/config.c)
 
+# Configures test ${name}${sub_name} using test dir ${name} and executable ${main_executable}
 function(add_test_generic name sub_name main_executable)
 	add_test(NAME preload_${name}${sub_name}
 		COMMAND ${CMAKE_COMMAND}

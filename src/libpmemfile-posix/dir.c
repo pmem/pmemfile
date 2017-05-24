@@ -657,7 +657,7 @@ file_getdents(PMEMfile *file, struct linux_dirent *dirp,
 		unsigned short alignment = align_dirent_size(&slen);
 		uint64_t next_off = get_next_dirent_off(file, dir, dirent_id);
 
-		if (count < slen)
+		if ((unsigned)read1 + slen > count)
 			break;
 
 		memcpy(data, &dirent->inode.oid.off, 8);
@@ -772,7 +772,7 @@ file_getdents64(PMEMfile *file, struct linux_dirent64 *dirp,
 		unsigned short alignment = align_dirent_size(&slen);
 		uint64_t next_off = get_next_dirent_off(file, dir, dirent_id);
 
-		if (count < slen)
+		if ((unsigned)read1 + slen > count)
 			break;
 
 		memcpy(data, &dirent->inode.oid.off, 8);

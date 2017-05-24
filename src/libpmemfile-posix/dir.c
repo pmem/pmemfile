@@ -690,13 +690,15 @@ fill_dirent64(struct pmemfile_dirent *dirent, uint64_t next_off, unsigned left,
 	return slen;
 }
 
+typedef unsigned short (*fill_dirent_type)(struct pmemfile_dirent *dirent,
+		uint64_t next_off, unsigned left, char *data);
+
 /*
  * pmemfile_getdents_worker -- traverses directory and fills dirent information
  */
 static int
 pmemfile_getdents_worker(PMEMfile *file, char *data, unsigned count,
-		unsigned short (*fill_dirent)(struct pmemfile_dirent *dirent,
-				uint64_t next_off, unsigned left, char *data))
+		fill_dirent_type fill_dirent)
 {
 	struct pmemfile_dir *dir;
 	unsigned dirent_id;
@@ -743,9 +745,13 @@ pmemfile_getdents_worker(PMEMfile *file, char *data, unsigned count,
 	return read1;
 }
 
-int
-pmemfile_getdents(PMEMfilepool *pfp, PMEMfile *file,
-			struct linux_dirent *dirp, unsigned count)
+/*
+ * pmemfile_getdents_generic -- generic implementation of pmemfile_getdents
+ * which allows caller to pick ABI (fill_dirent)
+ */
+static int
+pmemfile_getdents_generic(PMEMfilepool *pfp, PMEMfile *file, char *data,
+		unsigned count, fill_dirent_type fill_dirent)
 {
 	if (!pfp) {
 		LOG(LUSR, "NULL pool");
@@ -780,8 +786,7 @@ pmemfile_getdents(PMEMfilepool *pfp, PMEMfile *file,
 	os_mutex_lock(&file->mutex);
 	os_rwlock_rdlock(&vinode->rwlock);
 
-	bytes_read = pmemfile_getdents_worker(file, (char *)dirp, count,
-			fill_dirent32);
+	bytes_read = pmemfile_getdents_worker(file, data, count, fill_dirent);
 	ASSERT(bytes_read >= 0);
 
 	os_rwlock_unlock(&vinode->rwlock);
@@ -792,50 +797,19 @@ pmemfile_getdents(PMEMfilepool *pfp, PMEMfile *file,
 }
 
 int
+pmemfile_getdents(PMEMfilepool *pfp, PMEMfile *file,
+			struct linux_dirent *dirp, unsigned count)
+{
+	return pmemfile_getdents_generic(pfp, file, (char *)dirp, count,
+			fill_dirent32);
+}
+
+int
 pmemfile_getdents64(PMEMfilepool *pfp, PMEMfile *file,
 			struct linux_dirent64 *dirp, unsigned count)
 {
-	if (!pfp) {
-		LOG(LUSR, "NULL pool");
-		errno = EFAULT;
-		return -1;
-	}
-
-	if (!file) {
-		LOG(LUSR, "NULL file");
-		errno = EFAULT;
-		return -1;
-	}
-
-	struct pmemfile_vinode *vinode = file->vinode;
-
-	if (!vinode_is_dir(vinode)) {
-		errno = ENOTDIR;
-		return -1;
-	}
-
-	if (!(file->flags & PFILE_READ)) {
-		errno = EBADF;
-		return -1;
-	}
-
-	if ((int)count < 0)
-		count = INT_MAX;
-
-	int bytes_read = 0;
-
-	os_mutex_lock(&file->mutex);
-	os_rwlock_rdlock(&vinode->rwlock);
-
-	bytes_read = pmemfile_getdents_worker(file, (char *)dirp, count,
+	return pmemfile_getdents_generic(pfp, file, (char *)dirp, count,
 			fill_dirent64);
-	ASSERT(bytes_read >= 0);
-
-	os_rwlock_unlock(&vinode->rwlock);
-	os_mutex_unlock(&file->mutex);
-
-	ASSERT((unsigned)bytes_read <= count);
-	return bytes_read;
 }
 
 static void

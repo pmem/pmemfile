@@ -129,10 +129,10 @@ std::map<std::string, file_attrs> test_list_files(PMEMfilepool *pfp,
 
 bool test_compare_dirs(const std::map<std::string, file_attrs> &files,
 		       const std::vector<pmemfile_ls> &expected,
-		       bool check_attrs = false);
+		       bool check_attrs = false, bool check_dir_size = true);
 bool test_compare_dirs(PMEMfilepool *pfp, const char *path,
 		       const std::vector<pmemfile_ls> &expected,
-		       bool check_attrs = false);
+		       bool check_attrs = false, bool check_dir_size = true);
 bool test_empty_dir(PMEMfilepool *pfp, const char *path);
 
 extern std::string global_path;

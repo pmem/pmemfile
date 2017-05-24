@@ -30,6 +30,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+ * syscall_early_filter.c -- the table of early filter flags, and
+ * function(s) to access the table.
+ *
+ * For explanations, see syscall_early_filter.h
+ */
+
 #include "syscall_early_filter.h"
 
 #include <stdlib.h>

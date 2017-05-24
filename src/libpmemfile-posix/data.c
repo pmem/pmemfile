@@ -1904,7 +1904,7 @@ vinode_fallocate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, int mode,
 
 	uint64_t off_plus_len = offset + length;
 
-	if (mode & PMEMFILE_FL_PUNCH_HOLE)
+	if (mode & PMEMFILE_FALLOC_FL_PUNCH_HOLE)
 		narrow_to_full_pages(&offset, &length);
 	else
 		expand_to_full_pages(&offset, &length);
@@ -1921,12 +1921,12 @@ vinode_fallocate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, int mode,
 	}
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		if (mode & PMEMFILE_FL_PUNCH_HOLE) {
-			ASSERT(mode & PMEMFILE_FL_KEEP_SIZE);
+		if (mode & PMEMFILE_FALLOC_FL_PUNCH_HOLE) {
+			ASSERT(mode & PMEMFILE_FALLOC_FL_KEEP_SIZE);
 			vinode_remove_interval(vinode, offset, length);
 		} else {
 			vinode_allocate_interval(pfp, vinode, offset, length);
-			if ((mode & PMEMFILE_FL_KEEP_SIZE) == 0) {
+			if ((mode & PMEMFILE_FALLOC_FL_KEEP_SIZE) == 0) {
 				if (vinode->inode->size < off_plus_len) {
 					TX_ADD_DIRECT(&vinode->inode->size);
 					vinode->inode->size = off_plus_len;

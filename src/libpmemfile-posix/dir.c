@@ -573,6 +573,51 @@ file_seek_dir(PMEMfile *file, struct pmemfile_dir **dir, unsigned *dirent)
 	return 1;
 }
 
+/*
+ * inode_type - returns inode type, as returned by getdents
+ */
+static char
+inode_type(const struct pmemfile_inode *inode)
+{
+	if (inode_is_regular_file(inode))
+		return PMEMFILE_DT_REG;
+
+	if (inode_is_symlink(inode))
+		return PMEMFILE_DT_LNK;
+
+	if (inode_is_dir(inode))
+		return PMEMFILE_DT_DIR;
+
+	ASSERT(0);
+	return PMEMFILE_DT_UNKNOWN;
+}
+
+/*
+ * align_dirent_size - aligns dirent size to 8 bytes and returns alignment
+ */
+static unsigned short
+align_dirent_size(unsigned short *slen)
+{
+	unsigned short alignment = (unsigned short)(8 - (*slen & 7));
+	if (alignment == 8)
+		alignment = 0;
+	*slen = (unsigned short)(*slen + alignment);
+	return alignment;
+}
+
+/*
+ * get_next_dirent_off - returns (lseek) offset of next directory entry
+ */
+static uint64_t
+get_next_dirent_off(PMEMfile *file, struct pmemfile_dir *dir,
+		unsigned dirent_id)
+{
+	uint64_t next_off = file->offset + 1;
+	if (dirent_id + 1 >= dir->num_elements)
+		next_off = ((next_off >> 32) + 1) << 32;
+	return next_off;
+}
+
 static int
 file_getdents(PMEMfile *file, struct linux_dirent *dirp,
 		unsigned count)
@@ -607,15 +652,10 @@ file_getdents(PMEMfile *file, struct linux_dirent *dirp,
 		}
 
 		size_t namelen = strlen(dirent->name);
-		unsigned short slen = (unsigned short)
-				(8 + 8 + 2 + namelen + 1 + 1);
-		unsigned short alignment = (unsigned short)(8 - (slen & 7));
-		if (alignment == 8)
-			alignment = 0;
-		slen = (unsigned short)(slen + alignment);
-		uint64_t next_off = file->offset + 1;
-		if (dirent_id + 1 >= dir->num_elements)
-			next_off = ((next_off >> 32) + 1) << 32;
+		unsigned short slen =
+			(unsigned short) (8 + 8 + 2 + namelen + 1 + 1);
+		unsigned short alignment = align_dirent_size(&slen);
+		uint64_t next_off = get_next_dirent_off(file, dir, dirent_id);
 
 		if (count < slen)
 			break;
@@ -635,16 +675,7 @@ file_getdents(PMEMfile *file, struct linux_dirent *dirp,
 		while (alignment--)
 			*data++ = 0;
 
-		const struct pmemfile_inode *inode = D_RO(dirent->inode);
-		if (inode_is_regular_file(inode))
-			*data = PMEMFILE_DT_REG;
-		else if (inode_is_symlink(inode))
-			*data = PMEMFILE_DT_LNK;
-		else if (inode_is_dir(inode))
-			*data = PMEMFILE_DT_DIR;
-		else
-			ASSERT(0);
-		data++;
+		*data++ = inode_type(D_RO(dirent->inode));
 
 		read1 += slen;
 
@@ -736,15 +767,10 @@ file_getdents64(PMEMfile *file, struct linux_dirent64 *dirp,
 		}
 
 		size_t namelen = strlen(dirent->name);
-		unsigned short slen = (unsigned short)
-				(8 + 8 + 2 + 1 + namelen + 1);
-		unsigned short alignment = (unsigned short)(8 - (slen & 7));
-		if (alignment == 8)
-			alignment = 0;
-		slen = (unsigned short)(slen + alignment);
-		uint64_t next_off = file->offset + 1;
-		if (dirent_id + 1 >= dir->num_elements)
-			next_off = ((next_off >> 32) + 1) << 32;
+		unsigned short slen =
+			(unsigned short) (8 + 8 + 2 + 1 + namelen + 1);
+		unsigned short alignment = align_dirent_size(&slen);
+		uint64_t next_off = get_next_dirent_off(file, dir, dirent_id);
 
 		if (count < slen)
 			break;
@@ -758,16 +784,7 @@ file_getdents64(PMEMfile *file, struct linux_dirent64 *dirp,
 		memcpy(data, &slen, 2);
 		data += 2;
 
-		const struct pmemfile_inode *inode = D_RO(dirent->inode);
-		if (inode_is_regular_file(inode))
-			*data = PMEMFILE_DT_REG;
-		else if (inode_is_symlink(inode))
-			*data = PMEMFILE_DT_LNK;
-		else if (inode_is_dir(inode))
-			*data = PMEMFILE_DT_DIR;
-		else
-			ASSERT(0);
-		data++;
+		*data++ = inode_type(D_RO(dirent->inode));
 
 		memcpy(data, dirent->name, namelen + 1);
 		data += namelen + 1;

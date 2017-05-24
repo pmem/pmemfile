@@ -70,19 +70,11 @@
 #include "preload.h"
 #include "syscall_early_filter.h"
 
-#define SYSCALL_ARRAY_SIZE 0x200
-
 static int hook(long syscall_number,
 			long arg0, long arg1,
 			long arg2, long arg3,
 			long arg4, long arg5,
 			long *result);
-
-static bool syscall_number_filter[SYSCALL_ARRAY_SIZE];
-static bool syscall_needs_fd_rlock[SYSCALL_ARRAY_SIZE];
-static bool syscall_needs_fd_wlock[SYSCALL_ARRAY_SIZE];
-static bool syscall_needs_pmem_cwd_rlock[SYSCALL_ARRAY_SIZE];
-static bool syscall_has_fd_first_arg[SYSCALL_ARRAY_SIZE];
 
 static struct pool_description pools[0x100];
 static int pool_count;
@@ -266,216 +258,6 @@ pmemfile_preload_constructor(void)
 static void
 init_hooking(void)
 {
-	/* XXX: move this filtering to the intercepting library */
-	syscall_number_filter[SYS_access] = true;
-	syscall_number_filter[SYS_chmod] = true;
-	syscall_number_filter[SYS_chown] = true;
-	syscall_number_filter[SYS_close] = true;
-	syscall_number_filter[SYS_faccessat] = true;
-	syscall_number_filter[SYS_fadvise64] = true;
-	syscall_number_filter[SYS_fallocate] = true;
-	syscall_number_filter[SYS_fchmodat] = true;
-	syscall_number_filter[SYS_fchmod] = true;
-	syscall_number_filter[SYS_fchownat] = true;
-	syscall_number_filter[SYS_fchown] = true;
-	syscall_number_filter[SYS_fcntl] = true;
-	syscall_number_filter[SYS_fdatasync] = true;
-	syscall_number_filter[SYS_fgetxattr] = true;
-	syscall_number_filter[SYS_flock] = true;
-	syscall_number_filter[SYS_fsetxattr] = true;
-	syscall_number_filter[SYS_fstat] = true;
-	syscall_number_filter[SYS_fsync] = true;
-	syscall_number_filter[SYS_ftruncate] = true;
-	syscall_number_filter[SYS_getdents64] = true;
-	syscall_number_filter[SYS_getdents] = true;
-	syscall_number_filter[SYS_getxattr] = true;
-	syscall_number_filter[SYS_lchown] = true;
-	syscall_number_filter[SYS_lgetxattr] = true;
-	syscall_number_filter[SYS_linkat] = true;
-	syscall_number_filter[SYS_link] = true;
-	syscall_number_filter[SYS_lseek] = true;
-	syscall_number_filter[SYS_lsetxattr] = true;
-	syscall_number_filter[SYS_lstat] = true;
-	syscall_number_filter[SYS_mkdirat] = true;
-	syscall_number_filter[SYS_mkdir] = true;
-	syscall_number_filter[SYS_newfstatat] = true;
-	syscall_number_filter[SYS_openat] = true;
-	syscall_number_filter[SYS_open] = true;
-	syscall_number_filter[SYS_pread64] = true;
-	syscall_number_filter[SYS_pwrite64] = true;
-	syscall_number_filter[SYS_read] = true;
-	syscall_number_filter[SYS_readlinkat] = true;
-	syscall_number_filter[SYS_readlink] = true;
-	syscall_number_filter[SYS_renameat2] = true;
-	syscall_number_filter[SYS_renameat] = true;
-	syscall_number_filter[SYS_rename] = true;
-	syscall_number_filter[SYS_rmdir] = true;
-	syscall_number_filter[SYS_setxattr] = true;
-	syscall_number_filter[SYS_stat] = true;
-	syscall_number_filter[SYS_symlinkat] = true;
-	syscall_number_filter[SYS_symlink] = true;
-	syscall_number_filter[SYS_syncfs] = true;
-	syscall_number_filter[SYS_truncate] = true;
-	syscall_number_filter[SYS_unlinkat] = true;
-	syscall_number_filter[SYS_unlink] = true;
-	syscall_number_filter[SYS_write] = true;
-
-	/* Syscalls not handled yet */
-	syscall_number_filter[SYS_chroot] = true;
-	syscall_number_filter[SYS_copy_file_range] = true;
-	syscall_number_filter[SYS_dup2] = true;
-	syscall_number_filter[SYS_dup3] = true;
-	syscall_number_filter[SYS_dup] = true;
-	syscall_number_filter[SYS_execveat] = true;
-	syscall_number_filter[SYS_execve] = true;
-	syscall_number_filter[SYS_flistxattr] = true;
-	syscall_number_filter[SYS_fremovexattr] = true;
-	syscall_number_filter[SYS_futimesat] = true;
-	syscall_number_filter[SYS_listxattr] = true;
-	syscall_number_filter[SYS_llistxattr] = true;
-	syscall_number_filter[SYS_lremovexattr] = true;
-	syscall_number_filter[SYS_mmap] = true;
-	syscall_number_filter[SYS_name_to_handle_at] = true;
-	/* No handle can come from pmemfile, so just forward this to kernel */
-	syscall_number_filter[SYS_open_by_handle_at] = false;
-	syscall_number_filter[SYS_preadv2] = true;
-	syscall_number_filter[SYS_pwritev2] = true;
-	syscall_number_filter[SYS_readahead] = true;
-	syscall_number_filter[SYS_readv] = true;
-	syscall_number_filter[SYS_removexattr] = true;
-	syscall_number_filter[SYS_sendfile] = true;
-	syscall_number_filter[SYS_splice] = true;
-	syscall_number_filter[SYS_utimensat] = true;
-	syscall_number_filter[SYS_utimes] = true;
-	syscall_number_filter[SYS_utime] = true;
-	syscall_number_filter[SYS_writev] = true;
-
-	syscall_needs_fd_rlock[SYS_faccessat] = true;
-	syscall_needs_fd_rlock[SYS_fadvise64] = true;
-	syscall_needs_fd_rlock[SYS_fallocate] = true;
-	syscall_needs_fd_rlock[SYS_fchmodat] = true;
-	syscall_needs_fd_rlock[SYS_fchmod] = true;
-	syscall_needs_fd_rlock[SYS_fchownat] = true;
-	syscall_needs_fd_rlock[SYS_fchown] = true;
-	syscall_needs_fd_rlock[SYS_fcntl] = true;
-	syscall_needs_fd_rlock[SYS_fdatasync] = true;
-	syscall_needs_fd_rlock[SYS_fgetxattr] = true;
-	syscall_needs_fd_rlock[SYS_fremovexattr] = true;
-	syscall_needs_fd_rlock[SYS_flock] = true;
-	syscall_needs_fd_rlock[SYS_fsetxattr] = true;
-	syscall_needs_fd_rlock[SYS_flistxattr] = true;
-	syscall_needs_fd_rlock[SYS_fstat] = true;
-	syscall_needs_fd_rlock[SYS_fsync] = true;
-	syscall_needs_fd_rlock[SYS_ftruncate] = true;
-	syscall_needs_fd_rlock[SYS_getdents64] = true;
-	syscall_needs_fd_rlock[SYS_getdents64] = true;
-	syscall_needs_fd_rlock[SYS_getdents] = true;
-	syscall_needs_fd_rlock[SYS_getdents] = true;
-	syscall_needs_fd_rlock[SYS_linkat] = true;
-	syscall_needs_fd_rlock[SYS_lseek] = true;
-	syscall_needs_fd_rlock[SYS_mkdirat] = true;
-	syscall_needs_fd_rlock[SYS_newfstatat] = true;
-	syscall_needs_fd_rlock[SYS_pread64] = true;
-	syscall_needs_fd_rlock[SYS_preadv2] = true;
-	syscall_needs_fd_rlock[SYS_pwrite64] = true;
-	syscall_needs_fd_rlock[SYS_pwritev2] = true;
-	syscall_needs_fd_rlock[SYS_readlinkat] = true;
-	syscall_needs_fd_rlock[SYS_read] = true;
-	syscall_needs_fd_rlock[SYS_readahead] = true;
-	syscall_needs_fd_rlock[SYS_readv] = true;
-	syscall_needs_fd_rlock[SYS_renameat2] = true;
-	syscall_needs_fd_rlock[SYS_renameat] = true;
-	syscall_needs_fd_rlock[SYS_sendfile] = true;
-	syscall_needs_fd_rlock[SYS_symlinkat] = true;
-	syscall_needs_fd_rlock[SYS_syncfs] = true;
-	syscall_needs_fd_rlock[SYS_unlinkat] = true;
-	syscall_needs_fd_rlock[SYS_write] = true;
-	syscall_needs_fd_rlock[SYS_writev] = true;
-	syscall_needs_fd_rlock[SYS_mmap] = true;
-	syscall_needs_fd_rlock[SYS_dup] = true;
-	syscall_needs_fd_rlock[SYS_dup2] = true;
-	syscall_needs_fd_rlock[SYS_dup3] = true;
-	syscall_needs_fd_rlock[SYS_futimesat] = true;
-
-	syscall_needs_fd_wlock[SYS_close] = true;
-	syscall_needs_fd_wlock[SYS_openat] = true;
-	syscall_needs_fd_wlock[SYS_open] = true;
-
-	syscall_needs_pmem_cwd_rlock[SYS_access] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_chmod] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_chown] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_chroot] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_execve] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_execveat] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_faccessat] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_fchmodat] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_fchownat] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_getxattr] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_lchown] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_lgetxattr] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_linkat] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_link] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_listxattr] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_llistxattr] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_lremovexattr] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_lsetxattr] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_lstat] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_mkdirat] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_mkdir] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_newfstatat] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_openat] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_open] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_readlink] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_readlinkat] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_removexattr] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_renameat2] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_renameat] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_rename] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_rmdir] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_setxattr] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_stat] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_symlinkat] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_symlink] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_syncfs] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_truncate] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_unlinkat] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_unlink] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_utime] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_utimes] = true;
-	syscall_needs_pmem_cwd_rlock[SYS_futimesat] = true;
-
-	syscall_has_fd_first_arg[SYS_close] = true;
-	syscall_has_fd_first_arg[SYS_dup2] = true;
-	syscall_has_fd_first_arg[SYS_dup3] = true;
-	syscall_has_fd_first_arg[SYS_dup] = true;
-	syscall_has_fd_first_arg[SYS_fadvise64] = true;
-	syscall_has_fd_first_arg[SYS_fallocate] = true;
-	syscall_has_fd_first_arg[SYS_fchmod] = true;
-	syscall_has_fd_first_arg[SYS_fchown] = true;
-	syscall_has_fd_first_arg[SYS_fcntl] = true;
-	syscall_has_fd_first_arg[SYS_fdatasync] = true;
-	syscall_has_fd_first_arg[SYS_fgetxattr] = true;
-	syscall_has_fd_first_arg[SYS_flistxattr] = true;
-	syscall_has_fd_first_arg[SYS_flock] = true;
-	syscall_has_fd_first_arg[SYS_fremovexattr] = true;
-	syscall_has_fd_first_arg[SYS_fsetxattr] = true;
-	syscall_has_fd_first_arg[SYS_fstat] = true;
-	syscall_has_fd_first_arg[SYS_fsync] = true;
-	syscall_has_fd_first_arg[SYS_ftruncate] = true;
-	syscall_has_fd_first_arg[SYS_getdents64] = true;
-	syscall_has_fd_first_arg[SYS_getdents] = true;
-	syscall_has_fd_first_arg[SYS_lseek] = true;
-	syscall_has_fd_first_arg[SYS_pread64] = true;
-	syscall_has_fd_first_arg[SYS_preadv2] = true;
-	syscall_has_fd_first_arg[SYS_pwrite64] = true;
-	syscall_has_fd_first_arg[SYS_pwritev2] = true;
-	syscall_has_fd_first_arg[SYS_readahead] = true;
-	syscall_has_fd_first_arg[SYS_readv] = true;
-	syscall_has_fd_first_arg[SYS_read] = true;
-	syscall_has_fd_first_arg[SYS_syncfs] = true;
-	syscall_has_fd_first_arg[SYS_writev] = true;
-	syscall_has_fd_first_arg[SYS_write] = true;
-
 	/*
 	 * Install the callback to be calleb by the syscall intercepting library
 	 */
@@ -1054,25 +836,25 @@ hook(long syscall_number,
 		return HOOKED;
 	}
 
-	/* XXX: move this filtering to the intercepting library */
-	if (syscall_number < 0 ||
-	    (uint64_t)syscall_number >= ARRAY_SIZE(syscall_number_filter) ||
-	    !syscall_number_filter[syscall_number]) {
+	struct syscall_early_filter_entry filter_entry;
+	filter_entry = get_early_filter_entry(syscall_number);
+
+	if (!filter_entry.must_handle) {
 		reenter = false;
 		return NOT_HOOKED;
 	}
 
 	int is_hooked;
 
-	if (syscall_needs_pmem_cwd_rlock[syscall_number])
+	if (filter_entry.cwd_rlock)
 		util_rwlock_rdlock(&pmem_cwd_lock);
 
-	if (syscall_needs_fd_rlock[syscall_number])
+	if (filter_entry.fd_rlock)
 		util_rwlock_rdlock(&fd_table_lock);
-	else if (syscall_needs_fd_wlock[syscall_number])
+	else if (filter_entry.fd_wlock)
 		util_rwlock_wrlock(&fd_table_lock);
 
-	if (syscall_has_fd_first_arg[syscall_number] &&
+	if (filter_entry.fd_first_arg &&
 	    !is_fd_in_table(arg0)) {
 		/*
 		 * shortcut for write, read, and such so this check doesn't
@@ -1085,12 +867,10 @@ hook(long syscall_number,
 		    arg0, arg1, arg2, arg3, arg4, arg5);
 	}
 
-
-	if (syscall_needs_fd_rlock[syscall_number] ||
-	    syscall_needs_fd_wlock[syscall_number])
+	if (filter_entry.fd_rlock || filter_entry.fd_wlock)
 		util_rwlock_unlock(&fd_table_lock);
 
-	if (syscall_needs_pmem_cwd_rlock[syscall_number])
+	if (filter_entry.cwd_rlock)
 		util_rwlock_unlock(&pmem_cwd_lock);
 
 	reenter = false;

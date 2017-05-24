@@ -34,14 +34,13 @@
 
 #include "libpmemfile-posix.h"
 #include "compiler_utils.h"
+#include "internal.h"
 
 #include <dirent.h>
 #include <fcntl.h>
 #include <linux/fs.h>
 #include <sys/mman.h>
 #include <unistd.h>
-
-extern void verify_consts(void);
 
 #define VERIFY(f) COMPILE_ERROR_ON(PMEMFILE_##f != f);
 

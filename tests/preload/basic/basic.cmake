@@ -52,6 +52,8 @@ if(res)
         message(FATAL_ERROR "Test1 command failed: ${res}")
 endif()
 
+unset(ENV{LD_PRELOAD})
+
 pf_cat(${DIR}/fs /a ${DIR}/a.dump)
 
 cmp(${DIR}/a.dump ${SRC_DIR}/a.expected_dump)

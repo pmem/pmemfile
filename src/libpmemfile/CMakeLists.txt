@@ -29,7 +29,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-set(SOURCES path_resolve.c preload.c)
+set(SOURCES path_resolve.c preload.c syscall_early_filter.c)
 
 if("${CMAKE_C_COMPILER_ID}" MATCHES "Clang")
 	add_c_flag(-Wno-missing-field-initializers)

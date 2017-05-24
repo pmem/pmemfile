@@ -62,6 +62,7 @@ static struct syscall_early_filter_entry filter_table[] = {
 		.must_handle = true,
 		.fd_first_arg = true,
 		.fd_rlock = true,
+		.returns_zero = true,
 	},
 	[SYS_fallocate] = {
 		.must_handle = true,
@@ -97,11 +98,13 @@ static struct syscall_early_filter_entry filter_table[] = {
 		.must_handle = true,
 		.fd_first_arg = true,
 		.fd_rlock = true,
+		.returns_zero = true,
 	},
 	[SYS_fgetxattr] = {
 		.must_handle = true,
 		.fd_first_arg = true,
 		.fd_rlock = true,
+		.returns_zero = true,
 	},
 	[SYS_flock] = {
 		.must_handle = true,
@@ -112,6 +115,7 @@ static struct syscall_early_filter_entry filter_table[] = {
 		.must_handle = true,
 		.fd_first_arg = true,
 		.fd_rlock = true,
+		.returns_ENOTSUP = true,
 	},
 	[SYS_fstat] = {
 		.must_handle = true,
@@ -122,6 +126,7 @@ static struct syscall_early_filter_entry filter_table[] = {
 		.must_handle = true,
 		.fd_first_arg = true,
 		.fd_rlock = true,
+		.returns_zero = true,
 	},
 	[SYS_ftruncate] = {
 		.must_handle = true,
@@ -260,6 +265,7 @@ static struct syscall_early_filter_entry filter_table[] = {
 		.fd_first_arg = true,
 		.cwd_rlock = true,
 		.fd_rlock = true,
+		.returns_zero = true,
 	},
 	[SYS_truncate] = {
 		.must_handle = true,
@@ -292,16 +298,19 @@ static struct syscall_early_filter_entry filter_table[] = {
 		.must_handle = true,
 		.fd_first_arg = true,
 		.fd_rlock = true,
+		.returns_ENOTSUP = true,
 	},
 	[SYS_dup3] = {
 		.must_handle = true,
 		.fd_first_arg = true,
 		.fd_rlock = true,
+		.returns_ENOTSUP = true,
 	},
 	[SYS_dup] = {
 		.must_handle = true,
 		.fd_first_arg = true,
 		.fd_rlock = true,
+		.returns_ENOTSUP = true,
 	},
 	[SYS_execveat] = {
 		.must_handle = true,
@@ -315,11 +324,13 @@ static struct syscall_early_filter_entry filter_table[] = {
 		.must_handle = true,
 		.fd_first_arg = true,
 		.fd_rlock = true,
+		.returns_ENOTSUP = true,
 	},
 	[SYS_fremovexattr] = {
 		.must_handle = true,
 		.fd_first_arg = true,
 		.fd_rlock = true,
+		.returns_ENOTSUP = true,
 	},
 	[SYS_futimesat] = {
 		.must_handle = true,
@@ -350,21 +361,25 @@ static struct syscall_early_filter_entry filter_table[] = {
 		.must_handle = true,
 		.fd_first_arg = true,
 		.fd_rlock = true,
+		.returns_ENOTSUP = true,
 	},
 	[SYS_pwritev2] = {
 		.must_handle = true,
 		.fd_first_arg = true,
 		.fd_rlock = true,
+		.returns_ENOTSUP = true,
 	},
 	[SYS_readahead] = {
 		.must_handle = true,
 		.fd_first_arg = true,
 		.fd_rlock = true,
+		.returns_ENOTSUP = true,
 	},
 	[SYS_readv] = {
 		.must_handle = true,
 		.fd_first_arg = true,
 		.fd_rlock = true,
+		.returns_ENOTSUP = true,
 	},
 	[SYS_removexattr] = {
 		.must_handle = true,
@@ -392,6 +407,7 @@ static struct syscall_early_filter_entry filter_table[] = {
 		.must_handle = true,
 		.fd_first_arg = true,
 		.fd_rlock = true,
+		.returns_ENOTSUP = true,
 	},
 };
 

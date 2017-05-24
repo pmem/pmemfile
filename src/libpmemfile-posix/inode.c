@@ -413,9 +413,9 @@ inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 void
 vinode_rdlock2(struct pmemfile_vinode *v1, struct pmemfile_vinode *v2)
 {
-	if (v1 == v2)
+	if (v1 == v2) {
 		os_rwlock_rdlock(&v2->rwlock);
-	else if ((uintptr_t)v1 < (uintptr_t)v2) {
+	} else if ((uintptr_t)v1 < (uintptr_t)v2) {
 		os_rwlock_rdlock(&v1->rwlock);
 		os_rwlock_rdlock(&v2->rwlock);
 	} else {
@@ -431,9 +431,9 @@ vinode_rdlock2(struct pmemfile_vinode *v1, struct pmemfile_vinode *v2)
 void
 vinode_wrlock2(struct pmemfile_vinode *v1, struct pmemfile_vinode *v2)
 {
-	if (v1 == v2)
+	if (v1 == v2) {
 		os_rwlock_wrlock(&v2->rwlock);
-	else if ((uintptr_t)v1 < (uintptr_t)v2) {
+	} else if ((uintptr_t)v1 < (uintptr_t)v2) {
 		os_rwlock_wrlock(&v1->rwlock);
 		os_rwlock_wrlock(&v2->rwlock);
 	} else {
@@ -594,8 +594,9 @@ vinode_stat(struct pmemfile_vinode *vinode, pmemfile_stat_t *buf)
 		blks = (pmemfile_blkcnt_t)((sz + 511) / 512);
 	} else if (inode_is_symlink(inode)) {
 		blks = 0;
-	} else
+	} else {
 		ASSERT(0);
+	}
 	buf->st_blocks = blks;
 	buf->st_atim = pmemfile_time_to_timespec(&inode->atime);
 	buf->st_ctim = pmemfile_time_to_timespec(&inode->ctime);

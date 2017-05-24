@@ -462,8 +462,7 @@ end:
 	if (error) {
 		if (vinode != NULL)
 			vinode_unref(pfp, vinode);
-		if (file)
-			free(file);
+		free(file);
 
 		errno = error;
 		LOG(LDBG, "!");

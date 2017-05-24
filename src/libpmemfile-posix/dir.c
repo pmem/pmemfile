@@ -1013,8 +1013,7 @@ path_info_cleanup(PMEMfilepool *pfp, struct pmemfile_path_info *path_info)
 {
 	if (path_info->parent)
 		vinode_unref(pfp, path_info->parent);
-	if (path_info->remaining)
-		free(path_info->remaining);
+	free(path_info->remaining);
 	memset(path_info, 0, sizeof(*path_info));
 }
 

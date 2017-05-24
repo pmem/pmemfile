@@ -12,7 +12,7 @@ It consists of 2 major compoments:
 # How to build #
 
 Requirements:
-- cmake >= 3.3 (XXX: can we build with older versions?)
+- cmake >= 3.3
 - libpmemobj-dev(el) >= 1.2 (http://pmem.io/nvml/)
 - libsyscall_intercept-dev(el) (https://github.com/pmem/syscall_intercept)
 

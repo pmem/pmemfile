@@ -147,6 +147,7 @@ pmfi_strndup(const char *c, size_t len)
 	return cp;
 }
 
+#ifdef DEBUG
 /*
  * pmfi_path -- returns one of the full paths inode can be reached on
  *
@@ -155,13 +156,10 @@ pmfi_strndup(const char *c, size_t len)
 const char *
 pmfi_path(struct pmemfile_vinode *vinode)
 {
-#ifdef DEBUG
 	if (!vinode)
 		return NULL;
 	if (!vinode->path)
 		LOG(LTRC, "0x%lx: no vinode->path", vinode->tinode.oid.off);
 	return vinode->path;
-#else
-	return NULL;
-#endif
 }
+#endif

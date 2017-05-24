@@ -47,6 +47,14 @@ size_t component_length(const char *path);
 
 char *pmfi_strndup(const char *c, size_t len);
 
+#ifdef DEBUG
 const char *pmfi_path(struct pmemfile_vinode *vinode);
+#else
+static inline const char *pmfi_path(struct pmemfile_vinode *vinode)
+{
+	(void) vinode;
+	return NULL;
+}
+#endif
 
 #endif

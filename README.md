@@ -11,7 +11,7 @@ It consists of 2 major compoments:
 Requirements:
 - cmake >= 3.3 (XXX: can we build with older versions?)
 - libpmemobj-dev(el) >= 1.2 (http://pmem.io/nvml/)
-- libsyscall_intercept-dev(el) (https://github.com/GBuella/syscall_intercept)
+- libsyscall_intercept-dev(el) (https://github.com/pmem/syscall_intercept)
 
 ```sh
 $ mkdir build

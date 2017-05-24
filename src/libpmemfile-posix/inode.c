@@ -271,7 +271,7 @@ inode_alloc(PMEMfilepool *pfp, struct pmemfile_cred *cred, uint64_t flags)
 }
 
 /*
- * vinode_orphan -- register specified inode in orphaned_inodes array
+ * vinode_orphan_unlocked -- register specified inode in orphaned_inodes array
  *
  * Must be called in a transaction.
  *

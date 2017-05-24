@@ -36,18 +36,99 @@
 #include <stdbool.h>
 #include <sys/syscall.h>
 
+/*
+ * Some flags controlling syscall handling at a high level.
+ * These flags are contained in a table, and contain information that
+ * depend on the syscall number of syscall to handled, and can be used before
+ * parsing any arguments of a syscall (thus called "early").
+ * The most important aspect to remember is: "before parsing any arguments of
+ * a syscall". Which really just means "syscall specific parsing...", as the
+ * usage of the returns_zero and the returns_ENOTSUP flags depend on
+ * an fd -- see below.
+ *
+ *
+ * As of this writing, this is only used in the preload.c source file.
+ * Please see the function called hook in preload.c
+ */
 struct syscall_early_filter_entry {
+	/* Might this be pmemfile related, or can this syscall be ignored? */
 	bool must_handle;
+
+	/* Flags to signal the need for locking the fd association table. */
 	bool fd_rlock;
 	bool fd_wlock;
+
+	/*
+	 * In the case some syscalls, an argument containing a path must
+	 * be parsed. The cwd_rlock flag signal the need for locking the
+	 * reference to the current working directory for reading, which
+	 * should not be modified while doing a path resolution.
+	 *
+	 * XXX lock only when relative paths are used.
+	 * This of course isn't really needed when parsing an absolute path,
+	 * as the CWD is not relevant in that case.
+	 */
 	bool cwd_rlock;
+
+	/*
+	 * The fd_first_arg flag marks syscalls, which accept a file descriptor
+	 * as their first argument. This allows libpmemfile to easily isolate
+	 * the process of checking the first argument, and making a decision
+	 * based on that fd being associated with pmemfile-posix or not.
+	 *
+	 * But:
+	 * Only those which operate on the file specified by this fd. The *_at
+	 * syscalls usually also accept an fd as a first argument, but those
+	 * directory references must be processed in a different way.
+	 */
 	bool fd_first_arg;
+
+	/*
+	 * The returns_zero flag marks syscalls which operate on a file
+	 * descriptor, and just return zero whenever that fd is associated
+	 * with a pmemfile-posix handled file. This allows an easy
+	 * implementation of some effectively NOP syscalls, e.g.:
+	 * The syncfs syscall can always be considered successfull when
+	 * called with an fd referring to a pmemfile resident file -- thus
+	 * libpmemfile can return zero (indicating success), without parsing
+	 * any of the syscall arguments.
+	 *
+	 * Important: this only has meaning once it is known, that the syscall
+	 * attempts to operate on a pmemfile handled file (kernel handled file
+	 * descriptors of course should be forwarded to the kernel). Thus,
+	 * it is not strictly true, that it allows libpmemfile to make a
+	 * decision before parsing any of the arguments.
+	 * Still, this logic can be shared between multiple syscalls, thus
+	 * it can still be considered "early" filtering -- filtering before
+	 * parsing the other arguments specific to the syscall.
+	 *
+	 * This implies, that returns_zero can only be set when the
+	 * fd_first_arg flag is also set (this covers common cases, where
+	 * the first argument is an fd, and zero can be returned).
+	 */
 	bool returns_zero;
+
+	/*
+	 * The idea behind the returns_ENOTSUP flag is the exactlye the same
+	 * as in the case of the returns_zero flag (except for the return
+	 * value). E.g. as long as writev is not implemented for pmemfile
+	 * handled files, the libpmemfile library can return ENOTSUP for a
+	 * writev syscalls.
+	 */
 	bool returns_ENOTSUP;
 };
 
+/*
+ * syscall_early_filter_init -- must be called before any call
+ * to get_early_filter_entry.
+ */
 void syscall_early_filter_init(void);
 
+/*
+ * get_early_filter_entry -- returns a filter entry with flags corresponging
+ * to the syscall number. When called with an invalid syscall number (e.g. -1),
+ * all returned flags are set to false.
+ */
 struct syscall_early_filter_entry get_early_filter_entry(long syscall_number);
 
 /*

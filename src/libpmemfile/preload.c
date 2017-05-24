@@ -372,6 +372,8 @@ init_hooking(void)
 	syscall_number_filter[SYS_writev] = true;
 
 	syscall_needs_fd_rlock[SYS_faccessat] = true;
+	syscall_needs_fd_rlock[SYS_fadvise64] = true;
+	syscall_needs_fd_rlock[SYS_fallocate] = true;
 	syscall_needs_fd_rlock[SYS_fchmodat] = true;
 	syscall_needs_fd_rlock[SYS_fchmod] = true;
 	syscall_needs_fd_rlock[SYS_fchownat] = true;
@@ -379,8 +381,10 @@ init_hooking(void)
 	syscall_needs_fd_rlock[SYS_fcntl] = true;
 	syscall_needs_fd_rlock[SYS_fdatasync] = true;
 	syscall_needs_fd_rlock[SYS_fgetxattr] = true;
+	syscall_needs_fd_rlock[SYS_fremovexattr] = true;
 	syscall_needs_fd_rlock[SYS_flock] = true;
 	syscall_needs_fd_rlock[SYS_fsetxattr] = true;
+	syscall_needs_fd_rlock[SYS_flistxattr] = true;
 	syscall_needs_fd_rlock[SYS_fstat] = true;
 	syscall_needs_fd_rlock[SYS_fsync] = true;
 	syscall_needs_fd_rlock[SYS_ftruncate] = true;
@@ -393,9 +397,13 @@ init_hooking(void)
 	syscall_needs_fd_rlock[SYS_mkdirat] = true;
 	syscall_needs_fd_rlock[SYS_newfstatat] = true;
 	syscall_needs_fd_rlock[SYS_pread64] = true;
+	syscall_needs_fd_rlock[SYS_preadv2] = true;
 	syscall_needs_fd_rlock[SYS_pwrite64] = true;
+	syscall_needs_fd_rlock[SYS_pwritev2] = true;
 	syscall_needs_fd_rlock[SYS_readlinkat] = true;
 	syscall_needs_fd_rlock[SYS_read] = true;
+	syscall_needs_fd_rlock[SYS_readahead] = true;
+	syscall_needs_fd_rlock[SYS_readv] = true;
 	syscall_needs_fd_rlock[SYS_renameat2] = true;
 	syscall_needs_fd_rlock[SYS_renameat] = true;
 	syscall_needs_fd_rlock[SYS_sendfile] = true;
@@ -403,6 +411,12 @@ init_hooking(void)
 	syscall_needs_fd_rlock[SYS_syncfs] = true;
 	syscall_needs_fd_rlock[SYS_unlinkat] = true;
 	syscall_needs_fd_rlock[SYS_write] = true;
+	syscall_needs_fd_rlock[SYS_writev] = true;
+	syscall_needs_fd_rlock[SYS_mmap] = true;
+	syscall_needs_fd_rlock[SYS_dup] = true;
+	syscall_needs_fd_rlock[SYS_dup2] = true;
+	syscall_needs_fd_rlock[SYS_dup3] = true;
+	syscall_needs_fd_rlock[SYS_futimesat] = true;
 
 	syscall_needs_fd_wlock[SYS_close] = true;
 	syscall_needs_fd_wlock[SYS_openat] = true;
@@ -411,6 +425,9 @@ init_hooking(void)
 	syscall_needs_pmem_cwd_rlock[SYS_access] = true;
 	syscall_needs_pmem_cwd_rlock[SYS_chmod] = true;
 	syscall_needs_pmem_cwd_rlock[SYS_chown] = true;
+	syscall_needs_pmem_cwd_rlock[SYS_chroot] = true;
+	syscall_needs_pmem_cwd_rlock[SYS_execve] = true;
+	syscall_needs_pmem_cwd_rlock[SYS_execveat] = true;
 	syscall_needs_pmem_cwd_rlock[SYS_faccessat] = true;
 	syscall_needs_pmem_cwd_rlock[SYS_fchmodat] = true;
 	syscall_needs_pmem_cwd_rlock[SYS_fchownat] = true;
@@ -419,6 +436,9 @@ init_hooking(void)
 	syscall_needs_pmem_cwd_rlock[SYS_lgetxattr] = true;
 	syscall_needs_pmem_cwd_rlock[SYS_linkat] = true;
 	syscall_needs_pmem_cwd_rlock[SYS_link] = true;
+	syscall_needs_pmem_cwd_rlock[SYS_listxattr] = true;
+	syscall_needs_pmem_cwd_rlock[SYS_llistxattr] = true;
+	syscall_needs_pmem_cwd_rlock[SYS_lremovexattr] = true;
 	syscall_needs_pmem_cwd_rlock[SYS_lsetxattr] = true;
 	syscall_needs_pmem_cwd_rlock[SYS_lstat] = true;
 	syscall_needs_pmem_cwd_rlock[SYS_mkdirat] = true;
@@ -426,6 +446,9 @@ init_hooking(void)
 	syscall_needs_pmem_cwd_rlock[SYS_newfstatat] = true;
 	syscall_needs_pmem_cwd_rlock[SYS_openat] = true;
 	syscall_needs_pmem_cwd_rlock[SYS_open] = true;
+	syscall_needs_pmem_cwd_rlock[SYS_readlink] = true;
+	syscall_needs_pmem_cwd_rlock[SYS_readlinkat] = true;
+	syscall_needs_pmem_cwd_rlock[SYS_removexattr] = true;
 	syscall_needs_pmem_cwd_rlock[SYS_renameat2] = true;
 	syscall_needs_pmem_cwd_rlock[SYS_renameat] = true;
 	syscall_needs_pmem_cwd_rlock[SYS_rename] = true;
@@ -434,9 +457,13 @@ init_hooking(void)
 	syscall_needs_pmem_cwd_rlock[SYS_stat] = true;
 	syscall_needs_pmem_cwd_rlock[SYS_symlinkat] = true;
 	syscall_needs_pmem_cwd_rlock[SYS_symlink] = true;
+	syscall_needs_pmem_cwd_rlock[SYS_syncfs] = true;
 	syscall_needs_pmem_cwd_rlock[SYS_truncate] = true;
 	syscall_needs_pmem_cwd_rlock[SYS_unlinkat] = true;
 	syscall_needs_pmem_cwd_rlock[SYS_unlink] = true;
+	syscall_needs_pmem_cwd_rlock[SYS_utime] = true;
+	syscall_needs_pmem_cwd_rlock[SYS_utimes] = true;
+	syscall_needs_pmem_cwd_rlock[SYS_futimesat] = true;
 
 	syscall_has_fd_first_arg[SYS_close] = true;
 	syscall_has_fd_first_arg[SYS_dup2] = true;
@@ -459,7 +486,6 @@ init_hooking(void)
 	syscall_has_fd_first_arg[SYS_getdents64] = true;
 	syscall_has_fd_first_arg[SYS_getdents] = true;
 	syscall_has_fd_first_arg[SYS_lseek] = true;
-	syscall_has_fd_first_arg[SYS_mmap] = true;
 	syscall_has_fd_first_arg[SYS_pread64] = true;
 	syscall_has_fd_first_arg[SYS_preadv2] = true;
 	syscall_has_fd_first_arg[SYS_pwrite64] = true;
@@ -467,6 +493,7 @@ init_hooking(void)
 	syscall_has_fd_first_arg[SYS_readahead] = true;
 	syscall_has_fd_first_arg[SYS_readv] = true;
 	syscall_has_fd_first_arg[SYS_read] = true;
+	syscall_has_fd_first_arg[SYS_syncfs] = true;
 	syscall_has_fd_first_arg[SYS_writev] = true;
 	syscall_has_fd_first_arg[SYS_write] = true;
 

@@ -306,8 +306,7 @@ pmemfile_pool_close(PMEMfilepool *pfp)
 {
 	LOG(LDBG, "pfp %p", pfp);
 
-	if (pfp->cred.groups)
-		free(pfp->cred.groups);
+	free(pfp->cred.groups);
 
 	vinode_unref(pfp, pfp->cwd);
 	vinode_unref(pfp, pfp->root);

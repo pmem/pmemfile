@@ -656,23 +656,8 @@ dispatch_syscall(long syscall_number,
 		return hook_setxattr(arg0, arg1, arg2, arg3, arg4,
 		    NO_RESOLVE_LAST_SLINK);
 
-	case SYS_fgetxattr:
-		return 0;
-
-	case SYS_fsetxattr:
-		return check_errno(-ENOTSUP);
-
 	case SYS_fcntl:
 		return hook_fcntl(arg0, (int)arg1, arg2);
-
-	case SYS_syncfs:
-		return 0;
-
-	case SYS_fdatasync:
-		return 0;
-
-	case SYS_fsync:
-		return 0;
 
 	case SYS_flock:
 		return hook_flock(arg0, (int)arg1);
@@ -721,21 +706,6 @@ dispatch_syscall(long syscall_number,
 	case SYS_fallocate:
 		return hook_fallocate(arg0, (int)arg1,
 					(off_t)arg2, (off_t)arg3);
-
-	case SYS_fadvise64:
-		return 0;
-
-	case SYS_readv:
-	case SYS_writev:
-	case SYS_dup:
-	case SYS_dup2:
-	case SYS_dup3:
-	case SYS_flistxattr:
-	case SYS_fremovexattr:
-	case SYS_preadv2:
-	case SYS_pwritev2:
-	case SYS_readahead:
-		return check_errno(-ENOTSUP);
 
 	case SYS_sendfile:
 		return hook_sendfile(arg0, arg1, (off_t *)arg2, (size_t)arg3);
@@ -863,8 +833,13 @@ hook(long syscall_number,
 		is_hooked = NOT_HOOKED;
 	} else {
 		is_hooked = HOOKED;
-		*syscall_return_value = dispatch_syscall(syscall_number,
-		    arg0, arg1, arg2, arg3, arg4, arg5);
+		if (filter_entry.returns_zero)
+			*syscall_return_value = 0;
+		else if (filter_entry.returns_ENOTSUP)
+			*syscall_return_value = check_errno(-ENOTSUP);
+		else
+			*syscall_return_value = dispatch_syscall(syscall_number,
+			    arg0, arg1, arg2, arg3, arg4, arg5);
 	}
 
 	if (filter_entry.fd_rlock || filter_entry.fd_wlock)

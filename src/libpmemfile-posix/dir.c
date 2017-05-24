@@ -536,7 +536,10 @@ file_seek_dir(PMEMfile *file, struct pmemfile_dir **dir, unsigned *dirent)
 	struct pmemfile_inode *inode = file->vinode->inode;
 
 	if (file->offset == 0) {
-		*dir = &inode->file_data.dir;
+		file->dir_pos.dir = &inode->file_data.dir;
+		file->dir_pos.dir_id = 0;
+
+		*dir = file->dir_pos.dir;
 	} else if (DIR_ID(file->offset) == file->dir_pos.dir_id) {
 		*dir = file->dir_pos.dir;
 		if (*dir == NULL)

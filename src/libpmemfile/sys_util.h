@@ -38,6 +38,7 @@
 #define PMEMFILE_SYS_UTIL_H 1
 
 #include <errno.h>
+#include <string.h>
 #include <pthread.h>
 
 #include "libsyscall_intercept_hook_point.h"

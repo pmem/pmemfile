@@ -232,6 +232,32 @@ TEST_F(getdents, 2)
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
 }
 
+TEST_F(getdents, short_buffer)
+{
+	PMEMfile *f = pmemfile_open(pfp, "/",
+				    PMEMFILE_O_DIRECTORY | PMEMFILE_O_RDONLY);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+
+	char buf[50];
+	for (int i = 0; i < 20; ++i) {
+		sprintf(buf, "/file%d", i);
+		ASSERT_TRUE(test_pmemfile_create(pfp, buf, 0, 0644));
+	}
+
+	struct linux_dirent *dirents = (struct linux_dirent *)buf;
+
+	int r = pmemfile_getdents(pfp, f, dirents, sizeof(buf));
+	ASSERT_GT(r, 0);
+	dump_linux_dirents(buf, (unsigned)r);
+
+	for (int i = 0; i < 20; ++i) {
+		sprintf(buf, "/file%d", i);
+		ASSERT_EQ(pmemfile_unlink(pfp, buf), 0);
+	}
+
+	pmemfile_close(pfp, f);
+}
+
 int
 main(int argc, char *argv[])
 {

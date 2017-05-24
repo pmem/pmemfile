@@ -250,6 +250,10 @@ TEST_F(getdents, short_buffer)
 	ASSERT_GT(r, 0);
 	dump_linux_dirents(buf, (unsigned)r);
 
+	r = pmemfile_getdents(pfp, f, dirents, sizeof(buf));
+	ASSERT_GT(r, 0);
+	dump_linux_dirents(buf, (unsigned)r);
+
 	for (int i = 0; i < 20; ++i) {
 		sprintf(buf, "/file%d", i);
 		ASSERT_EQ(pmemfile_unlink(pfp, buf), 0);

@@ -725,6 +725,8 @@ static long hook_execveat(struct fd_desc at, const char *path,
 		char *const argv[], char *const envp[], int flags);
 static long hook_copy_file_range(long fd_in, loff_t *off_in, long fd_out,
 		loff_t *off_out, size_t len, unsigned flags);
+static long hook_mmap(long arg0, long arg1, long arg2,
+		long arg3, long fd, long arg5);
 
 static long
 dispatch_syscall(long syscall_number,
@@ -842,6 +844,9 @@ dispatch_syscall(long syscall_number,
 	case SYS_getdents64:
 		return hook_getdents64(arg0, arg1, (unsigned)arg2);
 
+	case SYS_mmap:
+		return hook_mmap(arg0, arg1, arg2, arg3, arg4, arg5);
+
 	/*
 	 * NOP implementations for the xattr family. None of these
 	 * actually call pmemfile-posix. Some of them do need path resolution,
@@ -932,7 +937,6 @@ dispatch_syscall(long syscall_number,
 	case SYS_fadvise64:
 		return 0;
 
-	case SYS_mmap:
 	case SYS_readv:
 	case SYS_writev:
 	case SYS_dup:
@@ -2102,4 +2106,15 @@ hook_fallocate(long fd, int mode, off_t offset, off_t len)
 	    (int64_t)offset, (int64_t)len, r);
 
 	return check_errno(r);
+}
+
+static long
+hook_mmap(long arg0, long arg1, long arg2,
+		long arg3, long fd, long arg5)
+{
+	if (is_fd_in_table(fd))
+		return check_errno(-ENOTSUP);
+
+	return syscall_no_intercept(SYS_mmap,
+	    arg0, arg1, arg2, arg3, fd, arg5);
 }

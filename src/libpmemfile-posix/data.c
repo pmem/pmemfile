@@ -186,29 +186,29 @@ is_block_data_initialized(const struct pmemfile_block_desc *block)
 }
 
 /*
- * find_block -- look up block metadata with the highest offset
+ * find_closest_block -- look up block metadata with the highest offset
  * lower than or equal to the offset argument
  */
 static struct pmemfile_block_desc *
-find_block(struct pmemfile_vinode *vinode, uint64_t off)
+find_closest_block(struct pmemfile_vinode *vinode, uint64_t off)
 {
 	return (void *)(uintptr_t)ctree_find_le(vinode->blocks, &off);
 }
 
 /*
- * find_block_with_hint -- look up block metadata with the highest offset
- * lower than or equal to the offset argument
+ * find_closest_block_with_hint -- look up block metadata with the highest
+ * offset lower than or equal to the offset argument
  *
  * using the proposed last_block
  */
 static struct pmemfile_block_desc *
-find_block_with_hint(struct pmemfile_vinode *vinode, uint64_t offset,
+find_closest_block_with_hint(struct pmemfile_vinode *vinode, uint64_t offset,
 		struct pmemfile_block_desc *last_block)
 {
 	if (is_offset_in_block(last_block, offset))
 		return last_block;
 
-	return find_block(vinode, offset);
+	return find_closest_block(vinode, offset);
 }
 
 /*
@@ -513,7 +513,7 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	 * the start of the requested interval.
 	 * This block does not necessarily intersect the interval.
 	 */
-	struct pmemfile_block_desc *block = find_block(vinode, offset);
+	struct pmemfile_block_desc *block = find_closest_block(vinode, offset);
 
 	/*
 	 * The following loop decreases the size of the interval to be
@@ -885,7 +885,7 @@ vinode_write(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, size_t offset,
 	/* All blocks needed for writing are properly allocated at this point */
 
 	struct pmemfile_block_desc *block =
-			find_block_with_hint(vinode, offset, *last_block);
+		find_closest_block_with_hint(vinode, offset, *last_block);
 
 	block = iterate_on_file_range(pfp, vinode, block, offset,
 			count, (char *)buf, write_to_blocks);
@@ -1171,7 +1171,7 @@ vinode_read(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, size_t offset,
 		count = size - offset;
 
 	struct pmemfile_block_desc *block =
-			find_block_with_hint(vinode, offset, *last_block);
+		find_closest_block_with_hint(vinode, offset, *last_block);
 
 	block = iterate_on_file_range(pfp, vinode, block, offset,
 			count, buf, read_from_blocks);
@@ -1453,7 +1453,7 @@ lseek_seek_data(struct pmemfile_vinode *vinode, pmemfile_off_t offset,
 	}
 
 	struct pmemfile_block_desc *block =
-			find_block(vinode, (uint64_t)offset);
+			find_closest_block(vinode, (uint64_t)offset);
 	if (block == NULL) {
 		/* offset is before the first block */
 		if (vinode->first_block == NULL)
@@ -1488,7 +1488,7 @@ lseek_seek_hole(struct pmemfile_vinode *vinode, pmemfile_off_t offset,
 	}
 
 	struct pmemfile_block_desc *block =
-			find_block(vinode, (uint64_t)offset);
+			find_closest_block(vinode, (uint64_t)offset);
 
 	while (block != NULL && offset < fsize) {
 		pmemfile_off_t block_end =
@@ -1768,7 +1768,7 @@ vinode_remove_interval(struct pmemfile_vinode *vinode,
 	ASSERT(len > 0);
 
 	struct pmemfile_block_desc *block =
-			find_block(vinode, offset + len - 1);
+			find_closest_block(vinode, offset + len - 1);
 
 	while (block != NULL && block->offset + block->size > offset) {
 		if (is_block_contained_by_interval(block, offset, len)) {

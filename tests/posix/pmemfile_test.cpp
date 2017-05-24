@@ -232,7 +232,8 @@ test_list_files(PMEMfilepool *pfp, const char *path)
 
 bool
 test_compare_dirs(const std::map<std::string, file_attrs> &files,
-		  const std::vector<pmemfile_ls> &expected, bool check_attrs)
+		  const std::vector<pmemfile_ls> &expected, bool check_attrs,
+		  bool check_dir_size)
 {
 	bool anyerr = false;
 	bool tmp;
@@ -247,7 +248,9 @@ test_compare_dirs(const std::map<std::string, file_attrs> &files,
 
 		VAL_EXPECT_EQ(c.mode, attrs.stat.st_mode);
 		VAL_EXPECT_EQ(c.nlink, attrs.stat.st_nlink);
-		VAL_EXPECT_EQ(c.size, attrs.stat.st_size);
+
+		if (!PMEMFILE_S_ISDIR(attrs.stat.st_mode) || check_dir_size)
+			VAL_EXPECT_EQ(c.size, attrs.stat.st_size);
 
 		if (c.link == NULL) {
 			MODE_EXPECT(PMEMFILE_S_ISLNK, attrs.stat.st_mode, 0);
@@ -275,12 +278,13 @@ test_compare_dirs(const std::map<std::string, file_attrs> &files,
 
 bool
 test_compare_dirs(PMEMfilepool *pfp, const char *path,
-		  const std::vector<pmemfile_ls> &expected, bool check_attrs)
+		  const std::vector<pmemfile_ls> &expected, bool check_attrs,
+		  bool check_dir_size)
 {
 	std::map<std::string, file_attrs> files = test_list_files(pfp, path);
 	if (files.empty())
 		return false;
-	return test_compare_dirs(files, expected, check_attrs);
+	return test_compare_dirs(files, expected, check_attrs, check_dir_size);
 }
 
 bool
@@ -289,7 +293,9 @@ test_empty_dir(PMEMfilepool *pfp, const char *path)
 	std::map<std::string, file_attrs> files = test_list_files(pfp, path);
 
 	return test_compare_dirs(
-		files, std::vector<pmemfile_ls>{
-			       {040777, 2, 4008, "."}, {040777, 2, 4008, ".."},
-		       });
+		files,
+		std::vector<pmemfile_ls>{
+			{040777, 2, 4008, "."}, {040777, 2, 4008, ".."},
+		},
+		false, false);
 }

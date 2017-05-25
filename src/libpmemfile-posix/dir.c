@@ -629,19 +629,28 @@ fill_dirent32(struct pmemfile_dirent *dirent, uint64_t next_off, unsigned left,
 		char *data)
 {
 	size_t namelen = strlen(dirent->name);
-	unsigned short slen =
-		(unsigned short) (8 + 8 + 2 + namelen + 1 + 1);
+	/* minimum size required */
+	unsigned short slen = (unsigned short)
+			(8 /* sizeof d_ino */ +
+			8 /* sizeof d_off */ +
+			2 /* sizeof d_reclen */ +
+			namelen + 1 /* strlen(d_name) + 1 */ +
+			1 /* sizeof d_type */);
+	/* add for the whole structure to be 8 bytes aligned */
 	unsigned short alignment = align_dirent_size(&slen);
 
 	if (slen > left)
 		return 0;
 
+	COMPILE_ERROR_ON(sizeof(dirent->inode.oid.off) != 8);
 	memcpy(data, &dirent->inode.oid.off, 8);
 	data += 8;
 
+	COMPILE_ERROR_ON(sizeof(next_off) != 8);
 	memcpy(data, &next_off, 8);
 	data += 8;
 
+	COMPILE_ERROR_ON(sizeof(slen) != 2);
 	memcpy(data, &slen, 2);
 	data += 2;
 
@@ -651,6 +660,7 @@ fill_dirent32(struct pmemfile_dirent *dirent, uint64_t next_off, unsigned left,
 	while (alignment--)
 		*data++ = 0;
 
+	COMPILE_ERROR_ON(sizeof(inode_type(D_RO(dirent->inode))) != 1);
 	*data++ = inode_type(D_RO(dirent->inode));
 
 	return slen;
@@ -664,26 +674,37 @@ fill_dirent64(struct pmemfile_dirent *dirent, uint64_t next_off, unsigned left,
 		char *data)
 {
 	size_t namelen = strlen(dirent->name);
-	unsigned short slen =
-		(unsigned short) (8 + 8 + 2 + 1 + namelen + 1);
+	/* minimum size required */
+	unsigned short slen = (unsigned short)
+			(8 /* sizeof d_ino */ +
+			8 /* sizeof d_off */ +
+			2 /* sizeof d_reclen */ +
+			1 /* sizeof d_type */ +
+			namelen + 1 /* strlen(d_name) + 1 */);
+	/* add for the whole structure to be 8 bytes aligned */
 	unsigned short alignment = align_dirent_size(&slen);
 
 	if (slen > left)
 		return 0;
 
+	COMPILE_ERROR_ON(sizeof(dirent->inode.oid.off) != 8);
 	memcpy(data, &dirent->inode.oid.off, 8);
 	data += 8;
 
+	COMPILE_ERROR_ON(sizeof(next_off) != 8);
 	memcpy(data, &next_off, 8);
 	data += 8;
 
+	COMPILE_ERROR_ON(sizeof(slen) != 2);
 	memcpy(data, &slen, 2);
 	data += 2;
 
+	COMPILE_ERROR_ON(sizeof(inode_type(D_RO(dirent->inode))) != 1);
 	*data++ = inode_type(D_RO(dirent->inode));
 
 	memcpy(data, dirent->name, namelen + 1);
 	data += namelen + 1;
+
 	while (alignment--)
 		*data++ = 0;
 

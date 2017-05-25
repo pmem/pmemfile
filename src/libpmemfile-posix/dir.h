@@ -33,8 +33,6 @@
 #define PMEMFILE_DIR_H
 
 #include "inode.h"
-#include "internal.h"
-#include "pool.h"
 
 /* path resolution information */
 struct pmemfile_path_info {
@@ -71,14 +69,6 @@ void resolve_symlink(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_path_info *info);
 
 void path_info_cleanup(PMEMfilepool *pfp, struct pmemfile_path_info *path_info);
-bool str_contains(const char *str, size_t len, char c);
-bool more_than_1_component(const char *path);
-size_t component_length(const char *path);
-
-TOID(struct pmemfile_inode) vinode_new_dir(PMEMfilepool *pfp,
-		struct pmemfile_vinode *parent, const char *name,
-		size_t namelen, struct pmemfile_cred *cred,
-		pmemfile_mode_t mode);
 
 void inode_add_dirent(PMEMfilepool *pfp,
 		TOID(struct pmemfile_inode) parent_tinode,
@@ -86,11 +76,6 @@ void inode_add_dirent(PMEMfilepool *pfp,
 		size_t namelen,
 		TOID(struct pmemfile_inode) child_tinode,
 		struct pmemfile_time tm);
-
-void vinode_update_parent(PMEMfilepool *pfp,
-		struct pmemfile_vinode *vinode,
-		struct pmemfile_vinode *src_parent,
-		struct pmemfile_vinode *dst_parent);
 
 void vinode_set_debug_path_locked(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent_vinode,
@@ -117,29 +102,11 @@ struct pmemfile_dirent_info vinode_lookup_vinode_by_name_locked(
 		struct pmemfile_vinode *parent, const char *name,
 		size_t namelen);
 
-void vinode_unlink_file(PMEMfilepool *pfp,
-		struct pmemfile_vinode *parent,
-		struct pmemfile_dirent *dirent,
-		struct pmemfile_vinode *vinode);
-
-void vinode_unlink_dir(PMEMfilepool *pfp,
-		struct pmemfile_vinode *vparent,
-		struct pmemfile_dirent *dirent,
-		struct pmemfile_vinode *vdir,
-		const char *path);
-
 struct pmemfile_vinode *pool_get_cwd(PMEMfilepool *pfp);
 struct pmemfile_vinode *pool_get_dir_for_path(PMEMfilepool *pfp, PMEMfile *dir,
 		const char *path, bool *unref);
 
-int _pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
-		const char *path);
-
-static inline size_t
-pmemfile_dir_size(TOID(struct pmemfile_dir) dir)
-{
-	return page_rounddown(pmemobj_alloc_usable_size(dir.oid));
-}
+size_t pmemfile_dir_size(TOID(struct pmemfile_dir) dir);
 
 int lock_parent_and_child(PMEMfilepool *pfp,
 		struct pmemfile_path_info *path,

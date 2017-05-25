@@ -30,34 +30,27 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PMEMFILE_UTILS_H
-#define PMEMFILE_UTILS_H
+/*
+ * copy_file_range.c -- pmemfile_copy_file_range implementation
+ */
 
-#include "inode.h"
-#include "layout.h"
+#include "internal.h"
+#include "libpmemfile-posix.h"
+#include "out.h"
 
-void get_current_time(struct pmemfile_time *t);
-
-bool is_zeroed(const void *addr, size_t len);
-
-int str_compare(const char *s1, const char *s2, size_t s2n);
-bool str_contains(const char *str, size_t len, char c);
-bool more_than_1_component(const char *path);
-size_t component_length(const char *path);
-
-char *pmfi_strndup(const char *c, size_t len);
-
-#ifdef DEBUG
-const char *pmfi_path(struct pmemfile_vinode *vinode);
-#else
-static inline const char *pmfi_path(struct pmemfile_vinode *vinode)
+pmemfile_ssize_t
+pmemfile_copy_file_range(PMEMfilepool *pfp,
+		PMEMfile *file_in, pmemfile_off_t *off_in,
+		PMEMfile *file_out, pmemfile_off_t *off_out,
+		size_t len, unsigned flags)
 {
-	(void) vinode;
-	return NULL;
+	(void) file_in;
+	(void) off_in;
+	(void) file_out;
+	(void) off_out;
+	(void) len;
+	(void) flags;
+
+	errno = ENOTSUP;
+	return -1;
 }
-#endif
-
-void expand_to_full_pages(uint64_t *offset, uint64_t *length);
-void narrow_to_full_pages(uint64_t *offset, uint64_t *length);
-
-#endif

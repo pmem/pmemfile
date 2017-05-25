@@ -41,8 +41,6 @@
 #include "layout.h"
 #include "os_thread.h"
 
-struct ctree;
-
 #define PFILE_READ (1ULL << 0)
 #define PFILE_WRITE (1ULL << 1)
 #define PFILE_NOATIME (1ULL << 2)
@@ -78,7 +76,5 @@ struct pmemfile_file {
 		unsigned dir_id;
 	} dir_pos;
 };
-
-const char *file_check_pathname(const char *pathname);
 
 #endif

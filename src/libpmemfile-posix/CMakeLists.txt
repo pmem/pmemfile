@@ -30,28 +30,53 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 set(SOURCES
+	access.c
 	block_array.c
 	callbacks.c
+	chdir.c
+	chmod.c
+	chown.c
 	consts.c
+	copy_file_range.c
+	creds.c
 	ctree.c
 	data.c
 	dir.c
+	fallocate.c
+	fcntl.c
 	file.c
+	flock.c
+	getdents.c
 	hash_map.c
 	inode.c
 	inode_array.c
+	link.c
 	locks.c
+	lseek.c
+	mkdir.c
+	mmap.c
 	os_thread_pthread.c
 	os_util_linux.c
 	out.c
 	pmemfile-posix.c
 	pool.c
-	stubs.c
+	read.c
+	readlink.c
+	rename.c
+	rmdir.c
+	stat.c
+	stats.c
+	symlink.c
+	timestamps.c
+	truncate.c
+	unlink.c
 	utils.c
+	write.c
 )
 
 set(HEADERS
 	callbacks.h
+	creds.h
 	ctree.h
 	data.h
 	dir.h
@@ -62,8 +87,12 @@ set(HEADERS
 	internal.h
 	layout.h
 	locks.h
+	mkdir.h
 	out.h
 	pool.h
+	rmdir.h
+	truncate.h
+	unlink.h
 	utils.h
 	valgrind_internal.h
 )

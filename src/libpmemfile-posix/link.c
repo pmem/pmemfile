@@ -76,11 +76,6 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 			error = src.error;
 			goto end;
 		}
-
-		if (strchr(src.remaining, '/')) {
-			error = ENOTDIR;
-			goto end;
-		}
 	}
 
 	if (vinode_is_dir(src_vinode)) {

@@ -32,7 +32,6 @@
 set(SOURCES
 	block_array.c
 	callbacks.c
-	consts.c
 	ctree.c
 	data.c
 	dir.c

@@ -68,10 +68,6 @@ unsigned _On_valgrind;
 pf_constructor void
 libpmemfile_posix_init(void)
 {
-	COMPILE_ERROR_ON(sizeof(struct pmemfile_super) != 4096);
-	COMPILE_ERROR_ON(sizeof(struct pmemfile_inode_array) != 4096);
-	COMPILE_ERROR_ON(sizeof(struct pmemfile_inode) != 4096);
-
 #ifdef ANY_VG_TOOL_ENABLED
 	_On_valgrind = RUNNING_ON_VALGRIND;
 #endif

@@ -29,35 +29,15 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef PMEMFILE_MKDIR_H
+#define PMEMFILE_MKDIR_H
 
-#ifndef PMEMFILE_UTILS_H
-#define PMEMFILE_UTILS_H
-
+#include "creds.h"
 #include "inode.h"
-#include "layout.h"
 
-void get_current_time(struct pmemfile_time *t);
-
-bool is_zeroed(const void *addr, size_t len);
-
-int str_compare(const char *s1, const char *s2, size_t s2n);
-bool str_contains(const char *str, size_t len, char c);
-bool more_than_1_component(const char *path);
-size_t component_length(const char *path);
-
-char *pmfi_strndup(const char *c, size_t len);
-
-#ifdef DEBUG
-const char *pmfi_path(struct pmemfile_vinode *vinode);
-#else
-static inline const char *pmfi_path(struct pmemfile_vinode *vinode)
-{
-	(void) vinode;
-	return NULL;
-}
-#endif
-
-void expand_to_full_pages(uint64_t *offset, uint64_t *length);
-void narrow_to_full_pages(uint64_t *offset, uint64_t *length);
+TOID(struct pmemfile_inode) vinode_new_dir(PMEMfilepool *pfp,
+		struct pmemfile_vinode *parent, const char *name,
+		size_t namelen, struct pmemfile_cred *cred,
+		pmemfile_mode_t mode);
 
 #endif

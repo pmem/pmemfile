@@ -31,140 +31,17 @@
  */
 
 /*
- * stubs.c -- placeholder routines for the functionality of
- * pmemfile that is not yet implemented.
- * All these set errno to ENOTSUP.
+ * timestamps.c -- pmemfile_*utime* implementation
  */
 
-#include <stddef.h>
-#include <errno.h>
-#include <stdlib.h>
-
+#include "internal.h"
 #include "libpmemfile-posix.h"
-
-static void
-check_pfp(PMEMfilepool *pfp)
-{
-	if (pfp == NULL)
-		abort();
-}
-
-static void
-check_pfp_file(PMEMfilepool *pfp, PMEMfile *file)
-{
-	check_pfp(pfp);
-
-	/* XXX: check that the PMEMfile* belongs to the pool */
-	if (file == NULL)
-		abort();
-}
-
-int
-pmemfile_flock(PMEMfilepool *pfp, PMEMfile *file, int operation)
-{
-	check_pfp_file(pfp, file);
-
-	(void) operation;
-
-	errno = ENOTSUP;
-	return -1;
-}
-
-PMEMfile *
-pmemfile_dup(PMEMfilepool *pfp, PMEMfile *file)
-{
-	check_pfp_file(pfp, file);
-
-	errno = ENOTSUP;
-	return NULL;
-}
-
-PMEMfile *
-pmemfile_dup2(PMEMfilepool *pfp, PMEMfile *file, PMEMfile *file2)
-{
-	check_pfp_file(pfp, file);
-	check_pfp_file(pfp, file2);
-
-	errno = ENOTSUP;
-	return NULL;
-}
-
-void *
-pmemfile_mmap(PMEMfilepool *pfp, void *addr, size_t len,
-		int prot, int flags, PMEMfile *file, pmemfile_off_t off)
-{
-	check_pfp_file(pfp, file);
-
-	(void) addr;
-	(void) len;
-	(void) prot;
-	(void) flags;
-	(void) off;
-
-	errno = ENOTSUP;
-	return PMEMFILE_MAP_FAILED;
-}
-
-int
-pmemfile_munmap(PMEMfilepool *pfp, void *addr, size_t len)
-{
-	check_pfp(pfp);
-
-	(void) addr;
-	(void) len;
-
-	errno = ENOTSUP;
-	return -1;
-}
-
-void *
-pmemfile_mremap(PMEMfilepool *pfp, void *old_addr, size_t old_size,
-			size_t new_size, int flags, void *new_addr)
-{
-	check_pfp(pfp);
-
-	(void) old_addr;
-	(void) new_addr;
-	(void) old_size;
-	(void) new_size;
-	(void) flags;
-
-	errno = ENOTSUP;
-	return PMEMFILE_MAP_FAILED;
-}
-
-int
-pmemfile_msync(PMEMfilepool *pfp, void *addr, size_t len, int flags)
-{
-	check_pfp(pfp);
-
-	(void) addr;
-	(void) len;
-	(void) flags;
-
-	errno = ENOTSUP;
-	return -1;
-}
-
-int
-pmemfile_mprotect(PMEMfilepool *pfp, void *addr, size_t len, int prot)
-{
-	check_pfp(pfp);
-
-	(void) addr;
-	(void) len;
-	(void) prot;
-
-	errno = ENOTSUP;
-	return -1;
-}
+#include "out.h"
 
 int
 pmemfile_utime(PMEMfilepool *pfp, const char *filename,
 		const pmemfile_utimbuf_t *times)
 {
-	check_pfp(pfp);
-
 	(void) filename;
 	(void) times;
 
@@ -176,8 +53,6 @@ int
 pmemfile_utimes(PMEMfilepool *pfp, const char *filename,
 		const pmemfile_timeval_t times[2])
 {
-	check_pfp(pfp);
-
 	(void) filename;
 	(void) times;
 
@@ -189,8 +64,6 @@ int
 pmemfile_futimes(PMEMfilepool *pfp, PMEMfile *file,
 		const pmemfile_timeval_t tv[2])
 {
-	check_pfp(pfp);
-
 	(void) file;
 	(void) tv;
 
@@ -202,8 +75,6 @@ int
 pmemfile_lutimes(PMEMfilepool *pfp, const char *filename,
 		const pmemfile_timeval_t tv[2])
 {
-	check_pfp(pfp);
-
 	(void) filename;
 	(void) tv;
 
@@ -215,8 +86,6 @@ int
 pmemfile_utimensat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 		const pmemfile_timespec_t times[2], int flags)
 {
-	check_pfp(pfp);
-
 	(void) dir;
 	(void) pathname;
 	(void) times;
@@ -230,39 +99,8 @@ int
 pmemfile_futimens(PMEMfilepool *pfp, PMEMfile *file,
 		const pmemfile_timespec_t times[2])
 {
-	check_pfp(pfp);
-
 	(void) file;
 	(void) times;
-
-	errno = ENOTSUP;
-	return -1;
-}
-
-pmemfile_mode_t
-pmemfile_umask(PMEMfilepool *pfp, pmemfile_mode_t mask)
-{
-	check_pfp(pfp);
-
-	(void) mask;
-
-	return 0;
-}
-
-pmemfile_ssize_t
-pmemfile_copy_file_range(PMEMfilepool *pfp,
-		PMEMfile *file_in, pmemfile_off_t *off_in,
-		PMEMfile *file_out, pmemfile_off_t *off_out,
-		size_t len, unsigned flags)
-{
-	check_pfp(pfp);
-
-	(void) file_in;
-	(void) off_in;
-	(void) file_out;
-	(void) off_out;
-	(void) len;
-	(void) flags;
 
 	errno = ENOTSUP;
 	return -1;

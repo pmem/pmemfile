@@ -30,34 +30,85 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PMEMFILE_UTILS_H
-#define PMEMFILE_UTILS_H
+/*
+ * fcntl.c -- pmemfile_fcntl implementation
+ */
 
-#include "inode.h"
-#include "layout.h"
+#include "file.h"
+#include "internal.h"
+#include "libpmemfile-posix.h"
+#include "out.h"
 
-void get_current_time(struct pmemfile_time *t);
-
-bool is_zeroed(const void *addr, size_t len);
-
-int str_compare(const char *s1, const char *s2, size_t s2n);
-bool str_contains(const char *str, size_t len, char c);
-bool more_than_1_component(const char *path);
-size_t component_length(const char *path);
-
-char *pmfi_strndup(const char *c, size_t len);
-
-#ifdef DEBUG
-const char *pmfi_path(struct pmemfile_vinode *vinode);
-#else
-static inline const char *pmfi_path(struct pmemfile_vinode *vinode)
+int
+pmemfile_fcntl(PMEMfilepool *pfp, PMEMfile *file, int cmd, ...)
 {
-	(void) vinode;
-	return NULL;
+	if (!pfp) {
+		LOG(LUSR, "NULL pool");
+		errno = EFAULT;
+		return -1;
+	}
+
+	if (!file) {
+		LOG(LUSR, "NULL file");
+		errno = EFAULT;
+		return -1;
+	}
+
+	int ret = 0;
+
+	switch (cmd) {
+		case PMEMFILE_F_SETLK:
+			if (file->flags & PFILE_PATH) {
+				errno = EBADF;
+				return -1;
+			}
+
+			/* XXX */
+			return 0;
+		case PMEMFILE_F_GETFL:
+			if (file->flags & PFILE_PATH)
+				return PMEMFILE_O_PATH;
+
+			ret |= PMEMFILE_O_LARGEFILE;
+			if (file->flags & PFILE_APPEND)
+				ret |= PMEMFILE_O_APPEND;
+			if (file->flags & PFILE_NOATIME)
+				ret |= PMEMFILE_O_NOATIME;
+			if ((file->flags & PFILE_READ) == PFILE_READ)
+				ret |= PMEMFILE_O_RDONLY;
+			if ((file->flags & PFILE_WRITE) == PFILE_WRITE)
+				ret |= PMEMFILE_O_WRONLY;
+			if ((file->flags & (PFILE_READ | PFILE_WRITE)) ==
+					(PFILE_READ | PFILE_WRITE))
+				ret |= PMEMFILE_O_RDWR;
+			return ret;
+		case PMEMFILE_F_GETFD:
+			return PMEMFILE_FD_CLOEXEC;
+		case PMEMFILE_F_SETFD:
+		{
+			va_list ap;
+			va_start(ap, cmd);
+			int fd_flags = va_arg(ap, int);
+			va_end(ap);
+
+			if (fd_flags & PMEMFILE_FD_CLOEXEC) {
+				fd_flags &= ~PMEMFILE_FD_CLOEXEC;
+			} else {
+				LOG(LSUP,
+					"clearing FD_CLOEXEC isn't supported");
+				errno = EINVAL;
+				return -1;
+			}
+
+
+			if (fd_flags) {
+				LOG(LSUP, "flag %d not supported", fd_flags);
+				errno = EINVAL;
+				return -1;
+			}
+		}
+	}
+
+	errno = ENOTSUP;
+	return -1;
 }
-#endif
-
-void expand_to_full_pages(uint64_t *offset, uint64_t *length);
-void narrow_to_full_pages(uint64_t *offset, uint64_t *length);
-
-#endif

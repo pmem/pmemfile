@@ -38,6 +38,7 @@
 #include <inttypes.h>
 
 #include "callbacks.h"
+#include "ctree.h"
 #include "data.h"
 #include "dir.h"
 #include "hash_map.h"
@@ -225,6 +226,20 @@ vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 	}
 
 	os_rwlock_unlock(&pfp->inode_map_rwlock);
+}
+
+void
+vinode_cleanup(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+		bool preserve_errno)
+{
+	int error;
+	if (preserve_errno)
+		error = errno;
+
+	vinode_unref(pfp, vinode);
+
+	if (preserve_errno)
+		errno = error;
 }
 
 /*
@@ -529,225 +544,35 @@ vinode_unlockN(struct pmemfile_vinode *v[static 5])
 }
 
 /*
- * pmemfile_time_to_timespec -- convert between pmemfile_time and timespec
+ * vinode_snapshot
+ * Saves some volatile state in vinode, that can be altered during a
+ * transaction. These volatile data are not restored by pmemobj upon
+ * transaction abort.
  */
-static inline pmemfile_timespec_t
-pmemfile_time_to_timespec(const struct pmemfile_time *t)
+void
+vinode_snapshot(struct pmemfile_vinode *vinode)
 {
-	pmemfile_timespec_t tm;
-	tm.tv_sec = t->sec;
-	tm.tv_nsec = t->nsec;
-	return tm;
+	vinode->snapshot.first_free_block = vinode->first_free_block;
+	vinode->snapshot.first_block = vinode->first_block;
 }
 
 /*
- * vinode_stat -- fill struct stat using information from vinode
+ * vinode_restore_on_abort - vinode_snapshot's counterpart
+ * This must be added to abort handlers, where vinode_snapshot was
+ * called in the transaction.
  */
-static int
-vinode_stat(struct pmemfile_vinode *vinode, pmemfile_stat_t *buf)
+void
+vinode_restore_on_abort(struct pmemfile_vinode *vinode)
 {
-	struct pmemfile_inode *inode = vinode->inode;
+	vinode->first_free_block = vinode->snapshot.first_free_block;
+	vinode->first_block = vinode->snapshot.first_block;
 
-	memset(buf, 0, sizeof(*buf));
-	buf->st_dev = vinode->tinode.oid.pool_uuid_lo;
-	buf->st_ino = vinode->tinode.oid.off;
-	buf->st_mode = inode->flags & (PMEMFILE_S_IFMT | PMEMFILE_ALLPERMS);
-	buf->st_nlink = inode->nlink;
-	buf->st_uid = inode->uid;
-	buf->st_gid = inode->gid;
-	buf->st_rdev = 0;
-	if ((pmemfile_off_t)inode->size < 0)
-		return EOVERFLOW;
-	buf->st_size = (pmemfile_off_t)inode->size;
-	buf->st_blksize = 1;
-	if ((pmemfile_blkcnt_t)inode->size < 0)
-		return EOVERFLOW;
-
-	pmemfile_blkcnt_t blks = 0;
-	if (inode_is_regular_file(inode)) {
-		const struct pmemfile_block_array *arr =
-				&inode->file_data.blocks;
-		size_t sz = 0;
-		while (arr) {
-			for (uint32_t i = 0; i < arr->length; ++i)
-				sz += arr->blocks[i].size;
-			arr = D_RO(arr->next);
-		}
-
-		/*
-		 * XXX This doesn't match reality. It will match once we start
-		 * getting 4k-aligned blocks from pmemobj allocator.
-		 */
-		blks = (pmemfile_blkcnt_t)((sz + 511) / 512);
-	} else if (inode_is_dir(inode)) {
-		const struct pmemfile_dir *arr = &inode->file_data.dir;
-		size_t sz = 0;
-		while (arr) {
-			sz += pmemfile_dir_size(arr->next);
-			arr = D_RO(arr->next);
-		}
-
-		/*
-		 * XXX This doesn't match reality. It will match once we start
-		 * getting 4k-aligned blocks from pmemobj allocator.
-		 */
-		blks = (pmemfile_blkcnt_t)((sz + 511) / 512);
-	} else if (inode_is_symlink(inode)) {
-		blks = 0;
-	} else {
-		ASSERT(0);
+	/*
+	 * The ctree is not restored here. It is rebuilt the next
+	 * time the vinode is used.
+	 */
+	if (vinode->blocks) {
+		ctree_delete(vinode->blocks);
+		vinode->blocks = NULL;
 	}
-	buf->st_blocks = blks;
-	buf->st_atim = pmemfile_time_to_timespec(&inode->atime);
-	buf->st_ctim = pmemfile_time_to_timespec(&inode->ctime);
-	buf->st_mtim = pmemfile_time_to_timespec(&inode->mtime);
-
-	return 0;
-}
-
-static int
-_pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
-		const char *path, pmemfile_stat_t *buf, int flags)
-{
-	int error = 0;
-	struct pmemfile_cred cred;
-	struct pmemfile_path_info info;
-	struct pmemfile_vinode *vinode;
-
-	LOG(LDBG, "path %s", path);
-
-	if (!buf) {
-		error = EFAULT;
-		goto ret;
-	}
-
-	if (path[0] == 0 && (flags & PMEMFILE_AT_EMPTY_PATH)) {
-		error = vinode_stat(dir, buf);
-		goto ret;
-	}
-
-	if (flags & ~(PMEMFILE_AT_NO_AUTOMOUNT | PMEMFILE_AT_SYMLINK_NOFOLLOW |
-			PMEMFILE_AT_EMPTY_PATH)) {
-		error = EINVAL;
-		goto ret;
-	}
-
-	if (cred_acquire(pfp, &cred)) {
-		error = errno;
-		goto ret;
-	}
-
-	vinode = resolve_pathat_full(pfp, &cred, dir, path, &info, 0,
-				!(flags & PMEMFILE_AT_SYMLINK_NOFOLLOW));
-
-	if (info.error) {
-		error = info.error;
-		goto end;
-	}
-
-	if (!vinode_is_dir(vinode) && strchr(info.remaining, '/')) {
-		error = ENOTDIR;
-		goto end;
-	}
-
-	error = vinode_stat(vinode, buf);
-
-end:
-	path_info_cleanup(pfp, &info);
-	cred_release(&cred);
-
-	if (vinode)
-		vinode_unref(pfp, vinode);
-ret:
-	if (error) {
-		errno = error;
-		return -1;
-	}
-
-	return 0;
-}
-
-int
-pmemfile_fstatat(PMEMfilepool *pfp, PMEMfile *dir, const char *path,
-		pmemfile_stat_t *buf, int flags)
-{
-	struct pmemfile_vinode *at;
-	bool at_unref;
-
-	if (!pfp) {
-		LOG(LUSR, "NULL pool");
-		errno = EFAULT;
-		return -1;
-	}
-
-	if (!path) {
-		errno = ENOENT;
-		return -1;
-	}
-
-	if (path[0] != '/' && !dir) {
-		LOG(LUSR, "NULL file");
-		errno = EFAULT;
-		return -1;
-	}
-
-	at = pool_get_dir_for_path(pfp, dir, path, &at_unref);
-
-	int ret = _pmemfile_fstatat(pfp, at, path, buf, flags);
-
-	if (at_unref)
-		vinode_cleanup(pfp, at, ret != 0);
-
-	return ret;
-}
-
-/*
- * pmemfile_stat
- */
-int
-pmemfile_stat(PMEMfilepool *pfp, const char *path, pmemfile_stat_t *buf)
-{
-	return pmemfile_fstatat(pfp, PMEMFILE_AT_CWD, path, buf, 0);
-}
-
-/*
- * pmemfile_fstat
- */
-int
-pmemfile_fstat(PMEMfilepool *pfp, PMEMfile *file, pmemfile_stat_t *buf)
-{
-	if (!pfp) {
-		LOG(LUSR, "NULL pool");
-		errno = EFAULT;
-		return -1;
-	}
-
-	if (!file) {
-		errno = EFAULT;
-		return -1;
-	}
-
-	if (!buf) {
-		errno = EFAULT;
-		return -1;
-	}
-
-	int ret = vinode_stat(file->vinode, buf);
-
-	if (ret) {
-		errno = ret;
-		return -1;
-	}
-
-	return 0;
-}
-
-/*
- * pmemfile_lstat
- */
-int
-pmemfile_lstat(PMEMfilepool *pfp, const char *path, pmemfile_stat_t *buf)
-{
-	return pmemfile_fstatat(pfp, PMEMFILE_AT_CWD, path, buf,
-			PMEMFILE_AT_SYMLINK_NOFOLLOW);
 }

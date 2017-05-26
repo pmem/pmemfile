@@ -36,34 +36,11 @@
  * Runtime pool state.
  */
 
+#include "creds.h"
 #include "hash_map.h"
 #include "inode.h"
 #include "layout.h"
 #include "os_thread.h"
-
-struct pmemfile_cred {
-	/* real user id */
-	pmemfile_uid_t ruid;
-	/* real group id */
-	pmemfile_gid_t rgid;
-
-	/* effective user id */
-	pmemfile_uid_t euid;
-	/* effective group id */
-	pmemfile_gid_t egid;
-
-	/* filesystem user id */
-	pmemfile_uid_t fsuid;
-	/* filesystem group id */
-	pmemfile_gid_t fsgid;
-
-	/* supplementary group IDs */
-	pmemfile_gid_t *groups;
-	size_t groupsnum;
-
-	/* capabilities */
-	int caps;
-};
 
 /* Pool */
 struct pmemfilepool {
@@ -89,28 +66,5 @@ struct pmemfilepool {
 	struct pmemfile_cred cred;
 	os_rwlock_t cred_rwlock;
 };
-
-#define PFILE_WANT_READ (1<<0)
-#define PFILE_WANT_WRITE (1<<1)
-#define PFILE_WANT_EXECUTE (1<<2)
-
-#define PFILE_USE_FACCESS (0<<3)
-#define PFILE_USE_EACCESS (1<<3)
-#define PFILE_USE_RACCESS (2<<3)
-#define PFILE_ACCESS_MASK (3<<3)
-
-bool can_access(const struct pmemfile_cred *cred,
-		struct inode_perms perms,
-		int acc);
-int cred_acquire(PMEMfilepool *pfp, struct pmemfile_cred *cred);
-void cred_release(struct pmemfile_cred *cred);
-
-bool vinode_can_access(const struct pmemfile_cred *cred,
-		struct pmemfile_vinode *vinode, int acc);
-
-bool _vinode_can_access(const struct pmemfile_cred *cred,
-		struct pmemfile_vinode *vinode, int acc);
-
-bool gid_in_list(const struct pmemfile_cred *cred, pmemfile_gid_t gid);
 
 #endif

@@ -30,34 +30,70 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PMEMFILE_UTILS_H
-#define PMEMFILE_UTILS_H
+/*
+ * mmap.c -- pmemfile_* memory mapping implementation
+ */
 
-#include "inode.h"
-#include "layout.h"
+#include "internal.h"
+#include "libpmemfile-posix.h"
+#include "out.h"
 
-void get_current_time(struct pmemfile_time *t);
-
-bool is_zeroed(const void *addr, size_t len);
-
-int str_compare(const char *s1, const char *s2, size_t s2n);
-bool str_contains(const char *str, size_t len, char c);
-bool more_than_1_component(const char *path);
-size_t component_length(const char *path);
-
-char *pmfi_strndup(const char *c, size_t len);
-
-#ifdef DEBUG
-const char *pmfi_path(struct pmemfile_vinode *vinode);
-#else
-static inline const char *pmfi_path(struct pmemfile_vinode *vinode)
+void *
+pmemfile_mmap(PMEMfilepool *pfp, void *addr, size_t len,
+		int prot, int flags, PMEMfile *file, pmemfile_off_t off)
 {
-	(void) vinode;
-	return NULL;
+	(void) addr;
+	(void) len;
+	(void) prot;
+	(void) flags;
+	(void) off;
+
+	errno = ENOTSUP;
+	return PMEMFILE_MAP_FAILED;
 }
-#endif
 
-void expand_to_full_pages(uint64_t *offset, uint64_t *length);
-void narrow_to_full_pages(uint64_t *offset, uint64_t *length);
+int
+pmemfile_munmap(PMEMfilepool *pfp, void *addr, size_t len)
+{
+	(void) addr;
+	(void) len;
 
-#endif
+	errno = ENOTSUP;
+	return -1;
+}
+
+void *
+pmemfile_mremap(PMEMfilepool *pfp, void *old_addr, size_t old_size,
+			size_t new_size, int flags, void *new_addr)
+{
+	(void) old_addr;
+	(void) new_addr;
+	(void) old_size;
+	(void) new_size;
+	(void) flags;
+
+	errno = ENOTSUP;
+	return PMEMFILE_MAP_FAILED;
+}
+
+int
+pmemfile_msync(PMEMfilepool *pfp, void *addr, size_t len, int flags)
+{
+	(void) addr;
+	(void) len;
+	(void) flags;
+
+	errno = ENOTSUP;
+	return -1;
+}
+
+int
+pmemfile_mprotect(PMEMfilepool *pfp, void *addr, size_t len, int prot)
+{
+	(void) addr;
+	(void) len;
+	(void) prot;
+
+	errno = ENOTSUP;
+	return -1;
+}

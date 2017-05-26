@@ -163,3 +163,40 @@ pmfi_path(struct pmemfile_vinode *vinode)
 	return vinode->path;
 }
 #endif
+
+/*
+ * expand_to_full_pages
+ * Alters two file offsets to be pmemfile-page aligned. This is not
+ * necessarily the same as memory page alignment!
+ * The resulting offset refer to an interval that contains the original
+ * interval.
+ */
+void
+expand_to_full_pages(uint64_t *offset, uint64_t *length)
+{
+	/* align the offset */
+	*length += *offset % FILE_PAGE_SIZE;
+	*offset -= *offset % FILE_PAGE_SIZE;
+
+	/* align the length */
+	*length = page_roundup(*length);
+}
+
+/*
+ * narrow_to_full_pages
+ * Alters two file offsets to be pmemfile-page aligned. This is not
+ * necessarily the same as memory page alignment!
+ * The resulting offset refer to an interval that is contained by the original
+ * interval. This new interval can end up being empty, i.e. *length can become
+ * zero.
+ */
+void
+narrow_to_full_pages(uint64_t *offset, uint64_t *length)
+{
+	uint64_t end = page_rounddown(*offset + *length);
+	*offset = page_roundup(*offset);
+	if (end > *offset)
+		*length = end - *offset;
+	else
+		*length = 0;
+}

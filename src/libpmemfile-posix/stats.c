@@ -30,34 +30,44 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PMEMFILE_UTILS_H
-#define PMEMFILE_UTILS_H
+/*
+ * stats.c -- pmemfile_stats implementation
+ */
 
-#include "inode.h"
-#include "layout.h"
+#include "internal.h"
+#include "libpmemfile-posix.h"
+#include "out.h"
+#include "pool.h"
 
-void get_current_time(struct pmemfile_time *t);
-
-bool is_zeroed(const void *addr, size_t len);
-
-int str_compare(const char *s1, const char *s2, size_t s2n);
-bool str_contains(const char *str, size_t len, char c);
-bool more_than_1_component(const char *path);
-size_t component_length(const char *path);
-
-char *pmfi_strndup(const char *c, size_t len);
-
-#ifdef DEBUG
-const char *pmfi_path(struct pmemfile_vinode *vinode);
-#else
-static inline const char *pmfi_path(struct pmemfile_vinode *vinode)
+/*
+ * pmemfile_stats -- get pool statistics
+ */
+void
+pmemfile_stats(PMEMfilepool *pfp, struct pmemfile_stats *stats)
 {
-	(void) vinode;
-	return NULL;
+	PMEMoid oid;
+	unsigned inodes = 0, dirs = 0, block_arrays = 0, inode_arrays = 0,
+			blocks = 0;
+
+	POBJ_FOREACH(pfp->pop, oid) {
+		unsigned t = (unsigned)pmemobj_type_num(oid);
+
+		if (t == TOID_TYPE_NUM(struct pmemfile_inode))
+			inodes++;
+		else if (t == TOID_TYPE_NUM(struct pmemfile_dir))
+			dirs++;
+		else if (t == TOID_TYPE_NUM(struct pmemfile_block_array))
+			block_arrays++;
+		else if (t == TOID_TYPE_NUM(struct pmemfile_inode_array))
+			inode_arrays++;
+		else if (t == TOID_TYPE_NUM(char))
+			blocks++;
+		else
+			FATAL("unknown type %u", t);
+	}
+	stats->inodes = inodes;
+	stats->dirs = dirs;
+	stats->block_arrays = block_arrays;
+	stats->inode_arrays = inode_arrays;
+	stats->blocks = blocks;
 }
-#endif
-
-void expand_to_full_pages(uint64_t *offset, uint64_t *length);
-void narrow_to_full_pages(uint64_t *offset, uint64_t *length);
-
-#endif

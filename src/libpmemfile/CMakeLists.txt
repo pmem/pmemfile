@@ -31,10 +31,6 @@
 
 set(SOURCES path_resolve.c preload.c syscall_early_filter.c)
 
-if("${CMAKE_C_COMPILER_ID}" MATCHES "Clang")
-	add_c_flag(-Wno-missing-field-initializers)
-endif()
-
 if(PKG_CONFIG_FOUND)
 	pkg_check_modules(SYSCALL_INTERCEPT libsyscall_intercept)
 else()

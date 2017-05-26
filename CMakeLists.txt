@@ -162,6 +162,24 @@ add_flag(-Wunreachable-code-return)
 add_flag(-Wmissing-variable-declarations)
 add_flag(-fno-common)
 
+# Conditionally using the -Wno-missing-field-initializers flag.
+#
+# As of 2017, the following clang erroneously issues a warning for
+# the following code:
+#
+#  struct x { int a; int b; int c; };
+#
+#  struct x variable = {0};
+#
+# The warning is meant to warn about fields not being initialized while
+# using this syntax in C++, but the clang warns while compiling C as well.
+#
+# See: https://llvm.org/bugs/show_bug.cgi?id=21689
+# See also: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=36750
+if("${CMAKE_C_COMPILER_ID}" MATCHES "Clang")
+	add_c_flag(-Wno-missing-field-initializers)
+endif()
+
 add_c_flag(-Wmissing-prototypes)
 
 check_c_compiler_flag(-Wl,-z,relro LINKER_HAS_RELRO)

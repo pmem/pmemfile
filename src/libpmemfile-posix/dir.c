@@ -535,6 +535,14 @@ resolve_pathat_full(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		} else {
 			vinode = vinode_lookup_dirent(pfp, path_info->parent,
 					path_info->remaining, namelen, 0);
+
+			if (vinode && vinode_is_regular_file(vinode) &&
+					path_info->remaining[namelen] == '/') {
+				vinode_unref(pfp, vinode);
+				path_info->error = ENOTDIR;
+				return NULL;
+			}
+
 			if (vinode && vinode_is_symlink(vinode) &&
 					resolve_last_symlink) {
 				resolve_symlink(pfp, cred, vinode, path_info);

@@ -1219,6 +1219,11 @@ TEST_F(permissions, access)
 		0)
 		<< strerror(errno);
 
+	EXPECT_TRUE(test_acc(pfp, NULL, PMEMFILE_F_OK, ENOENT));
+	EXPECT_TRUE(test_acc(NULL, "XXX", PMEMFILE_F_OK, EFAULT));
+	EXPECT_TRUE(
+		test_acc(pfp, "/file_rwxr-x---/xxx/", PMEMFILE_F_OK, ENOTDIR));
+
 	EXPECT_TRUE(test_acc(pfp, "/fileX", PMEMFILE_F_OK, ENOENT));
 
 	EXPECT_TRUE(test_acc(pfp, "/file_rwxr-x---", PMEMFILE_F_OK, 0));
@@ -1401,6 +1406,11 @@ TEST_F(permissions, euidaccess)
 
 	ASSERT_EQ(pmemfile_seteuid(pfp, 1002), 0);
 
+	EXPECT_TRUE(test_eacc(pfp, NULL, PMEMFILE_F_OK, ENOENT));
+	EXPECT_TRUE(test_eacc(NULL, "XXX", PMEMFILE_F_OK, EFAULT));
+	EXPECT_TRUE(
+		test_eacc(pfp, "/file_rwxr-x---/xxx/", PMEMFILE_F_OK, ENOTDIR));
+
 	EXPECT_TRUE(test_eacc(pfp, "/file_rwxr-x---", PMEMFILE_F_OK, 0));
 	EXPECT_TRUE(test_eacc(pfp, "/file_rwxr-x---", PMEMFILE_R_OK, 0));
 	EXPECT_TRUE(test_eacc(pfp, "/file_rwxr-x---", PMEMFILE_W_OK, EACCES));
@@ -1516,6 +1526,23 @@ TEST_F(permissions, faccessat)
 		<< strerror(errno);
 
 	ASSERT_EQ(pmemfile_seteuid(pfp, 1002), 0);
+
+	EXPECT_TRUE(test_facc(pfp, dir, NULL, PMEMFILE_F_OK, 0, ENOENT));
+	EXPECT_TRUE(test_facc(NULL, dir, "XXX", PMEMFILE_F_OK, 0, EFAULT));
+	EXPECT_TRUE(test_facc(pfp, dir, "file_rwxr-x---/xxx/", PMEMFILE_F_OK, 0,
+			      ENOTDIR));
+
+	/* relative path without directory */
+	EXPECT_TRUE(test_facc(pfp, NULL, "dir/file_rwxr-x---", PMEMFILE_F_OK, 0,
+			      EFAULT));
+	/* absolute path with directory */
+	EXPECT_TRUE(test_facc(pfp, NULL, "/dir/file_rwxr-x---", PMEMFILE_F_OK,
+			      0, 0));
+
+	/* any flag outside of valid ones */
+	EXPECT_TRUE(test_facc(
+		pfp, dir, "file_rwxr-x---", PMEMFILE_F_OK,
+		~(PMEMFILE_AT_EACCESS | PMEMFILE_AT_SYMLINK_NOFOLLOW), EINVAL));
 
 	EXPECT_TRUE(test_facc(pfp, dir, "file_rwxr-x---", PMEMFILE_F_OK, 0, 0));
 	EXPECT_TRUE(test_facc(pfp, dir, "file_rwxr-x---", PMEMFILE_R_OK, 0, 0));

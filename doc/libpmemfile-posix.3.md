@@ -2,7 +2,6 @@
 layout: "manual"
 Content-Style: 'text/css'
 title: libpmemfile-posix(3)
-header: PMEM Library
 date: "pmemfile-posix API version 0.1.0
 ---[comment]: <> (Copyright 2017, Intel Corporation)
 
@@ -46,7 +45,7 @@ date: "pmemfile-posix API version 0.1.0
 [FILE STATUS](#file-status)<br />
 
 # NAME #
-**libpmemfile-posix**-- user space persistent memory file system
+**libpmemfile-posix** - user space persistent memory aware file system API
 
 # SYNOPSIS #
 ```c
@@ -141,7 +140,7 @@ O_NOCTTY
 	Not supported.
 
 O_PATH
-	This flag will behave the same as is documented in the open()
+	This flag will behave the same as is documented in the open(2)
 	man-page. However, the use of the file descriptor returned as a
 	result  of  this flag cannot be used to pass to another process
 	via a UNIX domain socket. Sockets are not supported.

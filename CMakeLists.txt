@@ -101,7 +101,8 @@ include_directories(include)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 11)
 
-# Checks whether flag is supported by current C compiler and appends it to the relevant cmake variable.
+# Checks whether flag is supported by current C compiler and appends
+# it to the relevant cmake variable.
 # 1st argument is a flag
 # 2nd (optional) argument is a build type (debug, release, relwithdebinfo)
 macro(add_c_flag flag)
@@ -121,7 +122,8 @@ macro(add_c_flag flag)
 	endif()
 endmacro()
 
-# Checks whether flag is supported by current C++ compiler and appends it to the relevant cmake variable.
+# Checks whether flag is supported by current C++ compiler and appends
+# it to the relevant cmake variable.
 # 1st argument is a flag
 # 2nd (optional) argument is a build type (debug, release, relwithdebinfo)
 macro(add_cxx_flag flag)
@@ -141,27 +143,26 @@ macro(add_cxx_flag flag)
 	endif()
 endmacro()
 
-add_c_flag(-Wall)
+# Checks whether flag is supported by current C & C++ compilers and appends
+# it to the relevant cmake variables.
+# 1st argument is a flag
+# 2nd (optional) argument is a build type (debug, release, relwithdebinfo)
+macro(add_flag flag)
+	add_c_flag(${flag} ${ARGN})
+	add_cxx_flag(${flag} ${ARGN})
+endmacro()
+
+add_flag(-Wall)
+add_flag(-Wpointer-arith)
+add_flag(-Wunused-macros)
+add_flag(-Wsign-conversion)
+add_flag(-Wsign-compare)
+add_flag(-Wconversion)
+add_flag(-Wunreachable-code-return)
+add_flag(-Wmissing-variable-declarations)
+add_flag(-fno-common)
+
 add_c_flag(-Wmissing-prototypes)
-add_c_flag(-Wpointer-arith)
-add_c_flag(-Wunused-macros)
-add_c_flag(-Wsign-conversion)
-add_c_flag(-Wsign-compare)
-add_c_flag(-Wconversion)
-add_c_flag(-Wunreachable-code-return)
-add_c_flag(-Wmissing-variable-declarations)
-
-add_cxx_flag(-Wall)
-add_cxx_flag(-Wpointer-arith)
-add_cxx_flag(-Wunused-macros)
-add_cxx_flag(-Wsign-conversion)
-add_cxx_flag(-Wsign-compare)
-add_cxx_flag(-Wconversion)
-add_cxx_flag(-Wunreachable-code-return)
-add_cxx_flag(-Wmissing-variable-declarations)
-
-add_c_flag(-fno-common)
-add_cxx_flag(-fno-common)
 
 check_c_compiler_flag(-Wl,-z,relro LINKER_HAS_RELRO)
 if(LINKER_HAS_RELRO)
@@ -173,25 +174,17 @@ if(LINKER_HAS_WARN_COMMON)
 	set(CMAKE_LD_FLAGS  "${CMAKE_LD_FLAGS} -Wl,--warn-common")
 endif()
 
-add_c_flag(-ggdb DEBUG)
-add_c_flag(-DDEBUG DEBUG)
+add_flag(-ggdb DEBUG)
+add_flag(-DDEBUG DEBUG)
 
-add_cxx_flag(-ggdb DEBUG)
-add_cxx_flag(-DDEBUG DEBUG)
+add_flag(-ggdb RELWITHDEBINFO)
+add_flag(-fno-omit-frame-pointer RELWITHDEBINFO)
 
-add_c_flag(-ggdb RELWITHDEBINFO)
-add_cxx_flag(-ggdb RELWITHDEBINFO)
+add_flag("-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2" RELEASE)
 
-add_c_flag(-fno-omit-frame-pointer RELWITHDEBINFO)
-add_cxx_flag(-fno-omit-frame-pointer RELWITHDEBINFO)
+add_flag(-D_LARGEFILE64_SOURCE)
 
-add_c_flag("-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2" RELEASE)
-add_cxx_flag("-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2" RELEASE)
-
-add_c_flag(-D_LARGEFILE64_SOURCE)
-add_cxx_flag(-D_LARGEFILE64_SOURCE)
-
-option(SANITIZERS "enable AddressSanitizer and UndefinedBehaviorSanitizer (debugging)" OFF)
+option(SANITIZERS "enable AddressSanitizer and UndefinedBehaviorSanitizer (debugging) (incompatible with BUILD_LIBPMEMFILE=ON)" OFF)
 
 if(SANITIZERS)
 	if(BUILD_LIBPMEMFILE)
@@ -219,8 +212,7 @@ if(SANITIZERS)
 endif()
 
 if(DEVELOPER_MODE)
-	add_c_flag(-Werror)
-	add_cxx_flag(-Werror)
+	add_flag(-Werror)
 
 	check_c_compiler_flag(-Wl,--fatal-warnings LINKER_HAS_FATAL_WARNINGS)
 	if(LINKER_HAS_FATAL_WARNINGS)
@@ -230,6 +222,11 @@ endif(DEVELOPER_MODE)
 
 add_executable(check_license EXCLUDE_FROM_ALL utils/check_license/check-license.c)
 
+# Generates cstyle-$name target and attaches it as a dependency of global
+# "cstyle" target. This target verifies C style of files in current source dir.
+# If more arguments are used, then they are used as files to be checked
+# instead.
+# ${name} must be unique.
 function(add_cstyle name)
 	if(${ARGC} EQUAL 1)
 		add_custom_target(cstyle-${name}
@@ -239,11 +236,19 @@ function(add_cstyle name)
 				${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 	else()
 		add_custom_target(cstyle-${name}
-			COMMAND ${CMAKE_SOURCE_DIR}/utils/cstyle ${ARGN})
+			COMMAND ${PERL_EXECUTABLE}
+				${CMAKE_SOURCE_DIR}/utils/cstyle ${ARGN})
 	endif()
 	add_dependencies(cstyle cstyle-${name})
 endfunction()
 
+# Generates cppstyle-$name and cppformat-$name targets and attaches them
+# as dependencies of global "cstyle" and "cppformat" targets.
+# cppstyle-$name target verifies C++ style of files in current source dir.
+# cppformat-$name target reformats files in current source dir.
+# If more arguments are used, then they are used as files to be checked
+# instead.
+# ${name} must be unique.
 function(add_cppstyle name)
 	if(NOT CLANG_FORMAT)
 		return()
@@ -287,6 +292,12 @@ function(add_cppstyle name)
 	add_dependencies(cppformat cppformat-${name})
 endfunction()
 
+# Generates check-whitespace-$name target and attaches it as a dependency
+# of global "check-whitespace" target. This target verifies C files in current
+# source dir do not have any whitespace errors.
+# If more arguments are used, then they are used as files to be checked
+# instead.
+# ${name} must be unique.
 function(add_check_whitespace name)
 	if(${ARGC} EQUAL 1)
 		add_custom_target(check-whitespace-${name}

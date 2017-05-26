@@ -12,9 +12,9 @@ It consists of 2 major compoments:
 # How to build #
 
 Requirements:
-- cmake >= 3.3 (XXX: can we build with older versions?)
+- cmake >= 3.3
 - libpmemobj-dev(el) >= 1.2 (http://pmem.io/nvml/)
-- libsyscall_intercept-dev(el) (https://github.com/GBuella/syscall_intercept)
+- libsyscall_intercept-dev(el) (https://github.com/pmem/syscall_intercept)
 
 ```sh
 $ mkdir build
@@ -112,5 +112,5 @@ libpmemfile.so:
   uses currently unsupported syscalls
 
 # Other stuff #
-* strace.ebpf - tool for tracing applications and evaluating whether libpmemfile.so
-  supports them (https://github.com/ldorau/strace.ebpf)
+* vltrace - tool for tracing applications and evaluating whether libpmemfile.so
+  supports them (https://github.com/pmem/vltrace)

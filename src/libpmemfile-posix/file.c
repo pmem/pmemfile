@@ -462,8 +462,7 @@ end:
 	if (error) {
 		if (vinode != NULL)
 			vinode_unref(pfp, vinode);
-		if (file)
-			free(file);
+		free(file);
 
 		errno = error;
 		LOG(LDBG, "!");
@@ -2400,22 +2399,22 @@ fallocate_check_arguments(int mode, pmemfile_off_t offset,
 	 * As of now, pmemfile_fallocate supports allocating disk space, and
 	 * punching holes.
 	 */
-	if (mode & PMEMFILE_FL_COLLAPSE_RANGE) {
+	if (mode & PMEMFILE_FALLOC_FL_COLLAPSE_RANGE) {
 		LOG(LSUP, "PMEMFILE_FL_COLLAPSE_RANGE is not supported");
 		return EOPNOTSUPP;
 	}
 
-	if (mode & PMEMFILE_FL_ZERO_RANGE) {
+	if (mode & PMEMFILE_FALLOC_FL_ZERO_RANGE) {
 		LOG(LSUP, "PMEMFILE_FL_ZERO_RANGE is not supported");
 		return EOPNOTSUPP;
 	}
 
-	if (mode & PMEMFILE_FL_INSERT_RANGE) {
+	if (mode & PMEMFILE_FALLOC_FL_INSERT_RANGE) {
 		LOG(LSUP, "PMEMFILE_FL_INSERT_RANGE is not supported");
 		return EOPNOTSUPP;
 	}
 
-	if (mode & PMEMFILE_FL_PUNCH_HOLE) {
+	if (mode & PMEMFILE_FALLOC_FL_PUNCH_HOLE) {
 		/*
 		 * from man 2 fallocate:
 		 *
@@ -2424,7 +2423,8 @@ fallocate_check_arguments(int mode, pmemfile_off_t offset,
 		 * even when punching off the end of the file, the file size
 		 * (as reported by stat(2)) does not change."
 		 */
-		if (mode != (PMEMFILE_FL_PUNCH_HOLE | PMEMFILE_FL_KEEP_SIZE))
+		if (mode != (PMEMFILE_FALLOC_FL_PUNCH_HOLE |
+				PMEMFILE_FALLOC_FL_KEEP_SIZE))
 			return EINVAL;
 	} else { /* Allocating disk space */
 		/*
@@ -2435,7 +2435,7 @@ fallocate_check_arguments(int mode, pmemfile_off_t offset,
 		 * FALLOC_FL_UNSHARE_RANGE, so it is suspected that noone is
 		 * using it anyways.
 		 */
-		if ((mode & ~PMEMFILE_FL_KEEP_SIZE) != 0)
+		if ((mode & ~PMEMFILE_FALLOC_FL_KEEP_SIZE) != 0)
 			return EINVAL;
 	}
 

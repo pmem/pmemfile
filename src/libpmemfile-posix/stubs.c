@@ -33,8 +33,7 @@
 /*
  * stubs.c -- placeholder routines for the functionality of
  * pmemfile that is not yet implemented.
- * All these set errno to ENOTSUP, except for pmemfile_getcwd.
- * Because pmemfile_getcwd is cool.
+ * All these set errno to ENOTSUP.
  */
 
 #include <stddef.h>

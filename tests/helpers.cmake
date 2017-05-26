@@ -58,6 +58,7 @@ function(mkfs path size)
 	endif()
 endfunction()
 
+# Verifies ${log_file} matches ${match_file} using "match".
 function(match log_file match_file)
 	unset(TEMP_STORE_LD_PRELOAD)
 	if(ENV{LD_PRELOAD})
@@ -76,6 +77,7 @@ function(match log_file match_file)
 	endif()
 endfunction()
 
+# Gets the content of file using pmemfile-cat and returns in out variable.
 function(pf_cat pool file out)
 	unset(TEMP_STORE_LD_PRELOAD)
 	if(ENV{LD_PRELOAD})
@@ -93,6 +95,9 @@ function(pf_cat pool file out)
 	endif()
 endfunction()
 
+# Generic command executor which stops the test if the executed process
+# returns a non-zero value. Useful, as cmake ignores such failures
+# by default.
 function(execute cmd)
 	execute_process(COMMAND ${cmd} ${ARGN}
 			RESULT_VARIABLE res)
@@ -101,6 +106,7 @@ function(execute cmd)
 	endif()
 endfunction()
 
+# Generic command executor which handles failures and returns command output.
 function(execute_with_output out cmd)
 	execute_process(COMMAND ${cmd} ${ARGN}
 			OUTPUT_FILE ${out}
@@ -110,6 +116,7 @@ function(execute_with_output out cmd)
 	endif()
 endfunction()
 
+# Executes command expecting it to fail.
 function(execute_expect_failure cmd)
 	execute_process(COMMAND ${cmd} ${ARGN}
 			RESULT_VARIABLE res)

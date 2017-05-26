@@ -722,7 +722,8 @@ TEST_F(rw, fallocate)
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0));
 
 	/* Allocate a range, file size is expected to remain zero */
-	r = pmemfile_fallocate(pfp, f, PMEMFILE_FL_KEEP_SIZE, 0x1000, 0x10000);
+	r = pmemfile_fallocate(pfp, f, PMEMFILE_FALLOC_FL_KEEP_SIZE, 0x1000,
+			       0x10000);
 	ASSERT_EQ(r, 0) << strerror(errno);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 0);
 
@@ -757,12 +758,13 @@ TEST_F(rw, fallocate)
 	 */
 
 	/* But first make sure it is not allowed without the KEEP_SIZE flag */
-	r = pmemfile_fallocate(pfp, f, PMEMFILE_FL_PUNCH_HOLE, 0x0007, 0x4123);
+	r = pmemfile_fallocate(pfp, f, PMEMFILE_FALLOC_FL_PUNCH_HOLE, 0x0007,
+			       0x4123);
 	ASSERT_EQ(r, -1);
 	ASSERT_EQ(errno, EINVAL);
 
-	r = pmemfile_fallocate(pfp, f,
-			       PMEMFILE_FL_PUNCH_HOLE | PMEMFILE_FL_KEEP_SIZE,
+	r = pmemfile_fallocate(pfp, f, PMEMFILE_FALLOC_FL_PUNCH_HOLE |
+				       PMEMFILE_FALLOC_FL_KEEP_SIZE,
 			       0x0007, 0x4123);
 	ASSERT_EQ(r, 0) << strerror(errno);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 0x1000 + 0x10000);
@@ -804,8 +806,8 @@ TEST_F(rw, fallocate)
 	 * With fix 4K blocksize, this should remove one of the previously
 	 * allocated blocks.
 	 */
-	r = pmemfile_fallocate(pfp, f,
-			       PMEMFILE_FL_PUNCH_HOLE | PMEMFILE_FL_KEEP_SIZE,
+	r = pmemfile_fallocate(pfp, f, PMEMFILE_FALLOC_FL_PUNCH_HOLE |
+				       PMEMFILE_FALLOC_FL_KEEP_SIZE,
 			       0x1fff, 0x3000);
 	ASSERT_EQ(r, 0) << strerror(errno);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 0x1000 + 0x10000);
@@ -836,7 +838,8 @@ TEST_F(rw, fallocate)
 	 * case of 4K fixed size blocks, 4 new 4K blocks.
 	 * Thus, the result should be 14 + 4 blocks, or 2 blocks.
 	 */
-	r = pmemfile_fallocate(pfp, f, PMEMFILE_FL_KEEP_SIZE, 0x80000, 0x4000);
+	r = pmemfile_fallocate(pfp, f, PMEMFILE_FALLOC_FL_KEEP_SIZE, 0x80000,
+			       0x4000);
 	ASSERT_EQ(r, 0) << strerror(errno);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 0x1000 + 0x10000);
 	if (env_block_size == 0x1000)
@@ -879,8 +882,8 @@ TEST_F(rw, fallocate)
 	 * Most likely there is a hole right before 0x80000, so punching a hole
 	 * there should be no-op (block counts are expected to remain the same).
 	 */
-	r = pmemfile_fallocate(pfp, f,
-			       PMEMFILE_FL_PUNCH_HOLE | PMEMFILE_FL_KEEP_SIZE,
+	r = pmemfile_fallocate(pfp, f, PMEMFILE_FALLOC_FL_PUNCH_HOLE |
+				       PMEMFILE_FALLOC_FL_KEEP_SIZE,
 			       0x73000, 0x2234);
 	ASSERT_EQ(r, 0) << strerror(errno);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), size);
@@ -893,8 +896,8 @@ TEST_F(rw, fallocate)
 	 * How about allocating a lot of single byte intervals?
 	 */
 	for (pmemfile_ssize_t offset = 77; offset < size; offset += 0x1000) {
-		r = pmemfile_fallocate(pfp, f, PMEMFILE_FL_KEEP_SIZE, offset,
-				       1);
+		r = pmemfile_fallocate(pfp, f, PMEMFILE_FALLOC_FL_KEEP_SIZE,
+				       offset, 1);
 		ASSERT_EQ(r, 0) << strerror(errno);
 	}
 
@@ -909,16 +912,16 @@ TEST_F(rw, fallocate)
 	 * Deallocate most of the blocks, leaving only 4K in
 	 * at offset 0x13000.
 	 */
-	r = pmemfile_fallocate(pfp, f,
-			       PMEMFILE_FL_PUNCH_HOLE | PMEMFILE_FL_KEEP_SIZE,
+	r = pmemfile_fallocate(pfp, f, PMEMFILE_FALLOC_FL_PUNCH_HOLE |
+				       PMEMFILE_FALLOC_FL_KEEP_SIZE,
 			       0, 0x13000);
 	ASSERT_EQ(r, 0) << strerror(errno);
 
 	/*
 	 * This also tests punching a hole that reaches beyond the last block.
 	 */
-	r = pmemfile_fallocate(pfp, f,
-			       PMEMFILE_FL_PUNCH_HOLE | PMEMFILE_FL_KEEP_SIZE,
+	r = pmemfile_fallocate(pfp, f, PMEMFILE_FALLOC_FL_PUNCH_HOLE |
+				       PMEMFILE_FALLOC_FL_KEEP_SIZE,
 			       0x14000, INT64_C(0x10000000));
 	ASSERT_EQ(r, 0) << strerror(errno);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), size);
@@ -929,8 +932,8 @@ TEST_F(rw, fallocate)
 	/*
 	 * Remove that one block left.
 	 */
-	r = pmemfile_fallocate(pfp, f,
-			       PMEMFILE_FL_PUNCH_HOLE | PMEMFILE_FL_KEEP_SIZE,
+	r = pmemfile_fallocate(pfp, f, PMEMFILE_FALLOC_FL_PUNCH_HOLE |
+				       PMEMFILE_FALLOC_FL_KEEP_SIZE,
 			       0, INT64_C(0x10000000));
 	ASSERT_EQ(r, 0) << strerror(errno);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), size);
@@ -941,8 +944,8 @@ TEST_F(rw, fallocate)
 	 * Punching a hole in a file with no blocks should no
 	 * be a problem either.
 	 */
-	r = pmemfile_fallocate(pfp, f,
-			       PMEMFILE_FL_PUNCH_HOLE | PMEMFILE_FL_KEEP_SIZE,
+	r = pmemfile_fallocate(pfp, f, PMEMFILE_FALLOC_FL_PUNCH_HOLE |
+				       PMEMFILE_FALLOC_FL_KEEP_SIZE,
 			       1, INT64_C(0x1000000));
 	ASSERT_EQ(r, 0) << strerror(errno);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), size);
@@ -1147,8 +1150,8 @@ TEST_F(rw, sparse_files_using_lseek)
 	hole = size / 2; /* The hole starts at this offset */
 	r = pmemfile_ftruncate(pfp, f, size);
 	ASSERT_EQ(r, 0) << strerror(errno);
-	r = pmemfile_fallocate(pfp, f,
-			       PMEMFILE_FL_PUNCH_HOLE | PMEMFILE_FL_KEEP_SIZE,
+	r = pmemfile_fallocate(pfp, f, PMEMFILE_FALLOC_FL_PUNCH_HOLE |
+				       PMEMFILE_FALLOC_FL_KEEP_SIZE,
 			       hole, size);
 	ASSERT_EQ(r, 0) << strerror(errno);
 
@@ -1184,7 +1187,8 @@ TEST_F(rw, sparse_files_using_lseek)
 	 * greater than file size. Seeking should always ignore such data,
 	 * and not seek further than the file size.
 	 */
-	r = pmemfile_fallocate(pfp, f, PMEMFILE_FL_KEEP_SIZE, 4 * size, 0x2000);
+	r = pmemfile_fallocate(pfp, f, PMEMFILE_FALLOC_FL_KEEP_SIZE, 4 * size,
+			       0x2000);
 	ASSERT_EQ(r, 0) << strerror(errno);
 
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_HOLE), hole);

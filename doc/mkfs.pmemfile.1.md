@@ -2,7 +2,6 @@
 layout: manual
 Content-Style: 'text/css'
 title: mkfs.pmemfile(1)
-header: PMEMFILE
 date: mkfs.pmemfile API version 0.1.0
 ...
 
@@ -47,4 +46,4 @@ date: mkfs.pmemfile API version 0.1.0
 
 # NAME #
 
-**mkfs.pmemfile** -- create an pmemfile filesystem
+**mkfs.pmemfile** -- create a pmemfile filesystem

@@ -102,6 +102,8 @@ libpmemfile_posix_init(void)
 	}
 	LOG(LINF, "overallocate_on_append flag is %s",
 	    (pmemfile_overallocate_on_append ? "set" : "not set"));
+
+	verify_consts();
 }
 
 /*

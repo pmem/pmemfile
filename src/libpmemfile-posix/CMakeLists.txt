@@ -36,7 +36,6 @@ set(SOURCES
 	chdir.c
 	chmod.c
 	chown.c
-	consts.c
 	copy_file_range.c
 	creds.c
 	ctree.c

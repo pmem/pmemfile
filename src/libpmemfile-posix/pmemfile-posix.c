@@ -46,7 +46,9 @@
 #include "out.h"
 #include "valgrind_internal.h"
 
+#ifndef _WIN32
 #include "verify_consts.h"
+#endif
 
 #define PMEMFILE_POSIX_LOG_PREFIX "libpmemfile-posix"
 #define PMEMFILE_POSIX_LOG_LEVEL_VAR "PMEMFILE_POSIX_LOG_LEVEL"

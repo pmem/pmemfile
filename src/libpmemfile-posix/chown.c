@@ -133,11 +133,6 @@ _pmemfile_fchownat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 			error = info.error;
 			goto end;
 		}
-
-		if (!vinode_is_dir(vinode) && strchr(info.remaining, '/')) {
-			error = ENOTDIR;
-			goto end;
-		}
 	}
 
 	error = vinode_chown(pfp, &cred, vinode, owner, group);

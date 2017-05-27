@@ -116,11 +116,6 @@ _pmemfile_fchmodat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto end;
 	}
 
-	if (!vinode_is_dir(vinode) && strchr(info.remaining, '/')) {
-		error = ENOTDIR;
-		goto end;
-	}
-
 	error = vinode_chmod(pfp, vinode, mode);
 
 end:

@@ -73,11 +73,6 @@ _pmemfile_faccessat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto end;
 	}
 
-	if (!vinode_is_dir(vinode) && strchr(info.remaining, '/')) {
-		error = ENOTDIR;
-		goto end;
-	}
-
 	int acc = 0;
 	if (mode & PMEMFILE_R_OK)
 		acc |= PFILE_WANT_READ;

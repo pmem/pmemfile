@@ -446,6 +446,12 @@ TEST_F(dirs, chdir_getcwd)
 	ASSERT_NE(pmemfile_getcwd(pfp, buf, sizeof(buf)), nullptr);
 	ASSERT_STREQ(buf, "/");
 
+	ASSERT_EQ(pmemfile_chdir(pfp, NULL), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	ASSERT_EQ(pmemfile_chdir(NULL, "/dir1"), -1);
+	EXPECT_EQ(errno, EFAULT);
+
 	ASSERT_EQ(pmemfile_chdir(pfp, "/dir1"), 0);
 	ASSERT_NE(pmemfile_getcwd(pfp, buf, sizeof(buf)), nullptr);
 	ASSERT_STREQ(buf, "/dir1");
@@ -538,7 +544,15 @@ TEST_F(dirs, chdir_getcwd)
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
 	PMEMfile *f = pmemfile_open(pfp, "dir1", PMEMFILE_O_DIRECTORY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
+
+	ASSERT_EQ(pmemfile_fchdir(pfp, NULL), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	ASSERT_EQ(pmemfile_fchdir(NULL, f), -1);
+	EXPECT_EQ(errno, EFAULT);
+
 	ASSERT_EQ(pmemfile_fchdir(pfp, f), 0);
+
 	pmemfile_close(pfp, f);
 
 	errno = 0;

@@ -979,6 +979,9 @@ TEST_F(permissions, chown)
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/file0", PMEMFILE_O_EXCL,
 					 PMEMFILE_S_IRWXU));
 
+	ASSERT_TRUE(test_chown(pfp, NULL, 0, 0, ENOENT));
+	ASSERT_TRUE(test_chown(NULL, "/file", 0, 0, EFAULT));
+
 	/* ruid=euid=fsuid=0, rgid=egid=fsgid=0 */
 
 	ASSERT_TRUE(test_chown(pfp, "/file", 0, 0, 0));
@@ -1106,6 +1109,9 @@ TEST_F(permissions, fchown)
 					 PMEMFILE_S_IRWXU));
 
 	PMEMfile *f = pmemfile_open(pfp, "/file", PMEMFILE_O_RDONLY);
+
+	ASSERT_TRUE(test_fchown(pfp, NULL, 0, 0, EFAULT));
+	ASSERT_TRUE(test_fchown(NULL, f, 0, 0, EFAULT));
 
 	/* ruid=euid=fsuid=0, rgid=egid=fsgid=0 */
 

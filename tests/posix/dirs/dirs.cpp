@@ -1235,6 +1235,21 @@ TEST_F(dirs, fchownat)
 	PMEMfile *dir = pmemfile_open(pfp, "/dir", PMEMFILE_O_DIRECTORY);
 	ASSERT_NE(dir, nullptr) << strerror(errno);
 
+	ASSERT_EQ(pmemfile_fchownat(pfp, PMEMFILE_AT_CWD, NULL, 0, 0, 0), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	ASSERT_EQ(pmemfile_fchownat(pfp, NULL, "dir", 0, 0, 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	ASSERT_EQ(pmemfile_fchownat(NULL, PMEMFILE_AT_CWD, "dir", 0, 0, 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	ASSERT_EQ(pmemfile_fchownat(pfp, PMEMFILE_AT_CWD, "dir", 0, 0,
+				    ~(PMEMFILE_AT_EMPTY_PATH |
+				      PMEMFILE_AT_SYMLINK_NOFOLLOW)),
+		  -1);
+	EXPECT_EQ(errno, EINVAL);
+
 	ASSERT_EQ(pmemfile_setuid(pfp, 1000), 0);
 	ASSERT_EQ(pmemfile_setcap(pfp, PMEMFILE_CAP_CHOWN), 0)
 		<< strerror(errno);

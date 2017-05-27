@@ -1413,6 +1413,33 @@ TEST_F(dirs, linkat)
 	PMEMfile *dir2 = pmemfile_open(pfp, "/dir2", PMEMFILE_O_DIRECTORY);
 	ASSERT_NE(dir2, nullptr) << strerror(errno);
 
+	errno = 0;
+	ASSERT_EQ(pmemfile_linkat(pfp, dir1, NULL, dir2, "file1", 0), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_linkat(pfp, dir1, "file1", dir2, NULL, 0), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_linkat(pfp, NULL, "file1", dir2, "file1", 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_linkat(pfp, dir1, "file1", NULL, "file1", 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_linkat(NULL, dir1, "file1", dir2, "file1", 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_linkat(pfp, dir1, "file1", dir2, "file1",
+				  ~(PMEMFILE_AT_SYMLINK_FOLLOW |
+				    PMEMFILE_AT_EMPTY_PATH)),
+		  -1);
+	EXPECT_EQ(errno, EINVAL);
+
 	ASSERT_EQ(pmemfile_linkat(pfp, dir1, "file1", dir2, "file1", 0), 0);
 	ASSERT_TRUE(test_file_info(pfp, "/dir1/file1", 2, st_file1.st_ino));
 	ASSERT_TRUE(test_file_info(pfp, "/dir2/file1", 2, st_file1.st_ino));
@@ -1423,6 +1450,12 @@ TEST_F(dirs, linkat)
 	ASSERT_TRUE(test_file_info(pfp, "/dir1/file1", 3, st_file1.st_ino));
 	ASSERT_TRUE(test_file_info(pfp, "/dir2/file1", 3, st_file1.st_ino));
 	ASSERT_TRUE(test_file_info(pfp, "/file1", 3, st_file1.st_ino));
+
+	/* both paths are relative to cwd */
+	ASSERT_EQ(pmemfile_linkat(pfp, PMEMFILE_AT_CWD, "dir1/file1",
+				  PMEMFILE_AT_CWD, "file11", 0),
+		  0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "file11"), 0);
 
 	ASSERT_TRUE(
 		test_file_info(pfp, "/dir2/file1-sym", 1, st_file1_sym.st_ino));

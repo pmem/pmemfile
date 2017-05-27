@@ -146,6 +146,18 @@ TEST_F(basic, link)
 							{0100777, 1, 0, "bbb"},
 						}));
 
+	errno = 0;
+	ASSERT_EQ(pmemfile_link(pfp, NULL, "/aaa.link"), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_link(pfp, "/aaa", NULL), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_link(NULL, "/aaa", "/aaa.link"), -1);
+	EXPECT_EQ(errno, EFAULT);
+
 	/* successful link */
 	ret = pmemfile_link(pfp, "/aaa", "/aaa.link");
 	ASSERT_EQ(ret, 0) << strerror(errno);
@@ -217,6 +229,11 @@ TEST_F(basic, link)
 					      {0100777, 3, 0, "aaa2.link"},
 					      {0100777, 2, 0, "bbb2.link"},
 				      }));
+
+	/* link from absolute to relative path */
+	ret = pmemfile_link(pfp, "/bbb", "rel.link");
+	ASSERT_EQ(ret, 0) << strerror(errno);
+	ASSERT_EQ(pmemfile_unlink(pfp, "rel.link"), 0);
 
 	ret = pmemfile_mkdir(pfp, "/dir", 0777);
 	ASSERT_EQ(ret, 0) << strerror(errno);

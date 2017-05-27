@@ -34,6 +34,8 @@
  * pmemfile-posix.c -- library constructor / destructor
  */
 
+#define _GNU_SOURCE
+
 #include <limits.h>
 
 #include "callbacks.h"
@@ -43,6 +45,8 @@
 #include "locks.h"
 #include "out.h"
 #include "valgrind_internal.h"
+
+#include "verify_consts.h"
 
 #define PMEMFILE_POSIX_LOG_PREFIX "libpmemfile-posix"
 #define PMEMFILE_POSIX_LOG_LEVEL_VAR "PMEMFILE_POSIX_LOG_LEVEL"
@@ -64,10 +68,6 @@ unsigned _On_valgrind;
 pf_constructor void
 libpmemfile_posix_init(void)
 {
-	COMPILE_ERROR_ON(sizeof(struct pmemfile_super) != 4096);
-	COMPILE_ERROR_ON(sizeof(struct pmemfile_inode_array) != 4096);
-	COMPILE_ERROR_ON(sizeof(struct pmemfile_inode) != 4096);
-
 #ifdef ANY_VG_TOOL_ENABLED
 	_On_valgrind = RUNNING_ON_VALGRIND;
 #endif
@@ -102,8 +102,6 @@ libpmemfile_posix_init(void)
 	}
 	LOG(LINF, "overallocate_on_append flag is %s",
 	    (pmemfile_overallocate_on_append ? "set" : "not set"));
-
-	verify_consts();
 }
 
 /*

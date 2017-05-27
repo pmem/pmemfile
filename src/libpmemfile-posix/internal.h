@@ -72,6 +72,4 @@ page_roundup(size_t n)
 	return page_rounddown(n + FILE_PAGE_SIZE - 1);
 }
 
-void verify_consts(void);
-
 #endif

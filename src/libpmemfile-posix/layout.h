@@ -40,6 +40,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include "compiler_utils.h"
+
 #ifdef __clang_analyzer__
 /*
  * When clang analyzer sees pmemobj_direct can return NULL, it warns about NULL
@@ -190,6 +192,8 @@ struct pmemfile_inode {
 	} file_data;
 };
 
+COMPILE_ERROR_ON(sizeof(struct pmemfile_inode) != 4096);
+
 /* number of inodes for pmemfile_inode_array to fit in 4kB */
 #define NUMINODES_PER_ENTRY 249
 
@@ -205,6 +209,8 @@ struct pmemfile_inode_array {
 
 	TOID(struct pmemfile_inode) inodes[NUMINODES_PER_ENTRY];
 };
+
+COMPILE_ERROR_ON(sizeof(struct pmemfile_inode_array) != 4096);
 
 #define PMEMFILE_SUPER_VERSION(a, b) ((uint64_t)0x000056454C494650 | \
 		((uint64_t)(a + '0') << 48) | ((uint64_t)(b + '0') << 56))
@@ -225,5 +231,7 @@ struct pmemfile_super {
 			- 16 /* toid */
 			- 16 /* toid */];
 };
+
+COMPILE_ERROR_ON(sizeof(struct pmemfile_super) != 4096);
 
 #endif

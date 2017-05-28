@@ -471,6 +471,34 @@ TEST_F(dirs, rmdir_notempty)
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
 }
 
+TEST_F(dirs, rmdir_notempty_dir_with_holes)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
+
+	char buf[1001];
+	for (size_t i = 0; i < ops; ++i) {
+		sprintf(buf, "/dir1/file%04zu", i);
+		ASSERT_TRUE(
+			test_pmemfile_create(pfp, buf, PMEMFILE_O_EXCL, 0644));
+	}
+
+	for (size_t i = 0; i < ops / 2; ++i) {
+		sprintf(buf, "/dir1/file%04zu", i);
+		ASSERT_EQ(pmemfile_unlink(pfp, buf), 0);
+	}
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), -1);
+	ASSERT_EQ(errno, ENOTEMPTY);
+
+	for (size_t i = ops / 2; i < ops; ++i) {
+		sprintf(buf, "/dir1/file%04zu", i);
+		ASSERT_EQ(pmemfile_unlink(pfp, buf), 0);
+	}
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
+}
+
 TEST_F(dirs, chdir_getcwd)
 {
 	char buf[PMEMFILE_PATH_MAX];

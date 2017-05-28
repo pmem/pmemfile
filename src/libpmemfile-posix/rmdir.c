@@ -63,11 +63,6 @@ vinode_unlink_dir(PMEMfilepool *pfp,
 
 	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
 
-	if (!TOID_IS_NULL(ddir->next)) {
-		LOG(LUSR, "directory %s not empty", path);
-		pmemfile_tx_abort(ENOTEMPTY);
-	}
-
 	struct pmemfile_dirent *dirdot = &ddir->dirents[0];
 	struct pmemfile_dirent *dirdotdot = &ddir->dirents[1];
 
@@ -84,6 +79,20 @@ vinode_unlink_dir(PMEMfilepool *pfp,
 			LOG(LUSR, "directory %s not empty", path);
 			pmemfile_tx_abort(ENOTEMPTY);
 		}
+	}
+
+	ddir = D_RW(ddir->next);
+	while (ddir) {
+		for (uint32_t i = 0; i < ddir->num_elements; ++i) {
+			struct pmemfile_dirent *d = &ddir->dirents[i];
+
+			if (!TOID_IS_NULL(d->inode)) {
+				LOG(LUSR, "directory %s not empty", path);
+				pmemfile_tx_abort(ENOTEMPTY);
+			}
+		}
+
+		ddir = D_RW(ddir->next);
 	}
 
 	pmemobj_tx_add_range_direct(dirdot, sizeof(dirdot->inode) + 1);

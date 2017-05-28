@@ -309,6 +309,12 @@ pmemfile_getdents_generic(PMEMfilepool *pfp, PMEMfile *file, char *data,
 		return -1;
 	}
 
+	if (!data) {
+		LOG(LUSR, "NULL data");
+		errno = EFAULT;
+		return -1;
+	}
+
 	struct pmemfile_vinode *vinode = file->vinode;
 
 	ASSERT(vinode != NULL);

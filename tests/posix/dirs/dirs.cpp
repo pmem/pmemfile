@@ -757,7 +757,19 @@ TEST_F(dirs, file_renames)
 					      {0100755, 1, 0, "file2"},
 				      }));
 
-	ASSERT_EQ(pmemfile_rename(pfp, "/file3", "/file4"), 0);
+	errno = 0;
+	ASSERT_EQ(pmemfile_rename(pfp, "/file3", NULL), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_rename(pfp, NULL, "/file4"), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_rename(NULL, "/file3", "/file4"), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	ASSERT_EQ(pmemfile_rename(pfp, "/file3", "file4"), 0);
 	EXPECT_TRUE(
 		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
 						    {040777, 4, 4008, "."},
@@ -1159,6 +1171,34 @@ TEST_F(dirs, renameat)
 	ASSERT_NE(dir1, nullptr);
 	ASSERT_NE(dir2, nullptr);
 
+	errno = 0;
+	ASSERT_EQ(pmemfile_renameat(pfp, PMEMFILE_AT_CWD, NULL, PMEMFILE_AT_CWD,
+				    "ff"),
+		  -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_renameat(pfp, PMEMFILE_AT_CWD, "f1", PMEMFILE_AT_CWD,
+				    NULL),
+		  -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_renameat(pfp, NULL, "f1", PMEMFILE_AT_CWD, "ff"),
+		  -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_renameat(pfp, PMEMFILE_AT_CWD, "f1", NULL, "ff"),
+		  -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_renameat(NULL, PMEMFILE_AT_CWD, "f1",
+				    PMEMFILE_AT_CWD, "ff"),
+		  -1);
+	EXPECT_EQ(errno, EFAULT);
+
 	ASSERT_EQ(pmemfile_renameat(pfp, dir1, "f1", dir2, "ff"), 0)
 		<< strerror(errno);
 
@@ -1201,6 +1241,27 @@ TEST_F(dirs, rename_noreplace)
 
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir1/f1", 0, 0644));
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir2/f2", 0, 0644));
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_renameat2(pfp, NULL, "/dir1/f1", NULL, "/dir2/f2",
+				     PMEMFILE_RENAME_WHITEOUT),
+		  -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_renameat2(pfp, NULL, "/dir1/f1", NULL, "/dir2/f2",
+				     PMEMFILE_RENAME_NOREPLACE |
+					     PMEMFILE_RENAME_EXCHANGE),
+		  -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_renameat2(pfp, NULL, "/dir1/f1", NULL, "/dir2/f2",
+				     ~((unsigned)(PMEMFILE_RENAME_EXCHANGE |
+						  PMEMFILE_RENAME_NOREPLACE |
+						  PMEMFILE_RENAME_WHITEOUT))),
+		  -1);
+	EXPECT_EQ(errno, EINVAL);
 
 	ASSERT_EQ(pmemfile_renameat2(pfp, NULL, "/dir1/f1", NULL, "/dir2/f2",
 				     PMEMFILE_RENAME_NOREPLACE),

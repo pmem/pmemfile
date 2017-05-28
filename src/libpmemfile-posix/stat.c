@@ -62,6 +62,9 @@ vinode_stat(struct pmemfile_vinode *vinode, pmemfile_stat_t *buf)
 {
 	struct pmemfile_inode *inode = vinode->inode;
 
+	if (!buf)
+		return EFAULT;
+
 	memset(buf, 0, sizeof(*buf));
 	buf->st_dev = vinode->tinode.oid.pool_uuid_lo;
 	buf->st_ino = vinode->tinode.oid.off;
@@ -129,11 +132,6 @@ _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	struct pmemfile_vinode *vinode;
 
 	LOG(LDBG, "path %s", path);
-
-	if (!buf) {
-		error = EFAULT;
-		goto ret;
-	}
 
 	if (path[0] == 0 && (flags & PMEMFILE_AT_EMPTY_PATH)) {
 		error = vinode_stat(dir, buf);
@@ -232,11 +230,6 @@ pmemfile_fstat(PMEMfilepool *pfp, PMEMfile *file, pmemfile_stat_t *buf)
 	}
 
 	if (!file) {
-		errno = EFAULT;
-		return -1;
-	}
-
-	if (!buf) {
 		errno = EFAULT;
 		return -1;
 	}

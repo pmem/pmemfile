@@ -327,6 +327,14 @@ TEST_F(basic, unlink)
 	pmemfile_close(pfp, f1);
 
 	errno = 0;
+	ASSERT_EQ(pmemfile_unlink(pfp, NULL), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_unlink(NULL, "/bbb2.link"), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
 	ret = pmemfile_unlink(pfp, "/bbb2.link/");
 	ASSERT_EQ(ret, -1);
 	EXPECT_EQ(errno, ENOTDIR);

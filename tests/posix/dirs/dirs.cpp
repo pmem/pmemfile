@@ -429,6 +429,23 @@ TEST_F(dirs, unlinkat)
 	ASSERT_TRUE(
 		test_pmemfile_create(pfp, "/dir/file", PMEMFILE_O_EXCL, 0644));
 
+	errno = 0;
+	ASSERT_EQ(pmemfile_unlinkat(pfp, dir, NULL, 0), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_unlinkat(NULL, dir, "file", 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_unlinkat(pfp, NULL, "file", 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_unlinkat(pfp, dir, "file", ~PMEMFILE_AT_REMOVEDIR),
+		  -1);
+	EXPECT_EQ(errno, EINVAL);
+
 	ASSERT_EQ(pmemfile_unlinkat(pfp, dir, "file", 0), 0);
 	ASSERT_EQ(pmemfile_unlinkat(pfp, dir, "../file1", 0), 0);
 

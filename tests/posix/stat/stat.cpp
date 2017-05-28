@@ -160,6 +160,18 @@ TEST_F(stat_test, basic)
 	errno = 0;
 	EXPECT_EQ(test_stat(pfp, "/file1"), -1);
 	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	EXPECT_EQ(pmemfile_stat(pfp, "/", NULL), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	EXPECT_EQ(test_stat(pfp, NULL), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	EXPECT_EQ(test_stat(NULL, "/file1"), -1);
+	EXPECT_EQ(errno, EFAULT);
 }
 
 TEST_F(stat_test, stat_big_file)
@@ -193,6 +205,20 @@ TEST_F(stat_test, stat_big_file)
 
 	EXPECT_EQ(test_fstat(pfp, f, 0100644, 0, 102400, 1, 224), 0);
 
+	pmemfile_stat_t stbuf;
+
+	errno = 0;
+	EXPECT_EQ(pmemfile_fstat(pfp, f, NULL), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	EXPECT_EQ(pmemfile_fstat(pfp, NULL, &stbuf), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	EXPECT_EQ(pmemfile_fstat(NULL, f, &stbuf), -1);
+	EXPECT_EQ(errno, EFAULT);
+
 	pmemfile_close(pfp, f);
 }
 
@@ -223,6 +249,26 @@ TEST_F(stat_test, fstatat)
 
 	PMEMfile *dir = pmemfile_open(pfp, "/dir", PMEMFILE_O_DIRECTORY);
 	ASSERT_NE(dir, nullptr);
+
+	errno = 0;
+	EXPECT_EQ(test_fstatat(pfp, dir, NULL, 0), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	EXPECT_EQ(test_fstatat(pfp, NULL, "file1", 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	EXPECT_EQ(test_fstatat(NULL, dir, "file1", 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	EXPECT_EQ(
+		test_fstatat(pfp, dir, "file1", ~(PMEMFILE_AT_NO_AUTOMOUNT |
+						  PMEMFILE_AT_SYMLINK_NOFOLLOW |
+						  PMEMFILE_AT_EMPTY_PATH)),
+		-1);
+	EXPECT_EQ(errno, EINVAL);
 
 	EXPECT_EQ(test_fstatat(pfp, dir, "file1", 0, 0100644, 1, 0, 1, 0), 0);
 

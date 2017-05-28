@@ -226,6 +226,32 @@ TEST_F(symlinks, 0)
 	ASSERT_EQ(ret, -1);
 	EXPECT_EQ(errno, ENOTDIR);
 
+	errno = 0;
+	ASSERT_EQ(pmemfile_readlink(pfp, NULL, buf, PMEMFILE_PATH_MAX), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_readlink(NULL, "/dir/sym1-exists", buf,
+				    PMEMFILE_PATH_MAX),
+		  -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_readlink(pfp, "/dir/sym1-notexists", buf,
+				    PMEMFILE_PATH_MAX),
+		  -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_readlinkat(pfp, NULL, "dir/sym1-exists", buf,
+				      PMEMFILE_PATH_MAX),
+		  -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	ASSERT_EQ(pmemfile_readlinkat(pfp, PMEMFILE_AT_CWD, "dir/sym1-exists",
+				      buf, 2),
+		  2);
+
 	pmemfile_close(pfp, f);
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/sym1-exists"), 0);

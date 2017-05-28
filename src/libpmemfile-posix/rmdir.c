@@ -194,11 +194,6 @@ pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto vdir_end;
 	}
 
-	if (dirent_info.vinode == pfp->root) {
-		error = EBUSY;
-		goto vdir_end;
-	}
-
 	if (!_vinode_can_access(&cred, info.parent, PFILE_WANT_WRITE)) {
 		error = EACCES;
 		goto vdir_end;

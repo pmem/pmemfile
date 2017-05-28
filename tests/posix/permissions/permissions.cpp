@@ -1703,6 +1703,17 @@ TEST_F(permissions, faccessat)
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
 }
 
+TEST_F(permissions, truncate)
+{
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/aaa", PMEMFILE_O_EXCL,
+					 PMEMFILE_S_IRUSR));
+
+	ASSERT_EQ(pmemfile_truncate(pfp, "/aaa", 0), -1);
+	EXPECT_EQ(errno, EACCES);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/aaa"), 0);
+}
+
 int
 main(int argc, char *argv[])
 {

@@ -481,6 +481,18 @@ TEST_F(rw, ftruncate)
 	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT | PMEMFILE_O_RDWR, 0);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
+	errno = 0;
+	ASSERT_EQ(pmemfile_ftruncate(pfp, NULL, 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_ftruncate(NULL, f, 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_ftruncate(pfp, f, -1), -1);
+	EXPECT_EQ(errno, EINVAL);
+
 	r = pmemfile_ftruncate(pfp, f, 1024);
 	ASSERT_EQ(r, 0) << COND_ERROR(r);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 1024);
@@ -584,6 +596,17 @@ TEST_F(rw, ftruncate)
 	pmemfile_close(pfp, f);
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
+
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", 0777), 0);
+	f = pmemfile_open(pfp, "/dir", PMEMFILE_O_RDWR, 0);
+	ASSERT_NE(f, nullptr);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_ftruncate(pfp, f, 0), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	pmemfile_close(pfp, f);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
 }
 
 TEST_F(rw, truncate)
@@ -599,7 +622,29 @@ TEST_F(rw, truncate)
 			  PMEMFILE_S_IRWXU);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
-	r = pmemfile_truncate(pfp, "/file1", 1024);
+	errno = 0;
+	ASSERT_EQ(pmemfile_truncate(pfp, NULL, 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_truncate(NULL, "/file1", 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_truncate(pfp, "/file1", -1), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_truncate(pfp, "/file-not-exists", 0), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", 0777), 0);
+	errno = 0;
+	ASSERT_EQ(pmemfile_truncate(pfp, "/dir", 0), -1);
+	EXPECT_EQ(errno, EISDIR);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
+
+	r = pmemfile_truncate(pfp, "file1", 1024);
 	ASSERT_EQ(r, 0) << COND_ERROR(r);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 1024);
 	r = pmemfile_truncate(pfp, "/file1", 10240);

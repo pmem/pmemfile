@@ -117,6 +117,18 @@ pmemfile_preadv_internal(PMEMfilepool *pfp,
 	if (iovcnt == 0)
 		return 0;
 
+	if (iov == NULL) {
+		errno = EFAULT;
+		return -1;
+	}
+
+	for (int i = 0; i < iovcnt; ++i) {
+		if (iov[i].iov_base == NULL) {
+			errno = EFAULT;
+			return -1;
+		}
+	}
+
 	struct pmemfile_inode *inode = vinode->inode;
 
 	/*

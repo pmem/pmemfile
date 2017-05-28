@@ -362,6 +362,28 @@ TEST_F(dirs, mkdir_rmdir_unlink_errors)
 	EXPECT_EQ(errno, EBUSY);
 }
 
+TEST_F(dirs, read_write_dir)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", PMEMFILE_S_IRWXU), 0);
+
+	PMEMfile *dir = pmemfile_open(pfp, "/dir",
+				      PMEMFILE_O_DIRECTORY | PMEMFILE_O_RDWR);
+	ASSERT_NE(dir, nullptr);
+
+	char buf[10];
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_write(pfp, dir, buf, sizeof(buf)), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_read(pfp, dir, buf, sizeof(buf)), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	pmemfile_close(pfp, dir);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
+}
+
 TEST_F(dirs, mkdirat)
 {
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", PMEMFILE_S_IRWXU), 0);

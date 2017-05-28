@@ -270,6 +270,18 @@ TEST_F(dirs, mkdir_rmdir_unlink_errors)
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir0007/another_directory", 0755), 0);
 
 	errno = 0;
+	ASSERT_EQ(pmemfile_mkdir(pfp, NULL, 0755), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_mkdir(NULL, "/dir", 0755), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", (pmemfile_mode_t)-1), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	errno = 0;
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/", 0755), -1);
 	EXPECT_EQ(errno, EEXIST);
 
@@ -344,6 +356,18 @@ TEST_F(dirs, mkdirat)
 
 	PMEMfile *dir = pmemfile_open(pfp, "/dir", PMEMFILE_O_DIRECTORY);
 	ASSERT_NE(dir, nullptr) << strerror(errno);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_mkdirat(pfp, dir, NULL, 0755), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_mkdirat(NULL, dir, "internal", 0755), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_mkdirat(pfp, NULL, "internal", 0755), -1);
+	EXPECT_EQ(errno, EFAULT);
 
 	ASSERT_EQ(pmemfile_mkdirat(pfp, dir, "internal", PMEMFILE_S_IRWXU), 0);
 	ASSERT_EQ(pmemfile_mkdirat(pfp, dir, "../external", PMEMFILE_S_IRWXU),

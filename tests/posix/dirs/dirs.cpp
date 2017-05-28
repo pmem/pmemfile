@@ -305,6 +305,14 @@ TEST_F(dirs, mkdir_rmdir_unlink_errors)
 
 	ASSERT_TRUE(list_files(pfp, "/", ops + 2, 1, "test2: after3"));
 
+	errno = 0;
+	ASSERT_EQ(pmemfile_rmdir(pfp, NULL), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_rmdir(NULL, "/dir0000"), -1);
+	EXPECT_EQ(errno, EFAULT);
+
 	if (ops >= 100) {
 		errno = 0;
 		ASSERT_EQ(pmemfile_rmdir(pfp, "/dir0100"), -1);
@@ -348,6 +356,10 @@ TEST_F(dirs, mkdir_rmdir_unlink_errors)
 
 		ASSERT_EQ(pmemfile_rmdir(pfp, buf), 0);
 	}
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/"), -1);
+	EXPECT_EQ(errno, EBUSY);
 }
 
 TEST_F(dirs, mkdirat)

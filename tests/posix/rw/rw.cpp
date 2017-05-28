@@ -192,6 +192,18 @@ TEST_F(rw, basic)
 	ASSERT_EQ(memcmp(data + 4, data2 + 4, 5), 0);
 	ASSERT_EQ(memcmp(data2 + 9, bufFF, sizeof(data2) - 9), 0);
 
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, NULL, 0, PMEMFILE_SEEK_CUR), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(NULL, f, 0, PMEMFILE_SEEK_CUR), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, -1), -1);
+	EXPECT_EQ(errno, EINVAL);
+
 	pmemfile_close(pfp, f);
 
 	/* validate SEEK_CUR */
@@ -1079,6 +1091,7 @@ TEST_F(rw, sparse_files_using_lseek)
 
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_HOLE), 0);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_DATA), 0);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, -1, PMEMFILE_SEEK_DATA), 0);
 
 	/*
 	 * Seeking to hole, or to data should fail with offset

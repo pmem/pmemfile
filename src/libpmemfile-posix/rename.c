@@ -431,6 +431,7 @@ end_unlock:
 		os_rwlock_unlock(&pfp->super_rwlock);
 	vinode_unlockN(vinodes);
 
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
 	if (dst_info.vinode)
 		vinode_unref(pfp, dst_info.vinode);
 
@@ -522,6 +523,7 @@ pmemfile_renameat2(PMEMfilepool *pfp, PMEMfile *old_at, const char *old_path,
 	if (ret)
 		error = errno;
 
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
 	if (olddir_at_unref)
 		vinode_unref(pfp, olddir_at);
 

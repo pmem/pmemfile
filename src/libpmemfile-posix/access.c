@@ -93,6 +93,7 @@ end:
 	path_info_cleanup(pfp, &info);
 	cred_release(&cred);
 
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
 	if (vinode)
 		vinode_unref(pfp, vinode);
 

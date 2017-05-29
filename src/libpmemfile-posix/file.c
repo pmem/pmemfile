@@ -359,6 +359,8 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto end;
 	}
 
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+
 	if (vinode == NULL) {
 		TOID(struct pmemfile_inode) tinode;
 

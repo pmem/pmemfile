@@ -103,6 +103,8 @@ _pmemfile_ftruncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 
 	vinode_snapshot(vinode);
 
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		vinode_truncate(pfp, vinode, length);
 	} TX_ONABORT {
@@ -225,6 +227,7 @@ end:
 	path_info_cleanup(pfp, &info);
 	cred_release(cred);
 
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
 	if (vinode)
 		vinode_unref(pfp, vinode);
 

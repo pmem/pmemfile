@@ -118,6 +118,8 @@ _pmemfile_mkdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	os_rwlock_wrlock(&parent->rwlock);
 
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (!_vinode_can_access(&cred, parent, PFILE_WANT_WRITE))
 			pmemfile_tx_abort(EACCES);

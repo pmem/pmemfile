@@ -146,6 +146,8 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto end_vinode;
 	}
 
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		vinode_unlink_file(pfp, info.parent, dirent_info.dirent,
 				dirent_info.vinode);
@@ -159,6 +161,7 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 end_vinode:
 	vinode_unlock2(dirent_info.vinode, info.parent);
 
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
 	if (dirent_info.vinode)
 		vinode_unref(pfp, dirent_info.vinode);
 

@@ -53,6 +53,8 @@ vinode_write(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, size_t offset,
 		struct pmemfile_block_desc **last_block,
 		const char *buf, size_t count)
 {
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
 	ASSERT(count > 0);
 	struct pmemfile_inode *inode = vinode->inode;
 
@@ -119,6 +121,8 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 	vinode_snapshot(vinode);
 
 	size_t ret = 0;
+
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (!vinode->blocks) {

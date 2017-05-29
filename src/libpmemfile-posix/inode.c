@@ -344,6 +344,8 @@ vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 static void
 inode_free_dir(struct pmemfile_inode *inode)
 {
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
 	struct pmemfile_dir *dir = &inode->file_data.dir;
 	TOID(struct pmemfile_dir) tdir = TOID_NULL(struct pmemfile_dir);
 
@@ -368,6 +370,8 @@ inode_free_dir(struct pmemfile_inode *inode)
 static void
 inode_free_reg_file(struct pmemfile_inode *inode)
 {
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
 	struct pmemfile_block_array *arr = &inode->file_data.blocks;
 	TOID(struct pmemfile_block_array) tarr =
 			TOID_NULL(struct pmemfile_block_array);
@@ -390,6 +394,8 @@ inode_free_reg_file(struct pmemfile_inode *inode)
 static void
 inode_free_symlink(struct pmemfile_inode *inode)
 {
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
 	/* nothing to be done */
 }
 

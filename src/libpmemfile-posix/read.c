@@ -180,7 +180,7 @@ pmemfile_preadv_internal(PMEMfilepool *pfp,
 
 	os_rwlock_unlock(&vinode->rwlock);
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 	if (update_atime) {
 		os_rwlock_wrlock(&vinode->rwlock);
 

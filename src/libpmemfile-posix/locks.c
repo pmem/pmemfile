@@ -37,6 +37,7 @@
 
 #include "os_thread.h"
 #include "out.h"
+#include "utils.h"
 
 /*
  * rwlock_unlock_cb -- wrapper around os_rwlock_unlock to be used as a callback
@@ -55,7 +56,7 @@ rwlock_unlock_cb(PMEMfilepool *pfp, os_rwlock_t *arg)
 void
 rwlock_tx_wlock(os_rwlock_t *l)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	cb_push_front(TX_STAGE_ONABORT, (cb_basic)rwlock_unlock_cb, l);
 
@@ -68,7 +69,7 @@ rwlock_tx_wlock(os_rwlock_t *l)
 void
 rwlock_tx_unlock_on_commit(os_rwlock_t *l)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	cb_push_back(TX_STAGE_ONCOMMIT, (cb_basic)rwlock_unlock_cb, l);
 }
@@ -90,7 +91,7 @@ mutex_unlock_cb(PMEMfilepool *pfp, PMEMmutex *mutexp)
 void
 mutex_tx_unlock_on_abort(PMEMmutex *mutexp)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	cb_push_front(TX_STAGE_ONABORT, (cb_basic)mutex_unlock_cb, mutexp);
 }
@@ -113,7 +114,7 @@ mutex_tx_lock(PMEMfilepool *pfp, PMEMmutex *mutexp)
 void
 mutex_tx_unlock_on_commit(PMEMmutex *mutexp)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	cb_push_back(TX_STAGE_ONCOMMIT, (cb_basic)mutex_unlock_cb, mutexp);
 }

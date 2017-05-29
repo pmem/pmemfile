@@ -42,6 +42,7 @@
 #include "libpmemfile-posix.h"
 #include "out.h"
 #include "pool.h"
+#include "utils.h"
 
 /*
  * vinode_chmod
@@ -57,7 +58,7 @@ vinode_chmod(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	pmemfile_uid_t fsuid;
 	int cap;
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 
 	os_rwlock_rdlock(&pfp->cred_rwlock);
 	fsuid = pfp->cred.fsuid;
@@ -122,7 +123,7 @@ end:
 	path_info_cleanup(pfp, &info);
 	cred_release(&cred);
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 	if (vinode)
 		vinode_unref(pfp, vinode);
 

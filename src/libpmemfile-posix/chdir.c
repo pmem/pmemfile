@@ -47,7 +47,7 @@ static int
 _pmemfile_chdir(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *dir)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 
 	struct inode_perms dir_perms = vinode_get_perms(dir);
 
@@ -113,7 +113,7 @@ end:
 	path_info_cleanup(pfp, &info);
 	cred_release(&cred);
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 	if (at_unref)
 		vinode_unref(pfp, at);
 	if (error)

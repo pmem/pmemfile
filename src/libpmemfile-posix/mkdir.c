@@ -61,7 +61,7 @@ vinode_new_dir(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 			parent ? parent->tinode.oid.off : 0,
 			pmfi_path(parent), (int)namelen, name);
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	if (mode & ~(pmemfile_mode_t)PMEMFILE_ACCESSPERMS) {
 		/* XXX: what the kernel does in this case? */
@@ -118,7 +118,7 @@ _pmemfile_mkdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	os_rwlock_wrlock(&parent->rwlock);
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (!_vinode_can_access(&cred, parent, PFILE_WANT_WRITE))

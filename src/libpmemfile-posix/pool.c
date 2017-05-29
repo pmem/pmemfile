@@ -48,6 +48,7 @@
 #include "os_thread.h"
 #include "out.h"
 #include "pool.h"
+#include "utils.h"
 
 /*
  * initialize_super_block -- initializes super block
@@ -59,7 +60,7 @@ initialize_super_block(PMEMfilepool *pfp)
 {
 	LOG(LDBG, "pfp %p", pfp);
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 
 	int error = 0;
 	struct pmemfile_super *super = pfp->super;
@@ -145,7 +146,7 @@ cleanup_orphaned_inodes_single(PMEMfilepool *pfp,
 {
 	LOG(LDBG, "pfp %p", pfp);
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	if (arr->used == 0)
 		return;
@@ -181,7 +182,7 @@ cleanup_orphaned_inodes(PMEMfilepool *pfp,
 {
 	LOG(LDBG, "pfp %p", pfp);
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 
 	struct pmemfile_inode_array *first = D_RW(arr);
 

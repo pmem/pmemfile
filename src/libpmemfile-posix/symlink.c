@@ -83,7 +83,7 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 
 	os_rwlock_wrlock(&vparent->rwlock);
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (!_vinode_can_access(&cred, vparent, PFILE_WANT_WRITE))
@@ -108,7 +108,7 @@ end:
 	path_info_cleanup(pfp, &info);
 	cred_release(&cred);
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 	if (vinode)
 		vinode_unref(pfp, vinode);
 

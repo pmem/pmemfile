@@ -152,7 +152,7 @@ has_free_block_entry(struct pmemfile_vinode *vinode)
 static void
 allocate_new_block_array(struct pmemfile_vinode *vinode)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	ASSERT(!has_free_block_entry(vinode));
 
@@ -196,7 +196,7 @@ allocate_new_block_array(struct pmemfile_vinode *vinode)
 static struct pmemfile_block_desc *
 acquire_new_entry(struct pmemfile_vinode *vinode)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	if (!has_free_block_entry(vinode))
 		allocate_new_block_array(vinode);
@@ -229,7 +229,7 @@ struct pmemfile_block_desc *
 block_list_insert_after(struct pmemfile_vinode *vinode,
 			struct pmemfile_block_desc *prev)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	/* lazy init vinode->first_free_block */
 	update_first_block_info(vinode);
@@ -277,7 +277,7 @@ last_used_block(struct pmemfile_vinode *vinode)
 static void
 unlink_block(struct pmemfile_block_desc *block)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	if (!TOID_IS_NULL(block->prev))
 		TX_SET(block->prev, next, block->next);
@@ -300,7 +300,7 @@ unlink_block(struct pmemfile_block_desc *block)
 static void
 relocate_block(struct pmemfile_block_desc *dst, struct pmemfile_block_desc *src)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	ASSERT(dst != src);
 
@@ -343,7 +343,7 @@ is_first_block_array_empty(struct pmemfile_vinode *vinode)
 static void
 remove_first_block_array(struct pmemfile_vinode *vinode)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	TOID(struct pmemfile_block_array) to_remove;
 	TOID(struct pmemfile_block_array) new_next;
@@ -423,7 +423,7 @@ struct pmemfile_block_desc *
 block_list_remove(struct pmemfile_vinode *vinode,
 		struct pmemfile_block_desc *block)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	struct pmemfile_block_desc *prev;
 

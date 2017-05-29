@@ -36,6 +36,9 @@
 #include "inode.h"
 #include "layout.h"
 
+#define ASSERT_IN_TX() ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK)
+#define ASSERT_NOT_IN_TX() ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE)
+
 void get_current_time(struct pmemfile_time *t);
 
 bool is_zeroed(const void *addr, size_t len);

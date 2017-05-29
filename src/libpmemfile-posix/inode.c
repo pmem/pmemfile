@@ -95,7 +95,7 @@ inode_ref(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 {
 	struct hash_map *map = pfp->inode_map;
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 
 	if (D_RO(inode)->version != PMEMFILE_INODE_VERSION(1)) {
 		ERR("unknown inode version 0x%x for inode 0x%" PRIx64,
@@ -170,7 +170,7 @@ vinode_ref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 void
 vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 
 	os_rwlock_wrlock(&pfp->inode_map_rwlock);
 
@@ -252,7 +252,7 @@ inode_alloc(PMEMfilepool *pfp, struct pmemfile_cred *cred, uint64_t flags)
 {
 	LOG(LDBG, "flags 0x%lx", flags);
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	TOID(struct pmemfile_inode) tinode = TX_ZNEW(struct pmemfile_inode);
 	struct pmemfile_inode *inode = D_RW(tinode);
@@ -298,7 +298,7 @@ vinode_orphan_unlocked(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 	LOG(LDBG, "inode 0x%" PRIx64 " path %s", vinode->tinode.oid.off,
 			pmfi_path(vinode));
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 	ASSERTeq(vinode->orphaned.arr, NULL);
 
 	TOID(struct pmemfile_inode_array) orphaned =
@@ -313,7 +313,7 @@ inode_orphan(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 {
 	LOG(LDBG, "inode 0x%" PRIx64, tinode.oid.off);
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	struct inode_orphan_info info;
 
@@ -344,7 +344,7 @@ vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 static void
 inode_free_dir(struct pmemfile_inode *inode)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	struct pmemfile_dir *dir = &inode->file_data.dir;
 	TOID(struct pmemfile_dir) tdir = TOID_NULL(struct pmemfile_dir);
@@ -370,7 +370,7 @@ inode_free_dir(struct pmemfile_inode *inode)
 static void
 inode_free_reg_file(struct pmemfile_inode *inode)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	struct pmemfile_block_array *arr = &inode->file_data.blocks;
 	TOID(struct pmemfile_block_array) tarr =
@@ -394,7 +394,7 @@ inode_free_reg_file(struct pmemfile_inode *inode)
 static void
 inode_free_symlink(struct pmemfile_inode *inode)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	/* nothing to be done */
 }
@@ -411,7 +411,7 @@ inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 
 	LOG(LDBG, "inode 0x%" PRIx64, tinode.oid.off);
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	struct pmemfile_inode *inode = D_RW(tinode);
 

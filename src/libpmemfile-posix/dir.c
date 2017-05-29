@@ -151,7 +151,7 @@ inode_add_dirent(PMEMfilepool *pfp,
 		parent_tinode.oid.off, (int)namelen, name,
 		child_tinode.oid.off);
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	if (namelen > PMEMFILE_MAX_FILE_NAME) {
 		LOG(LUSR, "file name too long");
@@ -284,7 +284,7 @@ vinode_lookup_vinode_by_name_locked(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent, const char *name,
 		size_t namelen)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 
 	struct pmemfile_dirent_info out;
 	out.dirent =
@@ -349,7 +349,7 @@ vinode_lookup_dirent(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 {
 	LOG(LDBG, "parent 0x%" PRIx64 " ppath %s name %s",
 			parent->tinode.oid.off, pmfi_path(parent), name);
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 
 	if (namelen == 0) {
 		errno = ENOENT;
@@ -387,7 +387,7 @@ resolve_pathat_nested(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *parent, const char *path,
 		struct pmemfile_path_info *path_info, int flags, int nest_level)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 
 	if (nest_level > 40) {
 		path_info->error = ELOOP;
@@ -507,7 +507,7 @@ resolve_pathat(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *parent, const char *path,
 		struct pmemfile_path_info *path_info, int flags)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 
 	memset(path_info, 0, sizeof(*path_info));
 
@@ -523,7 +523,7 @@ resolve_pathat_full(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_path_info *path_info, int flags,
 		bool resolve_last_symlink)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 
 	resolve_pathat(pfp, cred, parent, path, path_info, flags);
 
@@ -572,7 +572,7 @@ resolve_symlink(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *vinode,
 		struct pmemfile_path_info *info)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 
 	/* XXX: handle protected_symlinks (see man 5 proc) */
 
@@ -597,7 +597,7 @@ resolve_symlink(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 void
 path_info_cleanup(PMEMfilepool *pfp, struct pmemfile_path_info *path_info)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 
 	if (path_info->parent)
 		vinode_unref(pfp, path_info->parent);
@@ -618,7 +618,7 @@ lock_parent_and_child(PMEMfilepool *pfp,
 		struct pmemfile_path_info *path,
 		struct pmemfile_dirent_info *info)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 
 	memset(info, 0, sizeof(*info));
 
@@ -688,7 +688,7 @@ lock_parents_and_children(PMEMfilepool *pfp,
 
 		struct pmemfile_vinode *vinodes[static 5])
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 
 	memset(src_info, 0, sizeof(*src_info));
 	memset(dst_info, 0, sizeof(*dst_info));
@@ -824,7 +824,7 @@ static char *
 _pmemfile_get_dir_path(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		char *buf, size_t size)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 
 	struct pmemfile_vinode *parent, *child = vinode;
 

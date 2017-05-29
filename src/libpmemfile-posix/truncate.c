@@ -58,7 +58,7 @@ vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 {
 	struct pmemfile_inode *inode = vinode->inode;
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	if (vinode->blocks == NULL) {
 		int err = vinode_rebuild_block_tree(vinode);
@@ -103,7 +103,7 @@ _pmemfile_ftruncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 
 	vinode_snapshot(vinode);
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		vinode_truncate(pfp, vinode, length);
@@ -227,7 +227,7 @@ end:
 	path_info_cleanup(pfp, &info);
 	cred_release(cred);
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 	if (vinode)
 		vinode_unref(pfp, vinode);
 

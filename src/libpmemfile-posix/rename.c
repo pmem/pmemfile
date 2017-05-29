@@ -54,7 +54,7 @@ vinode_update_parent(PMEMfilepool *pfp,
 		struct pmemfile_vinode *src_parent,
 		struct pmemfile_vinode *dst_parent)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	struct pmemfile_dir *dir = &vinode->inode->file_data.dir;
 
@@ -103,7 +103,7 @@ vinode_exchange(PMEMfilepool *pfp,
 		struct pmemfile_dirent_info *dst_info)
 {
 	int error = 0;
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 
 	bool src_is_dir = vinode_is_dir(src_info->vinode);
 	bool dst_is_dir = vinode_is_dir(dst_info->vinode);
@@ -191,7 +191,7 @@ vinode_rename(PMEMfilepool *pfp,
 		const char *new_path)
 {
 	int error = 0;
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 
 	size_t new_name_len = component_length(dst->remaining);
 
@@ -431,7 +431,7 @@ end_unlock:
 		os_rwlock_unlock(&pfp->super_rwlock);
 	vinode_unlockN(vinodes);
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 	if (dst_info.vinode)
 		vinode_unref(pfp, dst_info.vinode);
 
@@ -523,7 +523,7 @@ pmemfile_renameat2(PMEMfilepool *pfp, PMEMfile *old_at, const char *old_path,
 	if (ret)
 		error = errno;
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 	if (olddir_at_unref)
 		vinode_unref(pfp, olddir_at);
 

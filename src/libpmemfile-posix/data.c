@@ -59,7 +59,7 @@ static void
 block_cache_insert_block_in_tx(struct ctree *c,
 		struct pmemfile_block_desc *block)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 	(void) block_cache_insert_block(c, block);
 }
 /*
@@ -195,7 +195,7 @@ file_allocate_block_data(PMEMfilepool *pfp,
 		size_t count,
 		bool use_usable_size)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 	ASSERT(count > 0);
 	ASSERT(count % FILE_PAGE_SIZE == 0);
 
@@ -450,7 +450,7 @@ void
 vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		uint64_t offset, uint64_t size)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 	ASSERT(size > 0);
 	ASSERT(offset + size > offset);
 
@@ -660,7 +660,7 @@ static void
 write_block_range(PMEMfilepool *pfp, struct pmemfile_block_desc *block,
 	uint64_t offset, uint64_t len, const char *buf)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 	ASSERT(block != NULL);
 	ASSERT(len > 0);
 	ASSERT(offset < block->size);
@@ -709,7 +709,7 @@ iterate_on_file_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	struct pmemfile_block_desc *block = starting_block;
 	struct pmemfile_block_desc *last_block = starting_block;
 	if (dir == write_to_blocks)
-		ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+		ASSERT_IN_TX();
 
 	while (len > 0) {
 		/* Remember the pointer to block used last time */
@@ -898,7 +898,7 @@ void
 vinode_remove_interval(struct pmemfile_vinode *vinode,
 			uint64_t offset, uint64_t len)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 	ASSERT(len > 0);
 
 	struct pmemfile_block_desc *block =

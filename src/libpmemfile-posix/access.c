@@ -39,6 +39,7 @@
 #include "libpmemfile-posix.h"
 #include "out.h"
 #include "pool.h"
+#include "utils.h"
 
 static int
 _pmemfile_faccessat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
@@ -93,7 +94,7 @@ end:
 	path_info_cleanup(pfp, &info);
 	cred_release(&cred);
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 	if (vinode)
 		vinode_unref(pfp, vinode);
 

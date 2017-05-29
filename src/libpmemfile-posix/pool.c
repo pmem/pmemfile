@@ -117,6 +117,7 @@ initialize_super_block(PMEMfilepool *pfp)
 	pfp->root->parent = pfp->root;
 #ifdef DEBUG
 	pfp->root->path = strdup("/");
+	ASSERTne(pfp->root->path, NULL);
 #endif
 
 	pfp->cwd = vinode_ref(pfp, pfp->root);

@@ -205,8 +205,6 @@ void out_init(const char *log_prefix, const char *log_level_var,
 		const char *log_file_var, int major_version,
 		int minor_version);
 void out_fini(void);
-void out(const char *fmt, ...) pf_printf_like(1, 2);
-void out_nonl(int level, const char *fmt, ...) pf_printf_like(2, 3);
 void out_log(const char *file, int line, const char *func, int level,
 	const char *fmt, ...) pf_printf_like(5, 6);
 void out_err(const char *file, int line, const char *func,

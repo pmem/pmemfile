@@ -1452,31 +1452,6 @@ lookup_pd_by_inode(struct stat *stat)
 	return NULL;
 }
 
-struct pool_description *
-lookup_pd_by_path(const char *path)
-{
-	for (int i = 0; i < pool_count; ++i) {
-		struct pool_description *p = pools + i;
-		/*
-		 * XXX: first compare the lengths of the two strings to avoid
-		 * strcmp calls
-		 */
-		/*
-		 * Note: p->mount_point never changes after lib initialization,
-		 * thus it is safe to read. If a non-null value is read from
-		 * p->pool, the rest of the pool_description struct must be
-		 * already initialized -- and never altered thereafter.
-		 */
-		if (strcmp(p->mount_point, path) == 0)  {
-			if (__atomic_load_n(&p->pool, __ATOMIC_ACQUIRE) == NULL)
-				open_new_pool(p);
-			return p;
-		}
-	}
-
-	return NULL;
-}
-
 /*
  * The reenter flag allows pmemfile to prevent the hooking of its own
  * syscalls. E.g. while handling an open syscall, libpmemfile might

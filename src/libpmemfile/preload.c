@@ -348,7 +348,7 @@ hook_linkat(struct fd_desc at0, long arg0,
 	if (where_new.at.pmem_fda.pool != where_old.at.pmem_fda.pool)
 		return -EXDEV;
 
-	if (where_new.at.pmem_fda.pool == NULL)
+	if (is_fda_null(&where_new.at.pmem_fda))
 		return syscall_no_intercept(SYS_linkat,
 		    where_old.at.kernel_fd, where_old.path,
 		    where_new.at.kernel_fd, where_new.path, flags);
@@ -801,7 +801,7 @@ hook_renameat2(struct fd_desc at_old, const char *path_old,
 	if (where_new.at.pmem_fda.pool != where_old.at.pmem_fda.pool)
 		return -EXDEV;
 
-	if (where_new.at.pmem_fda.pool == NULL) {
+	if (is_fda_null(&where_new.at.pmem_fda)) {
 		if (flags == 0) {
 			return syscall_no_intercept(SYS_renameat,
 			    where_old.at.kernel_fd, where_old.path,
@@ -836,7 +836,7 @@ hook_truncate(const char *path, off_t length)
 	if (where.error_code != 0)
 		return where.error_code;
 
-	if (where.at.pmem_fda.pool == NULL)
+	if (is_fda_null(&where.at.pmem_fda))
 		return syscall_no_intercept(SYS_truncate,
 		    where.at.kernel_fd, where.path, length);
 
@@ -877,7 +877,7 @@ hook_symlinkat(const char *target, struct fd_desc at, const char *linkpath)
 	if (where.error_code != 0)
 		return where.error_code;
 
-	if (where.at.pmem_fda.pool == NULL)
+	if (is_fda_null(&where.at.pmem_fda))
 		return syscall_no_intercept(SYS_symlinkat, target,
 		    where.at.kernel_fd, where.path);
 
@@ -918,7 +918,7 @@ hook_fchmodat(struct fd_desc at, const char *path, mode_t mode)
 	if (where.error_code != 0)
 		return where.error_code;
 
-	if (where.at.pmem_fda.pool == NULL)
+	if (is_fda_null(&where.at.pmem_fda))
 		return syscall_no_intercept(SYS_fchmodat,
 		    where.at.kernel_fd, where.path, mode);
 
@@ -964,7 +964,7 @@ hook_fchownat(struct fd_desc at, const char *path,
 	if (where.error_code != 0)
 		return where.error_code;
 
-	if (where.at.pmem_fda.pool == NULL)
+	if (is_fda_null(&where.at.pmem_fda))
 		return syscall_no_intercept(SYS_fchownat,
 		    where.at.kernel_fd, where.path, owner, group, flags);
 
@@ -1006,7 +1006,7 @@ hook_readlinkat(struct fd_desc at, const char *path,
 	if (where.error_code != 0)
 		return where.error_code;
 
-	if (where.at.pmem_fda.pool == NULL)
+	if (is_fda_null(&where.at.pmem_fda))
 		return syscall_no_intercept(SYS_readlinkat,
 		    where.at.kernel_fd, where.path, buf, bufsiz);
 
@@ -1047,7 +1047,7 @@ nosup_syscall_with_path(long syscall_number,
 	 * don't have an _at version. So for now these are only handled, if the
 	 * path is relative to AT_FDCWD.
 	 */
-	if (where.at.pmem_fda.pool == NULL && where.at.kernel_fd == AT_FDCWD)
+	if (is_fda_null(&where.at.pmem_fda) && where.at.kernel_fd == AT_FDCWD)
 		return syscall_no_intercept(syscall_number,
 		    arg0, arg1, arg2, arg3, arg4, arg5);
 
@@ -1079,7 +1079,7 @@ hook_futimesat(struct fd_desc at, const char *path,
 	if (where.error_code != 0)
 		return where.error_code;
 
-	if (where.at.pmem_fda.pool == NULL)
+	if (is_fda_null(&where.at.pmem_fda))
 		return syscall_no_intercept(SYS_futimesat,
 		    where.at.kernel_fd, where.path, times);
 
@@ -1119,7 +1119,7 @@ hook_execveat(struct fd_desc at, const char *path,
 	if (where.error_code != 0)
 		return where.error_code;
 
-	if (where.at.pmem_fda.pool == NULL)
+	if (is_fda_null(&where.at.pmem_fda))
 		return syscall_no_intercept(SYS_execveat,
 		    where.at.kernel_fd, where.path, argv, envp, flags);
 

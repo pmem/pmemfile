@@ -44,18 +44,21 @@
 #include "libsyscall_intercept_hook_point.h"
 #include "compiler_utils.h"
 
-static inline pf_noreturn void
-exit_group_no_intercept(int ret)
-{
-	syscall_no_intercept(SYS_exit_group, ret);
-	__builtin_unreachable();
-}
+#define PMEMFILE_PRELOAD_EXIT_NOT_SUPPORTED	95
+#define PMEMFILE_PRELOAD_EXIT_TOO_MANY_FDS	96
+#define PMEMFILE_PRELOAD_EXIT_GETCWD_FAILED	97
+#define PMEMFILE_PRELOAD_EXIT_CWD_STAT_FAILED	98
+#define PMEMFILE_PRELOAD_EXIT_POOL_OPEN_FAILED	99
+#define PMEMFILE_PRELOAD_EXIT_CONFIG_ERROR	100
+#define PMEMFILE_PRELOAD_EXIT_FATAL_CONDITION	128 + 6
+
+pf_noreturn void
+exit_group_no_intercept(int ret, const char *msg);
 
 static inline void
 FATAL(const char *str)
 {
-	syscall_no_intercept(SYS_write, 2, str, strlen(str));
-	exit_group_no_intercept(128 + 7);
+	exit_group_no_intercept(PMEMFILE_PRELOAD_EXIT_FATAL_CONDITION, str);
 }
 
 /*

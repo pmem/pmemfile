@@ -149,3 +149,82 @@ inode_array_unregister(PMEMfilepool *pfp,
 	mutex_tx_unlock_on_commit(&cur->mtx);
 
 }
+
+/*
+ * inode_array_traverse -- traverses whole inode array and calls specified
+ * callback function for each inode
+ */
+void
+inode_array_traverse(PMEMfilepool *pfp, TOID(struct pmemfile_inode_array) arr,
+		inode_cb inode_cb)
+{
+	struct pmemfile_inode_array *cur = D_RW(arr);
+
+	while (cur) {
+		if (cur->used) {
+			uint32_t used = cur->used;
+			for (unsigned i = 0; used && i < NUMINODES_PER_ENTRY;
+					++i) {
+				if (TOID_IS_NULL(cur->inodes[i]))
+					continue;
+				inode_cb(pfp, cur->inodes[i]);
+				used--;
+			}
+		}
+
+		cur = D_RW(cur->next);
+	}
+}
+
+/*
+ * inode_array_free -- frees inode array
+ *
+ * Does NOT free inodes.
+ */
+void
+inode_array_free(TOID(struct pmemfile_inode_array) arr)
+{
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
+	while (!TOID_IS_NULL(arr)) {
+		TOID(struct pmemfile_inode_array) tmp = D_RW(arr)->next;
+		TX_FREE(arr);
+		arr = tmp;
+	}
+}
+
+/*
+ * inode_array_alloc -- allocates inode array
+ */
+TOID(struct pmemfile_inode_array)
+inode_array_alloc()
+{
+	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+
+	return TX_ZNEW(struct pmemfile_inode_array);
+}
+
+/*
+ * inode_array_empty -- returns true if there are no inodes in the array
+ */
+bool
+inode_array_empty(TOID(struct pmemfile_inode_array) tarr)
+{
+	while (!TOID_IS_NULL(tarr)) {
+		struct pmemfile_inode_array *arr = D_RW(tarr);
+		if (arr->used)
+			return false;
+		tarr = arr->next;
+	}
+
+	return true;
+}
+
+/*
+ * inode_array_is_small -- returns true if inode array is considered "small"
+ */
+bool
+inode_array_is_small(TOID(struct pmemfile_inode_array) tarr)
+{
+	return TOID_IS_NULL(D_RW(tarr)->next);
+}

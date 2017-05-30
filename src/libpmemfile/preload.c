@@ -344,6 +344,7 @@ hook_linkat(struct fd_desc at0, long arg0,
 	if (where_new.error_code != 0)
 		return where_new.error_code;
 
+	/* cross-pool link are not possible */
 	if (where_new.at.pmem_fda.pool != where_old.at.pmem_fda.pool)
 		return -EXDEV;
 
@@ -796,6 +797,7 @@ hook_renameat2(struct fd_desc at_old, const char *path_old,
 	if (where_new.error_code != 0)
 		return where_new.error_code;
 
+	/* cross-pool renames are not supported */
 	if (where_new.at.pmem_fda.pool != where_old.at.pmem_fda.pool)
 		return -EXDEV;
 

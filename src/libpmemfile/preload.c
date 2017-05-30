@@ -381,8 +381,7 @@ hook_unlinkat(struct fd_desc at, long path_arg, long flags)
 		return syscall_no_intercept(SYS_unlinkat,
 		    where.at.kernel_fd, where.path, flags);
 
-	int r;
-	r = pmemfile_unlinkat(where.at.pmem_fda.pool->pool,
+	int r = pmemfile_unlinkat(where.at.pmem_fda.pool->pool,
 		where.at.pmem_fda.file, where.path, (int)flags);
 
 	if (r != 0)
@@ -418,12 +417,15 @@ hook_chdir(const char *path)
 			cwd_pool = where.at.pmem_fda.pool;
 			syscall_no_intercept(SYS_chdir, cwd_pool->mount_point);
 		}
+
 		if (pmemfile_chdir(cwd_pool->pool, where.path) == 0)
 			result = 0;
 		else
 			result = -errno;
+
 		log_write("pmemfile_chdir(%p, \"%s\") = %ld",
 		    cwd_pool->pool, where.path, result);
+
 		check_errno(result, SYS_chdir);
 	}
 
@@ -452,8 +454,10 @@ hook_fchdir(long fd)
 		} else {
 			result = -errno;
 		}
+
 		log_write("pmemfile_fchdir(%p, %p) = %ld",
 		    where->pool->pool, where->file, result);
+
 		check_errno(result, SYS_fchdir);
 	} else {
 		result = syscall_no_intercept(SYS_fchdir, fd);
@@ -475,11 +479,13 @@ hook_getcwd(char *buf, size_t size)
 	size_t mlen = strlen(cwd_pool->mount_point);
 	if (mlen >= size)
 		return -ERANGE;
+
 	strcpy(buf, cwd_pool->mount_point);
-	if (pmemfile_getcwd(cwd_pool->pool, buf + mlen, size - mlen) != NULL)
-		return 0;
-	else
+
+	if (pmemfile_getcwd(cwd_pool->pool, buf + mlen, size - mlen) == NULL)
 		return check_errno(-errno, SYS_getcwd);
+
+	return 0;
 }
 
 static long
@@ -580,10 +586,10 @@ hook_faccessat(struct fd_desc at, long path_arg, long mode)
 	    (void *)where.at.pmem_fda.pool->pool, where.at.pmem_fda.file,
 	    where.path, mode, r);
 
-	if (r == 0)
-		return 0;
-	else
+	if (r)
 		return check_errno(-errno, SYS_faccessat);
+
+	return 0;
 }
 
 static long
@@ -637,9 +643,9 @@ hook_getxattr(long arg0, long arg1, long arg2, long arg3,
 
 		return syscall_no_intercept(SYS_getxattr,
 		    where.path, arg1, arg2, arg3);
-	} else {
-		return 0;
 	}
+
+	return 0;
 }
 
 static long
@@ -653,15 +659,14 @@ hook_setxattr(long arg0, long arg1, long arg2, long arg3, long arg4,
 	if (where.error_code != 0)
 		return where.error_code;
 
-	if (is_fda_null(&where.at.pmem_fda)) {
-		if (where.at.kernel_fd == AT_FDCWD)
-			return check_errno(-ENOTSUP, SYS_setxattr); /* XXX */
-
-		return syscall_no_intercept(SYS_setxattr,
-		    where.path, arg1, arg2, arg3, arg4);
-	} else {
+	if (!is_fda_null(&where.at.pmem_fda))
 		return check_errno(-ENOTSUP, SYS_setxattr);
-	}
+
+	if (where.at.kernel_fd == AT_FDCWD)
+		return check_errno(-ENOTSUP, SYS_setxattr); /* XXX */
+
+	return syscall_no_intercept(SYS_setxattr, where.path, arg1, arg2, arg3,
+			arg4);
 }
 
 static long
@@ -684,10 +689,10 @@ hook_mkdirat(struct fd_desc at, long path_arg, long mode)
 	log_write("pmemfile_mkdirat(%p, \"%s\", 0%lo) = %ld",
 	    (void *)where.at.pmem_fda.pool->pool, where.path, mode, r);
 
-	if (r == 0)
-		return 0;
-	else
+	if (r)
 		return check_errno(-errno, SYS_mkdirat);
+
+	return 0;
 }
 
 static long
@@ -718,34 +723,32 @@ hook_openat(struct fd_desc at, long arg0, long flags, long mode)
 	/* The fd to represent the pmem resident file for the application */
 	long fd = acquire_new_fd(path_arg);
 
-	if (fd < 0) { /* error while trying to allocate a new fd */
+	if (fd < 0) /* error while trying to allocate a new fd */
 		return fd;
-	} else {
-		PMEMfile *file;
 
-		file = pmemfile_openat(where.at.pmem_fda.pool->pool,
-				where.at.pmem_fda.file,
-				where.path,
-				((int)flags) & ~O_NONBLOCK,
-				(mode_t)mode);
+	PMEMfile *file = pmemfile_openat(where.at.pmem_fda.pool->pool,
+			where.at.pmem_fda.file,
+			where.path,
+			((int)flags) & ~O_NONBLOCK,
+			(mode_t)mode);
 
-		log_write("pmemfile_openat(%p, %p, \"%s\", 0x%x, %u) = %p",
-				(void *)where.at.pmem_fda.pool->pool,
-				(void *)where.at.pmem_fda.file,
-				where.path,
-				((int)flags) & ~O_NONBLOCK,
-				(mode_t)mode,
-				file);
+	log_write("pmemfile_openat(%p, %p, \"%s\", 0x%x, %u) = %p",
+			(void *)where.at.pmem_fda.pool->pool,
+			(void *)where.at.pmem_fda.file,
+			where.path,
+			((int)flags) & ~O_NONBLOCK,
+			(mode_t)mode,
+			file);
 
-		if (file != NULL) {
-			fd_table[fd].pool = where.at.pmem_fda.pool;
-			fd_table[fd].file = file;
-			return fd;
-		} else {
-			(void) syscall_no_intercept(SYS_close, fd);
-			return check_errno(-errno, SYS_openat);
-		}
+	if (file == NULL) {
+		(void) syscall_no_intercept(SYS_close, fd);
+		return check_errno(-errno, SYS_openat);
 	}
+
+	fd_table[fd].pool = where.at.pmem_fda.pool;
+	fd_table[fd].file = file;
+
+	return fd;
 }
 
 static long
@@ -1525,11 +1528,13 @@ hook(long syscall_number,
 		reenter = false;
 		return HOOKED;
 	}
+
 	if (syscall_number == SYS_fchdir) {
 		*syscall_return_value = hook_fchdir(arg0);
 		reenter = false;
 		return HOOKED;
 	}
+
 	if (syscall_number == SYS_getcwd) {
 		util_rwlock_rdlock(&pmem_cwd_lock);
 		*syscall_return_value = hook_getcwd((char *)arg0, (size_t)arg1);
@@ -1556,8 +1561,7 @@ hook(long syscall_number,
 	else if (filter_entry.fd_wlock)
 		util_rwlock_wrlock(&fd_table_lock);
 
-	if (filter_entry.fd_first_arg &&
-	    !is_fd_in_table(arg0)) {
+	if (filter_entry.fd_first_arg && !is_fd_in_table(arg0)) {
 		/*
 		 * shortcut for write, read, and such so this check doesn't
 		 * need to be copy-pasted into them
@@ -1787,6 +1791,7 @@ pmemfile_preload_constructor(void)
 
 	syscall_early_filter_init();
 	check_memfd_syscall();
+
 	log_init(getenv("PMEMFILE_PRELOAD_LOG"),
 			getenv("PMEMFILE_PRELOAD_LOG_TRUNC"));
 

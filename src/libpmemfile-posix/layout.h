@@ -136,7 +136,8 @@ struct pmemfile_time {
 #define PMEMFILE_INODE_VERSION(a) ((uint32_t)0x00444E49 | \
 		((uint32_t)(a + '0') << 24))
 
-#define PMEMFILE_IN_INODE_STORAGE (4096\
+#define PMEMFILE_INODE_SIZE 4096
+#define PMEMFILE_IN_INODE_STORAGE (PMEMFILE_INODE_SIZE\
 				- 4  /* version */ \
 				- 4  /* uid */ \
 				- 4  /* gid */ \
@@ -192,10 +193,19 @@ struct pmemfile_inode {
 	} file_data;
 };
 
-COMPILE_ERROR_ON(sizeof(struct pmemfile_inode) != 4096);
+COMPILE_ERROR_ON(sizeof(struct pmemfile_inode) != PMEMFILE_INODE_SIZE);
 
+#define PMEMFILE_INODE_ARRAY_SIZE 4096
 /* number of inodes for pmemfile_inode_array to fit in 4kB */
 #define NUMINODES_PER_ENTRY 249
+
+COMPILE_ERROR_ON(sizeof(PMEMmutex) \
+		+ 16 /* prev */ \
+		+ 16 /* next */ \
+		+ 4  /* used */ \
+		+ 12 /* padding */ \
+		+ NUMINODES_PER_ENTRY * sizeof(TOID(struct pmemfile_inode)) \
+		!= PMEMFILE_INODE_ARRAY_SIZE);
 
 struct pmemfile_inode_array {
 	PMEMmutex mtx;
@@ -210,10 +220,12 @@ struct pmemfile_inode_array {
 	TOID(struct pmemfile_inode) inodes[NUMINODES_PER_ENTRY];
 };
 
-COMPILE_ERROR_ON(sizeof(struct pmemfile_inode_array) != 4096);
+COMPILE_ERROR_ON(sizeof(struct pmemfile_inode_array) !=
+		PMEMFILE_INODE_ARRAY_SIZE);
 
 #define PMEMFILE_SUPER_VERSION(a, b) ((uint64_t)0x000056454C494650 | \
 		((uint64_t)(a + '0') << 48) | ((uint64_t)(b + '0') << 56))
+#define PMEMFILE_SUPER_SIZE 4096
 
 /* superblock */
 struct pmemfile_super {
@@ -226,12 +238,12 @@ struct pmemfile_super {
 	/* list of arrays of inodes that were deleted, but are still opened */
 	TOID(struct pmemfile_inode_array) orphaned_inodes;
 
-	char padding[4096
+	char padding[PMEMFILE_SUPER_SIZE
 			- 8  /* version */
 			- 16 /* toid */
 			- 16 /* toid */];
 };
 
-COMPILE_ERROR_ON(sizeof(struct pmemfile_super) != 4096);
+COMPILE_ERROR_ON(sizeof(struct pmemfile_super) != PMEMFILE_SUPER_SIZE);
 
 #endif

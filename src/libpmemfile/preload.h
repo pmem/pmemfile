@@ -89,6 +89,7 @@ struct pool_description {
 #define NO_RESOLVE_LAST_SLINK 2
 
 struct pool_description *lookup_pd_by_inode(struct stat *stat);
+
 static inline bool
 same_inode(const struct stat *st1, const struct stat *st2)
 {

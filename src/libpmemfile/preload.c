@@ -1769,7 +1769,7 @@ establish_mount_points(const char *config)
 		 * accessed, but without doing this, the first access would
 		 * never be noticed.
 		 */
-		if (pool_desc->stat.st_ino == kernel_cwd_stat.st_ino) {
+		if (same_inode(&pool_desc->stat, &kernel_cwd_stat)) {
 			open_new_pool(pool_desc);
 			if (pool_desc->pool == NULL) {
 				exit_group_no_intercept(

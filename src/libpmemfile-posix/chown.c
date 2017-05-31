@@ -41,6 +41,7 @@
 #include "libpmemfile-posix.h"
 #include "out.h"
 #include "pool.h"
+#include "utils.h"
 
 /*
  * vinode_chown
@@ -55,7 +56,7 @@ vinode_chown(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 	struct pmemfile_inode *inode = vinode->inode;
 	int error = 0;
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE);
+	ASSERT_NOT_IN_TX();
 
 	if (owner == (pmemfile_uid_t)-1 && group == (pmemfile_gid_t)-1)
 		return 0;
@@ -141,6 +142,7 @@ end:
 	path_info_cleanup(pfp, &info);
 	cred_release(&cred);
 
+	ASSERT_NOT_IN_TX();
 	if (vinode)
 		vinode_unref(pfp, vinode);
 

@@ -152,6 +152,8 @@ has_free_block_entry(struct pmemfile_vinode *vinode)
 static void
 allocate_new_block_array(struct pmemfile_vinode *vinode)
 {
+	ASSERT_IN_TX();
+
 	ASSERT(!has_free_block_entry(vinode));
 
 	TOID(struct pmemfile_block_array) new =
@@ -194,6 +196,8 @@ allocate_new_block_array(struct pmemfile_vinode *vinode)
 static struct pmemfile_block_desc *
 acquire_new_entry(struct pmemfile_vinode *vinode)
 {
+	ASSERT_IN_TX();
+
 	if (!has_free_block_entry(vinode))
 		allocate_new_block_array(vinode);
 
@@ -225,6 +229,8 @@ struct pmemfile_block_desc *
 block_list_insert_after(struct pmemfile_vinode *vinode,
 			struct pmemfile_block_desc *prev)
 {
+	ASSERT_IN_TX();
+
 	/* lazy init vinode->first_free_block */
 	update_first_block_info(vinode);
 
@@ -271,6 +277,8 @@ last_used_block(struct pmemfile_vinode *vinode)
 static void
 unlink_block(struct pmemfile_block_desc *block)
 {
+	ASSERT_IN_TX();
+
 	if (!TOID_IS_NULL(block->prev))
 		TX_SET(block->prev, next, block->next);
 
@@ -292,6 +300,8 @@ unlink_block(struct pmemfile_block_desc *block)
 static void
 relocate_block(struct pmemfile_block_desc *dst, struct pmemfile_block_desc *src)
 {
+	ASSERT_IN_TX();
+
 	ASSERT(dst != src);
 
 	TX_ADD_DIRECT(dst);
@@ -333,6 +343,8 @@ is_first_block_array_empty(struct pmemfile_vinode *vinode)
 static void
 remove_first_block_array(struct pmemfile_vinode *vinode)
 {
+	ASSERT_IN_TX();
+
 	TOID(struct pmemfile_block_array) to_remove;
 	TOID(struct pmemfile_block_array) new_next;
 	struct block_info *binfo;
@@ -411,6 +423,8 @@ struct pmemfile_block_desc *
 block_list_remove(struct pmemfile_vinode *vinode,
 		struct pmemfile_block_desc *block)
 {
+	ASSERT_IN_TX();
+
 	struct pmemfile_block_desc *prev;
 
 	/* lazy init vinode->first_free_block */

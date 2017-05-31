@@ -95,6 +95,7 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 	size_t dst_namelen = component_length(dst.remaining);
 
 	vinode_wrlock2(dst.parent, src_vinode);
+	ASSERT_NOT_IN_TX();
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (!_vinode_can_access(&cred, dst.parent, PFILE_WANT_WRITE))
@@ -120,6 +121,7 @@ end:
 	path_info_cleanup(pfp, &src);
 	cred_release(&cred);
 
+	ASSERT_NOT_IN_TX();
 	if (src_vinode)
 		vinode_unref(pfp, src_vinode);
 
@@ -173,6 +175,7 @@ pmemfile_linkat(PMEMfilepool *pfp, PMEMfile *olddir, const char *oldpath,
 	if (ret)
 		error = errno;
 
+	ASSERT_NOT_IN_TX();
 	if (olddir_at_unref)
 		vinode_unref(pfp, olddir_at);
 

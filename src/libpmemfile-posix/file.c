@@ -359,6 +359,8 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto end;
 	}
 
+	ASSERT_NOT_IN_TX();
+
 	if (vinode == NULL) {
 		TOID(struct pmemfile_inode) tinode;
 

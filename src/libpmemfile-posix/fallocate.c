@@ -49,6 +49,7 @@ static int
 vinode_fallocate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, int mode,
 		uint64_t offset, uint64_t length)
 {
+	ASSERT_NOT_IN_TX();
 	int error = 0;
 
 	if (!vinode_is_regular_file(vinode))

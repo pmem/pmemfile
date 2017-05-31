@@ -37,6 +37,7 @@
 #include "inode.h"
 #include "inode_array.h"
 #include "locks.h"
+#include "utils.h"
 
 /*
  * inode_array_add_single -- finds space for 1 inode in specified
@@ -50,7 +51,7 @@ inode_array_add_single(struct pmemfile_inode_array *cur,
 		struct pmemfile_inode_array **ins,
 		unsigned *ins_idx)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	for (unsigned i = 0; i < NUMINODES_PER_ENTRY; ++i) {
 		if (!TOID_IS_NULL(cur->inodes[i]))
@@ -88,7 +89,7 @@ inode_array_add(PMEMfilepool *pfp,
 		unsigned *ins_idx)
 {
 	bool found = false;
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	do {
 		struct pmemfile_inode_array *cur = D_RW(array);
@@ -134,7 +135,7 @@ inode_array_unregister(PMEMfilepool *pfp,
 		struct pmemfile_inode_array *cur,
 		unsigned idx)
 {
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	mutex_tx_lock(pfp, &cur->mtx);
 

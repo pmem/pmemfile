@@ -41,6 +41,7 @@
 #include "internal.h"
 #include "libpmemfile-posix.h"
 #include "out.h"
+#include "utils.h"
 
 /*
  * pmemfile_time_to_timespec -- convert between pmemfile_time and timespec
@@ -165,6 +166,7 @@ end:
 	path_info_cleanup(pfp, &info);
 	cred_release(&cred);
 
+	ASSERT_NOT_IN_TX();
 	if (vinode)
 		vinode_unref(pfp, vinode);
 ret:

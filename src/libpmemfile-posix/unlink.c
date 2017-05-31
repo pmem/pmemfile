@@ -61,7 +61,7 @@ vinode_unlink_file(PMEMfilepool *pfp,
 	LOG(LDBG, "parent 0x%" PRIx64 " ppath %s name %s",
 		parent->tinode.oid.off, pmfi_path(parent), dirent->name);
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	TOID(struct pmemfile_inode) tinode = dirent->inode;
 	struct pmemfile_inode *inode = D_RW(tinode);
@@ -146,6 +146,8 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto end_vinode;
 	}
 
+	ASSERT_NOT_IN_TX();
+
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		vinode_unlink_file(pfp, info.parent, dirent_info.dirent,
 				dirent_info.vinode);
@@ -159,6 +161,7 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 end_vinode:
 	vinode_unlock2(dirent_info.vinode, info.parent);
 
+	ASSERT_NOT_IN_TX();
 	if (dirent_info.vinode)
 		vinode_unref(pfp, dirent_info.vinode);
 

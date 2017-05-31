@@ -61,7 +61,7 @@ vinode_unlink_dir(PMEMfilepool *pfp,
 	struct pmemfile_inode *idir = vdir->inode;
 	struct pmemfile_dir *ddir = &idir->file_data.dir;
 
-	ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK);
+	ASSERT_IN_TX();
 
 	if (!TOID_IS_NULL(ddir->next)) {
 		LOG(LUSR, "directory %s not empty", path);
@@ -195,6 +195,8 @@ pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto vdir_end;
 	}
 
+	ASSERT_NOT_IN_TX();
+
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		vinode_unlink_dir(pfp, info.parent, dirent_info.dirent,
 				dirent_info.vinode, path);
@@ -207,6 +209,7 @@ pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 vdir_end:
 	vinode_unlock2(dirent_info.vinode, info.parent);
 
+	ASSERT_NOT_IN_TX();
 	if (dirent_info.vinode)
 		vinode_unref(pfp, dirent_info.vinode);
 

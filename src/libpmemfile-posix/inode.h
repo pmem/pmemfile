@@ -125,6 +125,7 @@ TOID(struct pmemfile_inode) inode_alloc(PMEMfilepool *pfp,
 		struct pmemfile_cred *cred, uint64_t flags);
 
 void inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode);
+void inode_trim(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode);
 
 struct pmemfile_vinode *vinode_ref(PMEMfilepool *pfp,
 		struct pmemfile_vinode *vinode);

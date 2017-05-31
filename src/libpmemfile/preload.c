@@ -1478,15 +1478,6 @@ lookup_pd_by_path(const char *path)
 }
 
 /*
- * The reenter flag allows pmemfile to prevent the hooking of its own
- * syscalls. E.g. while handling an open syscall, libpmemfile might
- * call pmemfile_pool_open, which in turn uses an open syscall internally.
- * This internally used open syscall is once again forwarded to libpmemfile,
- * but using this flag libpmemfile can notice this case of reentering itself.
- */
-static __thread bool reenter = false;
-
-/*
  * Return values expected by libcintercept :
  * A non-zero return value if it should execute the syscall,
  * zero return value if it should not execute the syscall, and
@@ -1504,36 +1495,26 @@ hook(long syscall_number,
 {
 	assert(pool_count > 0);
 
-	if (reenter)
-		return NOT_HOOKED;
-
-	reenter = true;
-
 	if (syscall_number == SYS_chdir) {
 		*syscall_return_value = hook_chdir((const char *)arg0);
-		reenter = false;
 		return HOOKED;
 	}
 	if (syscall_number == SYS_fchdir) {
 		*syscall_return_value = hook_fchdir(arg0);
-		reenter = false;
 		return HOOKED;
 	}
 	if (syscall_number == SYS_getcwd) {
 		util_rwlock_rdlock(&pmem_cwd_lock);
 		*syscall_return_value = hook_getcwd((char *)arg0, (size_t)arg1);
 		util_rwlock_unlock(&pmem_cwd_lock);
-		reenter = false;
 		return HOOKED;
 	}
 
 	struct syscall_early_filter_entry filter_entry;
 	filter_entry = get_early_filter_entry(syscall_number);
 
-	if (!filter_entry.must_handle) {
-		reenter = false;
+	if (!filter_entry.must_handle)
 		return NOT_HOOKED;
-	}
 
 	int is_hooked;
 
@@ -1569,7 +1550,39 @@ hook(long syscall_number,
 	if (filter_entry.cwd_rlock)
 		util_rwlock_unlock(&pmem_cwd_lock);
 
-	reenter = false;
+	return is_hooked;
+}
+
+/*
+ * hook_reentrance_guard_wrapper -- a wrapper which can notice reentrance.
+ *
+ * The guard_flag flag allows pmemfile to prevent the hooking of its own
+ * syscalls. E.g. while handling an open syscall, libpmemfile might
+ * call pmemfile_pool_open, which in turn uses an open syscall internally.
+ * This internally used open syscall is once again forwarded to libpmemfile,
+ * but using this flag libpmemfile can notice this case of reentering itself.
+ *
+ * XXX This approach still contains a very significant bug, as libpmemfile being
+ * called inside a signal handler might easily forward a mock fd to the kernel.
+ */
+static int
+hook_reentrance_guard_wrapper(long syscall_number,
+				long arg0, long arg1,
+				long arg2, long arg3,
+				long arg4, long arg5,
+				long *syscall_return_value)
+{
+	static __thread bool guard_flag = false;
+
+	if (guard_flag)
+		return NOT_HOOKED;
+
+	int is_hooked;
+
+	guard_flag = true;
+	is_hooked = hook(syscall_number, arg0, arg1, arg2, arg3, arg4, arg5,
+				syscall_return_value);
+	guard_flag = false;
 
 	return is_hooked;
 }
@@ -1580,7 +1593,7 @@ init_hooking(void)
 	/*
 	 * Install the callback to be calleb by the syscall intercepting library
 	 */
-	intercept_hook_point = &hook;
+	intercept_hook_point = &hook_reentrance_guard_wrapper;
 }
 
 static void

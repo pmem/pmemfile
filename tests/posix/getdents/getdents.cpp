@@ -148,9 +148,31 @@ TEST_F(getdents, 1)
 				    PMEMFILE_O_DIRECTORY | PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_END), -1);
+	EXPECT_EQ(errno, EINVAL);
+
 	char buf[32758];
 	struct linux_dirent *dirents = (struct linux_dirent *)buf;
 	struct linux_dirent64 *dirents64 = (struct linux_dirent64 *)buf;
+
+	PMEMfile *regfile = pmemfile_open(pfp, "/file4", PMEMFILE_O_RDONLY);
+	errno = 0;
+	ASSERT_EQ(pmemfile_getdents(pfp, regfile, dirents, sizeof(buf)), -1);
+	EXPECT_EQ(errno, ENOTDIR);
+	pmemfile_close(pfp, regfile);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_getdents(pfp, f, NULL, sizeof(buf)), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_getdents(pfp, NULL, dirents, sizeof(buf)), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_getdents(NULL, f, dirents, sizeof(buf)), -1);
+	EXPECT_EQ(errno, EFAULT);
 
 	int r = pmemfile_getdents(pfp, f, dirents, sizeof(buf));
 	ASSERT_GT(r, 0);

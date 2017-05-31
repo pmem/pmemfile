@@ -58,8 +58,15 @@ TEST_F(permissions, chmod)
 				    PMEMFILE_S_IRGRP | PMEMFILE_S_IROTH));
 
 	errno = 0;
-	ASSERT_EQ(pmemfile_chmod(pfp, "/a_not_exists",
-				 PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR),
+	ASSERT_EQ(pmemfile_chmod(pfp, NULL, PMEMFILE_ACCESSPERMS), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_chmod(NULL, "/aaa", PMEMFILE_ACCESSPERMS), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_chmod(pfp, "/a_not_exists", PMEMFILE_ACCESSPERMS),
 		  -1);
 	EXPECT_EQ(errno, ENOENT);
 
@@ -347,6 +354,14 @@ TEST_F(permissions, fchmod)
 	f = pmemfile_open(pfp, "/aaa", PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
+	errno = 0;
+	ASSERT_EQ(pmemfile_fchmod(pfp, NULL, PMEMFILE_ACCESSPERMS), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_fchmod(NULL, f, PMEMFILE_ACCESSPERMS), -1);
+	EXPECT_EQ(errno, EFAULT);
+
 	ASSERT_EQ(pmemfile_fchmod(pfp, f, PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR |
 					  PMEMFILE_S_IRGRP | PMEMFILE_S_IWGRP |
 					  PMEMFILE_S_IROTH),
@@ -358,6 +373,13 @@ TEST_F(permissions, fchmod)
 		  (pmemfile_mode_t)(PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR |
 				    PMEMFILE_S_IRGRP | PMEMFILE_S_IWGRP |
 				    PMEMFILE_S_IROTH));
+
+	ASSERT_EQ(pmemfile_setfsuid(pfp, 1000), 0);
+	errno = 0;
+	ASSERT_EQ(pmemfile_fchmod(pfp, f, PMEMFILE_ACCESSPERMS), -1);
+	EXPECT_EQ(errno, EPERM);
+	ASSERT_EQ(pmemfile_setfsuid(pfp, 0), 1000);
+
 	pmemfile_close(pfp, f);
 
 	memset(&statbuf, 0, sizeof(statbuf));
@@ -390,6 +412,33 @@ TEST_F(permissions, fchmodat)
 	ASSERT_NE(dir, nullptr) << strerror(errno);
 
 	errno = 0;
+	ASSERT_EQ(pmemfile_fchmodat(pfp, dir, NULL, PMEMFILE_ACCESSPERMS, 0),
+		  -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_fchmodat(NULL, dir, "aaa", PMEMFILE_ACCESSPERMS, 0),
+		  -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_fchmodat(pfp, NULL, "aaa", PMEMFILE_ACCESSPERMS, 0),
+		  -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_fchmodat(pfp, dir, "aaa", PMEMFILE_ACCESSPERMS,
+				    PMEMFILE_AT_SYMLINK_NOFOLLOW),
+		  -1);
+	EXPECT_EQ(errno, ENOTSUP);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_fchmodat(pfp, dir, "aaa", PMEMFILE_ACCESSPERMS,
+				    ~PMEMFILE_AT_SYMLINK_NOFOLLOW),
+		  -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	errno = 0;
 	ASSERT_EQ(pmemfile_fchmodat(pfp, dir, "a", PMEMFILE_ACCESSPERMS, 0),
 		  -1);
 	EXPECT_EQ(errno, ENOENT);
@@ -401,6 +450,10 @@ TEST_F(permissions, fchmodat)
 	ASSERT_EQ(pmemfile_stat(pfp, "/dir/aaa", &statbuf), 0);
 	EXPECT_EQ(statbuf.st_mode & PMEMFILE_ALLPERMS,
 		  (pmemfile_mode_t)PMEMFILE_ACCESSPERMS);
+
+	ASSERT_EQ(pmemfile_fchmodat(pfp, PMEMFILE_AT_CWD, "dir/aaa",
+				    PMEMFILE_ACCESSPERMS, 0),
+		  0);
 
 	pmemfile_close(pfp, dir);
 	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/aaa"), 0);
@@ -926,6 +979,9 @@ TEST_F(permissions, chown)
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/file0", PMEMFILE_O_EXCL,
 					 PMEMFILE_S_IRWXU));
 
+	ASSERT_TRUE(test_chown(pfp, NULL, 0, 0, ENOENT));
+	ASSERT_TRUE(test_chown(NULL, "/file", 0, 0, EFAULT));
+
 	/* ruid=euid=fsuid=0, rgid=egid=fsgid=0 */
 
 	ASSERT_TRUE(test_chown(pfp, "/file", 0, 0, 0));
@@ -1053,6 +1109,9 @@ TEST_F(permissions, fchown)
 					 PMEMFILE_S_IRWXU));
 
 	PMEMfile *f = pmemfile_open(pfp, "/file", PMEMFILE_O_RDONLY);
+
+	ASSERT_TRUE(test_fchown(pfp, NULL, 0, 0, EFAULT));
+	ASSERT_TRUE(test_fchown(NULL, f, 0, 0, EFAULT));
 
 	/* ruid=euid=fsuid=0, rgid=egid=fsgid=0 */
 
@@ -1642,6 +1701,17 @@ TEST_F(permissions, faccessat)
 	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/file_rwxr-x---_sym"), 0);
 
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
+}
+
+TEST_F(permissions, truncate)
+{
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/aaa", PMEMFILE_O_EXCL,
+					 PMEMFILE_S_IRUSR));
+
+	ASSERT_EQ(pmemfile_truncate(pfp, "/aaa", 0), -1);
+	EXPECT_EQ(errno, EACCES);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/aaa"), 0);
 }
 
 int

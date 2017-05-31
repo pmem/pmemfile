@@ -85,6 +85,14 @@ TEST_F(rw, basic)
 	memset(bufFF, 0xff, sizeof(bufFF));
 	memset(buf00, 0x00, sizeof(buf00));
 
+	errno = 0;
+	ASSERT_EQ(pmemfile_write(pfp, NULL, data, len), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_write(NULL, f, data, len), -1);
+	EXPECT_EQ(errno, EFAULT);
+
 	pmemfile_ssize_t written = pmemfile_write(pfp, f, data, len);
 	ASSERT_EQ(written, (pmemfile_ssize_t)len) << COND_ERROR(written);
 
@@ -96,6 +104,14 @@ TEST_F(rw, basic)
 					    }));
 
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 1));
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_read(pfp, NULL, data2, len), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_read(NULL, f, data2, len), -1);
+	EXPECT_EQ(errno, EFAULT);
 
 	/* try to read write-only file */
 	pmemfile_ssize_t r = pmemfile_read(pfp, f, data2, len);
@@ -191,6 +207,18 @@ TEST_F(rw, basic)
 	ASSERT_EQ(memcmp("pmem", data2, 4), 0);
 	ASSERT_EQ(memcmp(data + 4, data2 + 4, 5), 0);
 	ASSERT_EQ(memcmp(data2 + 9, bufFF, sizeof(data2) - 9), 0);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, NULL, 0, PMEMFILE_SEEK_CUR), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(NULL, f, 0, PMEMFILE_SEEK_CUR), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, -1), -1);
+	EXPECT_EQ(errno, EINVAL);
 
 	pmemfile_close(pfp, f);
 
@@ -481,6 +509,18 @@ TEST_F(rw, ftruncate)
 	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT | PMEMFILE_O_RDWR, 0);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
+	errno = 0;
+	ASSERT_EQ(pmemfile_ftruncate(pfp, NULL, 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_ftruncate(NULL, f, 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_ftruncate(pfp, f, -1), -1);
+	EXPECT_EQ(errno, EINVAL);
+
 	r = pmemfile_ftruncate(pfp, f, 1024);
 	ASSERT_EQ(r, 0) << COND_ERROR(r);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 1024);
@@ -584,6 +624,17 @@ TEST_F(rw, ftruncate)
 	pmemfile_close(pfp, f);
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
+
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", 0777), 0);
+	f = pmemfile_open(pfp, "/dir", PMEMFILE_O_RDWR, 0);
+	ASSERT_NE(f, nullptr);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_ftruncate(pfp, f, 0), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	pmemfile_close(pfp, f);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
 }
 
 TEST_F(rw, truncate)
@@ -599,7 +650,29 @@ TEST_F(rw, truncate)
 			  PMEMFILE_S_IRWXU);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
-	r = pmemfile_truncate(pfp, "/file1", 1024);
+	errno = 0;
+	ASSERT_EQ(pmemfile_truncate(pfp, NULL, 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_truncate(NULL, "/file1", 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_truncate(pfp, "/file1", -1), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_truncate(pfp, "/file-not-exists", 0), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", 0777), 0);
+	errno = 0;
+	ASSERT_EQ(pmemfile_truncate(pfp, "/dir", 0), -1);
+	EXPECT_EQ(errno, EISDIR);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
+
+	r = pmemfile_truncate(pfp, "file1", 1024);
 	ASSERT_EQ(r, 0) << COND_ERROR(r);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 1024);
 	r = pmemfile_truncate(pfp, "/file1", 10240);
@@ -1034,6 +1107,7 @@ TEST_F(rw, sparse_files_using_lseek)
 
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_HOLE), 0);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_DATA), 0);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, -1, PMEMFILE_SEEK_DATA), 0);
 
 	/*
 	 * Seeking to hole, or to data should fail with offset
@@ -1312,6 +1386,24 @@ TEST_F(rw, pwrite)
 				    0644);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
+	char buf[100];
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_pwrite(pfp, NULL, buf, sizeof(buf), 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_pwrite(NULL, f, buf, sizeof(buf), 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_pwrite(pfp, f, NULL, sizeof(buf), 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_pwrite(pfp, f, buf, sizeof(buf), -1), -1);
+	EXPECT_EQ(errno, EINVAL);
+
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_CUR), 0);
 
 	ASSERT_EQ(pmemfile_pwrite(pfp, f, "test1234567890", 14, 0), 14);
@@ -1322,7 +1414,6 @@ TEST_F(rw, pwrite)
 
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_SET), 0);
 
-	char buf[100];
 	char buf0xff[100];
 	memset(buf, 0xff, sizeof(buf));
 	memset(buf0xff, 0xff, sizeof(buf0xff));
@@ -1353,6 +1444,23 @@ TEST_F(rw, pread)
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 14, PMEMFILE_SEEK_SET), 14);
 
 	char buf[100];
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_pread(pfp, NULL, buf, sizeof(buf), 10), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_pread(NULL, f, buf, sizeof(buf), 10), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_pread(pfp, f, NULL, sizeof(buf), 10), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_pread(pfp, f, buf, sizeof(buf), -1), -1);
+	EXPECT_EQ(errno, EINVAL);
+
 	char buf0xff[100];
 	memset(buf, 0xff, sizeof(buf));
 	memset(buf0xff, 0xff, sizeof(buf0xff));
@@ -1431,6 +1539,20 @@ TEST_F(rw, readv)
 		vec[i].iov_len = arr_len;
 	}
 
+	errno = 0;
+	ASSERT_EQ(pmemfile_readv(pfp, NULL, vec, vec_size), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_readv(NULL, f, vec, vec_size), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_readv(pfp, f, NULL, vec_size), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	ASSERT_EQ(pmemfile_readv(pfp, f, vec, 0), 0);
+
 	ssize_t ret = pmemfile_readv(pfp, f, vec, vec_size);
 	ASSERT_GT(ret, 0);
 	ASSERT_EQ((size_t)ret, vec_size * arr_len);
@@ -1463,6 +1585,24 @@ TEST_F(rw, preadv)
 		vec[i].iov_base = bufs[i];
 		vec[i].iov_len = arr_len;
 	}
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_preadv(pfp, NULL, vec, vec_size, 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_preadv(NULL, f, vec, vec_size, 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_preadv(pfp, f, NULL, vec_size, 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_preadv(pfp, f, vec, vec_size, -1), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	ASSERT_EQ(pmemfile_preadv(pfp, f, vec, 0, 1), 0);
 
 	ssize_t ret = pmemfile_preadv(pfp, f, vec, vec_size, 1);
 	ASSERT_GT(ret, 0);
@@ -1509,7 +1649,33 @@ test_writev(PMEMfilepool *pfp, const size_t vec_size, const size_t arr_len)
 		vec[i].iov_len = arr_len;
 	}
 
-	ssize_t ret = pmemfile_writev(pfp, f, vec, (int)vec_size);
+	errno = 0;
+	ssize_t ret = pmemfile_writev(pfp, NULL, vec, (int)vec_size);
+	EXPECT_EQ(ret, -1);
+	EXPECT_EQ(errno, EFAULT);
+	if (ret != -1)
+		return false;
+
+	errno = 0;
+	ret = pmemfile_writev(NULL, f, vec, (int)vec_size);
+	EXPECT_EQ(ret, -1);
+	EXPECT_EQ(errno, EFAULT);
+	if (ret != -1)
+		return false;
+
+	errno = 0;
+	ret = pmemfile_writev(pfp, f, NULL, (int)vec_size);
+	EXPECT_EQ(ret, -1);
+	EXPECT_EQ(errno, EFAULT);
+	if (ret != -1)
+		return false;
+
+	ret = pmemfile_writev(pfp, f, vec, 0);
+	EXPECT_EQ(ret, 0);
+	if (ret != 0)
+		return false;
+
+	ret = pmemfile_writev(pfp, f, vec, (int)vec_size);
 	EXPECT_GT(ret, 0);
 	EXPECT_EQ((size_t)ret, vec_size * arr_len);
 	if (ret <= 0 || (size_t)ret != vec_size * arr_len)
@@ -1575,6 +1741,24 @@ TEST_F(rw, pwritev)
 		vec[i].iov_base = bufs[i];
 		vec[i].iov_len = arr_len;
 	}
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_pwritev(pfp, NULL, vec, vec_size, 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_pwritev(NULL, f, vec, vec_size, 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_pwritev(pfp, f, NULL, vec_size, 0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_pwritev(pfp, f, vec, vec_size, -1), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	ASSERT_EQ(pmemfile_pwritev(pfp, f, vec, 0, 1), 0);
 
 	ssize_t ret = pmemfile_pwritev(pfp, f, vec, vec_size, 1);
 	ASSERT_GT(ret, 0);

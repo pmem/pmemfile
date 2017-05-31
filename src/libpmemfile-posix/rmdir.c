@@ -63,11 +63,6 @@ vinode_unlink_dir(PMEMfilepool *pfp,
 
 	ASSERT_IN_TX();
 
-	if (!TOID_IS_NULL(ddir->next)) {
-		LOG(LUSR, "directory %s not empty", path);
-		pmemfile_tx_abort(ENOTEMPTY);
-	}
-
 	struct pmemfile_dirent *dirdot = &ddir->dirents[0];
 	struct pmemfile_dirent *dirdotdot = &ddir->dirents[1];
 
@@ -84,6 +79,20 @@ vinode_unlink_dir(PMEMfilepool *pfp,
 			LOG(LUSR, "directory %s not empty", path);
 			pmemfile_tx_abort(ENOTEMPTY);
 		}
+	}
+
+	ddir = D_RW(ddir->next);
+	while (ddir) {
+		for (uint32_t i = 0; i < ddir->num_elements; ++i) {
+			struct pmemfile_dirent *d = &ddir->dirents[i];
+
+			if (!TOID_IS_NULL(d->inode)) {
+				LOG(LUSR, "directory %s not empty", path);
+				pmemfile_tx_abort(ENOTEMPTY);
+			}
+		}
+
+		ddir = D_RW(ddir->next);
 	}
 
 	pmemobj_tx_add_range_direct(dirdot, sizeof(dirdot->inode) + 1);
@@ -182,11 +191,6 @@ pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	if (!vinode_is_dir(dirent_info.vinode)) {
 		error = ENOTDIR;
-		goto vdir_end;
-	}
-
-	if (dirent_info.vinode == pfp->root) {
-		error = EBUSY;
 		goto vdir_end;
 	}
 

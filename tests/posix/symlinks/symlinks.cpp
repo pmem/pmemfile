@@ -193,6 +193,15 @@ TEST_F(symlinks, 0)
 	ASSERT_EQ(ret, -1);
 	EXPECT_EQ(errno, ENOTDIR);
 
+	errno = 0;
+	ASSERT_EQ(pmemfile_symlinkat(pfp, "whatever", NULL, "lalala"), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	ASSERT_EQ(
+		pmemfile_symlinkat(pfp, "whatever", PMEMFILE_AT_CWD, "cwd-sym"),
+		0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "cwd-sym"), 0);
+
 	char buf[PMEMFILE_PATH_MAX];
 
 	ret = pmemfile_readlink(pfp, "/not-existing-dir/xxx", buf,
@@ -216,6 +225,32 @@ TEST_F(symlinks, 0)
 				PMEMFILE_PATH_MAX);
 	ASSERT_EQ(ret, -1);
 	EXPECT_EQ(errno, ENOTDIR);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_readlink(pfp, NULL, buf, PMEMFILE_PATH_MAX), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_readlink(NULL, "/dir/sym1-exists", buf,
+				    PMEMFILE_PATH_MAX),
+		  -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_readlink(pfp, "/dir/sym1-notexists", buf,
+				    PMEMFILE_PATH_MAX),
+		  -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_readlinkat(pfp, NULL, "dir/sym1-exists", buf,
+				      PMEMFILE_PATH_MAX),
+		  -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	ASSERT_EQ(pmemfile_readlinkat(pfp, PMEMFILE_AT_CWD, "dir/sym1-exists",
+				      buf, 2),
+		  2);
 
 	pmemfile_close(pfp, f);
 
@@ -342,6 +377,18 @@ TEST_F(symlinks, 1)
 
 	ASSERT_EQ(pmemfile_symlink(pfp, "/dir1/loop", "/loop1"), 0);
 	ASSERT_EQ(pmemfile_symlink(pfp, "/loop1", "/dir1/loop"), 0);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_symlink(NULL, "/dir1/loop", "/loop1"), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_symlink(pfp, NULL, "/loop1"), -1);
+	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_symlink(pfp, "/dir1/loop", NULL), -1);
+	EXPECT_EQ(errno, ENOENT);
 
 	PMEMfile *file =
 		pmemfile_open(pfp, "/dir1/internal_dir/file",

@@ -115,8 +115,7 @@ static long check_errno(long e, long syscall_no)
 		sprintf(buf, "syscall %ld not supported by pmemfile, exiting",
 				syscall_no);
 
-		exit_group_no_intercept(PMEMFILE_PRELOAD_EXIT_NOT_SUPPORTED,
-				buf);
+		exit_with_msg(PMEMFILE_PRELOAD_EXIT_NOT_SUPPORTED, buf);
 	}
 
 	return e;
@@ -232,7 +231,7 @@ log_write(const char *fmt, ...)
 }
 
 void
-exit_group_no_intercept(int ret, const char *msg)
+exit_with_msg(int ret, const char *msg)
 {
 	if (msg && msg[0] == '!') {
 		char buf[100];
@@ -1591,7 +1590,7 @@ init_hooking(void)
 static void
 config_error(const char *msg)
 {
-	exit_group_no_intercept(PMEMFILE_PRELOAD_EXIT_CONFIG_ERROR, msg);
+	exit_with_msg(PMEMFILE_PRELOAD_EXIT_CONFIG_ERROR, msg);
 }
 
 static const char *
@@ -1677,7 +1676,7 @@ open_mount_point(struct pool_description *pool)
 	}
 
 	if ((size_t)pool->fd >= ARRAY_SIZE(mount_point_fds)) {
-		exit_group_no_intercept(PMEMFILE_PRELOAD_EXIT_TOO_MANY_FDS,
+		exit_with_msg(PMEMFILE_PRELOAD_EXIT_TOO_MANY_FDS,
 				"mount point fd too large");
 	}
 
@@ -1712,14 +1711,12 @@ establish_mount_points(const char *config)
 	 * The establish_mount_points routine must know about the CWD, to be
 	 * aware of the case when the mount point is the same as the CWD.
 	 */
-	if (getcwd(cwd, sizeof(cwd)) == NULL) {
-		exit_group_no_intercept(PMEMFILE_PRELOAD_EXIT_GETCWD_FAILED,
-				"!getcwd");
-	}
+	if (getcwd(cwd, sizeof(cwd)) == NULL)
+		exit_with_msg(PMEMFILE_PRELOAD_EXIT_GETCWD_FAILED, "!getcwd");
 
 	struct stat kernel_cwd_stat;
 	if (stat(cwd, &kernel_cwd_stat) != 0) {
-		exit_group_no_intercept(PMEMFILE_PRELOAD_EXIT_CWD_STAT_FAILED,
+		exit_with_msg(PMEMFILE_PRELOAD_EXIT_CWD_STAT_FAILED,
 				"!fstat cwd");
 	}
 
@@ -1761,7 +1758,7 @@ establish_mount_points(const char *config)
 		if (same_inode(&pool_desc->stat, &kernel_cwd_stat)) {
 			open_new_pool(pool_desc);
 			if (pool_desc->pool == NULL) {
-				exit_group_no_intercept(
+				exit_with_msg(
 					PMEMFILE_PRELOAD_EXIT_POOL_OPEN_FAILED,
 					"opening pmemfile_pool");
 			}

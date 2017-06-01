@@ -54,7 +54,6 @@ pmemfile_fcntl(PMEMfilepool *pfp, PMEMfile *file, int cmd, ...)
 		return -1;
 	}
 
-	int ret = 0;
 
 	switch (cmd) {
 		case PMEMFILE_F_SETLK:
@@ -69,6 +68,7 @@ pmemfile_fcntl(PMEMfilepool *pfp, PMEMfile *file, int cmd, ...)
 			if (file->flags & PFILE_PATH)
 				return PMEMFILE_O_PATH;
 
+			int ret = 0;
 			ret |= PMEMFILE_O_LARGEFILE;
 			if (file->flags & PFILE_APPEND)
 				ret |= PMEMFILE_O_APPEND;
@@ -106,6 +106,8 @@ pmemfile_fcntl(PMEMfilepool *pfp, PMEMfile *file, int cmd, ...)
 				errno = EINVAL;
 				return -1;
 			}
+
+			return 0;
 		}
 	}
 

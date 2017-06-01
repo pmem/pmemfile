@@ -51,6 +51,8 @@
 #include "pool.h"
 #include "utils.h"
 
+#define PMEMFILE_CUR_VERSION \
+	PMEMFILE_SUPER_VERSION(PMEMFILE_MAJOR_VERSION, PMEMFILE_MINOR_VERSION)
 /*
  * initialize_super_block -- initializes super block
  *
@@ -67,7 +69,7 @@ initialize_super_block(PMEMfilepool *pfp)
 	struct pmemfile_super *super = pfp->super;
 
 	if (!TOID_IS_NULL(super->root_inode) &&
-			super->version != PMEMFILE_SUPER_VERSION(0, 1)) {
+			super->version != PMEMFILE_CUR_VERSION) {
 		ERR("unknown superblock version: 0x%lx", super->version);
 		errno = EINVAL;
 		return -1;
@@ -97,7 +99,7 @@ initialize_super_block(PMEMfilepool *pfp)
 			super->root_inode = vinode_new_dir(pfp, NULL, "/", 1,
 					&cred, PMEMFILE_ACCESSPERMS);
 
-			super->version = PMEMFILE_SUPER_VERSION(0, 1);
+			super->version = PMEMFILE_CUR_VERSION;
 			super->orphaned_inodes = inode_array_alloc();
 		} TX_ONABORT {
 			error = errno;
@@ -116,6 +118,7 @@ initialize_super_block(PMEMfilepool *pfp)
 	pfp->root->parent = pfp->root;
 #ifdef DEBUG
 	pfp->root->path = strdup("/");
+	ASSERTne(pfp->root->path, NULL);
 #endif
 
 	pfp->cwd = vinode_ref(pfp, pfp->root);

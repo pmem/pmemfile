@@ -234,34 +234,21 @@ log_write(const char *fmt, ...)
 void
 exit_group_no_intercept(int ret, const char *msg)
 {
-	if (msg) {
-		if (msg[0] == '!') {
-			syscall_no_intercept(SYS_write, 2, msg + 1,
-					strlen(msg) - 1);
+	if (msg && msg[0] == '!') {
+		char buf[100];
+		char *errstr = strerror_r(errno, buf, sizeof(buf));
+		fprintf(stderr, "%s: %d %s\n", msg + 1, errno,
+				errstr ? errstr : "unknown");
 
-			char buf[100];
-			char *b = strerror_r(errno, buf, sizeof(buf));
-			if (b == NULL) {
-				snprintf(buf, sizeof(buf), "Unknown errno %d",
-						errno);
-			} else if (b != buf) {
-				strncpy(buf, b, sizeof(buf));
-				buf[sizeof(buf) - 1] = 0;
-			}
+		log_write("%s: %d %s\n", msg + 1, errno,
+				errstr ? errstr : "unknown");
+	} else if (msg) {
+		fprintf(stderr, "%s\n", msg);
 
-			syscall_no_intercept(SYS_write, 2, ": ", 2);
-			syscall_no_intercept(SYS_write, 2, buf, strlen(buf));
-
-			log_write("%s: %s\n", msg + 1, buf);
-		} else {
-			syscall_no_intercept(SYS_write, 2, msg, strlen(msg));
-			log_write("%s\n", msg);
-		}
-
-		syscall_no_intercept(SYS_write, 2, "\n", 1);
+		log_write("%s\n", msg);
 	}
 
-	syscall_no_intercept(SYS_exit_group, ret);
+	exit(ret);
 	__builtin_unreachable();
 }
 

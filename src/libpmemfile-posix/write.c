@@ -142,7 +142,7 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 				len = SSIZE_MAX;
 
 			if ((pmemfile_ssize_t)(sum_len + len) < 0)
-				len = SSIZE_MAX - ret;
+				len = SSIZE_MAX - sum_len;
 
 			/* overflow check */
 			if (offset + sum_len + len < offset)

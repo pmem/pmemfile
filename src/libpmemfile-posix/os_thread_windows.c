@@ -31,12 +31,12 @@
  */
 
 /*
- * os_thread_pthread.c -- wrappers around threading functions
+ * os_thread_windows.c -- wrappers around threading functions
  */
 
 #include <errno.h>
-#include <pthread.h>
 #include <stdlib.h>
+#include <windows.h>
 
 #include "os_thread.h"
 #include "out.h"
@@ -44,121 +44,115 @@
 void
 os_mutex_init(os_mutex_t *m)
 {
-	COMPILE_ERROR_ON(sizeof(os_mutex_t) < sizeof(pthread_mutex_t));
-	int tmp = pthread_mutex_init((pthread_mutex_t *)m, NULL);
-	if (tmp) {
-		errno = tmp;
-		FATAL("!pthread_mutex_init");
-	}
+	COMPILE_ERROR_ON(sizeof(os_mutex_t) < sizeof(CRITICAL_SECTION));
+
+	InitializeCriticalSection((CRITICAL_SECTION *)m);
 }
 
 void
 os_mutex_destroy(os_mutex_t *m)
 {
-	int tmp = pthread_mutex_destroy((pthread_mutex_t *)m);
-	if (tmp) {
-		errno = tmp;
-		FATAL("!pthread_mutex_destroy");
-	}
+	DeleteCriticalSection((CRITICAL_SECTION *)m);
 }
 
 void
 os_mutex_lock(os_mutex_t *m)
 {
-	int tmp = pthread_mutex_lock((pthread_mutex_t *)m);
-	if (tmp) {
-		errno = tmp;
-		FATAL("!pthread_mutex_lock");
+	CRITICAL_SECTION *c = (CRITICAL_SECTION *)m;
+
+	EnterCriticalSection(c);
+
+	if (c->RecursionCount > 1) {
+		LeaveCriticalSection(c);
+		FATAL("double lock");
 	}
 }
 
 void
 os_mutex_unlock(os_mutex_t *m)
 {
-	int tmp = pthread_mutex_unlock((pthread_mutex_t *)m);
-	if (tmp) {
-		errno = tmp;
-		FATAL("!pthread_mutex_unlock");
-	}
+	LeaveCriticalSection((CRITICAL_SECTION *)m);
 }
+
+typedef struct {
+	char is_write;
+	SRWLOCK lock;
+} win_rwlock_t;
 
 void
 os_rwlock_init(os_rwlock_t *m)
 {
-	COMPILE_ERROR_ON(sizeof(os_rwlock_t) < sizeof(pthread_rwlock_t));
-	int tmp = pthread_rwlock_init((pthread_rwlock_t *)m, NULL);
-	if (tmp) {
-		errno = tmp;
-		FATAL("!pthread_rwlock_init");
-	}
+	COMPILE_ERROR_ON(sizeof(os_rwlock_t) < sizeof(win_rwlock_t));
+	win_rwlock_t *rw = (win_rwlock_t *)m;
+	InitializeSRWLock(&rw->lock);
 }
 
 void
 os_rwlock_rdlock(os_rwlock_t *m)
 {
-	int tmp = pthread_rwlock_rdlock((pthread_rwlock_t *)m);
-	if (tmp) {
-		errno = tmp;
-		FATAL("!pthread_rwlock_rdlock");
-	}
+	win_rwlock_t *rw = (win_rwlock_t *)m;
+	AcquireSRWLockShared(&rw->lock);
+	rw->is_write = 0;
 }
 
 void
 os_rwlock_wrlock(os_rwlock_t *m)
 {
-	int tmp = pthread_rwlock_wrlock((pthread_rwlock_t *)m);
-	if (tmp) {
-		errno = tmp;
-		FATAL("!pthread_rwlock_wrlock");
-	}
+	win_rwlock_t *rw = (win_rwlock_t *)m;
+	AcquireSRWLockExclusive(&rw->lock);
+	rw->is_write = 1;
 }
 
 void
 os_rwlock_unlock(os_rwlock_t *m)
 {
-	int tmp = pthread_rwlock_unlock((pthread_rwlock_t *)m);
-	if (tmp) {
-		errno = tmp;
-		FATAL("!pthread_rwlock_unlock");
-	}
+	win_rwlock_t *rw = (win_rwlock_t *)m;
+	if (rw->is_write)
+		ReleaseSRWLockExclusive(&rw->lock);
+	else
+		ReleaseSRWLockShared(&rw->lock);
 }
 
 void
 os_rwlock_destroy(os_rwlock_t *m)
 {
-	int tmp = pthread_rwlock_destroy((pthread_rwlock_t *)m);
-	if (tmp) {
-		errno = tmp;
-		FATAL("!pthread_rwlock_destroy");
-	}
 }
 
 int
 os_tls_key_create(os_tls_key_t *key, void (*destr_function)(void *))
 {
-	COMPILE_ERROR_ON(sizeof(os_tls_key_t) < sizeof(pthread_key_t));
+	COMPILE_ERROR_ON(sizeof(os_tls_key_t) < sizeof(DWORD));
 
-	return pthread_key_create((pthread_key_t *)key, destr_function);
+	/* XXX - destructor not supported */
+
+	*key = TlsAlloc();
+	if (*key == TLS_OUT_OF_INDEXES)
+		return EAGAIN;
+	if (!TlsSetValue(*key, NULL)) /* XXX - not needed? */
+		return ENOMEM;
+	return 0;
 }
 
 void *
 os_tls_get(os_tls_key_t key)
 {
-	return pthread_getspecific((pthread_key_t)key);
+	return TlsGetValue(key);
 }
 
 int
 os_tls_set(os_tls_key_t key, const void *ptr)
 {
-	return pthread_setspecific((pthread_key_t)key, ptr);
+	if (!TlsSetValue(key, (LPVOID)ptr))
+		return ENOENT;
+	return 0;
 }
 
 void
 os_once(os_once_t *once, void (*init_routine)(void))
 {
-	int tmp = pthread_once(once, init_routine);
-	if (tmp) {
-		errno = tmp;
-			FATAL("!pthread_once");
-	}
+	COMPILE_ERROR_ON(sizeof(*once) < sizeof(long));
+
+	/* XXX this implementation doesn't wait for init_routine to complete */
+	if (!_InterlockedCompareExchange((long *)once, 1, 0))
+		init_routine();
 }

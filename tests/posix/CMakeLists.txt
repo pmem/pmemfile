@@ -95,6 +95,8 @@ function(build_test name srcs)
 	target_link_libraries(${name} pmemfile-posix_shared pmemfile_test test_backtrace)
 	if(LIBUNWIND_FOUND)
 		target_link_libraries(${name} ${LIBUNWIND_LIBRARIES} ${CMAKE_DL_LIBS})
+	elseif(WIN32)
+		target_link_libraries(${name} Dbghelp.lib)
 	endif()
 	add_dependencies(tests ${name})
 endfunction()
@@ -109,6 +111,12 @@ build_test(file_permissions permissions/permissions.cpp)
 build_test(file_rw rw/rw.cpp)
 build_test(file_stat stat/stat.cpp)
 build_test(file_symlinks symlinks/symlinks.cpp)
+
+if(WIN32)
+	set(SUCCESS rundll32)
+else()
+	set(SUCCESS true)
+endif()
 
 # Configures test ${name} using tracer ${tracer} and gtest filter ${filter}
 # Optional next argument is passed as is to test.
@@ -125,14 +133,14 @@ function(add_test_with_filter name filter tracer)
 
 	if ((NOT VALGRIND_FOUND) AND ${tracer} IN_LIST vg_tracers)
 		add_test(NAME ${name}${filter_postfix}_${tracer}_SKIPPED_BECAUSE_OF_MISSING_VALGRIND
-			COMMAND true)
+			COMMAND ${SUCCESS})
 		return()
 	endif()
 
 	if(${tracer} STREQUAL pmemcheck)
 		if (VALGRIND_PMEMCHECK_NOT_FOUND)
 			add_test(NAME ${name}${filter_postfix}_${tracer}_SKIPPED_BECAUSE_OF_MISSING_PMEMCHECK
-				COMMAND true)
+				COMMAND ${SUCCESS})
 			return()
 		endif()
 	endif()
@@ -222,5 +230,5 @@ add_test_generic(symlinks memcheck)
 
 if(NOT LONG_TESTS)
 	add_test(NAME SOME_TESTS_WERE_SKIPPED_BECAUSE_LONG_TESTS_ARE_DISABLED
-		COMMAND true)
+		COMMAND ${SUCCESS})
 endif()

@@ -163,7 +163,7 @@ pmemfile_preadv_internal(PMEMfilepool *pfp,
 	for (int i = 0; i < iovcnt; ++i) {
 		size_t len = iov[i].iov_len;
 		if ((pmemfile_ssize_t)(ret + len) < 0)
-			len = SSIZE_MAX - ret;
+			len = PMEMFILE_SSIZE_MAX - ret;
 		ASSERT((pmemfile_ssize_t)(ret + len) >= 0);
 
 		size_t bytes_read = vinode_read(pfp, vinode, offset, last_block,

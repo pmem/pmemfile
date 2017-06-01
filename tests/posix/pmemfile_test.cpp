@@ -35,6 +35,7 @@
  */
 
 #include <errno.h>
+#include <inttypes.h>
 #include <stdarg.h>
 #include <string.h>
 
@@ -298,4 +299,36 @@ test_empty_dir(PMEMfilepool *pfp, const char *path)
 			{040777, 2, 4008, "."}, {040777, 2, 4008, ".."},
 		},
 		false, false);
+}
+
+static const char *
+timespec_to_str(const pmemfile_timespec_t *t)
+{
+	time_t sec = t->tv_sec;
+	char *s = asctime(localtime(&sec));
+	s[strlen(s) - 1] = 0;
+	return s;
+}
+
+void
+test_dump_stat_info(pmemfile_stat_t *st, const char *path)
+{
+	T_OUT("path:       %s\n", path);
+	T_OUT("st_dev:     0x%" PRIx64 "\n", st->st_dev);
+	T_OUT("st_ino:     %" PRId64 "\n", st->st_ino);
+	T_OUT("st_mode:    0%o\n", st->st_mode);
+	T_OUT("st_nlink:   %" PRIu64 "\n", st->st_nlink);
+	T_OUT("st_uid:     %u\n", st->st_uid);
+	T_OUT("st_gid:     %u\n", st->st_gid);
+	T_OUT("st_rdev:    0x%" PRIx64 "\n", st->st_rdev);
+	T_OUT("st_size:    %" PRId64 "\n", st->st_size);
+	T_OUT("st_blksize: %" PRId64 "\n", st->st_blksize);
+	T_OUT("st_blocks:  %" PRId64 "\n", st->st_blocks);
+	T_OUT("st_atim:    %" PRId64 ".%.9" PRId64 ", %s\n", st->st_atim.tv_sec,
+	      st->st_atim.tv_nsec, timespec_to_str(&st->st_atim));
+	T_OUT("st_mtim:    %" PRId64 ".%.9" PRId64 ", %s\n", st->st_mtim.tv_sec,
+	      st->st_mtim.tv_nsec, timespec_to_str(&st->st_mtim));
+	T_OUT("st_ctim:    %" PRId64 ".%.9" PRId64 ", %s\n", st->st_ctim.tv_sec,
+	      st->st_ctim.tv_nsec, timespec_to_str(&st->st_ctim));
+	T_OUT("---");
 }

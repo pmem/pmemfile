@@ -35,6 +35,7 @@
  */
 
 #include "pmemfile_test.hpp"
+#include <inttypes.h>
 
 static size_t ops = 100;
 
@@ -47,37 +48,7 @@ public:
 	}
 };
 
-static const char *
-timespec_to_str(const pmemfile_timespec_t *t)
-{
-	time_t sec = t->tv_sec;
-	char *s = asctime(localtime(&sec));
-	s[strlen(s) - 1] = 0;
-	return s;
-}
-
-static void
-dump_stat(pmemfile_stat_t *st, const char *path)
-{
-	T_OUT("path:       %s\n", path);
-	T_OUT("st_dev:     0x%lx\n", st->st_dev);
-	T_OUT("st_ino:     %ld\n", st->st_ino);
-	T_OUT("st_mode:    0%o\n", st->st_mode);
-	T_OUT("st_nlink:   %lu\n", st->st_nlink);
-	T_OUT("st_uid:     %u\n", st->st_uid);
-	T_OUT("st_gid:     %u\n", st->st_gid);
-	T_OUT("st_rdev:    0x%lx\n", st->st_rdev);
-	T_OUT("st_size:    %ld\n", st->st_size);
-	T_OUT("st_blksize: %ld\n", st->st_blksize);
-	T_OUT("st_blocks:  %ld\n", st->st_blocks);
-	T_OUT("st_atim:    %ld.%.9ld, %s\n", st->st_atim.tv_sec,
-	      st->st_atim.tv_nsec, timespec_to_str(&st->st_atim));
-	T_OUT("st_mtim:    %ld.%.9ld, %s\n", st->st_mtim.tv_sec,
-	      st->st_mtim.tv_nsec, timespec_to_str(&st->st_mtim));
-	T_OUT("st_ctim:    %ld.%.9ld, %s\n", st->st_ctim.tv_sec,
-	      st->st_ctim.tv_nsec, timespec_to_str(&st->st_ctim));
-	T_OUT("---");
-}
+#define dump_stat test_dump_stat_info
 
 struct linux_dirent64 {
 	uint64_t d_ino;
@@ -120,8 +91,8 @@ list_files(PMEMfilepool *pfp, const char *dir, size_t expected_files,
 	while ((uintptr_t)d < (uintptr_t)&buf[r]) {
 		num_files++;
 		if (!just_count) {
-			T_OUT("ino: 0x%lx, off: 0x%lx, len: %d, type: %d, "
-			      "name: \"%s\"\n",
+			T_OUT("ino: 0x%" PRIx64 ", off: 0x%" PRIx64
+			      ", len: %d, type: %d, name: \"%s\"\n",
 			      d->d_ino, d->d_off, d->d_reclen, d->d_type,
 			      d->d_name);
 			sprintf(path, "/%s/%s", dir, d->d_name);

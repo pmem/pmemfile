@@ -1438,7 +1438,9 @@ open_new_pool_under_lock(struct pool_description *p)
 		return; /* failed to open */
 
 	if (pmemfile_stat(pfp, "/", &p->pmem_stat) != 0) {
+		int oerrno = errno;
 		pmemfile_pool_close(pfp);
+		errno = oerrno;
 		return; /* stat failed */
 	}
 
@@ -1760,7 +1762,7 @@ establish_mount_points(const char *config)
 			if (pool_desc->pool == NULL) {
 				exit_with_msg(
 					PMEMFILE_PRELOAD_EXIT_POOL_OPEN_FAILED,
-					"opening pmemfile_pool");
+					"!opening pmemfile_pool");
 			}
 			cwd_pool = pool_desc;
 		}

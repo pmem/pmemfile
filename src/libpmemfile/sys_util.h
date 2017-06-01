@@ -53,12 +53,12 @@
 #define PMEMFILE_PRELOAD_EXIT_FATAL_CONDITION	128 + 6
 
 pf_noreturn void
-exit_group_no_intercept(int ret, const char *msg);
+exit_with_msg(int ret, const char *msg);
 
 static inline void
 FATAL(const char *str)
 {
-	exit_group_no_intercept(PMEMFILE_PRELOAD_EXIT_FATAL_CONDITION, str);
+	exit_with_msg(PMEMFILE_PRELOAD_EXIT_FATAL_CONDITION, str);
 }
 
 /*

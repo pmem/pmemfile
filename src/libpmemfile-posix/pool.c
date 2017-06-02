@@ -37,6 +37,7 @@
 #include <errno.h>
 #include <inttypes.h>
 
+#include "alloc.h"
 #include "callbacks.h"
 #include "compiler_utils.h"
 #include "dir.h"
@@ -151,7 +152,7 @@ pmemfile_pool_create(const char *pathname, size_t poolsize,
 {
 	LOG(LDBG, "pathname %s poolsize %zu mode %o", pathname, poolsize, mode);
 
-	PMEMfilepool *pfp = calloc(1, sizeof(*pfp));
+	PMEMfilepool *pfp = pf_calloc(1, sizeof(*pfp));
 	if (!pfp)
 		return NULL;
 
@@ -184,7 +185,7 @@ init_failed:
 no_super:
 	pmemobj_close(pfp->pop);
 pool_create:
-	free(pfp);
+	pf_free(pfp);
 	errno = error;
 	return NULL;
 }
@@ -211,7 +212,7 @@ pmemfile_pool_open(const char *pathname)
 {
 	LOG(LDBG, "pathname %s", pathname);
 
-	PMEMfilepool *pfp = calloc(1, sizeof(*pfp));
+	PMEMfilepool *pfp = pf_calloc(1, sizeof(*pfp));
 	if (!pfp)
 		return NULL;
 
@@ -261,7 +262,7 @@ init_failed:
 no_super:
 	pmemobj_close(pfp->pop);
 pool_open:
-	free(pfp);
+	pf_free(pfp);
 	errno = error;
 	return NULL;
 }
@@ -274,7 +275,7 @@ pmemfile_pool_close(PMEMfilepool *pfp)
 {
 	LOG(LDBG, "pfp %p", pfp);
 
-	free(pfp->cred.groups);
+	pf_free(pfp->cred.groups);
 
 	vinode_unref(pfp, pfp->cwd);
 	vinode_unref(pfp, pfp->root);
@@ -288,5 +289,5 @@ pmemfile_pool_close(PMEMfilepool *pfp)
 
 	memset(pfp, 0, sizeof(*pfp));
 
-	free(pfp);
+	pf_free(pfp);
 }

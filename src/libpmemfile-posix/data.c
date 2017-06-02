@@ -196,14 +196,14 @@ file_allocate_block_data(PMEMfilepool *pfp,
 		bool use_usable_size)
 {
 	ASSERT_IN_TX();
-	ASSERT(count > 0);
-	ASSERT(count % FILE_PAGE_SIZE == 0);
+	ASSERT(count >= MIN_BLOCK_SIZE);
+	ASSERT(count % BLOCK_ALIGNMENT == 0);
 
 	uint32_t size;
 
 	if (pmemfile_posix_block_size != 0) {
 		ASSERT(pmemfile_posix_block_size <= MAX_BLOCK_SIZE);
-		ASSERT(pmemfile_posix_block_size % FILE_PAGE_SIZE == 0);
+		ASSERT(pmemfile_posix_block_size % BLOCK_ALIGNMENT == 0);
 
 		size = (uint32_t)pmemfile_posix_block_size;
 	} else {
@@ -220,7 +220,7 @@ file_allocate_block_data(PMEMfilepool *pfp,
 		if (usable > MAX_BLOCK_SIZE)
 			size = MAX_BLOCK_SIZE;
 		else
-			size = (uint32_t)page_rounddown(usable);
+			size = (uint32_t)block_rounddown(usable);
 	}
 
 #ifdef DEBUG

@@ -49,27 +49,31 @@ pmemfile_tx_abort(int err)
 
 /*
  * The size of data allocated for each block is a positive integer multiple
- * of FILE_PAGE_SIZE.
+ * of BLOCK_ALIGNMENT.
  *
  * XXX: The current code can read from / write to blocks with any positive size,
  * any offset alignment, so this information doesn't necessarily have to be
  * part of the on-media layout.
  * But later the code might (probably will) depend on this.
  */
-#define FILE_PAGE_SIZE ((size_t)0x1000)
+#define MIN_BLOCK_SIZE ((size_t)0x1000)
 
-#define MAX_BLOCK_SIZE (UINT32_MAX - (UINT32_MAX % FILE_PAGE_SIZE))
+#define BLOCK_ALIGNMENT ((size_t)0x1000)
+
+COMPILE_ERROR_ON(MIN_BLOCK_SIZE % BLOCK_ALIGNMENT != 0);
+
+#define MAX_BLOCK_SIZE (UINT32_MAX - (UINT32_MAX % BLOCK_ALIGNMENT))
 
 static inline size_t
-page_rounddown(size_t n)
+block_rounddown(size_t n)
 {
-	return n & ~(FILE_PAGE_SIZE - 1);
+	return n & ~(BLOCK_ALIGNMENT - 1);
 }
 
 static inline size_t
-page_roundup(size_t n)
+block_roundup(size_t n)
 {
-	return page_rounddown(n + FILE_PAGE_SIZE - 1);
+	return block_rounddown(n + BLOCK_ALIGNMENT - 1);
 }
 
 #endif

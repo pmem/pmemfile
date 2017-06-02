@@ -88,7 +88,8 @@ libpmemfile_posix_init(void)
 		} else if (pmemfile_posix_block_size > MAX_BLOCK_SIZE) {
 			pmemfile_posix_block_size = MAX_BLOCK_SIZE;
 		} else {
-			pmemfile_posix_block_size = page_roundup((size_t)tmpll);
+			pmemfile_posix_block_size =
+					block_roundup((size_t)tmpll);
 		}
 	}
 	LOG(LINF, "block size %zu", pmemfile_posix_block_size);

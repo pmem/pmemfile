@@ -230,7 +230,7 @@ F_SETFD
 ```
 F_SETFL FLAGS
 	O_ASYNC
-		This flag is ignored.
+		Is ignored.
 
 	O_DIRECT
 		Is ignored.

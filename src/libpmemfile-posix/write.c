@@ -56,7 +56,6 @@ vinode_write(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, size_t offset,
 	ASSERT_IN_TX();
 
 	ASSERT(count > 0);
-	struct pmemfile_inode *inode = vinode->inode;
 
 	/*
 	 * Two steps:
@@ -64,12 +63,6 @@ vinode_write(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, size_t offset,
 	 *   writing to the file after seeking past file size ( optionally )
 	 * - Copy the data from the users buffer
 	 */
-
-	uint64_t original_size = inode->size;
-	uint64_t new_size = inode->size;
-
-	if (offset + count > original_size)
-		new_size = offset + count;
 
 	/* All blocks needed for writing are properly allocated at this point */
 
@@ -81,11 +74,6 @@ vinode_write(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, size_t offset,
 
 	if (block)
 		*last_block = block;
-
-	if (new_size != original_size) {
-		TX_ADD_FIELD_DIRECT(inode, size);
-		inode->size = new_size;
-	}
 }
 
 static pmemfile_ssize_t
@@ -154,7 +142,7 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 				len = SSIZE_MAX;
 
 			if ((pmemfile_ssize_t)(sum_len + len) < 0)
-				len = SSIZE_MAX - ret;
+				len = SSIZE_MAX - sum_len;
 
 			/* overflow check */
 			if (offset + sum_len + len < offset)
@@ -192,7 +180,16 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 				break;
 		}
 
+		/*
+		 * Update metadata only when any of the buffer lengths
+		 * was != 0.
+		 */
 		if (ret > 0) {
+			if (offset > inode->size) {
+				TX_ADD_FIELD_DIRECT(inode, size);
+				inode->size = offset;
+			}
+
 			struct pmemfile_time tm;
 			get_current_time(&tm);
 			TX_SET_DIRECT(inode, mtime, tm);

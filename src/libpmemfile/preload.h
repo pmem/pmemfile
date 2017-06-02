@@ -30,8 +30,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PMEMFILE_PRELOAD_RESOLVE_PATH_H
-#define PMEMFILE_PRELOAD_RESOLVE_PATH_H
+#ifndef PMEMFILE_PRELOAD_H
+#define PMEMFILE_PRELOAD_H
 
 #include <stdbool.h>
 #include <sys/stat.h>
@@ -89,7 +89,7 @@ struct pool_description {
 #define NO_RESOLVE_LAST_SLINK 2
 
 struct pool_description *lookup_pd_by_inode(struct stat *stat);
-struct pool_description *lookup_pd_by_path(const char *path);
+
 static inline bool
 same_inode(const struct stat *st1, const struct stat *st2)
 {

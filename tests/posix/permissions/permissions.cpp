@@ -1029,6 +1029,16 @@ TEST_F(permissions, chown)
 	pmemfile_gid_t groups[1] = {1002};
 	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
 
+#ifdef FAULT_INJECTION
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", 0755), -1);
+	EXPECT_EQ(errno, ENOMEM);
+
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	ASSERT_EQ(pmemfile_create(pfp, "/fileXXX", 0644), nullptr);
+	EXPECT_EQ(errno, ENOMEM);
+#endif
+
 	/* ruid=euid=fsuid=1000, rgid=egid=0, fsgid=1001, gids=1002 */
 
 	ASSERT_TRUE(test_chown(pfp, "/file", 1000, 1003, EPERM));

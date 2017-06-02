@@ -180,6 +180,10 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 				break;
 		}
 
+		/*
+		 * Update metadata only when any of the buffer lengths
+		 * was != 0.
+		 */
 		if (ret > 0) {
 			if (offset > inode->size) {
 				TX_ADD_FIELD_DIRECT(inode, size);

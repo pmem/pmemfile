@@ -37,6 +37,7 @@
 #include <errno.h>
 #include <inttypes.h>
 
+#include "alloc.h"
 #include "callbacks.h"
 #include "ctree.h"
 #include "data.h"
@@ -112,7 +113,7 @@ inode_ref(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 
 	os_rwlock_unlock(&pfp->inode_map_rwlock);
 
-	vinode = calloc(1, sizeof(*vinode));
+	vinode = pf_calloc(1, sizeof(*vinode));
 	if (!vinode) {
 		ERR("!can't allocate vinode");
 		return NULL;
@@ -136,7 +137,7 @@ inode_ref(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 					namelen);
 	} else {
 		/* another thread did it first - use it */
-		free(vinode);
+		pf_free(vinode);
 		vinode = put;
 	}
 
@@ -232,10 +233,10 @@ vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 
 #ifdef DEBUG
 			/* "path" field is defined only in DEBUG builds */
-			free(to_unregister->path);
+			pf_free(to_unregister->path);
 #endif
 			os_rwlock_destroy(&to_unregister->rwlock);
-			free(to_unregister);
+			pf_free(to_unregister);
 		}
 	}
 

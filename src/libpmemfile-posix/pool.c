@@ -104,15 +104,19 @@ initialize_super_block(PMEMfilepool *pfp)
 		} TX_ONABORT {
 			error = errno;
 		} TX_END
+
+		if (error) {
+			ERR("!cannot initialize super block");
+			goto tx_err;
+		}
 	}
 
 	pfp->root = inode_ref(pfp, super->root_inode, NULL, NULL, 0);
-	if (!pfp->root)
+	if (!pfp->root) {
 		error = errno;
 
-	if (error) {
-		ERR("!cannot initialize super block");
-		goto tx_err;
+		ERR("!cannot access root inode");
+		goto ref_err;
 	}
 
 	pfp->root->parent = pfp->root;
@@ -125,6 +129,7 @@ initialize_super_block(PMEMfilepool *pfp)
 	cred_release(&cred);
 
 	return 0;
+ref_err:
 tx_err:
 	inode_map_free(pfp);
 inode_map_alloc_fail:

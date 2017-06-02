@@ -197,13 +197,13 @@ file_allocate_block_data(PMEMfilepool *pfp,
 {
 	ASSERT_IN_TX();
 	ASSERT(count > 0);
-	ASSERT(count % FILE_PAGE_SIZE == 0);
+	ASSERT(count % MIN_BLOCK_SIZE == 0);
 
 	uint32_t size;
 
 	if (pmemfile_posix_block_size != 0) {
 		ASSERT(pmemfile_posix_block_size <= MAX_BLOCK_SIZE);
-		ASSERT(pmemfile_posix_block_size % FILE_PAGE_SIZE == 0);
+		ASSERT(pmemfile_posix_block_size % MIN_BLOCK_SIZE == 0);
 
 		size = (uint32_t)pmemfile_posix_block_size;
 	} else {

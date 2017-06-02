@@ -175,8 +175,8 @@ void
 expand_to_full_pages(uint64_t *offset, uint64_t *length)
 {
 	/* align the offset */
-	*length += *offset % FILE_PAGE_SIZE;
-	*offset -= *offset % FILE_PAGE_SIZE;
+	*length += *offset % MIN_BLOCK_SIZE;
+	*offset -= *offset % MIN_BLOCK_SIZE;
 
 	/* align the length */
 	*length = page_roundup(*length);

@@ -56,20 +56,20 @@ pmemfile_tx_abort(int err)
  * part of the on-media layout.
  * But later the code might (probably will) depend on this.
  */
-#define FILE_PAGE_SIZE ((size_t)0x1000)
+#define MIN_BLOCK_SIZE ((size_t)0x1000)
 
-#define MAX_BLOCK_SIZE (UINT32_MAX - (UINT32_MAX % FILE_PAGE_SIZE))
+#define MAX_BLOCK_SIZE (UINT32_MAX - (UINT32_MAX % MIN_BLOCK_SIZE))
 
 static inline size_t
 page_rounddown(size_t n)
 {
-	return n & ~(FILE_PAGE_SIZE - 1);
+	return n & ~(MIN_BLOCK_SIZE - 1);
 }
 
 static inline size_t
 page_roundup(size_t n)
 {
-	return page_rounddown(n + FILE_PAGE_SIZE - 1);
+	return page_rounddown(n + MIN_BLOCK_SIZE - 1);
 }
 
 #endif

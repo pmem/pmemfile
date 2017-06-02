@@ -190,7 +190,7 @@ inode_add_dirent(PMEMfilepool *pfp,
 
 		if (!found && TOID_IS_NULL(dir->next)) {
 			TX_SET_DIRECT(dir, next,
-				TX_ZALLOC(struct pmemfile_dir, FILE_PAGE_SIZE));
+				TX_ZALLOC(struct pmemfile_dir, MIN_BLOCK_SIZE));
 
 			size_t sz = pmemfile_dir_size(dir->next);
 

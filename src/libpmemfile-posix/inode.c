@@ -178,28 +178,42 @@ vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 		struct pmemfile_vinode *to_unregister = NULL;
 		struct pmemfile_vinode *parent = NULL;
 
-		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-			if (__sync_sub_and_fetch(&vinode->ref, 1) == 0) {
-				if (vinode->inode->nlink == 0) {
+		if (__sync_sub_and_fetch(&vinode->ref, 1) == 0) {
+			uint64_t nlink = vinode->inode->nlink;
+			if (nlink == 0) {
+				/*
+				 * Undo log space in transaction is limitted, so
+				 * when it's exhausted pmemobj needs to allocate
+				 * more to extend it.
+				 * If all space is used by user data pmemobj
+				 * is not able to do that, which means frees
+				 * fail.
+				 *
+				 * To fix this, do as many frees outside of
+				 * transaction as possible, while still
+				 * maintaining consistency.
+				 */
+				inode_trim(pfp, vinode->tinode);
+
+				TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 					inode_array_unregister(pfp,
 							vinode->orphaned.arr,
 							vinode->orphaned.idx);
 
 					inode_free(pfp, vinode->tinode);
-				}
-
-				to_unregister = vinode;
-				/*
-				 * We don't need to take the vinode lock to
-				 * read parent because at this point (when
-				 * ref count drops to 0) nobody should have
-				 * access to this vinode.
-				 */
-				parent = vinode->parent;
+				} TX_ONABORT {
+					FATAL("!vinode_unref");
+				} TX_END
 			}
-		} TX_ONABORT {
-			FATAL("!vinode_unref");
-		} TX_END
+
+			to_unregister = vinode;
+			/*
+			 * We don't need to take the vinode lock to read parent
+			 * because at this point (when ref count drops to 0)
+			 * nobody should have access to this vinode.
+			 */
+			parent = vinode->parent;
+		}
 
 		if (vinode != pfp->root)
 			vinode = parent;
@@ -364,6 +378,31 @@ inode_free_dir(struct pmemfile_inode *inode)
 }
 
 /*
+ * inode_trim_reg_file -- frees on media structures assuming inode is a regular
+ * file
+ */
+static void
+inode_trim_reg_file(struct pmemfile_inode *inode)
+{
+	ASSERT_NOT_IN_TX();
+
+	struct pmemfile_block_array *arr = &inode->file_data.blocks;
+
+	while (arr != NULL) {
+		for (unsigned i = 0; i < arr->length; ++i)
+			POBJ_FREE(&arr->blocks[i].data);
+
+		arr = D_RW(arr->next);
+	}
+
+	/*
+	 * We could free block arrays here, but it would have to be done in
+	 * reverse order. Freeing user data should be enough to let
+	 * transactional part of unref finish without abort.
+	 */
+}
+
+/*
  * inode_free_reg_file -- frees on media structures assuming inode is a regular
  * file
  */
@@ -397,6 +436,26 @@ inode_free_symlink(struct pmemfile_inode *inode)
 	ASSERT_IN_TX();
 
 	/* nothing to be done */
+}
+
+/*
+ * inode_trim -- frees as much data as possible using atomic API
+ *
+ * Must NOT be called in a transaction.
+ */
+void
+inode_trim(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
+{
+	(void) pfp;
+
+	LOG(LDBG, "inode 0x%" PRIx64, tinode.oid.off);
+
+	ASSERT_NOT_IN_TX();
+
+	struct pmemfile_inode *inode = D_RW(tinode);
+
+	if (inode_is_regular_file(inode))
+		inode_trim_reg_file(inode);
 }
 
 /*

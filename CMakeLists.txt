@@ -234,6 +234,12 @@ if(SANITIZERS)
 endif()
 
 if(DEVELOPER_MODE)
+	option(FAULT_INJECTION "enable fault injection testing" ON)
+else()
+	option(FAULT_INJECTION "enable fault injection testing" OFF)
+endif()
+
+if(DEVELOPER_MODE)
 	add_flag(-Werror)
 
 	check_c_compiler_flag(-Wl,--fatal-warnings LINKER_HAS_FATAL_WARNINGS)
@@ -241,6 +247,10 @@ if(DEVELOPER_MODE)
 		set(CMAKE_LD_FLAGS  "${CMAKE_LD_FLAGS} -Wl,--fatal-warnings")
 	endif()
 endif(DEVELOPER_MODE)
+
+if(FAULT_INJECTION)
+	add_definitions(-DFAULT_INJECTION)
+endif()
 
 add_executable(check_license EXCLUDE_FROM_ALL utils/check_license/check-license.c)
 

@@ -42,6 +42,7 @@
 #include <string.h>
 #include <errno.h>
 
+#include "alloc.h"
 #include "compiler_utils.h"
 #include "os_thread.h"
 #include "os_util.h"
@@ -64,9 +65,15 @@ static os_once_t Last_errormsg_key_once;
 static os_tls_key_t Last_errormsg_key;
 
 static void
+pf_free_wrapper(void *ptr)
+{
+	pf_free(ptr);
+}
+
+static void
 _Last_errormsg_key_alloc(void)
 {
-	int pth_ret = os_tls_key_create(&Last_errormsg_key, free);
+	int pth_ret = os_tls_key_create(&Last_errormsg_key, pf_free_wrapper);
 	if (pth_ret)
 		FATAL("!os_tls_key_create");
 
@@ -89,7 +96,7 @@ Last_errormsg_fini(void)
 {
 	void *p = os_tls_get(Last_errormsg_key);
 	if (p) {
-		free(p);
+		pf_free(p);
 		(void) os_tls_set(Last_errormsg_key, NULL);
 	}
 }
@@ -101,7 +108,7 @@ Last_errormsg_get(void)
 
 	char *errormsg = os_tls_get(Last_errormsg_key);
 	if (errormsg == NULL) {
-		errormsg = malloc(MAXPRINT);
+		errormsg = pf_malloc(MAXPRINT);
 		int ret = os_tls_set(Last_errormsg_key, errormsg);
 		if (ret)
 			FATAL("!os_tls_set");

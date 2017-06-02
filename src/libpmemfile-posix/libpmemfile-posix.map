@@ -122,6 +122,7 @@
 		pmemfile_writev;
 
 		pmemfile_stats;
+		pmemfile_inject_fault_at;
 	local:
 		*;
 };

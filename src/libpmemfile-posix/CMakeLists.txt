@@ -96,6 +96,10 @@ set(HEADERS
 	valgrind_internal.h
 )
 
+if(FAULT_INJECTION)
+	set(SOURCES ${SOURCES} alloc.c)
+endif()
+
 if(PKG_CONFIG_FOUND)
 	pkg_check_modules(PMEMOBJ REQUIRED libpmemobj)
 else()

@@ -300,8 +300,7 @@ resolve_path(struct fd_desc at,
 
 	/*
 	 * XXX
-	 * This code is too convoluted, and new bugs are found in it weekly.
-	 * Must be rewritten after the holidays.
+	 * Path resolution needs more tests.
 	 */
 	for (resolved = strspn(result->path, "/");
 	    result->path[resolved] != '\0' && result->error_code == 0;

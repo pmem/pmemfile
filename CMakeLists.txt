@@ -76,6 +76,10 @@ else()
 			OUTPUT_STRIP_TRAILING_WHITESPACE)
 endif()
 
+if(WIN32)
+	message(FATAL_ERROR "Windows is not supported")
+endif()
+
 include(FindPerl)
 if(NOT PERL_FOUND)
 	message(FATAL_ERROR "Perl not found")

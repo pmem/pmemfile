@@ -31,7 +31,7 @@
 #
 
 #
-# src/libpmemfile-posix/libpmemfile-posix.map -- linker map file for libpmemfile-posix
+# src/libpmemfile-posix/libpmemfile-posix.map.in -- linker map file for libpmemfile-posix
 #
 {
 	global:
@@ -122,6 +122,7 @@
 		pmemfile_writev;
 
 		pmemfile_stats;
+		@PMEMFILE_INJECT_FAULT_AT@
 	local:
 		*;
 };

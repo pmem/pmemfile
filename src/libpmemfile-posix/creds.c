@@ -36,6 +36,7 @@
 
 #include <limits.h>
 
+#include "alloc.h"
 #include "creds.h"
 #include "internal.h"
 #include "libpmemfile-posix.h"
@@ -295,7 +296,7 @@ pmemfile_setgroups(PMEMfilepool *pfp, size_t size, const pmemfile_gid_t *list)
 	int error = 0;
 	os_rwlock_wrlock(&pfp->cred_rwlock);
 	if (size != pfp->cred.groupsnum) {
-		void *r = realloc(pfp->cred.groups,
+		void *r = pf_realloc(pfp->cred.groups,
 				size * sizeof(pfp->cred.groups[0]));
 		if (!r) {
 			error = errno;
@@ -391,7 +392,7 @@ copy_cred(struct pmemfile_cred *dst_cred, const struct pmemfile_cred *src_cred)
 	dst_cred->caps = src_cred->caps;
 	dst_cred->groupsnum = src_cred->groupsnum;
 	if (dst_cred->groupsnum) {
-		dst_cred->groups = malloc(dst_cred->groupsnum *
+		dst_cred->groups = pf_malloc(dst_cred->groupsnum *
 				sizeof(dst_cred->groups[0]));
 		if (!dst_cred->groups)
 			return -1;
@@ -423,7 +424,7 @@ cred_acquire(PMEMfilepool *pfp, struct pmemfile_cred *cred)
 void
 cred_release(struct pmemfile_cred *cred)
 {
-	free(cred->groups);
+	pf_free(cred->groups);
 	memset(cred, 0, sizeof(*cred));
 }
 

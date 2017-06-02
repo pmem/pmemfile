@@ -45,6 +45,7 @@
 #include <stdlib.h>
 #include <errno.h>
 
+#include "alloc.h"
 #include "ctree.h"
 
 #include "os_thread.h"
@@ -93,7 +94,7 @@ find_crit_bit(uint64_t lhs, uint64_t rhs)
 struct ctree *
 ctree_new(void)
 {
-	struct ctree *t = malloc(sizeof(*t));
+	struct ctree *t = pf_malloc(sizeof(*t));
 	if (t == NULL)
 		return NULL;
 
@@ -109,13 +110,13 @@ ctree_free_internal_recursive(void *dst, ctree_destroy_cb cb, void *ctx)
 		struct node *a = NODE_INTERNAL_GET(dst);
 		ctree_free_internal_recursive(a->slots[0], cb, ctx);
 		ctree_free_internal_recursive(a->slots[1], cb, ctx);
-		free(a);
+		pf_free(a);
 	} else {
 		if (cb) {
 			struct node_leaf *leaf = dst;
 			cb(leaf->key, leaf->value, ctx);
 		}
-		free(dst);
+		pf_free(dst);
 	}
 }
 
@@ -127,7 +128,7 @@ ctree_delete(struct ctree *t)
 {
 	ctree_clear(t);
 
-	free(t);
+	pf_free(t);
 }
 
 /*
@@ -155,7 +156,7 @@ ctree_delete_cb(struct ctree *t, ctree_destroy_cb cb, void *ctx)
 	if (t->root)
 		ctree_free_internal_recursive(t->root, cb, ctx);
 
-	free(t);
+	pf_free(t);
 }
 
 /*
@@ -175,7 +176,7 @@ ctree_insert(struct ctree *t, uint64_t key, uint64_t value)
 	}
 
 	struct node_leaf *dstleaf = *dst;
-	struct node_leaf *nleaf = malloc(sizeof(*nleaf));
+	struct node_leaf *nleaf = pf_malloc(sizeof(*nleaf));
 	if (nleaf == NULL)
 		return ENOMEM;
 
@@ -187,7 +188,7 @@ ctree_insert(struct ctree *t, uint64_t key, uint64_t value)
 		goto out;
 	}
 
-	struct node *n = malloc(sizeof(*n)); /* internal node */
+	struct node *n = pf_malloc(sizeof(*n)); /* internal node */
 	if (n == NULL) {
 		err = ENOMEM;
 		goto error_internal_malloc;
@@ -223,9 +224,9 @@ out:
 	return 0;
 
 error_duplicate:
-	free(n);
+	pf_free(n);
 error_internal_malloc:
-	free(nleaf);
+	pf_free(nleaf);
 	return err;
 }
 
@@ -311,14 +312,14 @@ ctree_remove_leaf(struct ctree *t, void **dst, void **pparent)
 	 * remaining child with the parent.
 	 */
 	if (t->root == *dst) {
-		free(*dst);
+		pf_free(*dst);
 		*dst = NULL;
 	} else {
 		struct node *parent = NODE_INTERNAL_GET(*pparent);
 		*pparent = parent->slots[parent->slots[0] == *dst];
 		/* Free the internal node and the leaf */
-		free(*dst);
-		free(parent);
+		pf_free(*dst);
+		pf_free(parent);
 	}
 }
 
@@ -434,14 +435,14 @@ remove:
 	 * remaining child with the parent.
 	 */
 	if (a == NULL) {
-		free(*dst);
+		pf_free(*dst);
 		*dst = NULL;
 	} else {
 		ASSERTne(p, NULL);
 		*p = a->slots[a->slots[0] == *dst];
 		/* Free the internal node and the leaf */
-		free(*dst);
-		free(a);
+		pf_free(*dst);
+		pf_free(a);
 	}
 
 out:

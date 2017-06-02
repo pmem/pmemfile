@@ -34,6 +34,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 
+#include "alloc.h"
 #include "hash_map.h"
 #include "internal.h"
 #include "os_thread.h"
@@ -87,14 +88,14 @@ hash_map_rand_params(struct hash_map *map)
 struct hash_map *
 hash_map_alloc(void)
 {
-	struct hash_map *map = calloc(1, sizeof(*map));
+	struct hash_map *map = pf_calloc(1, sizeof(*map));
 	if (!map)
 		return NULL;
 
 	map->nbuckets = INITIAL_NBUCKETS;
-	map->buckets = calloc(map->nbuckets, sizeof(map->buckets[0]));
+	map->buckets = pf_calloc(map->nbuckets, sizeof(map->buckets[0]));
 	if (!map->buckets) {
-		free(map);
+		pf_free(map);
 		return NULL;
 	}
 
@@ -133,8 +134,8 @@ hash_map_traverse(struct hash_map *map, hash_map_cb fun)
 void
 hash_map_free(struct hash_map *map)
 {
-	free(map->buckets);
-	free(map);
+	pf_free(map->buckets);
+	pf_free(map);
 }
 
 /*
@@ -156,7 +157,7 @@ static int
 hash_map_rebuild(struct hash_map *c, size_t new_sz)
 {
 	struct hash_map_bucket *new_buckets =
-			calloc(new_sz, sizeof(new_buckets[0]));
+			pf_calloc(new_sz, sizeof(new_buckets[0]));
 	size_t idx;
 
 	if (!new_buckets)
@@ -180,13 +181,13 @@ hash_map_rebuild(struct hash_map *c, size_t new_sz)
 			}
 
 			if (k == BUCKET_SIZE) {
-				free(new_buckets);
+				pf_free(new_buckets);
 				return 1;
 			}
 		}
 	}
 
-	free(c->buckets);
+	pf_free(c->buckets);
 	c->nbuckets = new_sz;
 	c->buckets = new_buckets;
 

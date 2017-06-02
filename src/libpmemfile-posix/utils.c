@@ -175,11 +175,11 @@ void
 expand_to_full_pages(uint64_t *offset, uint64_t *length)
 {
 	/* align the offset */
-	*length += *offset % FILE_PAGE_SIZE;
-	*offset -= *offset % FILE_PAGE_SIZE;
+	*length += *offset % BLOCK_ALIGNMENT;
+	*offset -= *offset % BLOCK_ALIGNMENT;
 
 	/* align the length */
-	*length = page_roundup(*length);
+	*length = block_roundup(*length);
 }
 
 /*
@@ -193,8 +193,8 @@ expand_to_full_pages(uint64_t *offset, uint64_t *length)
 void
 narrow_to_full_pages(uint64_t *offset, uint64_t *length)
 {
-	uint64_t end = page_rounddown(*offset + *length);
-	*offset = page_roundup(*offset);
+	uint64_t end = block_rounddown(*offset + *length);
+	*offset = block_roundup(*offset);
 	if (end > *offset)
 		*length = end - *offset;
 	else

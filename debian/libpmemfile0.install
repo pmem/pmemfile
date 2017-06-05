@@ -1,0 +1,3 @@
+usr/lib/*/libpmemfile.so
+usr/lib/*/libpmemfile.so.*
+usr/share/man/man1/libpmemfile.1

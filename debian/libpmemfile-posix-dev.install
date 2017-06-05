@@ -1,0 +1,6 @@
+usr/lib/*/pkgconfig/libpmemfile-posix.pc
+usr/lib/*/libpmemfile-posix.so
+usr/lib/*/libpmemfile-posix.a
+usr/include/libpmemfile-posix.h
+usr/include/libpmemfile-posix-stubs.h
+usr/share/man/man3/libpmemfile-posix.3

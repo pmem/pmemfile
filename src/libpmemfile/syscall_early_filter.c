@@ -213,7 +213,27 @@ static struct syscall_early_filter_entry filter_table[] = {
 		.fd_first_arg = true,
 		.fd_rlock = true,
 	},
+	[SYS_preadv] = {
+		.must_handle = true,
+		.fd_first_arg = true,
+		.fd_rlock = true,
+	},
+	[SYS_preadv2] = {
+		.must_handle = true,
+		.fd_first_arg = true,
+		.fd_rlock = true,
+	},
 	[SYS_pwrite64] = {
+		.must_handle = true,
+		.fd_first_arg = true,
+		.fd_rlock = true,
+	},
+	[SYS_pwritev] = {
+		.must_handle = true,
+		.fd_first_arg = true,
+		.fd_rlock = true,
+	},
+	[SYS_pwritev2] = {
 		.must_handle = true,
 		.fd_first_arg = true,
 		.fd_rlock = true,
@@ -231,6 +251,11 @@ static struct syscall_early_filter_entry filter_table[] = {
 	[SYS_readlink] = {
 		.must_handle = true,
 		.cwd_rlock = true,
+	},
+	[SYS_readv] = {
+		.must_handle = true,
+		.fd_first_arg = true,
+		.fd_rlock = true,
 	},
 	[SYS_renameat2] = {
 		.must_handle = true,
@@ -288,6 +313,11 @@ static struct syscall_early_filter_entry filter_table[] = {
 		.cwd_rlock = true,
 	},
 	[SYS_write] = {
+		.must_handle = true,
+		.fd_first_arg = true,
+		.fd_rlock = true,
+	},
+	[SYS_writev] = {
 		.must_handle = true,
 		.fd_first_arg = true,
 		.fd_rlock = true,
@@ -363,26 +393,7 @@ static struct syscall_early_filter_entry filter_table[] = {
 	[SYS_name_to_handle_at] = {
 		.must_handle = true,
 	},
-
-	[SYS_preadv2] = {
-		.must_handle = true,
-		.fd_first_arg = true,
-		.fd_rlock = true,
-		.returns_ENOTSUP = true,
-	},
-	[SYS_pwritev2] = {
-		.must_handle = true,
-		.fd_first_arg = true,
-		.fd_rlock = true,
-		.returns_ENOTSUP = true,
-	},
 	[SYS_readahead] = {
-		.must_handle = true,
-		.fd_first_arg = true,
-		.fd_rlock = true,
-		.returns_ENOTSUP = true,
-	},
-	[SYS_readv] = {
 		.must_handle = true,
 		.fd_first_arg = true,
 		.fd_rlock = true,
@@ -409,12 +420,6 @@ static struct syscall_early_filter_entry filter_table[] = {
 	[SYS_utime] = {
 		.must_handle = true,
 		.cwd_rlock = true,
-	},
-	[SYS_writev] = {
-		.must_handle = true,
-		.fd_first_arg = true,
-		.fd_rlock = true,
-		.returns_ENOTSUP = true,
 	},
 };
 

@@ -60,6 +60,7 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <limits.h>
+#include <linux/fs.h>
 
 #include <asm-generic/errno.h>
 
@@ -76,6 +77,18 @@ static int pool_count;
 static bool is_memfd_syscall_available;
 
 #define PMEMFILE_MAX_FD 0x8000
+
+#ifndef RWF_HIPRI
+#define RWF_HIPRI 0x00000001
+#endif
+
+#ifndef RWF_DSYNC
+#define RWF_DSYNC 0x00000002
+#endif
+
+#ifndef RWF_SYNC
+#define RWF_SYNC 0x00000004
+#endif
 
 /*
  * The associations between user visible fd numbers and
@@ -284,6 +297,22 @@ hook_write(long fd, const char *buffer, size_t count)
 }
 
 static long
+hook_writev(long fd, const struct iovec *iov, int iovcnt)
+{
+	struct fd_association *file = fd_table + fd;
+	long r = pmemfile_writev(file->pool->pool, file->file, iov, iovcnt);
+
+	if (r < 0)
+		r = -errno;
+
+	log_write("pmemfile_writev(%p, %p, %p, %d) = %ld",
+	    (void *)file->pool->pool, (void *)file->file,
+	    (void *)iov, iovcnt, r);
+
+	return check_errno(r, SYS_writev);
+}
+
+static long
 hook_read(long fd, char *buffer, size_t count)
 {
 	struct fd_association *file = fd_table + fd;
@@ -297,6 +326,22 @@ hook_read(long fd, char *buffer, size_t count)
 	    (void *)buffer, count, r);
 
 	return check_errno(r, SYS_read);
+}
+
+static long
+hook_readv(long fd, const struct iovec *iov, int iovcnt)
+{
+	struct fd_association *file = fd_table + fd;
+	long r = pmemfile_readv(file->pool->pool, file->file, iov, iovcnt);
+
+	if (r < 0)
+		r = -errno;
+
+	log_write("pmemfile_readv(%p, %p, %p, %d) = %ld",
+	    (void *)file->pool, (void *)file->file,
+	    (void *)iov, iovcnt, r);
+
+	return check_errno(r, SYS_readv);
 }
 
 static long
@@ -536,6 +581,32 @@ hook_pread64(long fd, char *buf, size_t count, off_t pos)
 }
 
 static long
+hook_preadv(long fd, const struct iovec *iov, int iovcnt, off_t pos)
+{
+	struct fd_association *file = fd_table + fd;
+	long r = pmemfile_preadv(file->pool->pool, file->file, iov, iovcnt,
+			pos);
+
+	if (r < 0)
+		r = -errno;
+
+	log_write("pmemfile_preadv(%p, %p, %p, %d, %zu) = %ld",
+	    (void *)file->pool, (void *)file->file,
+	    (void *)iov, iovcnt, pos, r);
+
+	return check_errno(r, SYS_preadv);
+}
+
+static long
+hook_preadv2(long fd, const struct iovec *iov, int iovcnt, off_t pos, int flags)
+{
+	if (flags & ~(RWF_DSYNC | RWF_HIPRI | RWF_SYNC))
+		return -EINVAL;
+
+	return hook_preadv(fd, iov, iovcnt, pos);
+}
+
+static long
 hook_pwrite64(long fd, const char *buf, size_t count, off_t pos)
 {
 	struct fd_association *file = fd_table + fd;
@@ -549,6 +620,33 @@ hook_pwrite64(long fd, const char *buf, size_t count, off_t pos)
 	    (const void *)buf, count, pos, r);
 
 	return check_errno(r, SYS_pwrite64);
+}
+
+static long
+hook_pwritev(long fd, const struct iovec *iov, int iovcnt, off_t pos)
+{
+	struct fd_association *file = fd_table + fd;
+	long r = pmemfile_pwritev(file->pool->pool, file->file, iov, iovcnt,
+			pos);
+
+	if (r < 0)
+		r = -errno;
+
+	log_write("pmemfile_pwritev(%p, %p, %p, %d, %zu) = %ld",
+	    (void *)file->pool, (void *)file->file,
+	    (const void *)iov, iovcnt, pos, r);
+
+	return check_errno(r, SYS_pwritev);
+}
+
+static long
+hook_pwritev2(long fd, const struct iovec *iov, int iovcnt, off_t pos,
+		int flags)
+{
+	if (flags & ~(RWF_DSYNC | RWF_HIPRI | RWF_SYNC))
+		return -EINVAL;
+
+	return hook_pwritev(fd, iov, iovcnt, pos);
 }
 
 static long
@@ -1252,19 +1350,41 @@ dispatch_syscall(long syscall_number,
 	case SYS_write:
 		return hook_write(arg0, (const char *)arg1, (size_t)arg2);
 
+	case SYS_writev:
+		return hook_writev(arg0, (struct iovec *)arg1, (int)arg2);
+
 	case SYS_read:
 		return hook_read(arg0, (char *)arg1, (size_t)arg2);
+
+	case SYS_readv:
+		return hook_readv(arg0, (struct iovec *)arg1, (int)arg2);
 
 	case SYS_lseek:
 		return hook_lseek(arg0, arg1, (int)arg2);
 
 	case SYS_pread64:
-		return hook_pread64(arg0, (char *)arg1,
-		    (size_t)arg2, (off_t)arg3);
+		return hook_pread64(arg0, (char *)arg1, (size_t)arg2,
+				(off_t)arg3);
+
+	case SYS_preadv:
+		return hook_preadv(arg0, (struct iovec *)arg1, (int)arg2,
+				(off_t)arg3);
+
+	case SYS_preadv2:
+		return hook_preadv2(arg0, (struct iovec *)arg1, (int)arg2,
+				(off_t)arg3, (int)arg4);
 
 	case SYS_pwrite64:
-		return hook_pwrite64(arg0, (const char *)arg1,
-		    (size_t)arg2, (off_t)arg3);
+		return hook_pwrite64(arg0, (const char *)arg1, (size_t)arg2,
+				(off_t)arg3);
+
+	case SYS_pwritev:
+		return hook_pwritev(arg0, (struct iovec *)arg1, (int)arg2,
+				(off_t)arg3);
+
+	case SYS_pwritev2:
+		return hook_pwritev2(arg0, (struct iovec *)arg1, (int)arg2,
+				(off_t)arg3, (int)arg4);
 
 	case SYS_getdents:
 		return hook_getdents(arg0, arg1, (unsigned)arg2);

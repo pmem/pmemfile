@@ -1,5 +1,6 @@
+#!/bin/bash -ex
 #
-# Copyright 2016-2017, Intel Corporation
+# Copyright 2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -30,70 +31,21 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #
-# Dockerfile - a 'recipe' for Docker to build an image of ubuntu-based
-#              environment for building the PMEMFILE project.
+# run-coverity.sh - runs the Coverity scan build
 #
 
-# Pull base image
-FROM ubuntu:16.04
-MAINTAINER marcin.slusarz@intel.com
+cd $WORKDIR
+cp /googletest-1.8.0.zip .
 
-# Update the Apt cache and install basic tools
-RUN apt-get update
-RUN apt-get install -y \
-	autoconf \
-	automake \
-	clang \
-	clang-format-3.8 \
-	cmake \
-	curl \
-	debhelper \
-	devscripts \
-	doxygen \
-	git \
-	libcapstone-dev \
-	libc6-dbg \
-	libtext-diff-perl \
-	libunwind-dev \
-	pandoc \
-	pkg-config \
-	ruby \
-	sqlite3 \
-	sudo \
-	wget \
-	whois
+mkdir build
+cd build
+cmake .. -DCMAKE_BUILD_TYPE=Debug
 
-# Install valgrind
-COPY install-valgrind.sh install-valgrind.sh
-RUN ./install-valgrind.sh
+export COVERITY_SCAN_PROJECT_NAME="pmemfile"
+[[ "$TRAVIS_EVENT_TYPE" == "cron" ]] \
+	&& export COVERITY_SCAN_BRANCH_PATTERN="master" \
+	|| export COVERITY_SCAN_BRANCH_PATTERN="coverity_scan"
+export COVERITY_SCAN_BUILD_COMMAND="make"
 
-# Install nvml
-COPY install-nvml.sh install-nvml.sh
-RUN ./install-nvml.sh dpkg
-
-# Install syscall_intercept
-COPY install-syscall_intercept.sh install-syscall_intercept.sh
-RUN ./install-syscall_intercept.sh deb
-
-RUN curl -L -o /googletest-1.8.0.zip https://github.com/google/googletest/archive/release-1.8.0.zip
-
-# Add user
-ENV USER user
-ENV USERPASS pass
-RUN useradd -m $USER -g sudo -p `mkpasswd $USERPASS`
-
-RUN apt-get remove -y \
-	autoconf \
-	automake \
-	doxygen \
-	whois
-
-RUN apt-get autoremove -y
-
-USER $USER
-
-# Set required environment variables
-ENV OS ubuntu
-ENV OS_VER 16.04
-ENV PACKAGE_MANAGER deb
-ENV NOTTY 1
+# Run the Coverity scan
+curl -s https://scan.coverity.com/scripts/travisci_build_coverity_scan.sh | bash

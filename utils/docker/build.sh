@@ -47,12 +47,28 @@ if [[ -z "$HOST_WORKDIR" ]]; then
 	exit 1
 fi
 
+if [[ "$TRAVIS_EVENT_TYPE" == "cron" || "$TRAVIS_BRANCH" == "coverity_scan" ]]; then
+	if [[ $COVERITY -eq 1 ]]; then
+		command="./run-coverity.sh"
+	else
+		echo "Skipping non-Coverity job for cron/Coverity build"
+		exit 0
+	fi
+else
+	if [[ $COVERITY -eq 1 ]]; then
+		echo "Skipping Coverity job for non cron/Coverity build"
+		exit 0
+	fi
+fi
+
 imageName=${DOCKERHUB_REPO}:${OS}-${OS_VER}
 containerName=pmemfile-${OS}-${OS_VER}
 
-if [[ $MAKE_PKG -eq 0 ]] ; then command="./run-build.sh"; fi
-if [[ $MAKE_PKG -eq 1 ]] ; then command="./run-build-package.sh"; fi
-if [[ $COVERAGE -eq 1 ]] ; then command="./run-coverage.sh"; ci_env=`bash <(curl -s https://codecov.io/env)`; fi
+if [[ "$command" == "" ]]; then
+	if [[ $MAKE_PKG -eq 0 ]] ; then command="./run-build.sh"; fi
+	if [[ $MAKE_PKG -eq 1 ]] ; then command="./run-build-package.sh"; fi
+	if [[ $COVERAGE -eq 1 ]] ; then command="./run-coverage.sh"; ci_env=`bash <(curl -s https://codecov.io/env)`; fi
+fi
 
 WORKDIR=/pmemfile
 
@@ -72,6 +88,8 @@ sudo docker run --rm --privileged=true --name=$containerName -ti \
 	--env TRAVIS_REPO_SLUG=$TRAVIS_REPO_SLUG \
 	--env TRAVIS_BRANCH=$TRAVIS_BRANCH \
 	--env TRAVIS_EVENT_TYPE=$TRAVIS_EVENT_TYPE \
+	--env COVERITY_SCAN_TOKEN=$COVERITY_SCAN_TOKEN \
+	--env COVERITY_SCAN_NOTIFICATION_EMAIL=$COVERITY_SCAN_NOTIFICATION_EMAIL \
 	-v $HOST_WORKDIR:$WORKDIR \
 	-w $WORKDIR/utils/docker \
 	$imageName $command

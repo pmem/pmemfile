@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/pmem/pmemfile.svg)](https://travis-ci.org/pmem/pmemfile)
 [![Coverage Status](https://codecov.io/github/pmem/pmemfile/coverage.svg)](https://codecov.io/gh/pmem/pmemfile)
+[![Coverity Scan Build Status](https://scan.coverity.com/projects/12874/badge.svg)](https://scan.coverity.com/projects/pmemfile)
 
 Pmemfile project's goal is to provide low-overhead userspace implementation of
 file APIs using persistent memory.

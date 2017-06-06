@@ -59,11 +59,6 @@ if [[ -z "$HOST_WORKDIR" ]]; then
 	exit 1
 fi
 
-# Disable rebuilding of docker image for PR between development and master branch.
-# XXX remove once pmemfile is merged to master
-if [ $TRAVIS_REPO_SLUG = "${GITHUB_REPO}" -a $TRAVIS_BRANCH = "master" -a $TRAVIS_EVENT_TYPE = "pull_request" ]; then
-	TRAVIS_COMMIT_RANGE=
-fi
 if [ -n "$TRAVIS_COMMIT_RANGE" ]; then
 	if ! git rev-list $TRAVIS_COMMIT_RANGE; then
 		TRAVIS_COMMIT_RANGE=
@@ -107,7 +102,7 @@ for file in $files; do
 		# of the "pull_request" type). In that case, create the empty
 		# file.
 		if [[ $TRAVIS_REPO_SLUG == "${GITHUB_REPO}" \
-			&& $TRAVIS_BRANCH == "development" \
+			&& $TRAVIS_BRANCH == "master" \
 			&& $TRAVIS_EVENT_TYPE != "pull_request"
 			&& $MAKE_PKG == "1" ]]
 		then

@@ -137,7 +137,7 @@ cb_push_back(enum pobj_tx_stage stage, cb_basic func, void *arg)
 	cb_check(__func__);
 	struct all_callbacks *cbs = cb_get();
 	if (!cbs)
-		pmemobj_tx_abort(errno);
+		pmemfile_tx_abort(errno);
 
 	return cb_append(&cbs[stage].forward, func, arg);
 }
@@ -154,7 +154,7 @@ cb_push_front(enum pobj_tx_stage stage, cb_basic func, void *arg)
 	cb_check(__func__);
 	struct all_callbacks *cbs = cb_get();
 	if (!cbs)
-		pmemobj_tx_abort(errno);
+		pmemfile_tx_abort(errno);
 
 	return cb_append(&cbs[stage].backward, func, arg);
 }
@@ -227,7 +227,7 @@ cb_queue(PMEMobjpool *pop, enum pobj_tx_stage stage, void *arg)
 	struct all_callbacks *file_callbacks = cb_get();
 	if (!file_callbacks) {
 		if (stage == TX_STAGE_WORK)
-			pmemobj_tx_abort(errno);
+			pmemfile_tx_abort(errno);
 		else
 			/* not possible */
 			FATAL("unable to allocate callbacks list");

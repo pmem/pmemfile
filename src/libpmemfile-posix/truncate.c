@@ -71,10 +71,6 @@ vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	vinode_snapshot(vinode);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		cb_push_front(TX_STAGE_ONABORT,
-			(cb_basic)vinode_destroy_data_state,
-			vinode);
-
 		/*
 		 * Might need to handle the special case where size == 0.
 		 * Setting all the next and prev fields is pointless, when all

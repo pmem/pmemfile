@@ -118,19 +118,19 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 
 	os_rwlock_wrlock(&vinode->rwlock);
 
-	vinode_snapshot(vinode);
-
 	size_t ret = 0;
 
 	ASSERT_NOT_IN_TX();
 
-	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		if (!vinode->blocks) {
-			int err = vinode_rebuild_block_tree(vinode);
-			if (err)
-				pmemfile_tx_abort(err);
-		}
+	if (!vinode->blocks) {
+		error = vinode_rebuild_block_tree(vinode);
+		if (error)
+			goto end;
+	}
 
+	vinode_snapshot(vinode);
+
+	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (file_flags & PFILE_APPEND)
 			offset = inode->size;
 
@@ -199,6 +199,7 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 		vinode_restore_on_abort(vinode);
 	} TX_END
 
+end:
 	os_rwlock_unlock(&vinode->rwlock);
 
 	if (error) {

@@ -45,14 +45,7 @@
 static int
 block_cache_insert_block(struct ctree *c, struct pmemfile_block_desc *block)
 {
-	if (ctree_insert(c, block->offset, (uintptr_t)block)) {
-		if (pmemobj_tx_stage() == TX_STAGE_WORK)
-			pmemfile_tx_abort(errno);
-		else
-			return -errno;
-	}
-
-	return 0;
+	return ctree_insert(c, block->offset, (uintptr_t)block);
 }
 
 static void
@@ -60,7 +53,9 @@ block_cache_insert_block_in_tx(struct ctree *c,
 		struct pmemfile_block_desc *block)
 {
 	ASSERT_IN_TX();
-	(void) block_cache_insert_block(c, block);
+	int err = block_cache_insert_block(c, block);
+	if (err)
+		pmemfile_tx_abort(err);
 }
 /*
  * find_last_block - find the block with the highest offset in the file
@@ -78,6 +73,8 @@ find_last_block(const struct pmemfile_vinode *vinode)
 int
 vinode_rebuild_block_tree(struct pmemfile_vinode *vinode)
 {
+	ASSERT_NOT_IN_TX();
+
 	struct ctree *c = ctree_new();
 	if (!c)
 		return -errno;

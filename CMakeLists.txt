@@ -105,6 +105,11 @@ include_directories(include)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 11)
 
+function(join SEP OUT VALUES)
+	string(REPLACE ";" "${SEP}" JOIN_TMP "${VALUES}")
+	set(${OUT} "${JOIN_TMP}" PARENT_SCOPE)
+endfunction()
+
 # Checks whether flag is supported by current C compiler and appends
 # it to the relevant cmake variable.
 # 1st argument is a flag

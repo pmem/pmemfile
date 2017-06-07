@@ -96,9 +96,98 @@ set(HEADERS
 	valgrind_internal.h
 )
 
+set(EXPORTED_SYMBOLS
+	pmemfile_access
+	pmemfile_chdir
+	pmemfile_chmod
+	pmemfile_chown
+	pmemfile_close
+	pmemfile_clrcap
+	pmemfile_copy_file_range
+	pmemfile_create
+	pmemfile_dup
+	pmemfile_dup2
+	pmemfile_errormsg
+	pmemfile_euidaccess
+	pmemfile_faccessat
+	pmemfile_fallocate
+	pmemfile_fchdir
+	pmemfile_fchmod
+	pmemfile_fchmodat
+	pmemfile_fchown
+	pmemfile_fchownat
+	pmemfile_fcntl
+	pmemfile_flock
+	pmemfile_fstat
+	pmemfile_fstatat
+	pmemfile_ftruncate
+	pmemfile_futimens
+	pmemfile_futimes
+	pmemfile_getcwd
+	pmemfile_getdents
+	pmemfile_getdents64
+	pmemfile_getegid
+	pmemfile_geteuid
+	pmemfile_getgid
+	pmemfile_getgroups
+	pmemfile_getuid
+	pmemfile_get_dir_path
+	pmemfile_lchown
+	pmemfile_link
+	pmemfile_linkat
+	pmemfile_lseek
+	pmemfile_lstat
+	pmemfile_lstat
+	pmemfile_lutimes
+	pmemfile_mkdir
+	pmemfile_mkdirat
+	pmemfile_open_parent
+	pmemfile_open
+	pmemfile_openat
+	pmemfile_pool_close
+	pmemfile_pool_create
+	pmemfile_pool_open
+	pmemfile_posix_fallocate
+	pmemfile_pread
+	pmemfile_preadv
+	pmemfile_pwrite
+	pmemfile_pwritev
+	pmemfile_read
+	pmemfile_readlink
+	pmemfile_readlinkat
+	pmemfile_readv
+	pmemfile_rename
+	pmemfile_renameat
+	pmemfile_renameat2
+	pmemfile_rmdir
+	pmemfile_setcap
+	pmemfile_setgroups
+	pmemfile_setegid
+	pmemfile_seteuid
+	pmemfile_setfsgid
+	pmemfile_setfsuid
+	pmemfile_setreuid
+	pmemfile_setregid
+	pmemfile_setgid
+	pmemfile_setuid
+	pmemfile_stat
+	pmemfile_symlink
+	pmemfile_symlinkat
+	pmemfile_truncate
+	pmemfile_umask
+	pmemfile_unlink
+	pmemfile_unlinkat
+	pmemfile_utimensat
+	pmemfile_utime
+	pmemfile_utimes
+	pmemfile_write
+	pmemfile_writev
+
+	pmemfile_stats)
+
 if(FAULT_INJECTION)
 	set(SOURCES ${SOURCES} alloc.c)
-	set(PMEMFILE_INJECT_FAULT_AT "pmemfile_inject_fault_at;")
+	set(EXPORTED_SYMBOLS ${EXPORTED_SYMBOLS} pmemfile_inject_fault_at)
 endif()
 
 if(PKG_CONFIG_FOUND)
@@ -106,6 +195,10 @@ if(PKG_CONFIG_FOUND)
 else()
 	find_package(PMEMOBJ REQUIRED)
 endif()
+
+join(";\n\t\t" LINKER_SCRIPT_EXPORTED_SYMBOLS "${EXPORTED_SYMBOLS}")
+join(";-G;" OBJDUMP_EXPORTED_SYMBOLS "${EXPORTED_SYMBOLS}")
+set(OBJDUMP_EXPORTED_SYMBOLS "-G;${OBJDUMP_EXPORTED_SYMBOLS}")
 
 configure_file(libpmemfile-posix.map.in libpmemfile-posix.map)
 configure_file(libpmemfile-posix.pc.in libpmemfile-posix.pc)
@@ -134,7 +227,7 @@ if(NOT ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 endif()
 
 add_custom_command(OUTPUT libpmemfile-posix.a
-		COMMAND objcopy --localize-hidden `sed -n "'s/^\\s*\\([a-zA-Z0-9_]\\+\\);$$/-G \\1/p'" ${CMAKE_CURRENT_BINARY_DIR}/libpmemfile-posix.map` libpmemfile-posix_unscoped.a libpmemfile-posix.a
+		COMMAND objcopy --localize-hidden ${OBJDUMP_EXPORTED_SYMBOLS} libpmemfile-posix_unscoped.a libpmemfile-posix.a
 		DEPENDS pmemfile-posix_static_unscoped
 		DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/libpmemfile-posix.map)
 add_custom_target(pmemfile-posix_static ALL DEPENDS libpmemfile-posix.a)

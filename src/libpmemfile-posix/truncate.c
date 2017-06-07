@@ -137,11 +137,6 @@ pmemfile_ftruncate(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t length)
 		return -1;
 	}
 
-	if (length > SSIZE_MAX) {
-		errno = EFBIG;
-		return -1;
-	}
-
 	os_mutex_lock(&file->mutex);
 	uint64_t flags = file->flags;
 	struct pmemfile_vinode *vinode = file->vinode;
@@ -178,11 +173,6 @@ pmemfile_truncate(PMEMfilepool *pfp, const char *path, pmemfile_off_t length)
 
 	if (length < 0) {
 		errno = EINVAL;
-		return -1;
-	}
-
-	if (length > SSIZE_MAX) {
-		errno = EFBIG;
 		return -1;
 	}
 

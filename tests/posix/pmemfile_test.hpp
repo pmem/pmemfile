@@ -156,7 +156,7 @@ public:
 	void
 	SetUp()
 	{
-		std::remove(path.c_str());
+		(void)std::remove(path.c_str());
 
 		pfp = pmemfile_pool_create(path.c_str(), poolsize,
 					   PMEMFILE_S_IWUSR | PMEMFILE_S_IRUSR);
@@ -183,7 +183,7 @@ public:
 			assert(test_empty_dir(pfp, "/"));
 
 		pmemfile_pool_close(pfp);
-		std::remove(path.c_str());
+		(void)std::remove(path.c_str());
 	}
 };
 

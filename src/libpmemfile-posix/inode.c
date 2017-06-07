@@ -228,7 +228,8 @@ vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 					to_unregister))
 				FATAL("vinode not found");
 
-			vinode_destroy_data_state(pfp, to_unregister);
+			if (to_unregister->blocks)
+				ctree_delete(to_unregister->blocks);
 
 #ifdef DEBUG
 			/* "path" field is defined only in DEBUG builds */

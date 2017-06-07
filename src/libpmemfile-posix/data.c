@@ -163,25 +163,6 @@ find_closest_block_with_hint(struct pmemfile_vinode *vinode, uint64_t offset,
 }
 
 /*
- * vinode_destroy_data_state -- destroys file state related to data
- *
- * This is used as a callback passed to cb_push_front, that is why the pfp
- * argument is used.
- */
-void
-vinode_destroy_data_state(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
-{
-	(void) pfp;
-
-	if (vinode->blocks) {
-		ctree_delete(vinode->blocks);
-		vinode->blocks = NULL;
-	}
-
-	memset(&vinode->first_free_block, 0, sizeof(vinode->first_free_block));
-}
-
-/*
  * file_allocate_block_data -- allocates new block data.
  * The block metadata must be already allocated, and passed as the block
  * pointer argument.

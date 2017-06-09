@@ -52,6 +52,8 @@ option(TRACE_TESTS
 
 option(LONG_TESTS "build long running tests as well" OFF)
 
+option(LIBPMEMFILE_POP "use libpmemfile_pop (libpmemfile_posix_over_posix) library" OFF)
+
 set(TEST_DIR ${CMAKE_CURRENT_BINARY_DIR}/test
 	CACHE STRING "working directory for tests")
 
@@ -167,6 +169,7 @@ add_flag(-Wconversion)
 add_flag(-Wunreachable-code-return)
 add_flag(-Wmissing-variable-declarations)
 add_flag(-fno-common)
+add_flag(-Wno-dangling-else)
 
 # Conditionally using the -Wno-missing-field-initializers flag.
 #
@@ -432,7 +435,12 @@ else()
 	message(WARNING "TEST_DIR is empty - 'make test' will not work")
 endif()
 
-add_subdirectory(src/libpmemfile-posix)
+if (NOT LIBPMEMFILE_POP)
+	add_subdirectory(src/libpmemfile-posix)
+else()
+	add_subdirectory(tests/libpmemfile-pop)
+endif()
+
 if(BUILD_LIBPMEMFILE)
 	add_subdirectory(src/libpmemfile)
 endif()

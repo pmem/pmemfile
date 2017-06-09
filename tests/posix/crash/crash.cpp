@@ -120,6 +120,11 @@ TEST(crash, 0)
 int
 main(int argc, char *argv[])
 {
+	char *is_pmemfile_posix_fake_str =
+		std::getenv("LIBPMEMFILE_POSIX_FAKE");
+	is_pmemfile_posix_fake = is_pmemfile_posix_fake_str != nullptr &&
+		strtol(is_pmemfile_posix_fake_str, nullptr, 10);
+
 	START();
 
 	if (argc < 3) {

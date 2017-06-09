@@ -50,6 +50,8 @@ option(TRACE_TESTS
 
 option(LONG_TESTS "build long running tests as well" OFF)
 
+option(LIBPMEMFILE_POSIX_FAKE "use fake libpmemfile_posix library" OFF)
+
 set(TEST_DIR ${CMAKE_CURRENT_BINARY_DIR}/test
 	CACHE STRING "working directory for tests")
 
@@ -426,7 +428,12 @@ else()
 	message(WARNING "TEST_DIR is empty - 'make test' will not work")
 endif()
 
-add_subdirectory(src/libpmemfile-posix)
+if (NOT LIBPMEMFILE_POSIX_FAKE)
+	add_subdirectory(src/libpmemfile-posix)
+else()
+	add_subdirectory(src/libpmemfile-posix-fake)
+endif()
+
 if(BUILD_LIBPMEMFILE)
 	add_subdirectory(src/libpmemfile)
 endif()

@@ -42,11 +42,15 @@
 #include "gtest/gtest.h"
 
 std::string global_path;
+bool is_pmemfile_posix_fake;
 
 bool
 test_pmemfile_stats_match(PMEMfilepool *pfp, unsigned inodes, unsigned dirs,
 			  unsigned block_arrays, unsigned blocks)
 {
+	if (is_pmemfile_posix_fake)
+		return true;
+
 	struct pmemfile_stats stats;
 	pmemfile_stats(pfp, &stats);
 
@@ -246,11 +250,20 @@ test_compare_dirs(const std::map<std::string, file_attrs> &files,
 		}
 		const file_attrs &attrs = (*attrs_iter).second;
 
-		VAL_EXPECT_EQ(c.mode, attrs.stat.st_mode);
-		VAL_EXPECT_EQ(c.nlink, attrs.stat.st_nlink);
+		if (is_pmemfile_posix_fake && strcmp(c.name, "..") != 0)
+		{
+			if (!S_ISDIR(c.mode))
+				VAL_EXPECT_EQ(c.size, attrs.stat.st_size);
+			VAL_EXPECT_EQ(c.mode, attrs.stat.st_mode);
+		}
+		else if (!is_pmemfile_posix_fake)
+		{
+			VAL_EXPECT_EQ(c.mode, attrs.stat.st_mode);
+			VAL_EXPECT_EQ(c.nlink, attrs.stat.st_nlink);
 
-		if (!PMEMFILE_S_ISDIR(attrs.stat.st_mode) || check_dir_size)
-			VAL_EXPECT_EQ(c.size, attrs.stat.st_size);
+			if (!PMEMFILE_S_ISDIR(attrs.stat.st_mode) || check_dir_size)
+				VAL_EXPECT_EQ(c.size, attrs.stat.st_size);
+		}
 
 		if (c.link == NULL) {
 			MODE_EXPECT(PMEMFILE_S_ISLNK, attrs.stat.st_mode, 0);

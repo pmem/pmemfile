@@ -49,6 +49,8 @@
 #define T_OUT(...) fprintf(stderr, __VA_ARGS__)
 #define COND_ERROR(ret) (ret < 0 ? strerror(errno) : "")
 
+extern bool is_pmemfile_posix_fake;
+
 /*
  * is_zeroed -- check if given memory range is all zero
  */
@@ -151,6 +153,11 @@ public:
 	      poolsize(poolsize),
 	      test_empty_dir_on_teardown(true)
 	{
+		char *is_pmemfile_posix_fake_str =
+			std::getenv("LIBPMEMFILE_POSIX_FAKE");
+		is_pmemfile_posix_fake =
+			is_pmemfile_posix_fake_str != nullptr &&
+			strtol(is_pmemfile_posix_fake_str, nullptr, 10);
 	}
 
 	void

@@ -51,6 +51,9 @@ protected:
 	pmemfile_blkcnt_t
 	stat_block_count(PMEMfile *f)
 	{
+		if (is_pmemfile_pop)
+			return 0;
+
 		pmemfile_stat_t stat_buf;
 
 		if (pmemfile_fstat(pfp, f, &stat_buf) != 0) {
@@ -1368,6 +1371,7 @@ TEST_F(rw, failed_write)
 	 * is larger than the pool size.
 	 */
 	ASSERT_EQ(pmemfile_write(pfp, f, buf, 1024 * 1024 * 1024), -1);
+	EXPECT_EQ(errno, ENOSPC);
 
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 5);
 

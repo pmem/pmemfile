@@ -52,6 +52,8 @@ option(TRACE_TESTS
 
 option(LONG_TESTS "build long running tests as well" OFF)
 
+option(LIBPMEMFILE_POP "use libpmemfile_pop (libpmemfile_posix_over_posix) library" OFF)
+
 set(TEST_DIR ${CMAKE_CURRENT_BINARY_DIR}/test
 	CACHE STRING "working directory for tests")
 
@@ -432,7 +434,17 @@ else()
 	message(WARNING "TEST_DIR is empty - 'make test' will not work")
 endif()
 
-add_subdirectory(src/libpmemfile-posix)
+if (LIBPMEMFILE_POP AND BUILD_LIBPMEMFILE)
+	message(FATAL_ERROR "libpmemfile-pop is currently incompatible with libpmemfile"
+		"\nPlease set BUILD_LIBPMEMFILE to 0")
+endif()
+
+if (LIBPMEMFILE_POP)
+	add_subdirectory(tests/libpmemfile-pop)
+else()
+	add_subdirectory(src/libpmemfile-posix)
+endif()
+
 if(BUILD_LIBPMEMFILE)
 	add_subdirectory(src/libpmemfile)
 endif()

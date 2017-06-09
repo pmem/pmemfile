@@ -209,6 +209,7 @@ test_list_files(PMEMfilepool *pfp, const char *path)
 		if (r < 0) {
 			ADD_FAILURE() << "getdents " << path << " "
 				      << strerror(errno);
+			pmemfile_close(pfp, f);
 			return std::map<std::string, file_attrs>();
 		}
 		if (r == 0)
@@ -219,6 +220,7 @@ test_list_files(PMEMfilepool *pfp, const char *path)
 		if (tmp.empty()) {
 			ADD_FAILURE() << "test_list_files " << path << " "
 				      << strerror(errno);
+			pmemfile_close(pfp, f);
 			return tmp;
 		}
 

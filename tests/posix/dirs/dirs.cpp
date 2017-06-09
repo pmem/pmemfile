@@ -91,6 +91,7 @@ struct linux_dirent64 {
 	do {                                                                   \
 		if ((v1) != (v2)) {                                            \
 			ADD_FAILURE() << (v1) << " != " << (v2);               \
+			pmemfile_close(pfp, f);                                \
 			return false;                                          \
 		}                                                              \
 	} while (0)
@@ -114,6 +115,7 @@ list_files(PMEMfilepool *pfp, const char *dir, size_t expected_files,
 	size_t num_files = 0;
 	if (r < 0) {
 		EXPECT_GE(r, 0);
+		pmemfile_close(pfp, f);
 		return false;
 	}
 
@@ -134,10 +136,10 @@ list_files(PMEMfilepool *pfp, const char *dir, size_t expected_files,
 		d = (struct linux_dirent64 *)(((char *)d) + d->d_reclen);
 	}
 
-	pmemfile_close(pfp, f);
-
 	T_OUT("\"%s\" end\n", name);
 	VAL_EXPECT_EQ(num_files, expected_files);
+
+	pmemfile_close(pfp, f);
 
 	return true;
 }

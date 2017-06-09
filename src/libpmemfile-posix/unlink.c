@@ -161,9 +161,7 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 end_vinode:
 	vinode_unlock2(dirent_info.vinode, info.parent);
 
-	ASSERT_NOT_IN_TX();
-	if (dirent_info.vinode)
-		vinode_unref(pfp, dirent_info.vinode);
+	vinode_unref(pfp, dirent_info.vinode);
 
 end:
 	path_info_cleanup(pfp, &info);

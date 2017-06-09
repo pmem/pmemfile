@@ -34,12 +34,14 @@
  * callbacks.c -- transaction callback subsystem
  */
 
+#include <errno.h>
+
 #include "callbacks.h"
 #include "compiler_utils.h"
 #include "internal.h"
 #include "os_thread.h"
 #include "out.h"
-#include <errno.h>
+#include "utils.h"
 
 struct tx_callback {
 	cb_basic func;
@@ -64,24 +66,37 @@ struct all_callbacks {
 static os_tls_key_t callbacks_key;
 
 /*
+ * cb_get_noalloc -- returns current per-thread callback configuration,
+ * does not allocate if not set
+ */
+static struct all_callbacks *
+cb_get_noalloc(void)
+{
+	return os_tls_get(callbacks_key);
+}
+
+/*
  * cb_get -- returns current per-thread callback configuration
  */
 static struct all_callbacks *
 cb_get(void)
 {
-	struct all_callbacks *c = os_tls_get(callbacks_key);
-	if (!c) {
-		c = calloc(MAX_TX_STAGE, sizeof(struct all_callbacks));
-		if (!c)
-			return NULL;
+	ASSERT_IN_TX();
+	struct all_callbacks *c = cb_get_noalloc();
+	if (c)
+		return c;
 
-		int ret = os_tls_set(callbacks_key, c);
-		if (ret) {
-			free(c);
-			errno = ret;
-			ERR("!os_tls_set");
-			return NULL;
-		}
+	c = calloc(MAX_TX_STAGE, sizeof(struct all_callbacks));
+	if (!c)
+		pmemfile_tx_abort(errno);
+
+	int ret = os_tls_set(callbacks_key, c);
+	if (ret) {
+		free(c);
+		errno = ret;
+		ERR("!os_tls_set");
+
+		pmemfile_tx_abort(errno);
 	}
 
 	return c;
@@ -94,7 +109,7 @@ cb_get(void)
 static void
 cb_check(const char *func)
 {
-	if (pmemobj_tx_stage() == TX_STAGE_NONE)
+	if (pmemobj_tx_stage() != TX_STAGE_WORK)
 		FATAL("%s called outside of transaction", func);
 }
 
@@ -110,10 +125,8 @@ cb_append(struct tx_callback_array *cb, cb_basic func, void *arg)
 			count = 4;
 
 		void *new_arr = realloc(cb->arr, count * sizeof(cb->arr[0]));
-		if (!new_arr) {
+		if (!new_arr)
 			pmemfile_tx_abort(errno);
-			return -1;
-		}
 
 		cb->arr = new_arr;
 		cb->size = count;
@@ -136,8 +149,6 @@ cb_push_back(enum pobj_tx_stage stage, cb_basic func, void *arg)
 
 	cb_check(__func__);
 	struct all_callbacks *cbs = cb_get();
-	if (!cbs)
-		pmemobj_tx_abort(errno);
 
 	return cb_append(&cbs[stage].forward, func, arg);
 }
@@ -153,8 +164,6 @@ cb_push_front(enum pobj_tx_stage stage, cb_basic func, void *arg)
 
 	cb_check(__func__);
 	struct all_callbacks *cbs = cb_get();
-	if (!cbs)
-		pmemobj_tx_abort(errno);
 
 	return cb_append(&cbs[stage].backward, func, arg);
 }
@@ -224,14 +233,10 @@ cb_queue(PMEMobjpool *pop, enum pobj_tx_stage stage, void *arg)
 
 	struct tx_callback_array *cb;
 	unsigned num_callbacks;
-	struct all_callbacks *file_callbacks = cb_get();
-	if (!file_callbacks) {
-		if (stage == TX_STAGE_WORK)
-			pmemobj_tx_abort(errno);
-		else
-			/* not possible */
-			FATAL("unable to allocate callbacks list");
-	}
+
+	struct all_callbacks *file_callbacks = cb_get_noalloc();
+	if (!file_callbacks)
+		return;
 
 	cb = &file_callbacks[stage].backward;
 	num_callbacks = cb->used;

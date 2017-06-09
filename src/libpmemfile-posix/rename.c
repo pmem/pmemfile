@@ -340,6 +340,9 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 		goto end;
 	}
 
+	/* both fields must be NULL or both not NULL */
+	ASSERTeq(!!dst_info.vinode, !!dst_info.dirent);
+
 	/*
 	 * 2 threads doing:
 	 * rename("/a/b", "/1/2/3/4/5")

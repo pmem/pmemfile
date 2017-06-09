@@ -50,67 +50,65 @@
 /*
  * vinode_truncate -- changes file size to size
  *
- * Should only be called inside pmemobj transactions.
+ * Should only be called without pmemobj transaction.
  */
-void
+int
 vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		uint64_t size)
 {
 	struct pmemfile_inode *inode = vinode->inode;
 
-	ASSERT_IN_TX();
+	ASSERT_NOT_IN_TX();
 
 	if (vinode->blocks == NULL) {
 		int err = vinode_rebuild_block_tree(vinode);
 		if (err)
-			pmemfile_tx_abort(err);
+			return err;
 	}
 
-	cb_push_front(TX_STAGE_ONABORT,
-		(cb_basic)vinode_destroy_data_state,
-		vinode);
+	int error = 0;
 
-	/*
-	 * Might need to handle the special case where size == 0.
-	 * Setting all the next and prev fields is pointless, when all the
-	 * blocks are removed.
-	 */
-	vinode_remove_interval(vinode, size, UINT64_MAX - size);
-	if (inode->size < size)
-		vinode_allocate_interval(pfp, vinode,
-		    inode->size, size - inode->size);
+	vinode_snapshot(vinode);
 
-	if (inode->size != size) {
-		TX_ADD_DIRECT(&inode->size);
-		inode->size = size;
+	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
+		/*
+		 * Might need to handle the special case where size == 0.
+		 * Setting all the next and prev fields is pointless, when all
+		 * the blocks are removed.
+		 */
+		vinode_remove_interval(vinode, size, UINT64_MAX - size);
+		if (inode->size < size)
+			vinode_allocate_interval(pfp, vinode,
+			    inode->size, size - inode->size);
 
-		struct pmemfile_time tm;
-		get_current_time(&tm);
-		TX_SET_DIRECT(inode, mtime, tm);
-	}
+		if (inode->size != size) {
+			TX_ADD_DIRECT(&inode->size);
+			inode->size = size;
+
+			struct pmemfile_time tm;
+			get_current_time(&tm);
+			TX_SET_DIRECT(inode, mtime, tm);
+		}
+	} TX_ONABORT {
+		error = errno;
+		vinode_restore_on_abort(vinode);
+	} TX_END
+
+	return error;
 }
 
 static int
 _pmemfile_ftruncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			uint64_t length)
 {
+	ASSERT_NOT_IN_TX();
+
 	if (!vinode_is_regular_file(vinode))
 		return EINVAL;
 
-	int error = 0;
-
 	os_rwlock_wrlock(&vinode->rwlock);
 
-	vinode_snapshot(vinode);
-
-	ASSERT_NOT_IN_TX();
-
-	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		vinode_truncate(pfp, vinode, length);
-	} TX_ONABORT {
-		error = errno;
-		vinode_restore_on_abort(vinode);
-	} TX_END
+	int error = vinode_truncate(pfp, vinode, length);
 
 	os_rwlock_unlock(&vinode->rwlock);
 

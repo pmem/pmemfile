@@ -35,7 +35,7 @@
 #include "inode.h"
 #include "pool.h"
 
-void vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+int vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			uint64_t size);
 
 #endif

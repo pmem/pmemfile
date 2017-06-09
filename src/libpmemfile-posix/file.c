@@ -421,11 +421,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	} else if (flags & PMEMFILE_O_TRUNC) {
 		os_rwlock_wrlock(&vinode->rwlock);
 
-		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-			vinode_truncate(pfp, vinode, 0);
-		} TX_ONABORT {
-			error = errno;
-		} TX_END
+		error = vinode_truncate(pfp, vinode, 0);
 
 		os_rwlock_unlock(&vinode->rwlock);
 	}

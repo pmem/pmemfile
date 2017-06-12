@@ -33,7 +33,6 @@
 #include "ctree.h"
 #include "layout.h"
 #include "inode.h"
-#include "internal.h"
 #include "out.h"
 #include "block_array.h"
 #include "utils.h"

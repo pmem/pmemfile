@@ -38,9 +38,9 @@
 
 #include "file.h"
 #include "inode.h"
-#include "internal.h"
 #include "libpmemfile-posix.h"
 #include "out.h"
+#include "utils.h"
 
 #define DIRENT_ID_MASK 0xffffffffULL
 

@@ -34,7 +34,7 @@
  * copy_file_range.c -- pmemfile_copy_file_range implementation
  */
 
-#include "internal.h"
+#include <errno.h>
 #include "libpmemfile-posix.h"
 #include "out.h"
 

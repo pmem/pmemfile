@@ -39,7 +39,6 @@
 #include "callbacks.h"
 #include "dir.h"
 #include "inode.h"
-#include "internal.h"
 #include "libpmemfile-posix.h"
 #include "mkdir.h"
 #include "out.h"

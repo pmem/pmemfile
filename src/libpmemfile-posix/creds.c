@@ -37,7 +37,6 @@
 #include <limits.h>
 
 #include "creds.h"
-#include "internal.h"
 #include "libpmemfile-posix.h"
 #include "out.h"
 #include "pool.h"

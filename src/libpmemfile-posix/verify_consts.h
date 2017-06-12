@@ -37,7 +37,7 @@
 
 #include "libpmemfile-posix.h"
 #include "compiler_utils.h"
-#include "internal.h"
+#include "utils.h"
 
 #include <dirent.h>
 #include <fcntl.h>

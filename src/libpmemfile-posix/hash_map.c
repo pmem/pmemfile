@@ -33,9 +33,9 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "hash_map.h"
-#include "internal.h"
 #include "os_thread.h"
 #include "out.h"
 

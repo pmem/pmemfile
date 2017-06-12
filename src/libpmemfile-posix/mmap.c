@@ -34,7 +34,7 @@
  * mmap.c -- pmemfile_* memory mapping implementation
  */
 
-#include "internal.h"
+#include <errno.h>
 #include "libpmemfile-posix.h"
 #include "out.h"
 

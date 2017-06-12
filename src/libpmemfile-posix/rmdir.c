@@ -37,7 +37,6 @@
 #include "callbacks.h"
 #include "creds.h"
 #include "dir.h"
-#include "internal.h"
 #include "libpmemfile-posix.h"
 #include "out.h"
 #include "pool.h"

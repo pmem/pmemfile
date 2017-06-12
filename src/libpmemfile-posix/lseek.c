@@ -37,9 +37,9 @@
 #include "data.h"
 #include "file.h"
 #include "inode.h"
-#include "internal.h"
 #include "libpmemfile-posix.h"
 #include "out.h"
+#include "utils.h"
 
 /*
  * lseek_seek_data -- part of the lseek implementation

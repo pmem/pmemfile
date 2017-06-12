@@ -36,7 +36,6 @@
 
 #include "callbacks.h"
 #include "dir.h"
-#include "internal.h"
 #include "libpmemfile-posix.h"
 #include "out.h"
 #include "pool.h"

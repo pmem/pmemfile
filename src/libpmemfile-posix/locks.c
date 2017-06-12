@@ -32,7 +32,6 @@
 
 #include "callbacks.h"
 #include "inode.h"
-#include "internal.h"
 #include "locks.h"
 
 #include "os_thread.h"

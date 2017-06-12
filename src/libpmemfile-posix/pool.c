@@ -43,7 +43,6 @@
 #include "hash_map.h"
 #include "inode.h"
 #include "inode_array.h"
-#include "internal.h"
 #include "locks.h"
 #include "mkdir.h"
 #include "os_thread.h"

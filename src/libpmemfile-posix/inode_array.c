@@ -36,7 +36,6 @@
 
 #include "inode.h"
 #include "inode_array.h"
-#include "internal.h"
 #include "locks.h"
 #include "utils.h"
 

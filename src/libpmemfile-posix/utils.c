@@ -33,7 +33,6 @@
 #include <errno.h>
 #include <time.h>
 
-#include "internal.h"
 #include "pool.h"
 #include "out.h"
 #include "utils.h"

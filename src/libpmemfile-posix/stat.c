@@ -38,7 +38,6 @@
 #include "dir.h"
 #include "file.h"
 #include "inode.h"
-#include "internal.h"
 #include "libpmemfile-posix.h"
 #include "out.h"
 #include "utils.h"

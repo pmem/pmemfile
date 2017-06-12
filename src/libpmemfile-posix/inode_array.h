@@ -51,12 +51,14 @@ void inode_array_traverse(PMEMfilepool *pfp,
 		TOID(struct pmemfile_inode_array) arr,
 		inode_cb inode_cb);
 
-void inode_array_free(TOID(struct pmemfile_inode_array) arr);
+void inode_array_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode_array) arr);
 
 TOID(struct pmemfile_inode_array) inode_array_alloc(void);
 
-bool inode_array_empty(TOID(struct pmemfile_inode_array) tarr);
+bool inode_array_empty(PMEMfilepool *pfp,
+		TOID(struct pmemfile_inode_array) tarr);
 
-bool inode_array_is_small(TOID(struct pmemfile_inode_array) tarr);
+bool inode_array_is_small(PMEMfilepool *pfp,
+		TOID(struct pmemfile_inode_array) tarr);
 
 #endif

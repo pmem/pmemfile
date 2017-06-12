@@ -33,6 +33,8 @@
 #ifndef PMEMFILE_BLOCK_ARRAY_H
 #define PMEMFILE_BLOCK_ARRAY_H
 
+#include "libpmemfile-posix.h"
+
 struct pmemfile_block_desc;
 struct pmemfile_vinode;
 
@@ -44,7 +46,8 @@ struct pmemfile_vinode;
  * Returns the address of the new block metadata.
  */
 struct pmemfile_block_desc *
-block_list_insert_after(struct pmemfile_vinode *vinode,
+block_list_insert_after(PMEMfilepool *pfp,
+			struct pmemfile_vinode *vinode,
 			struct pmemfile_block_desc *prev);
 
 /*
@@ -55,7 +58,8 @@ block_list_insert_after(struct pmemfile_vinode *vinode,
  * was the previous block before deallocating.
  */
 struct pmemfile_block_desc *
-block_list_remove(struct pmemfile_vinode *vinode,
+block_list_remove(PMEMfilepool *pfp,
+		struct pmemfile_vinode *vinode,
 		struct pmemfile_block_desc *block);
 
 #endif

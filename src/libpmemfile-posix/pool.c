@@ -239,7 +239,8 @@ pmemfile_pool_open(const char *pathname)
 
 	TOID(struct pmemfile_inode_array) orphaned =
 			pfp->super->orphaned_inodes;
-	if (!inode_array_empty(orphaned) || !inode_array_is_small(orphaned)) {
+	if (!inode_array_empty(pfp, orphaned) ||
+			!inode_array_is_small(pfp, orphaned)) {
 		inode_array_traverse(pfp, orphaned, inode_trim_cb);
 
 		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
@@ -247,7 +248,7 @@ pmemfile_pool_open(const char *pathname)
 
 			inode_array_traverse(pfp, orphaned, inode_free_cb);
 
-			inode_array_free(orphaned);
+			inode_array_free(pfp, orphaned);
 
 			pfp->super->orphaned_inodes = inode_array_alloc();
 		} TX_ONABORT {

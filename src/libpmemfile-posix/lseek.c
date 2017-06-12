@@ -46,11 +46,11 @@
  * Looks for data (not a hole), starting at the specified offset.
  */
 static pmemfile_off_t
-lseek_seek_data(struct pmemfile_vinode *vinode, pmemfile_off_t offset,
-		pmemfile_off_t fsize)
+lseek_seek_data(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+		pmemfile_off_t offset, pmemfile_off_t fsize)
 {
 	if (vinode->blocks == NULL) {
-		int err = vinode_rebuild_block_tree(vinode);
+		int err = vinode_rebuild_block_tree(pfp, vinode);
 		if (err)
 			return err;
 	}
@@ -81,11 +81,11 @@ lseek_seek_data(struct pmemfile_vinode *vinode, pmemfile_off_t offset,
  * Looks for a hole, starting at the specified offset.
  */
 static pmemfile_off_t
-lseek_seek_hole(struct pmemfile_vinode *vinode, pmemfile_off_t offset,
-		pmemfile_off_t fsize)
+lseek_seek_hole(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+		pmemfile_off_t offset, pmemfile_off_t fsize)
 {
 	if (vinode->blocks == NULL) {
-		int err = vinode_rebuild_block_tree(vinode);
+		int err = vinode_rebuild_block_tree(pfp, vinode);
 		if (err)
 			return err;
 	}
@@ -118,8 +118,8 @@ lseek_seek_hole(struct pmemfile_vinode *vinode, pmemfile_off_t offset,
  * Expects the vinode to be locked while being called.
  */
 static pmemfile_off_t
-lseek_seek_data_or_hole(struct pmemfile_vinode *vinode, pmemfile_off_t offset,
-			int whence)
+lseek_seek_data_or_hole(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+			pmemfile_off_t offset, int whence)
 {
 	pmemfile_ssize_t fsize = (pmemfile_ssize_t)vinode->inode->size;
 
@@ -139,10 +139,10 @@ lseek_seek_data_or_hole(struct pmemfile_vinode *vinode, pmemfile_off_t offset,
 		offset = 0;
 
 	if (whence == PMEMFILE_SEEK_DATA) {
-		offset = lseek_seek_data(vinode, offset, fsize);
+		offset = lseek_seek_data(pfp, vinode, offset, fsize);
 	} else {
 		ASSERT(whence == PMEMFILE_SEEK_HOLE);
-		offset = lseek_seek_hole(vinode, offset, fsize);
+		offset = lseek_seek_hole(pfp, vinode, offset, fsize);
 	}
 
 	if (offset > fsize)
@@ -232,7 +232,8 @@ pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t offset,
 			 * take vinode lock in write mode.
 			 */
 			os_rwlock_wrlock(&vinode->rwlock);
-			ret = lseek_seek_data_or_hole(vinode, offset, whence);
+			ret = lseek_seek_data_or_hole(pfp, vinode, offset,
+				whence);
 			if (ret < 0) {
 				new_errno = (int)-ret;
 				ret = -1;

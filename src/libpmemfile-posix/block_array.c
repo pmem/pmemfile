@@ -52,7 +52,7 @@
  * to keep this data up to date.
  */
 static void
-update_first_block_info(struct pmemfile_vinode *vinode)
+update_first_block_info(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
 	struct block_info *binfo = &vinode->first_free_block;
 
@@ -150,7 +150,7 @@ has_free_block_entry(struct pmemfile_vinode *vinode)
  *                 The next free slot for block metadata
  */
 static void
-allocate_new_block_array(struct pmemfile_vinode *vinode)
+allocate_new_block_array(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
 	ASSERT_IN_TX();
 
@@ -194,12 +194,12 @@ allocate_new_block_array(struct pmemfile_vinode *vinode)
  *
  */
 static struct pmemfile_block_desc *
-acquire_new_entry(struct pmemfile_vinode *vinode)
+acquire_new_entry(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
 	ASSERT_IN_TX();
 
 	if (!has_free_block_entry(vinode))
-		allocate_new_block_array(vinode);
+		allocate_new_block_array(pfp, vinode);
 
 	ASSERT(has_free_block_entry(vinode));
 
@@ -226,15 +226,16 @@ acquire_new_entry(struct pmemfile_vinode *vinode)
  *
  */
 struct pmemfile_block_desc *
-block_list_insert_after(struct pmemfile_vinode *vinode,
+block_list_insert_after(PMEMfilepool *pfp,
+			struct pmemfile_vinode *vinode,
 			struct pmemfile_block_desc *prev)
 {
 	ASSERT_IN_TX();
 
 	/* lazy init vinode->first_free_block */
-	update_first_block_info(vinode);
+	update_first_block_info(pfp, vinode);
 
-	struct pmemfile_block_desc *block = acquire_new_entry(vinode);
+	struct pmemfile_block_desc *block = acquire_new_entry(pfp, vinode);
 
 	if (prev == NULL) {
 		if (vinode->first_block != NULL) {
@@ -341,7 +342,7 @@ is_first_block_array_empty(struct pmemfile_vinode *vinode)
  * Also: updates the vinode->first_free_block data structure as needed.
  */
 static void
-remove_first_block_array(struct pmemfile_vinode *vinode)
+remove_first_block_array(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
 	ASSERT_IN_TX();
 
@@ -420,7 +421,8 @@ remove_first_block_array(struct pmemfile_vinode *vinode)
  *
  */
 struct pmemfile_block_desc *
-block_list_remove(struct pmemfile_vinode *vinode,
+block_list_remove(PMEMfilepool *pfp,
+		struct pmemfile_vinode *vinode,
 		struct pmemfile_block_desc *block)
 {
 	ASSERT_IN_TX();
@@ -428,7 +430,7 @@ block_list_remove(struct pmemfile_vinode *vinode,
 	struct pmemfile_block_desc *prev;
 
 	/* lazy init vinode->first_free_block */
-	update_first_block_info(vinode);
+	update_first_block_info(pfp, vinode);
 
 	ASSERT(vinode->first_free_block.idx > 0);
 
@@ -462,7 +464,7 @@ block_list_remove(struct pmemfile_vinode *vinode,
 	vinode->first_free_block.idx--;
 
 	if (is_first_block_array_empty(vinode))
-		remove_first_block_array(vinode);
+		remove_first_block_array(pfp, vinode);
 
 	return prev;
 }

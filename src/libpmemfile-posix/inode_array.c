@@ -180,7 +180,7 @@ inode_array_traverse(PMEMfilepool *pfp, TOID(struct pmemfile_inode_array) arr,
  * Does NOT free inodes.
  */
 void
-inode_array_free(TOID(struct pmemfile_inode_array) arr)
+inode_array_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode_array) arr)
 {
 	ASSERT_IN_TX();
 
@@ -206,7 +206,7 @@ inode_array_alloc()
  * inode_array_empty -- returns true if there are no inodes in the array
  */
 bool
-inode_array_empty(TOID(struct pmemfile_inode_array) tarr)
+inode_array_empty(PMEMfilepool *pfp, TOID(struct pmemfile_inode_array) tarr)
 {
 	while (!TOID_IS_NULL(tarr)) {
 		struct pmemfile_inode_array *arr = D_RW(tarr);
@@ -222,7 +222,7 @@ inode_array_empty(TOID(struct pmemfile_inode_array) tarr)
  * inode_array_is_small -- returns true if inode array is considered "small"
  */
 bool
-inode_array_is_small(TOID(struct pmemfile_inode_array) tarr)
+inode_array_is_small(PMEMfilepool *pfp, TOID(struct pmemfile_inode_array) tarr)
 {
 	return TOID_IS_NULL(D_RW(tarr)->next);
 }

@@ -357,7 +357,7 @@ vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
  * inode_free_dir -- frees on media structures assuming inode is a directory
  */
 static void
-inode_free_dir(struct pmemfile_inode *inode)
+inode_free_dir(PMEMfilepool *pfp, struct pmemfile_inode *inode)
 {
 	ASSERT_IN_TX();
 
@@ -383,7 +383,7 @@ inode_free_dir(struct pmemfile_inode *inode)
  * file
  */
 static void
-inode_trim_reg_file(struct pmemfile_inode *inode)
+inode_trim_reg_file(PMEMfilepool *pfp, struct pmemfile_inode *inode)
 {
 	ASSERT_NOT_IN_TX();
 
@@ -408,7 +408,7 @@ inode_trim_reg_file(struct pmemfile_inode *inode)
  * file
  */
 static void
-inode_free_reg_file(struct pmemfile_inode *inode)
+inode_free_reg_file(PMEMfilepool *pfp, struct pmemfile_inode *inode)
 {
 	ASSERT_IN_TX();
 
@@ -432,7 +432,7 @@ inode_free_reg_file(struct pmemfile_inode *inode)
  * inode_free_symlink -- frees on media structures assuming inode is a symlink
  */
 static void
-inode_free_symlink(struct pmemfile_inode *inode)
+inode_free_symlink(PMEMfilepool *pfp, struct pmemfile_inode *inode)
 {
 	ASSERT_IN_TX();
 
@@ -447,8 +447,6 @@ inode_free_symlink(struct pmemfile_inode *inode)
 void
 inode_trim(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 {
-	(void) pfp;
-
 	LOG(LDBG, "inode 0x%" PRIx64, tinode.oid.off);
 
 	ASSERT_NOT_IN_TX();
@@ -456,7 +454,7 @@ inode_trim(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 	struct pmemfile_inode *inode = D_RW(tinode);
 
 	if (inode_is_regular_file(inode))
-		inode_trim_reg_file(inode);
+		inode_trim_reg_file(pfp, inode);
 }
 
 /*
@@ -467,8 +465,6 @@ inode_trim(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 void
 inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 {
-	(void) pfp;
-
 	LOG(LDBG, "inode 0x%" PRIx64, tinode.oid.off);
 
 	ASSERT_IN_TX();
@@ -476,11 +472,11 @@ inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 	struct pmemfile_inode *inode = D_RW(tinode);
 
 	if (inode_is_dir(inode))
-		inode_free_dir(inode);
+		inode_free_dir(pfp, inode);
 	else if (inode_is_regular_file(inode))
-		inode_free_reg_file(inode);
+		inode_free_reg_file(pfp, inode);
 	else if (inode_is_symlink(inode))
-		inode_free_symlink(inode);
+		inode_free_symlink(pfp, inode);
 	else
 		FATAL("unknown inode type 0x%lx", inode->flags);
 

@@ -71,7 +71,7 @@ find_last_block(const struct pmemfile_vinode *vinode)
  * vinode_rebuild_block_tree -- rebuilds runtime tree of blocks
  */
 int
-vinode_rebuild_block_tree(struct pmemfile_vinode *vinode)
+vinode_rebuild_block_tree(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
 	ASSERT_NOT_IN_TX();
 
@@ -529,7 +529,7 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			/* case 3) */
 			/* File size is zero, no blocks in the file so far */
 
-			block = block_list_insert_after(vinode, NULL);
+			block = block_list_insert_after(pfp, vinode, NULL);
 			block->offset = offset;
 			file_allocate_block_data(pfp, block, size, over);
 			block_cache_insert_block_in_tx(vinode->blocks, block);
@@ -543,7 +543,7 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			if (offset + count > first_offset)
 				count = (uint32_t)(first_offset - offset);
 
-			block = block_list_insert_after(vinode, NULL);
+			block = block_list_insert_after(pfp, vinode, NULL);
 			block->offset = offset;
 			file_allocate_block_data(pfp, block, count, false);
 			block_cache_insert_block_in_tx(vinode->blocks, block);
@@ -551,7 +551,7 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			/* case 2) */
 			/* After the last allocated block */
 
-			block = block_list_insert_after(vinode, block);
+			block = block_list_insert_after(pfp, vinode, block);
 			block->offset = offset;
 			file_allocate_block_data(pfp, block, size, over);
 			block_cache_insert_block_in_tx(vinode->blocks, block);
@@ -570,7 +570,8 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 				hole_count = size;
 
 			if (hole_count > 0) { /* Is there any hole at all? */
-				block = block_list_insert_after(vinode, block);
+				block = block_list_insert_after(pfp, vinode,
+						block);
 				block->offset = offset;
 				file_allocate_block_data(pfp, block, hole_count,
 				    false);
@@ -593,7 +594,7 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
  * beginning of the file.
  */
 static struct pmemfile_block_desc *
-find_following_block(struct pmemfile_vinode *vinode,
+find_following_block(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	struct pmemfile_block_desc *block)
 {
 	if (block != NULL)
@@ -606,7 +607,7 @@ find_following_block(struct pmemfile_vinode *vinode,
  * read_block_range - copy data to user supplied buffer
  */
 static void
-read_block_range(const struct pmemfile_block_desc *block,
+read_block_range(PMEMfilepool *pfp, const struct pmemfile_block_desc *block,
 	uint64_t offset, uint64_t len, char *buf)
 {
 	ASSERT(len > 0);
@@ -708,7 +709,7 @@ iterate_on_file_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			ASSERT(dir == read_from_blocks);
 
 			struct pmemfile_block_desc *next_block =
-			    find_following_block(vinode, block);
+			    find_following_block(pfp, vinode, block);
 
 			/*
 			 * How many zero bytes should be read?
@@ -735,7 +736,7 @@ iterate_on_file_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			 * Reading from holes should just read zeros.
 			 */
 
-			read_block_range(NULL, 0, read_hole_count, buf);
+			read_block_range(pfp, NULL, 0, read_hole_count, buf);
 
 			offset += read_hole_count;
 			len -= read_hole_count;
@@ -777,7 +778,7 @@ iterate_on_file_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		ASSERT(in_block_start + in_block_len <= block->size);
 
 		if (dir == read_from_blocks)
-			read_block_range(block,
+			read_block_range(pfp, block,
 			    in_block_start, in_block_len, buf);
 		else
 			write_block_range(pfp, block,
@@ -873,7 +874,7 @@ is_block_at_right_edge(struct pmemfile_block_desc *block,
  * contents would remain zero bytes, if they were not snapshotted.
  */
 void
-vinode_remove_interval(struct pmemfile_vinode *vinode,
+vinode_remove_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			uint64_t offset, uint64_t len)
 {
 	ASSERT_IN_TX();
@@ -894,7 +895,7 @@ vinode_remove_interval(struct pmemfile_vinode *vinode,
 			 *           | block |
 			 */
 			ctree_remove(vinode->blocks, block->offset, 1);
-			block = block_list_remove(vinode, block);
+			block = block_list_remove(pfp, vinode, block);
 
 		} else if (is_interval_contained_by_block(block, offset, len)) {
 			/*

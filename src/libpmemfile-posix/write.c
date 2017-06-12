@@ -123,7 +123,7 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 	ASSERT_NOT_IN_TX();
 
 	if (!vinode->blocks) {
-		error = vinode_rebuild_block_tree(vinode);
+		error = vinode_rebuild_block_tree(pfp, vinode);
 		if (error)
 			goto end;
 	}

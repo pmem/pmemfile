@@ -59,7 +59,8 @@ pmemfile_time_to_timespec(const struct pmemfile_time *t)
  * vinode_stat -- fill struct stat using information from vinode
  */
 static int
-vinode_stat(struct pmemfile_vinode *vinode, pmemfile_stat_t *buf)
+vinode_stat(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+		pmemfile_stat_t *buf)
 {
 	struct pmemfile_inode *inode = vinode->inode;
 
@@ -135,7 +136,7 @@ _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	LOG(LDBG, "path %s", path);
 
 	if (path[0] == 0 && (flags & PMEMFILE_AT_EMPTY_PATH)) {
-		error = vinode_stat(dir, buf);
+		error = vinode_stat(pfp, dir, buf);
 		goto ret;
 	}
 
@@ -158,7 +159,7 @@ _pmemfile_fstatat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto end;
 	}
 
-	error = vinode_stat(vinode, buf);
+	error = vinode_stat(pfp, vinode, buf);
 
 end:
 	path_info_cleanup(pfp, &info);
@@ -236,7 +237,7 @@ pmemfile_fstat(PMEMfilepool *pfp, PMEMfile *file, pmemfile_stat_t *buf)
 		return -1;
 	}
 
-	int ret = vinode_stat(file->vinode, buf);
+	int ret = vinode_stat(pfp, file->vinode, buf);
 
 	if (ret) {
 		errno = ret;

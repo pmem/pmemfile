@@ -90,7 +90,7 @@ vinode_stat(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		while (arr) {
 			for (uint32_t i = 0; i < arr->length; ++i)
 				sz += arr->blocks[i].size;
-			arr = D_RO(arr->next);
+			arr = PF_RO(pfp, arr->next);
 		}
 
 		/*
@@ -103,7 +103,7 @@ vinode_stat(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		size_t sz = 0;
 		while (arr) {
 			sz += pmemfile_dir_size(arr->next);
-			arr = D_RO(arr->next);
+			arr = PF_RO(pfp, arr->next);
 		}
 
 		/*

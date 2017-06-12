@@ -79,7 +79,7 @@ update_first_block_info(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 	 * the one linked to it with the next field.
 	 */
 	if (!TOID_IS_NULL(binfo->arr->next))
-		binfo->arr = D_RW(binfo->arr->next);
+		binfo->arr = PF_RW(pfp, binfo->arr->next);
 
 	binfo->idx = 0;
 
@@ -159,14 +159,14 @@ allocate_new_block_array(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 	TOID(struct pmemfile_block_array) new =
 			TX_ZALLOC(struct pmemfile_block_array, MIN_BLOCK_SIZE);
 	COMPILE_ERROR_ON(MIN_BLOCK_SIZE < sizeof(struct pmemfile_block_array));
-	D_RW(new)->length = (uint32_t)
+	PF_RW(pfp, new)->length = (uint32_t)
 			((block_rounddown(pmemobj_alloc_usable_size(new.oid)) -
 			sizeof(struct pmemfile_block_array)) /
 			sizeof(struct pmemfile_block_desc));
 
-	D_RW(new)->next = vinode->inode->file_data.blocks.next;
+	PF_RW(pfp, new)->next = vinode->inode->file_data.blocks.next;
 	TX_SET_DIRECT(&vinode->inode->file_data.blocks, next, new);
-	vinode->first_free_block.arr = D_RW(new);
+	vinode->first_free_block.arr = PF_RW(pfp, new);
 	vinode->first_free_block.idx = 0;
 }
 
@@ -248,7 +248,7 @@ block_list_insert_after(PMEMfilepool *pfp,
 		block->prev = blockp_as_oid(prev);
 		block->next = prev->next;
 		TX_SET_DIRECT(prev, next, blockp_as_oid(block));
-		struct pmemfile_block_desc *next = D_RW(block->next);
+		struct pmemfile_block_desc *next = PF_RW(pfp, block->next);
 		if (next != NULL)
 			TX_SET_DIRECT(next, prev, blockp_as_oid(block));
 	}
@@ -354,12 +354,12 @@ remove_first_block_array(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 
 	to_remove = vinode->inode->file_data.blocks.next;
 
-	new_next = D_RW(to_remove)->next;
+	new_next = PF_RW(pfp, to_remove)->next;
 	TX_SET_DIRECT(&vinode->inode->file_data.blocks, next, new_next);
 	if (TOID_IS_NULL(new_next))
 		binfo->arr = &vinode->inode->file_data.blocks;
 	else
-		binfo->arr = D_RW(new_next);
+		binfo->arr = PF_RW(pfp, new_next);
 
 	TX_FREE(to_remove);
 	binfo->idx = binfo->arr->length;
@@ -438,13 +438,13 @@ block_list_remove(PMEMfilepool *pfp,
 
 	unlink_block(block);
 
-	prev = D_RW(block->prev);
+	prev = PF_RW(pfp, block->prev);
 
 	if (moving_block == prev)
 		prev = block;
 
 	if (vinode->first_block == block)
-		vinode->first_block = D_RW(block->next);
+		vinode->first_block = PF_RW(pfp, block->next);
 
 	if (!TOID_IS_NULL(block->data))
 		TX_FREE(block->data);

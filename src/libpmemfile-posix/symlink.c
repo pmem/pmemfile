@@ -91,7 +91,7 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 
 		TOID(struct pmemfile_inode) tinode = inode_alloc(pfp, &cred,
 				PMEMFILE_S_IFLNK | PMEMFILE_ACCESSPERMS);
-		struct pmemfile_inode *inode = D_RW(tinode);
+		struct pmemfile_inode *inode = PF_RW(pfp, tinode);
 		pmemobj_memcpy_persist(pfp->pop, inode->file_data.data, target,
 				len);
 		inode->size = len;

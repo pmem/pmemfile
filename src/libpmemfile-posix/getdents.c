@@ -75,7 +75,7 @@ file_seek_dir(PMEMfilepool *pfp, PMEMfile *file, struct pmemfile_dir **dir,
 		while (DIR_ID(file->offset) != dir_id) {
 			if (TOID_IS_NULL((*dir)->next))
 				return 0;
-			*dir = D_RW((*dir)->next);
+			*dir = PF_RW(pfp, (*dir)->next);
 			++dir_id;
 		}
 
@@ -89,7 +89,7 @@ file_seek_dir(PMEMfilepool *pfp, PMEMfile *file, struct pmemfile_dir **dir,
 			return 0;
 
 		*dirent -= (*dir)->num_elements;
-		*dir = D_RW((*dir)->next);
+		*dir = PF_RW(pfp, (*dir)->next);
 
 		file->dir_pos.dir = *dir;
 		file->dir_pos.dir_id++;
@@ -184,8 +184,8 @@ fill_dirent32(PMEMfilepool *pfp, struct pmemfile_dirent *dirent,
 	while (alignment--)
 		*data++ = 0;
 
-	COMPILE_ERROR_ON(sizeof(inode_type(D_RO(dirent->inode))) != 1);
-	*data++ = inode_type(D_RO(dirent->inode));
+	COMPILE_ERROR_ON(sizeof(inode_type(PF_RO(pfp, dirent->inode))) != 1);
+	*data++ = inode_type(PF_RO(pfp, dirent->inode));
 
 	return slen;
 }
@@ -223,8 +223,8 @@ fill_dirent64(PMEMfilepool *pfp, struct pmemfile_dirent *dirent,
 	memcpy(data, &slen, 2);
 	data += 2;
 
-	COMPILE_ERROR_ON(sizeof(inode_type(D_RO(dirent->inode))) != 1);
-	*data++ = inode_type(D_RO(dirent->inode));
+	COMPILE_ERROR_ON(sizeof(inode_type(PF_RO(pfp, dirent->inode))) != 1);
+	*data++ = inode_type(PF_RO(pfp, dirent->inode));
 
 	memcpy(data, dirent->name, namelen + 1);
 	data += namelen + 1;
@@ -259,7 +259,7 @@ pmemfile_getdents_worker(PMEMfilepool *pfp, PMEMfile *file, char *data,
 			if (TOID_IS_NULL(dir->next))
 				break;
 
-			dir = D_RW(dir->next);
+			dir = PF_RW(pfp, dir->next);
 			file->dir_pos.dir = dir;
 			file->dir_pos.dir_id++;
 			dirent_id = 0;

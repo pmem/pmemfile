@@ -36,6 +36,7 @@
 
 #include "inode.h"
 #include "inode_array.h"
+#include "internal.h"
 #include "locks.h"
 #include "utils.h"
 
@@ -92,7 +93,7 @@ inode_array_add(PMEMfilepool *pfp,
 	ASSERT_IN_TX();
 
 	do {
-		struct pmemfile_inode_array *cur = D_RW(array);
+		struct pmemfile_inode_array *cur = PF_RW(pfp, array);
 
 		pmemobj_mutex_lock_nofail(pfp->pop, &cur->mtx);
 
@@ -108,7 +109,7 @@ inode_array_add(PMEMfilepool *pfp,
 
 				TX_SET_DIRECT(cur, next,
 					TX_ZNEW(struct pmemfile_inode_array));
-				D_RW(cur->next)->prev = array;
+				PF_RW(pfp, cur->next)->prev = array;
 
 				modified = true;
 			}
@@ -159,7 +160,7 @@ void
 inode_array_traverse(PMEMfilepool *pfp, TOID(struct pmemfile_inode_array) arr,
 		inode_cb inode_cb)
 {
-	struct pmemfile_inode_array *cur = D_RW(arr);
+	struct pmemfile_inode_array *cur = PF_RW(pfp, arr);
 
 	while (cur) {
 		uint32_t inodes = cur->used;
@@ -170,7 +171,7 @@ inode_array_traverse(PMEMfilepool *pfp, TOID(struct pmemfile_inode_array) arr,
 			inodes--;
 		}
 
-		cur = D_RW(cur->next);
+		cur = PF_RW(pfp, cur->next);
 	}
 }
 
@@ -185,7 +186,7 @@ inode_array_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode_array) arr)
 	ASSERT_IN_TX();
 
 	while (!TOID_IS_NULL(arr)) {
-		TOID(struct pmemfile_inode_array) tmp = D_RW(arr)->next;
+		TOID(struct pmemfile_inode_array) tmp = PF_RW(pfp, arr)->next;
 		TX_FREE(arr);
 		arr = tmp;
 	}
@@ -209,7 +210,7 @@ bool
 inode_array_empty(PMEMfilepool *pfp, TOID(struct pmemfile_inode_array) tarr)
 {
 	while (!TOID_IS_NULL(tarr)) {
-		struct pmemfile_inode_array *arr = D_RW(tarr);
+		struct pmemfile_inode_array *arr = PF_RW(pfp, tarr);
 		if (arr->used)
 			return false;
 		tarr = arr->next;
@@ -224,5 +225,5 @@ inode_array_empty(PMEMfilepool *pfp, TOID(struct pmemfile_inode_array) tarr)
 bool
 inode_array_is_small(PMEMfilepool *pfp, TOID(struct pmemfile_inode_array) tarr)
 {
-	return TOID_IS_NULL(D_RW(tarr)->next);
+	return TOID_IS_NULL(PF_RW(pfp, tarr)->next);
 }

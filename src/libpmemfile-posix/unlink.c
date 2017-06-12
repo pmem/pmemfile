@@ -64,7 +64,7 @@ vinode_unlink_file(PMEMfilepool *pfp,
 	ASSERT_IN_TX();
 
 	TOID(struct pmemfile_inode) tinode = dirent->inode;
-	struct pmemfile_inode *inode = D_RW(tinode);
+	struct pmemfile_inode *inode = PF_RW(pfp, tinode);
 
 	ASSERT(inode->nlink > 0);
 

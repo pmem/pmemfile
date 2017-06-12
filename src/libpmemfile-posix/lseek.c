@@ -68,7 +68,7 @@ lseek_seek_data(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	if (is_offset_in_block(block, (uint64_t)offset))
 		return offset;
 
-	block = D_RW(block->next);
+	block = PF_RW(pfp, block->next);
 
 	if (block == NULL)
 		return fsize; /* No more data in file */
@@ -97,7 +97,7 @@ lseek_seek_hole(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		pmemfile_off_t block_end =
 				(pmemfile_off_t)block->offset + block->size;
 
-		struct pmemfile_block_desc *next = D_RW(block->next);
+		struct pmemfile_block_desc *next = PF_RW(pfp, block->next);
 
 		if (block_end >= offset)
 			offset = block_end; /* seek to the end of block */
@@ -158,8 +158,6 @@ static pmemfile_off_t
 pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t offset,
 		int whence)
 {
-	(void) pfp;
-
 	LOG(LDBG, "file %p offset %ld whence %d", file, offset, whence);
 
 	if (file->flags & PFILE_PATH) {

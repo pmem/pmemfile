@@ -99,7 +99,7 @@ vinode_rebuild_block_tree(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 				first = block;
 		}
 
-		block_array = D_RW(block_array->next);
+		block_array = PF_RW(pfp, block_array->next);
 	}
 
 	vinode->first_block = first;
@@ -203,7 +203,7 @@ file_allocate_block_data(PMEMfilepool *pfp,
 
 #ifdef DEBUG
 	/* poison block data */
-	void *data = D_RW(block->data);
+	void *data = PF_RW(pfp, block->data);
 	VALGRIND_ADD_TO_TX(data, size);
 	pmemobj_memset_persist(pfp->pop, data, 0x66, size);
 	VALGRIND_REMOVE_FROM_TX(data, size);
@@ -560,7 +560,8 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			/* between two allocated blocks */
 			/* potentially in a hole between two allocated blocks */
 
-			struct pmemfile_block_desc *next = D_RW(block->next);
+			struct pmemfile_block_desc *next =
+					PF_RW(pfp, block->next);
 
 			/* How many bytes in this hole can be used? */
 			uint64_t hole_count = next->offset - offset;
@@ -598,7 +599,7 @@ find_following_block(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	struct pmemfile_block_desc *block)
 {
 	if (block != NULL)
-		return D_RW(block->next);
+		return PF_RW(pfp, block->next);
 	else
 		return vinode->first_block;
 }
@@ -623,7 +624,7 @@ read_block_range(PMEMfilepool *pfp, const struct pmemfile_block_desc *block,
 	 */
 
 	if ((block != NULL) && is_block_data_initialized(block)) {
-		const char *read_from = D_RO(block->data) + offset;
+		const char *read_from = PF_RO(pfp, block->data) + offset;
 		memcpy(buf, read_from, len);
 	} else {
 		memset(buf, 0, len);
@@ -645,7 +646,7 @@ write_block_range(PMEMfilepool *pfp, struct pmemfile_block_desc *block,
 	ASSERT(offset < block->size);
 	ASSERT(offset + len <= block->size);
 
-	char *data = D_RW(block->data);
+	char *data = PF_RW(pfp, block->data);
 
 	if (!is_block_data_initialized(block)) {
 		char *start_zero = data;
@@ -788,7 +789,7 @@ iterate_on_file_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		len -= in_block_len;
 		buf += in_block_len;
 		last_block = block;
-		block = D_RW(block->next);
+		block = PF_RW(pfp, block->next);
 	}
 
 	return last_block;
@@ -912,8 +913,8 @@ vinode_remove_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 
 				pmemobj_tx_add_range(block->data.oid,
 				    block_offset, len);
-				memset(D_RW(block->data) + block_offset, 0,
-				    len);
+				memset(PF_RW(pfp, block->data) + block_offset,
+				    0, len);
 			}
 
 			/* definitely handled the whole interval already */
@@ -932,10 +933,10 @@ vinode_remove_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			 */
 
 			if (is_block_data_initialized(block))
-				TX_MEMSET(D_RW(block->data), 0,
+				TX_MEMSET(PF_RW(pfp, block->data), 0,
 				    offset + len - block->offset);
 
-			block = D_RW(block->prev);
+			block = PF_RW(pfp, block->prev);
 		} else {
 			/*
 			 *    offset                          offset + len
@@ -954,11 +955,11 @@ vinode_remove_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 
 				pmemobj_tx_add_range(block->data.oid,
 				    block_offset, zero_len);
-				memset(D_RW(block->data) + block_offset, 0,
-				    zero_len);
+				memset(PF_RW(pfp, block->data) + block_offset,
+				    0, zero_len);
 			}
 
-			block = D_RW(block->prev);
+			block = PF_RW(pfp, block->prev);
 		}
 	}
 }

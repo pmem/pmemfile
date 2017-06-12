@@ -71,7 +71,7 @@ vinode_update_parent(PMEMfilepool *pfp,
 		if (dirent)
 			break;
 
-		dir = D_RW(dir->next);
+		dir = PF_RW(pfp, dir->next);
 	} while (dir);
 
 	ASSERTne(dirent, NULL);

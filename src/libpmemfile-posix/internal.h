@@ -33,6 +33,7 @@
 #define PMEMFILE_INTERNAL_H
 
 #include "layout.h"
+#include "libpmemfile-posix.h"
 
 #define LSUP 1  /* unsupported feature */
 #define LUSR 2  /* user error */
@@ -75,5 +76,16 @@ block_roundup(size_t n)
 {
 	return block_rounddown(n + BLOCK_ALIGNMENT - 1);
 }
+
+void *pmemfile_direct(PMEMfilepool *pfp, PMEMoid oid);
+
+#define PF_DIRECT_RW(pfp, o) (\
+{__typeof__(o) _o; _o._type = NULL; (void)_o;\
+(__typeof__(*(o)._type) *)pmemfile_direct(pfp, (o).oid); })
+#define PF_DIRECT_RO(pfp, o) \
+	((const __typeof__(*(o)._type) *) pmemfile_direct(pfp, (o).oid))
+
+#define PF_RW	PF_DIRECT_RW
+#define PF_RO	PF_DIRECT_RO
 
 #endif

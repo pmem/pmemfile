@@ -31,6 +31,11 @@
 
 add_c_flag(-fno-strict-aliasing)
 
+# GCC7 introduces new warning called "Dangling else", due to probable
+# bug in GTest using GTest functions with if statement causes 
+# "dangling else" warning, so we need to disable it
+add_flag(-Wno-dangling-else)
+
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 include(FindThreads)

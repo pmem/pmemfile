@@ -31,6 +31,10 @@
 
 add_c_flag(-fno-strict-aliasing)
 
+# GTest macros trigger this warning with GCC7. The code is correct
+# but looks suspicious to GCC.
+add_flag(-Wno-dangling-else)
+
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 include(FindThreads)

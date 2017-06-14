@@ -41,16 +41,6 @@
 #include <stddef.h>
 
 #include "compiler_utils.h"
-
-#ifdef __clang_analyzer__
-/*
- * When clang analyzer sees pmemobj_direct can return NULL, it warns about NULL
- * not being handled at D_RW/D_RO call sites, even when it's obvious it's
- * not possible. Just hide its definition to quiet those warnings.
- */
-#define PMEMOBJ_DIRECT_NON_INLINE
-#endif
-
 #include "libpmemobj.h"
 
 POBJ_LAYOUT_BEGIN(pmemfile);

@@ -33,7 +33,6 @@
 #include "ctree.h"
 #include "layout.h"
 #include "inode.h"
-#include "internal.h"
 #include "out.h"
 #include "block_array.h"
 #include "utils.h"
@@ -52,7 +51,7 @@
  * to keep this data up to date.
  */
 static void
-update_first_block_info(struct pmemfile_vinode *vinode)
+update_first_block_info(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
 	struct block_info *binfo = &vinode->first_free_block;
 
@@ -79,7 +78,7 @@ update_first_block_info(struct pmemfile_vinode *vinode)
 	 * the one linked to it with the next field.
 	 */
 	if (!TOID_IS_NULL(binfo->arr->next))
-		binfo->arr = D_RW(binfo->arr->next);
+		binfo->arr = PF_RW(pfp, binfo->arr->next);
 
 	binfo->idx = 0;
 
@@ -150,7 +149,7 @@ has_free_block_entry(struct pmemfile_vinode *vinode)
  *                 The next free slot for block metadata
  */
 static void
-allocate_new_block_array(struct pmemfile_vinode *vinode)
+allocate_new_block_array(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
 	ASSERT_IN_TX();
 
@@ -159,14 +158,14 @@ allocate_new_block_array(struct pmemfile_vinode *vinode)
 	TOID(struct pmemfile_block_array) new =
 			TX_ZALLOC(struct pmemfile_block_array, MIN_BLOCK_SIZE);
 	COMPILE_ERROR_ON(MIN_BLOCK_SIZE < sizeof(struct pmemfile_block_array));
-	D_RW(new)->length = (uint32_t)
+	PF_RW(pfp, new)->length = (uint32_t)
 			((block_rounddown(pmemobj_alloc_usable_size(new.oid)) -
 			sizeof(struct pmemfile_block_array)) /
 			sizeof(struct pmemfile_block_desc));
 
-	D_RW(new)->next = vinode->inode->file_data.blocks.next;
+	PF_RW(pfp, new)->next = vinode->inode->file_data.blocks.next;
 	TX_SET_DIRECT(&vinode->inode->file_data.blocks, next, new);
-	vinode->first_free_block.arr = D_RW(new);
+	vinode->first_free_block.arr = PF_RW(pfp, new);
 	vinode->first_free_block.idx = 0;
 }
 
@@ -194,12 +193,12 @@ allocate_new_block_array(struct pmemfile_vinode *vinode)
  *
  */
 static struct pmemfile_block_desc *
-acquire_new_entry(struct pmemfile_vinode *vinode)
+acquire_new_entry(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
 	ASSERT_IN_TX();
 
 	if (!has_free_block_entry(vinode))
-		allocate_new_block_array(vinode);
+		allocate_new_block_array(pfp, vinode);
 
 	ASSERT(has_free_block_entry(vinode));
 
@@ -226,15 +225,16 @@ acquire_new_entry(struct pmemfile_vinode *vinode)
  *
  */
 struct pmemfile_block_desc *
-block_list_insert_after(struct pmemfile_vinode *vinode,
+block_list_insert_after(PMEMfilepool *pfp,
+			struct pmemfile_vinode *vinode,
 			struct pmemfile_block_desc *prev)
 {
 	ASSERT_IN_TX();
 
 	/* lazy init vinode->first_free_block */
-	update_first_block_info(vinode);
+	update_first_block_info(pfp, vinode);
 
-	struct pmemfile_block_desc *block = acquire_new_entry(vinode);
+	struct pmemfile_block_desc *block = acquire_new_entry(pfp, vinode);
 
 	if (prev == NULL) {
 		if (vinode->first_block != NULL) {
@@ -247,7 +247,7 @@ block_list_insert_after(struct pmemfile_vinode *vinode,
 		block->prev = blockp_as_oid(prev);
 		block->next = prev->next;
 		TX_SET_DIRECT(prev, next, blockp_as_oid(block));
-		struct pmemfile_block_desc *next = D_RW(block->next);
+		struct pmemfile_block_desc *next = PF_RW(pfp, block->next);
 		if (next != NULL)
 			TX_SET_DIRECT(next, prev, blockp_as_oid(block));
 	}
@@ -275,15 +275,21 @@ last_used_block(struct pmemfile_vinode *vinode)
  * Note: does not deallocate the block metadata, only unlinks it.
  */
 static void
-unlink_block(struct pmemfile_block_desc *block)
+unlink_block(PMEMfilepool *pfp, struct pmemfile_block_desc *block)
 {
 	ASSERT_IN_TX();
 
-	if (!TOID_IS_NULL(block->prev))
-		TX_SET(block->prev, next, block->next);
+	if (!TOID_IS_NULL(block->prev)) {
+		struct pmemfile_block_desc *prev = PF_RW(pfp, block->prev);
+		ASSERTne(prev, NULL);
+		TX_SET_DIRECT(prev, next, block->next);
+	}
 
-	if (!TOID_IS_NULL(block->next))
-		TX_SET(block->next, prev, block->prev);
+	if (!TOID_IS_NULL(block->next)) {
+		struct pmemfile_block_desc *next = PF_RW(pfp, block->next);
+		ASSERTne(next, NULL);
+		TX_SET_DIRECT(next, prev, block->prev);
+	}
 }
 
 /*
@@ -298,7 +304,8 @@ unlink_block(struct pmemfile_block_desc *block)
  * after this operation.
  */
 static void
-relocate_block(struct pmemfile_block_desc *dst, struct pmemfile_block_desc *src)
+relocate_block(PMEMfilepool *pfp, struct pmemfile_block_desc *dst,
+		struct pmemfile_block_desc *src)
 {
 	ASSERT_IN_TX();
 
@@ -306,11 +313,17 @@ relocate_block(struct pmemfile_block_desc *dst, struct pmemfile_block_desc *src)
 
 	TX_ADD_DIRECT(dst);
 
-	if (!TOID_IS_NULL(src->prev))
-		TX_SET(src->prev, next, blockp_as_oid(dst));
+	if (!TOID_IS_NULL(src->prev)) {
+		struct pmemfile_block_desc *prev = PF_RW(pfp, src->prev);
+		ASSERTne(prev, NULL);
+		TX_SET_DIRECT(prev, next, blockp_as_oid(dst));
+	}
 
-	if (!TOID_IS_NULL(src->next))
-		TX_SET(src->next, prev, blockp_as_oid(dst));
+	if (!TOID_IS_NULL(src->next)) {
+		struct pmemfile_block_desc *next = PF_RW(pfp, src->next);
+		ASSERTne(next, NULL);
+		TX_SET_DIRECT(next, prev, blockp_as_oid(dst));
+	}
 
 	TX_MEMCPY(dst, src, sizeof(*src));
 }
@@ -341,7 +354,7 @@ is_first_block_array_empty(struct pmemfile_vinode *vinode)
  * Also: updates the vinode->first_free_block data structure as needed.
  */
 static void
-remove_first_block_array(struct pmemfile_vinode *vinode)
+remove_first_block_array(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
 	ASSERT_IN_TX();
 
@@ -353,12 +366,12 @@ remove_first_block_array(struct pmemfile_vinode *vinode)
 
 	to_remove = vinode->inode->file_data.blocks.next;
 
-	new_next = D_RW(to_remove)->next;
+	new_next = PF_RW(pfp, to_remove)->next;
 	TX_SET_DIRECT(&vinode->inode->file_data.blocks, next, new_next);
 	if (TOID_IS_NULL(new_next))
 		binfo->arr = &vinode->inode->file_data.blocks;
 	else
-		binfo->arr = D_RW(new_next);
+		binfo->arr = PF_RW(pfp, new_next);
 
 	TX_FREE(to_remove);
 	binfo->idx = binfo->arr->length;
@@ -420,7 +433,8 @@ remove_first_block_array(struct pmemfile_vinode *vinode)
  *
  */
 struct pmemfile_block_desc *
-block_list_remove(struct pmemfile_vinode *vinode,
+block_list_remove(PMEMfilepool *pfp,
+		struct pmemfile_vinode *vinode,
 		struct pmemfile_block_desc *block)
 {
 	ASSERT_IN_TX();
@@ -428,21 +442,21 @@ block_list_remove(struct pmemfile_vinode *vinode,
 	struct pmemfile_block_desc *prev;
 
 	/* lazy init vinode->first_free_block */
-	update_first_block_info(vinode);
+	update_first_block_info(pfp, vinode);
 
 	ASSERT(vinode->first_free_block.idx > 0);
 
 	struct pmemfile_block_desc *moving_block = last_used_block(vinode);
 
-	unlink_block(block);
+	unlink_block(pfp, block);
 
-	prev = D_RW(block->prev);
+	prev = PF_RW(pfp, block->prev);
 
 	if (moving_block == prev)
 		prev = block;
 
 	if (vinode->first_block == block)
-		vinode->first_block = D_RW(block->next);
+		vinode->first_block = PF_RW(pfp, block->next);
 
 	if (!TOID_IS_NULL(block->data))
 		TX_FREE(block->data);
@@ -451,7 +465,7 @@ block_list_remove(struct pmemfile_vinode *vinode,
 		if (vinode->first_block == moving_block)
 			vinode->first_block = block;
 		ctree_remove(vinode->blocks, moving_block->offset, 1);
-		relocate_block(block, moving_block);
+		relocate_block(pfp, block, moving_block);
 		if (ctree_insert(vinode->blocks, block->offset,
 		    (uint64_t)block))
 			pmemfile_tx_abort(errno);
@@ -462,7 +476,7 @@ block_list_remove(struct pmemfile_vinode *vinode,
 	vinode->first_free_block.idx--;
 
 	if (is_first_block_array_empty(vinode))
-		remove_first_block_array(vinode);
+		remove_first_block_array(pfp, vinode);
 
 	return prev;
 }

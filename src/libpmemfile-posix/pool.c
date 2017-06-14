@@ -43,7 +43,6 @@
 #include "hash_map.h"
 #include "inode.h"
 #include "inode_array.h"
-#include "internal.h"
 #include "locks.h"
 #include "mkdir.h"
 #include "os_thread.h"
@@ -172,7 +171,7 @@ pmemfile_pool_create(const char *pathname, size_t poolsize,
 		ERR("cannot initialize super block");
 		goto no_super;
 	}
-	pfp->super = D_RW(super);
+	pfp->super = PF_RW(pfp, super);
 
 	if (initialize_super_block(pfp)) {
 		error = errno;
@@ -193,14 +192,14 @@ pool_create:
 static void
 inode_trim_cb(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode)
 {
-	ASSERTeq(D_RW(inode)->nlink, 0);
+	ASSERTeq(PF_RW(pfp, inode)->nlink, 0);
 	inode_trim(pfp, inode);
 }
 
 static void
 inode_free_cb(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode)
 {
-	ASSERTeq(D_RW(inode)->nlink, 0);
+	ASSERTeq(PF_RW(pfp, inode)->nlink, 0);
 	inode_free(pfp, inode);
 }
 
@@ -239,7 +238,8 @@ pmemfile_pool_open(const char *pathname)
 
 	TOID(struct pmemfile_inode_array) orphaned =
 			pfp->super->orphaned_inodes;
-	if (!inode_array_empty(orphaned) || !inode_array_is_small(orphaned)) {
+	if (!inode_array_empty(pfp, orphaned) ||
+			!inode_array_is_small(pfp, orphaned)) {
 		inode_array_traverse(pfp, orphaned, inode_trim_cb);
 
 		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
@@ -247,7 +247,7 @@ pmemfile_pool_open(const char *pathname)
 
 			inode_array_traverse(pfp, orphaned, inode_free_cb);
 
-			inode_array_free(orphaned);
+			inode_array_free(pfp, orphaned);
 
 			pfp->super->orphaned_inodes = inode_array_alloc();
 		} TX_ONABORT {

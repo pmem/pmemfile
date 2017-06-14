@@ -39,7 +39,6 @@
 #include "callbacks.h"
 #include "data.h"
 #include "file.h"
-#include "internal.h"
 #include "libpmemfile-posix.h"
 #include "out.h"
 #include "pool.h"
@@ -68,7 +67,7 @@ vinode_fallocate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, int mode,
 	vinode_snapshot(vinode);
 
 	if (vinode->blocks == NULL) {
-		error = vinode_rebuild_block_tree(vinode);
+		error = vinode_rebuild_block_tree(pfp, vinode);
 		if (error)
 			return error;
 	}
@@ -76,7 +75,7 @@ vinode_fallocate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, int mode,
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (mode & PMEMFILE_FALLOC_FL_PUNCH_HOLE) {
 			ASSERT(mode & PMEMFILE_FALLOC_FL_KEEP_SIZE);
-			vinode_remove_interval(vinode, offset, length);
+			vinode_remove_interval(pfp, vinode, offset, length);
 		} else {
 			vinode_allocate_interval(pfp, vinode, offset, length);
 			if ((mode & PMEMFILE_FALLOC_FL_KEEP_SIZE) == 0) {

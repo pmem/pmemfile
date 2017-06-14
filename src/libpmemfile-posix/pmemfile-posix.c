@@ -41,7 +41,6 @@
 #include "callbacks.h"
 #include "compiler_utils.h"
 #include "data.h"
-#include "internal.h"
 #include "locks.h"
 #include "out.h"
 #include "valgrind_internal.h"

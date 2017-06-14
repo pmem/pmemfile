@@ -44,7 +44,6 @@
 #include "hash_map.h"
 #include "inode.h"
 #include "inode_array.h"
-#include "internal.h"
 #include "locks.h"
 #include "os_thread.h"
 #include "out.h"
@@ -97,9 +96,9 @@ inode_ref(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 
 	ASSERT_NOT_IN_TX();
 
-	if (D_RO(inode)->version != PMEMFILE_INODE_VERSION(1)) {
+	if (PF_RO(pfp, inode)->version != PMEMFILE_INODE_VERSION(1)) {
 		ERR("unknown inode version 0x%x for inode 0x%" PRIx64,
-				D_RO(inode)->version, inode.oid.off);
+				PF_RO(pfp, inode)->version, inode.oid.off);
 		errno = EINVAL;
 		return NULL;
 	}
@@ -128,7 +127,7 @@ inode_ref(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 		/* finish initialization */
 		os_rwlock_init(&vinode->rwlock);
 		vinode->tinode = inode;
-		vinode->inode = D_RW(inode);
+		vinode->inode = PF_RW(pfp, inode);
 		if (inode_is_dir(vinode->inode) && parent)
 			vinode->parent = vinode_ref(pfp, parent);
 
@@ -270,7 +269,7 @@ inode_alloc(PMEMfilepool *pfp, struct pmemfile_cred *cred, uint64_t flags)
 	ASSERT_IN_TX();
 
 	TOID(struct pmemfile_inode) tinode = TX_ZNEW(struct pmemfile_inode);
-	struct pmemfile_inode *inode = D_RW(tinode);
+	struct pmemfile_inode *inode = PF_RW(pfp, tinode);
 
 	struct pmemfile_time t;
 	get_current_time(&t);
@@ -357,7 +356,7 @@ vinode_orphan(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
  * inode_free_dir -- frees on media structures assuming inode is a directory
  */
 static void
-inode_free_dir(struct pmemfile_inode *inode)
+inode_free_dir(PMEMfilepool *pfp, struct pmemfile_inode *inode)
 {
 	ASSERT_IN_TX();
 
@@ -374,7 +373,7 @@ inode_free_dir(struct pmemfile_inode *inode)
 		if (!TOID_IS_NULL(tdir))
 			TX_FREE(tdir);
 		tdir = next;
-		dir = D_RW(tdir);
+		dir = PF_RW(pfp, tdir);
 	}
 }
 
@@ -383,7 +382,7 @@ inode_free_dir(struct pmemfile_inode *inode)
  * file
  */
 static void
-inode_trim_reg_file(struct pmemfile_inode *inode)
+inode_trim_reg_file(PMEMfilepool *pfp, struct pmemfile_inode *inode)
 {
 	ASSERT_NOT_IN_TX();
 
@@ -393,7 +392,7 @@ inode_trim_reg_file(struct pmemfile_inode *inode)
 		for (unsigned i = 0; i < arr->length; ++i)
 			POBJ_FREE(&arr->blocks[i].data);
 
-		arr = D_RW(arr->next);
+		arr = PF_RW(pfp, arr->next);
 	}
 
 	/*
@@ -408,7 +407,7 @@ inode_trim_reg_file(struct pmemfile_inode *inode)
  * file
  */
 static void
-inode_free_reg_file(struct pmemfile_inode *inode)
+inode_free_reg_file(PMEMfilepool *pfp, struct pmemfile_inode *inode)
 {
 	ASSERT_IN_TX();
 
@@ -424,7 +423,7 @@ inode_free_reg_file(struct pmemfile_inode *inode)
 		if (!TOID_IS_NULL(tarr))
 			TX_FREE(tarr);
 		tarr = next;
-		arr = D_RW(tarr);
+		arr = PF_RW(pfp, tarr);
 	}
 }
 
@@ -432,7 +431,7 @@ inode_free_reg_file(struct pmemfile_inode *inode)
  * inode_free_symlink -- frees on media structures assuming inode is a symlink
  */
 static void
-inode_free_symlink(struct pmemfile_inode *inode)
+inode_free_symlink(PMEMfilepool *pfp, struct pmemfile_inode *inode)
 {
 	ASSERT_IN_TX();
 
@@ -447,16 +446,14 @@ inode_free_symlink(struct pmemfile_inode *inode)
 void
 inode_trim(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 {
-	(void) pfp;
-
 	LOG(LDBG, "inode 0x%" PRIx64, tinode.oid.off);
 
 	ASSERT_NOT_IN_TX();
 
-	struct pmemfile_inode *inode = D_RW(tinode);
+	struct pmemfile_inode *inode = PF_RW(pfp, tinode);
 
 	if (inode_is_regular_file(inode))
-		inode_trim_reg_file(inode);
+		inode_trim_reg_file(pfp, inode);
 }
 
 /*
@@ -467,20 +464,18 @@ inode_trim(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 void
 inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 {
-	(void) pfp;
-
 	LOG(LDBG, "inode 0x%" PRIx64, tinode.oid.off);
 
 	ASSERT_IN_TX();
 
-	struct pmemfile_inode *inode = D_RW(tinode);
+	struct pmemfile_inode *inode = PF_RW(pfp, tinode);
 
 	if (inode_is_dir(inode))
-		inode_free_dir(inode);
+		inode_free_dir(pfp, inode);
 	else if (inode_is_regular_file(inode))
-		inode_free_reg_file(inode);
+		inode_free_reg_file(pfp, inode);
 	else if (inode_is_symlink(inode))
-		inode_free_symlink(inode);
+		inode_free_symlink(pfp, inode);
 	else
 		FATAL("unknown inode type 0x%lx", inode->flags);
 

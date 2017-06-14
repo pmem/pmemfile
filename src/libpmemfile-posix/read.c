@@ -39,7 +39,6 @@
 #include "callbacks.h"
 #include "data.h"
 #include "file.h"
-#include "internal.h"
 #include "libpmemfile-posix.h"
 #include "out.h"
 #include "pool.h"
@@ -147,7 +146,7 @@ pmemfile_preadv_internal(PMEMfilepool *pfp,
 
 		int err = 0;
 		if (!vinode->blocks)
-			err = vinode_rebuild_block_tree(vinode);
+			err = vinode_rebuild_block_tree(pfp, vinode);
 		os_rwlock_unlock(&vinode->rwlock);
 
 		if (err) {

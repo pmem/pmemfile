@@ -38,7 +38,6 @@
 
 #include "callbacks.h"
 #include "compiler_utils.h"
-#include "internal.h"
 #include "os_thread.h"
 #include "out.h"
 #include "utils.h"

@@ -33,7 +33,7 @@
 #include <errno.h>
 #include <time.h>
 
-#include "internal.h"
+#include "pool.h"
 #include "out.h"
 #include "utils.h"
 #include "libpmemfile-posix.h"
@@ -199,4 +199,12 @@ narrow_to_full_pages(uint64_t *offset, uint64_t *length)
 		*length = end - *offset;
 	else
 		*length = 0;
+}
+
+void *
+pmemfile_direct(PMEMfilepool *pfp, PMEMoid oid)
+{
+	if (oid.off == 0)
+		return NULL;
+	return (void *)((uintptr_t)pfp->pop + oid.off);
 }

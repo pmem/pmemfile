@@ -46,7 +46,6 @@
 #include "file.h"
 #include "inode.h"
 #include "inode_array.h"
-#include "internal.h"
 #include "locks.h"
 #include "os_thread.h"
 #include "out.h"
@@ -145,8 +144,6 @@ inode_add_dirent(PMEMfilepool *pfp,
 		TOID(struct pmemfile_inode) child_tinode,
 		struct pmemfile_time tm)
 {
-	(void) pfp;
-
 	LOG(LDBG, "parent 0x%" PRIx64 " name %.*s child_inode 0x%" PRIx64,
 		parent_tinode.oid.off, (int)namelen, name,
 		child_tinode.oid.off);
@@ -162,7 +159,7 @@ inode_add_dirent(PMEMfilepool *pfp,
 		FATAL("trying to add dirent with slash: %.*s", (int)namelen,
 				name);
 
-	struct pmemfile_inode *parent = D_RW(parent_tinode);
+	struct pmemfile_inode *parent = PF_RW(pfp, parent_tinode);
 
 	/* don't create files in deleted directories */
 	if (parent->nlink == 0) {
@@ -197,12 +194,12 @@ inode_add_dirent(PMEMfilepool *pfp,
 			TX_ADD_DIRECT(&parent->size);
 			parent->size += sz;
 
-			D_RW(dir->next)->num_elements =
+			PF_RW(pfp, dir->next)->num_elements =
 				(uint32_t)(sz - sizeof(struct pmemfile_dir)) /
 					sizeof(struct pmemfile_dirent);
 		}
 
-		dir = D_RW(dir->next);
+		dir = PF_RW(pfp, dir->next);
 	} while (dir);
 
 	ASSERT(dirent != NULL);
@@ -214,7 +211,7 @@ inode_add_dirent(PMEMfilepool *pfp,
 	strncpy(dirent->name, name, namelen);
 	dirent->name[namelen] = '\0';
 
-	struct pmemfile_inode *child_inode = D_RW(child_tinode);
+	struct pmemfile_inode *child_inode = PF_RW(pfp, child_tinode);
 	TX_ADD_DIRECT(&child_inode->nlink);
 	child_inode->nlink++;
 
@@ -243,8 +240,6 @@ vinode_lookup_dirent_by_name_locked(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent, const char *name,
 		size_t namelen)
 {
-	(void) pfp;
-
 	LOG(LDBG, "parent 0x%" PRIx64 " ppath %s name %.*s",
 			parent->tinode.oid.off, pmfi_path(parent), (int)namelen,
 			name);
@@ -268,7 +263,7 @@ vinode_lookup_dirent_by_name_locked(PMEMfilepool *pfp,
 				return d;
 		}
 
-		dir = D_RW(dir->next);
+		dir = PF_RW(pfp, dir->next);
 	}
 
 	errno = ENOENT;
@@ -308,8 +303,6 @@ static struct pmemfile_dirent *
 vinode_lookup_dirent_by_vinode_locked(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent,	struct pmemfile_vinode *child)
 {
-	(void) pfp;
-
 	LOG(LDBG, "parent 0x%" PRIx64 " ppath %s", parent->tinode.oid.off,
 			pmfi_path(parent));
 
@@ -329,7 +322,7 @@ vinode_lookup_dirent_by_vinode_locked(PMEMfilepool *pfp,
 				return d;
 		}
 
-		dir = D_RW(dir->next);
+		dir = PF_RW(pfp, dir->next);
 	}
 
 	errno = ENOENT;

@@ -34,7 +34,6 @@
  * stats.c -- pmemfile_stats implementation
  */
 
-#include "internal.h"
 #include "libpmemfile-posix.h"
 #include "out.h"
 #include "pool.h"

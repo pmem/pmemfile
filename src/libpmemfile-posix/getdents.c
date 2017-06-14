@@ -38,9 +38,9 @@
 
 #include "file.h"
 #include "inode.h"
-#include "internal.h"
 #include "libpmemfile-posix.h"
 #include "out.h"
+#include "utils.h"
 
 #define DIRENT_ID_MASK 0xffffffffULL
 
@@ -54,7 +54,8 @@
  * returns !0 on successful translation
  */
 static int
-file_seek_dir(PMEMfile *file, struct pmemfile_dir **dir, unsigned *dirent)
+file_seek_dir(PMEMfilepool *pfp, PMEMfile *file, struct pmemfile_dir **dir,
+		unsigned *dirent)
 {
 	struct pmemfile_inode *inode = file->vinode->inode;
 
@@ -74,7 +75,7 @@ file_seek_dir(PMEMfile *file, struct pmemfile_dir **dir, unsigned *dirent)
 		while (DIR_ID(file->offset) != dir_id) {
 			if (TOID_IS_NULL((*dir)->next))
 				return 0;
-			*dir = D_RW((*dir)->next);
+			*dir = PF_RW(pfp, (*dir)->next);
 			++dir_id;
 		}
 
@@ -88,7 +89,7 @@ file_seek_dir(PMEMfile *file, struct pmemfile_dir **dir, unsigned *dirent)
 			return 0;
 
 		*dirent -= (*dir)->num_elements;
-		*dir = D_RW((*dir)->next);
+		*dir = PF_RW(pfp, (*dir)->next);
 
 		file->dir_pos.dir = *dir;
 		file->dir_pos.dir_id++;
@@ -148,8 +149,8 @@ get_next_dirent_off(PMEMfile *file, struct pmemfile_dir *dir,
  * fill_dirent32 -- fills data with dirent information using 32-bit getdents ABI
  */
 static unsigned short
-fill_dirent32(struct pmemfile_dirent *dirent, uint64_t next_off, unsigned left,
-		char *data)
+fill_dirent32(PMEMfilepool *pfp, struct pmemfile_dirent *dirent,
+		uint64_t next_off, unsigned left, char *data)
 {
 	size_t namelen = strlen(dirent->name);
 	/* minimum size required */
@@ -183,8 +184,8 @@ fill_dirent32(struct pmemfile_dirent *dirent, uint64_t next_off, unsigned left,
 	while (alignment--)
 		*data++ = 0;
 
-	COMPILE_ERROR_ON(sizeof(inode_type(D_RO(dirent->inode))) != 1);
-	*data++ = inode_type(D_RO(dirent->inode));
+	COMPILE_ERROR_ON(sizeof(inode_type(PF_RO(pfp, dirent->inode))) != 1);
+	*data++ = inode_type(PF_RO(pfp, dirent->inode));
 
 	return slen;
 }
@@ -193,8 +194,8 @@ fill_dirent32(struct pmemfile_dirent *dirent, uint64_t next_off, unsigned left,
  * fill_dirent64 -- fills data with dirent information using 64-bit getdents ABI
  */
 static unsigned short
-fill_dirent64(struct pmemfile_dirent *dirent, uint64_t next_off, unsigned left,
-		char *data)
+fill_dirent64(PMEMfilepool *pfp, struct pmemfile_dirent *dirent,
+		uint64_t next_off, unsigned left, char *data)
 {
 	size_t namelen = strlen(dirent->name);
 	/* minimum size required */
@@ -222,8 +223,8 @@ fill_dirent64(struct pmemfile_dirent *dirent, uint64_t next_off, unsigned left,
 	memcpy(data, &slen, 2);
 	data += 2;
 
-	COMPILE_ERROR_ON(sizeof(inode_type(D_RO(dirent->inode))) != 1);
-	*data++ = inode_type(D_RO(dirent->inode));
+	COMPILE_ERROR_ON(sizeof(inode_type(PF_RO(pfp, dirent->inode))) != 1);
+	*data++ = inode_type(PF_RO(pfp, dirent->inode));
 
 	memcpy(data, dirent->name, namelen + 1);
 	data += namelen + 1;
@@ -234,20 +235,21 @@ fill_dirent64(struct pmemfile_dirent *dirent, uint64_t next_off, unsigned left,
 	return slen;
 }
 
-typedef unsigned short (*fill_dirent_type)(struct pmemfile_dirent *dirent,
-		uint64_t next_off, unsigned left, char *data);
+typedef unsigned short (*fill_dirent_type)(PMEMfilepool *pfp,
+		struct pmemfile_dirent *dirent, uint64_t next_off,
+		unsigned left, char *data);
 
 /*
  * pmemfile_getdents_worker -- traverses directory and fills dirent information
  */
 static int
-pmemfile_getdents_worker(PMEMfile *file, char *data, unsigned count,
-		fill_dirent_type fill_dirent)
+pmemfile_getdents_worker(PMEMfilepool *pfp, PMEMfile *file, char *data,
+		unsigned count, fill_dirent_type fill_dirent)
 {
 	struct pmemfile_dir *dir;
 	unsigned dirent_id;
 
-	if (file_seek_dir(file, &dir, &dirent_id) == 0)
+	if (file_seek_dir(pfp, file, &dir, &dirent_id) == 0)
 		return 0;
 
 	int read1 = 0;
@@ -257,7 +259,7 @@ pmemfile_getdents_worker(PMEMfile *file, char *data, unsigned count,
 			if (TOID_IS_NULL(dir->next))
 				break;
 
-			dir = D_RW(dir->next);
+			dir = PF_RW(pfp, dir->next);
 			file->dir_pos.dir = dir;
 			file->dir_pos.dir_id++;
 			dirent_id = 0;
@@ -274,7 +276,7 @@ pmemfile_getdents_worker(PMEMfile *file, char *data, unsigned count,
 
 		uint64_t next_off = get_next_dirent_off(file, dir, dirent_id);
 
-		unsigned short slen = fill_dirent(dirent, next_off,
+		unsigned short slen = fill_dirent(pfp, dirent, next_off,
 				count - (unsigned)read1, data);
 		if (slen == 0)
 			break;
@@ -336,7 +338,8 @@ pmemfile_getdents_generic(PMEMfilepool *pfp, PMEMfile *file, char *data,
 	os_mutex_lock(&file->mutex);
 	os_rwlock_rdlock(&vinode->rwlock);
 
-	bytes_read = pmemfile_getdents_worker(file, data, count, fill_dirent);
+	bytes_read = pmemfile_getdents_worker(pfp, file, data, count,
+			fill_dirent);
 	ASSERT(bytes_read >= 0);
 
 	os_rwlock_unlock(&vinode->rwlock);

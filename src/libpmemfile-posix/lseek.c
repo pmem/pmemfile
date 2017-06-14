@@ -37,20 +37,20 @@
 #include "data.h"
 #include "file.h"
 #include "inode.h"
-#include "internal.h"
 #include "libpmemfile-posix.h"
 #include "out.h"
+#include "utils.h"
 
 /*
  * lseek_seek_data -- part of the lseek implementation
  * Looks for data (not a hole), starting at the specified offset.
  */
 static pmemfile_off_t
-lseek_seek_data(struct pmemfile_vinode *vinode, pmemfile_off_t offset,
-		pmemfile_off_t fsize)
+lseek_seek_data(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+		pmemfile_off_t offset, pmemfile_off_t fsize)
 {
 	if (vinode->blocks == NULL) {
-		int err = vinode_rebuild_block_tree(vinode);
+		int err = vinode_rebuild_block_tree(pfp, vinode);
 		if (err)
 			return err;
 	}
@@ -68,7 +68,7 @@ lseek_seek_data(struct pmemfile_vinode *vinode, pmemfile_off_t offset,
 	if (is_offset_in_block(block, (uint64_t)offset))
 		return offset;
 
-	block = D_RW(block->next);
+	block = PF_RW(pfp, block->next);
 
 	if (block == NULL)
 		return fsize; /* No more data in file */
@@ -81,11 +81,11 @@ lseek_seek_data(struct pmemfile_vinode *vinode, pmemfile_off_t offset,
  * Looks for a hole, starting at the specified offset.
  */
 static pmemfile_off_t
-lseek_seek_hole(struct pmemfile_vinode *vinode, pmemfile_off_t offset,
-		pmemfile_off_t fsize)
+lseek_seek_hole(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+		pmemfile_off_t offset, pmemfile_off_t fsize)
 {
 	if (vinode->blocks == NULL) {
-		int err = vinode_rebuild_block_tree(vinode);
+		int err = vinode_rebuild_block_tree(pfp, vinode);
 		if (err)
 			return err;
 	}
@@ -97,7 +97,7 @@ lseek_seek_hole(struct pmemfile_vinode *vinode, pmemfile_off_t offset,
 		pmemfile_off_t block_end =
 				(pmemfile_off_t)block->offset + block->size;
 
-		struct pmemfile_block_desc *next = D_RW(block->next);
+		struct pmemfile_block_desc *next = PF_RW(pfp, block->next);
 
 		if (block_end >= offset)
 			offset = block_end; /* seek to the end of block */
@@ -118,8 +118,8 @@ lseek_seek_hole(struct pmemfile_vinode *vinode, pmemfile_off_t offset,
  * Expects the vinode to be locked while being called.
  */
 static pmemfile_off_t
-lseek_seek_data_or_hole(struct pmemfile_vinode *vinode, pmemfile_off_t offset,
-			int whence)
+lseek_seek_data_or_hole(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+			pmemfile_off_t offset, int whence)
 {
 	pmemfile_ssize_t fsize = (pmemfile_ssize_t)vinode->inode->size;
 
@@ -139,10 +139,10 @@ lseek_seek_data_or_hole(struct pmemfile_vinode *vinode, pmemfile_off_t offset,
 		offset = 0;
 
 	if (whence == PMEMFILE_SEEK_DATA) {
-		offset = lseek_seek_data(vinode, offset, fsize);
+		offset = lseek_seek_data(pfp, vinode, offset, fsize);
 	} else {
 		ASSERT(whence == PMEMFILE_SEEK_HOLE);
-		offset = lseek_seek_hole(vinode, offset, fsize);
+		offset = lseek_seek_hole(pfp, vinode, offset, fsize);
 	}
 
 	if (offset > fsize)
@@ -158,8 +158,6 @@ static pmemfile_off_t
 pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t offset,
 		int whence)
 {
-	(void) pfp;
-
 	LOG(LDBG, "file %p offset %ld whence %d", file, offset, whence);
 
 	if (file->flags & PFILE_PATH) {
@@ -232,7 +230,8 @@ pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t offset,
 			 * take vinode lock in write mode.
 			 */
 			os_rwlock_wrlock(&vinode->rwlock);
-			ret = lseek_seek_data_or_hole(vinode, offset, whence);
+			ret = lseek_seek_data_or_hole(pfp, vinode, offset,
+				whence);
 			if (ret < 0) {
 				new_errno = (int)-ret;
 				ret = -1;

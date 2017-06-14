@@ -43,6 +43,12 @@
 
 #include "compiler_utils.h"
 
+#define LSUP 1  /* unsupported feature */
+#define LUSR 2  /* user error */
+#define LINF 3  /* information */
+#define LDBG 4  /* debug info */
+#define LTRC 10 /* traces, very verbose */
+
 /*
  * Suppress errors which are after appropriate ASSERT* macro for nondebug
  * builds.

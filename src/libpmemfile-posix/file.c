@@ -39,7 +39,6 @@
 #include "callbacks.h"
 #include "dir.h"
 #include "file.h"
-#include "internal.h"
 #include "libpmemfile-posix.h"
 #include "out.h"
 #include "pool.h"
@@ -387,7 +386,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 			else
 				inode_add_dirent(pfp, vparent->tinode,
 					info.remaining, namelen, tinode,
-					D_RO(tinode)->ctime);
+					PF_RO(pfp, tinode)->ctime);
 		} TX_ONABORT {
 			error = errno;
 		} TX_END

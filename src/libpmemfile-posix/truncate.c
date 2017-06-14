@@ -40,7 +40,6 @@
 #include "data.h"
 #include "dir.h"
 #include "file.h"
-#include "internal.h"
 #include "libpmemfile-posix.h"
 #include "out.h"
 #include "pool.h"
@@ -61,7 +60,7 @@ vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	ASSERT_NOT_IN_TX();
 
 	if (vinode->blocks == NULL) {
-		int err = vinode_rebuild_block_tree(vinode);
+		int err = vinode_rebuild_block_tree(pfp, vinode);
 		if (err)
 			return err;
 	}
@@ -76,7 +75,7 @@ vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		 * Setting all the next and prev fields is pointless, when all
 		 * the blocks are removed.
 		 */
-		vinode_remove_interval(vinode, size, UINT64_MAX - size);
+		vinode_remove_interval(pfp, vinode, size, UINT64_MAX - size);
 		if (inode->size < size)
 			vinode_allocate_interval(pfp, vinode,
 			    inode->size, size - inode->size);

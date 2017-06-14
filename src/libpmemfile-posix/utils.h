@@ -35,9 +35,54 @@
 
 #include "inode.h"
 #include "layout.h"
+#include "libpmemfile-posix.h"
 
 #define ASSERT_IN_TX() ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK)
 #define ASSERT_NOT_IN_TX() ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE)
+
+static inline pf_noreturn void
+pmemfile_tx_abort(int err)
+{
+	pmemobj_tx_abort(err);
+	__builtin_unreachable();
+}
+
+/*
+ * The size of data allocated for each block is a positive integer multiple
+ * of BLOCK_ALIGNMENT.
+ *
+ * XXX: The current code can read from / write to blocks with any positive size,
+ * any offset alignment, so this information doesn't necessarily have to be
+ * part of the on-media layout.
+ * But later the code might (probably will) depend on this.
+ */
+#define MIN_BLOCK_SIZE ((size_t)0x1000)
+
+#define BLOCK_ALIGNMENT ((size_t)0x1000)
+
+COMPILE_ERROR_ON(MIN_BLOCK_SIZE % BLOCK_ALIGNMENT != 0);
+
+#define MAX_BLOCK_SIZE (UINT32_MAX - (UINT32_MAX % BLOCK_ALIGNMENT))
+
+static inline size_t
+block_rounddown(size_t n)
+{
+	return n & ~(BLOCK_ALIGNMENT - 1);
+}
+
+static inline size_t
+block_roundup(size_t n)
+{
+	return block_rounddown(n + BLOCK_ALIGNMENT - 1);
+}
+
+void *pmemfile_direct(PMEMfilepool *pfp, PMEMoid oid);
+
+#define PF_RW(pfp, o) (\
+{__typeof__(o) _o; _o._type = NULL; (void)_o;\
+(__typeof__(*(o)._type) *)pmemfile_direct(pfp, (o).oid); })
+#define PF_RO(pfp, o) \
+	((const __typeof__(*(o)._type) *)pmemfile_direct(pfp, (o).oid))
 
 void get_current_time(struct pmemfile_time *t);
 

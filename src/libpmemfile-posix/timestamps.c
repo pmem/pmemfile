@@ -34,7 +34,7 @@
  * timestamps.c -- pmemfile_*utime* implementation
  */
 
-#include "internal.h"
+#include <errno.h>
 #include "libpmemfile-posix.h"
 #include "out.h"
 

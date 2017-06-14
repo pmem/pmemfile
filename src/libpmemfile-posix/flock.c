@@ -34,7 +34,7 @@
  * flock.c -- pmemfile_flock implementation
  */
 
-#include "internal.h"
+#include <errno.h>
 #include "libpmemfile-posix.h"
 #include "out.h"
 

@@ -38,7 +38,6 @@
 
 #include "callbacks.h"
 #include "dir.h"
-#include "internal.h"
 #include "libpmemfile-posix.h"
 #include "out.h"
 #include "pool.h"
@@ -64,11 +63,11 @@ vinode_unlink_file(PMEMfilepool *pfp,
 	ASSERT_IN_TX();
 
 	TOID(struct pmemfile_inode) tinode = dirent->inode;
-	struct pmemfile_inode *inode = D_RW(tinode);
+	struct pmemfile_inode *inode = PF_RW(pfp, tinode);
 
 	ASSERT(inode->nlink > 0);
 
-	TX_ADD_FIELD(tinode, nlink);
+	TX_ADD_DIRECT(&inode->nlink);
 	/*
 	 * Snapshot inode and the first byte of a name (because we are going
 	 * to overwrite just one byte) using one call.

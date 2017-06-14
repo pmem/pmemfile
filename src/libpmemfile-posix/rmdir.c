@@ -37,7 +37,6 @@
 #include "callbacks.h"
 #include "creds.h"
 #include "dir.h"
-#include "internal.h"
 #include "libpmemfile-posix.h"
 #include "out.h"
 #include "pool.h"
@@ -81,7 +80,7 @@ vinode_unlink_dir(PMEMfilepool *pfp,
 		}
 	}
 
-	ddir = D_RW(ddir->next);
+	ddir = PF_RW(pfp, ddir->next);
 	while (ddir) {
 		for (uint32_t i = 0; i < ddir->num_elements; ++i) {
 			struct pmemfile_dirent *d = &ddir->dirents[i];
@@ -92,7 +91,7 @@ vinode_unlink_dir(PMEMfilepool *pfp,
 			}
 		}
 
-		ddir = D_RW(ddir->next);
+		ddir = PF_RW(pfp, ddir->next);
 	}
 
 	pmemobj_tx_add_range_direct(dirdot, sizeof(dirdot->inode) + 1);

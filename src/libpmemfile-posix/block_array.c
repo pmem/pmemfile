@@ -275,15 +275,21 @@ last_used_block(struct pmemfile_vinode *vinode)
  * Note: does not deallocate the block metadata, only unlinks it.
  */
 static void
-unlink_block(struct pmemfile_block_desc *block)
+unlink_block(PMEMfilepool *pfp, struct pmemfile_block_desc *block)
 {
 	ASSERT_IN_TX();
 
-	if (!TOID_IS_NULL(block->prev))
-		TX_SET(block->prev, next, block->next);
+	if (!TOID_IS_NULL(block->prev)) {
+		struct pmemfile_block_desc *prev = PF_RW(pfp, block->prev);
+		ASSERTne(prev, NULL);
+		TX_SET_DIRECT(prev, next, block->next);
+	}
 
-	if (!TOID_IS_NULL(block->next))
-		TX_SET(block->next, prev, block->prev);
+	if (!TOID_IS_NULL(block->next)) {
+		struct pmemfile_block_desc *next = PF_RW(pfp, block->next);
+		ASSERTne(next, NULL);
+		TX_SET_DIRECT(next, prev, block->prev);
+	}
 }
 
 /*
@@ -298,7 +304,8 @@ unlink_block(struct pmemfile_block_desc *block)
  * after this operation.
  */
 static void
-relocate_block(struct pmemfile_block_desc *dst, struct pmemfile_block_desc *src)
+relocate_block(PMEMfilepool *pfp, struct pmemfile_block_desc *dst,
+		struct pmemfile_block_desc *src)
 {
 	ASSERT_IN_TX();
 
@@ -306,11 +313,17 @@ relocate_block(struct pmemfile_block_desc *dst, struct pmemfile_block_desc *src)
 
 	TX_ADD_DIRECT(dst);
 
-	if (!TOID_IS_NULL(src->prev))
-		TX_SET(src->prev, next, blockp_as_oid(dst));
+	if (!TOID_IS_NULL(src->prev)) {
+		struct pmemfile_block_desc *prev = PF_RW(pfp, src->prev);
+		ASSERTne(prev, NULL);
+		TX_SET_DIRECT(prev, next, blockp_as_oid(dst));
+	}
 
-	if (!TOID_IS_NULL(src->next))
-		TX_SET(src->next, prev, blockp_as_oid(dst));
+	if (!TOID_IS_NULL(src->next)) {
+		struct pmemfile_block_desc *next = PF_RW(pfp, src->next);
+		ASSERTne(next, NULL);
+		TX_SET_DIRECT(next, prev, blockp_as_oid(dst));
+	}
 
 	TX_MEMCPY(dst, src, sizeof(*src));
 }
@@ -435,7 +448,7 @@ block_list_remove(PMEMfilepool *pfp,
 
 	struct pmemfile_block_desc *moving_block = last_used_block(vinode);
 
-	unlink_block(block);
+	unlink_block(pfp, block);
 
 	prev = PF_RW(pfp, block->prev);
 
@@ -452,7 +465,7 @@ block_list_remove(PMEMfilepool *pfp,
 		if (vinode->first_block == moving_block)
 			vinode->first_block = block;
 		ctree_remove(vinode->blocks, moving_block->offset, 1);
-		relocate_block(block, moving_block);
+		relocate_block(pfp, block, moving_block);
 		if (ctree_insert(vinode->blocks, block->offset,
 		    (uint64_t)block))
 			pmemfile_tx_abort(errno);

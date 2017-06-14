@@ -67,7 +67,7 @@ vinode_unlink_file(PMEMfilepool *pfp,
 
 	ASSERT(inode->nlink > 0);
 
-	TX_ADD_FIELD(tinode, nlink);
+	TX_ADD_DIRECT(&inode->nlink);
 	/*
 	 * Snapshot inode and the first byte of a name (because we are going
 	 * to overwrite just one byte) using one call.

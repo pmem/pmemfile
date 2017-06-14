@@ -75,7 +75,7 @@ vinode_unlink_file(PMEMfilepool *pfp,
 	pmemobj_tx_add_range_direct(dirent, sizeof(dirent->inode) + 1);
 
 	struct pmemfile_time tm;
-	get_current_time(&tm);
+	tx_get_current_time(&tm);
 
 	if (--inode->nlink > 0) {
 		/*

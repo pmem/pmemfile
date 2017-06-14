@@ -84,7 +84,8 @@ void *pmemfile_direct(PMEMfilepool *pfp, PMEMoid oid);
 #define PF_RO(pfp, o) \
 	((const __typeof__(*(o)._type) *)pmemfile_direct(pfp, (o).oid))
 
-void get_current_time(struct pmemfile_time *t);
+int get_current_time(struct pmemfile_time *t);
+void tx_get_current_time(struct pmemfile_time *t);
 
 bool is_zeroed(const void *addr, size_t len);
 

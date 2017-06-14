@@ -212,7 +212,7 @@ vinode_rename(PMEMfilepool *pfp,
 		}
 
 		struct pmemfile_time t;
-		get_current_time(&t);
+		tx_get_current_time(&t);
 
 		if (src->parent == dst->parent) {
 			/* optimized rename */

@@ -101,7 +101,7 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 			pmemfile_tx_abort(EACCES);
 
 		struct pmemfile_time t;
-		get_current_time(&t);
+		tx_get_current_time(&t);
 		inode_add_dirent(pfp, dst.parent->tinode, dst.remaining,
 				dst_namelen, src_vinode->tinode, t);
 	} TX_ONABORT {

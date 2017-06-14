@@ -115,7 +115,7 @@ vinode_unlink_dir(PMEMfilepool *pfp,
 	iparent->nlink--;
 
 	struct pmemfile_time tm;
-	get_current_time(&tm);
+	tx_get_current_time(&tm);
 
 	/*
 	 * From "stat" man page:

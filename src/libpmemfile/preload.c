@@ -61,6 +61,7 @@
 #include <stdio.h>
 #include <limits.h>
 #include <linux/fs.h>
+#include <utime.h>
 
 #include <asm-generic/errno.h>
 
@@ -1167,7 +1168,100 @@ hook_futimesat(struct fd_desc at, const char *path,
 		return syscall_no_intercept(SYS_futimesat,
 		    where.at.kernel_fd, where.path, times);
 
-	return check_errno(-ENOTSUP, SYS_futimesat);
+	int r = pmemfile_futimesat(where.at.pmem_fda.pool->pool,
+			where.at.pmem_fda.file, where.path, times);
+
+	if (r != 0)
+		r = -errno;
+
+	if (times) {
+		log_write(
+			"pmemfile_futimesat(%p, %p, \"%s\", [%ld,%ld,%ld,%ld]) = %d",
+		    (void *)where.at.pmem_fda.pool->pool,
+		    (void *)where.at.pmem_fda.file, where.path, times[0].tv_sec,
+		    times[0].tv_usec, times[1].tv_sec, times[1].tv_usec, r);
+	} else {
+		log_write("pmemfile_futimesat(%p, %p, \"%s\", NULL) = %d",
+		    (void *)where.at.pmem_fda.pool->pool,
+		    (void *)where.at.pmem_fda.file, where.path, r);
+	}
+
+	return check_errno(r, SYS_futimesat);
+}
+
+static long
+utimensat_helper(int sc, struct fd_desc at, const char *path,
+		const struct timespec times[2], int flags)
+{
+	struct resolved_path where;
+
+	int follow = (flags & AT_SYMLINK_NOFOLLOW) ?
+			NO_RESOLVE_LAST_SLINK : RESOLVE_LAST_SLINK;
+	resolve_path(at, path, &where, follow);
+
+	if (where.error_code != 0)
+		return where.error_code;
+
+	if (is_fda_null(&where.at.pmem_fda)) {
+		return syscall_no_intercept(SYS_utimensat,
+		    where.at.kernel_fd, where.path, times, flags);
+	}
+
+	int r = pmemfile_utimensat(where.at.pmem_fda.pool->pool,
+			where.at.pmem_fda.file, where.path, times, flags);
+
+	if (r != 0)
+		r = -errno;
+
+	if (times) {
+		log_write(
+			"pmemfile_utimensat(%p, %p, \"%s\", [%ld,%ld,%ld,%ld], %d) = %d",
+		    (void *)where.at.pmem_fda.pool->pool,
+		    (void *)where.at.pmem_fda.file, where.path, times[0].tv_sec,
+		    times[0].tv_nsec, times[1].tv_sec, times[1].tv_nsec, flags,
+		    r);
+	} else {
+		log_write("pmemfile_utimensat(%p, %p, \"%s\", NULL, %d) = %d",
+		    (void *)where.at.pmem_fda.pool->pool,
+		    (void *)where.at.pmem_fda.file,
+		    where.path, flags, r);
+
+	}
+
+	return check_errno(r, sc);
+}
+
+static long
+hook_utime(const char *path, const struct utimbuf *times)
+{
+	struct timespec timespec[2];
+
+	timespec[0].tv_sec = times->actime;
+	timespec[0].tv_nsec = 0;
+	timespec[1].tv_sec = times->modtime;
+	timespec[1].tv_nsec = 0;
+
+	return utimensat_helper(SYS_utime, cwd_desc(), path, timespec, 0);
+}
+
+static long
+hook_utimes(const char *path, const struct timeval times[2])
+{
+	struct timespec timespec[2];
+
+	timespec[0].tv_sec = times[0].tv_sec;
+	timespec[0].tv_nsec = times[0].tv_usec * 1000;
+	timespec[1].tv_sec = times[1].tv_sec;
+	timespec[1].tv_nsec = times[1].tv_usec * 1000;
+
+	return utimensat_helper(SYS_utimes, cwd_desc(), path, timespec, 0);
+}
+
+static long
+hook_utimensat(struct fd_desc at, const char *path,
+		const struct timespec times[2], int flags)
+{
+	return utimensat_helper(SYS_utimensat, at, path, times, flags);
 }
 
 static long
@@ -1480,8 +1574,6 @@ dispatch_syscall(long syscall_number,
 	case SYS_chroot:
 	case SYS_listxattr:
 	case SYS_removexattr:
-	case SYS_utime:
-	case SYS_utimes:
 		return nosup_syscall_with_path(syscall_number,
 		    arg0, RESOLVE_LAST_SLINK,
 		    arg0, arg1, arg2, arg3, arg4, arg5);
@@ -1508,6 +1600,18 @@ dispatch_syscall(long syscall_number,
 	case SYS_futimesat:
 		return hook_futimesat(fetch_fd(arg0), (const char *)arg1,
 			(const struct timeval *)arg2);
+
+	case SYS_utime:
+		return hook_utime((const char *)arg0,
+				(const struct utimbuf *)arg1);
+
+	case SYS_utimes:
+		return hook_utimes((const char *)arg0,
+				(const struct timeval *)arg1);
+
+	case SYS_utimensat:
+		return hook_utimensat(fetch_fd(arg0), (const char *)arg1,
+				(const struct timespec *)arg2, (int)arg3);
 
 	case SYS_name_to_handle_at:
 		return hook_name_to_handle_at(fetch_fd(arg0),

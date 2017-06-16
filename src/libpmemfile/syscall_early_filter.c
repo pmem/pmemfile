@@ -140,6 +140,11 @@ static struct syscall_early_filter_entry filter_table[] = {
 		.fd_first_arg = true,
 		.fd_rlock = true,
 	},
+	[SYS_futimesat] = {
+		.must_handle = true,
+		.cwd_rlock = true,
+		.fd_rlock = true,
+	},
 	[SYS_getdents64] = {
 		.must_handle = true,
 		.fd_first_arg = true,
@@ -312,6 +317,19 @@ static struct syscall_early_filter_entry filter_table[] = {
 		.must_handle = true,
 		.cwd_rlock = true,
 	},
+	[SYS_utime] = {
+		.must_handle = true,
+		.cwd_rlock = true,
+	},
+	[SYS_utimensat] = {
+		.must_handle = true,
+		.cwd_rlock = true,
+		.fd_rlock = true,
+	},
+	[SYS_utimes] = {
+		.must_handle = true,
+		.cwd_rlock = true,
+	},
 	[SYS_write] = {
 		.must_handle = true,
 		.fd_first_arg = true,
@@ -369,11 +387,6 @@ static struct syscall_early_filter_entry filter_table[] = {
 		.fd_rlock = true,
 		.returns_ENOTSUP = true,
 	},
-	[SYS_futimesat] = {
-		.must_handle = true,
-		.cwd_rlock = true,
-		.fd_rlock = true,
-	},
 	[SYS_listxattr] = {
 		.must_handle = true,
 		.cwd_rlock = true,
@@ -409,17 +422,6 @@ static struct syscall_early_filter_entry filter_table[] = {
 	},
 	[SYS_splice] = {
 		.must_handle = true,
-	},
-	[SYS_utimensat] = {
-		.must_handle = true,
-	},
-	[SYS_utimes] = {
-		.must_handle = true,
-		.cwd_rlock = true,
-	},
-	[SYS_utime] = {
-		.must_handle = true,
-		.cwd_rlock = true,
 	},
 };
 

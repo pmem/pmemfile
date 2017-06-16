@@ -279,14 +279,14 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 		PMEMFILE_RENAME_NOREPLACE | PMEMFILE_RENAME_WHITEOUT))
 
 	if (flags & ~PMEMFILE_RENAME_KNOWN_FLAGS) {
-		LOG(LSUP, "unknown flag %u",
+		LOG(LUSR, "unknown flag %u",
 				flags & ~PMEMFILE_RENAME_KNOWN_FLAGS);
 		errno = EINVAL;
 		return -1;
 	}
 
 	if (flags & PMEMFILE_RENAME_WHITEOUT) {
-		LOG(LSUP, "RENAME_WHITEOUT is not supported");
+		ERR("RENAME_WHITEOUT is not supported");
 		errno = EINVAL;
 		return -1;
 	}

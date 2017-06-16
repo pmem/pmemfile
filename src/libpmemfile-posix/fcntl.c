@@ -95,15 +95,14 @@ pmemfile_fcntl(PMEMfilepool *pfp, PMEMfile *file, int cmd, ...)
 			if (fd_flags & PMEMFILE_FD_CLOEXEC) {
 				fd_flags &= ~PMEMFILE_FD_CLOEXEC;
 			} else {
-				LOG(LSUP,
-					"clearing FD_CLOEXEC isn't supported");
+				ERR("clearing FD_CLOEXEC isn't supported");
 				errno = EINVAL;
 				return -1;
 			}
 
 
 			if (fd_flags) {
-				LOG(LSUP, "flag %d not supported", fd_flags);
+				ERR("flag %d not supported", fd_flags);
 				errno = EINVAL;
 				return -1;
 			}

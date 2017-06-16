@@ -68,7 +68,7 @@ check_flags(int flags)
 	}
 
 	if (flags & PMEMFILE_O_ASYNC) {
-		LOG(LSUP, "O_ASYNC is not supported");
+		ERR("O_ASYNC is not supported");
 		errno = EINVAL;
 		return -1;
 	}

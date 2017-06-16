@@ -70,7 +70,9 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 		src_vinode = vinode_ref(pfp, olddir);
 	} else {
 		src_vinode = resolve_pathat_full(pfp, &cred, olddir, oldpath,
-				&src, 0, flags & PMEMFILE_AT_SYMLINK_FOLLOW);
+				&src, 0, flags & PMEMFILE_AT_SYMLINK_FOLLOW ?
+						RESOLVE_LAST_SYMLINK :
+						NO_RESOLVE_LAST_SYMLINK);
 		if (src.error) {
 			error = src.error;
 			goto end;

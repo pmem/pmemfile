@@ -108,8 +108,8 @@ _pmemfile_fchmodat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	int error = 0;
 	struct pmemfile_path_info info;
-	struct pmemfile_vinode *vinode =
-		resolve_pathat_full(pfp, &cred, dir, path, &info, 0, true);
+	struct pmemfile_vinode *vinode = resolve_pathat_full(pfp, &cred, dir,
+			path, &info, 0, RESOLVE_LAST_SYMLINK);
 
 	if (info.error) {
 		error = info.error;

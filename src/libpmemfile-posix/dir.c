@@ -514,7 +514,7 @@ struct pmemfile_vinode *
 resolve_pathat_full(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *parent, const char *path,
 		struct pmemfile_path_info *path_info, int flags,
-		bool resolve_last_symlink)
+		enum symlink_resolve last_symlink)
 {
 	ASSERT_NOT_IN_TX();
 
@@ -545,7 +545,7 @@ resolve_pathat_full(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 			}
 
 			if (vinode && vinode_is_symlink(vinode) &&
-					resolve_last_symlink) {
+					last_symlink == RESOLVE_LAST_SYMLINK) {
 				resolve_symlink(pfp, cred, vinode, path_info);
 				path_info_changed = true;
 			}

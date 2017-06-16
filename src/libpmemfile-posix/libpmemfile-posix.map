@@ -61,6 +61,7 @@
 		pmemfile_ftruncate;
 		pmemfile_futimens;
 		pmemfile_futimes;
+		pmemfile_futimesat;
 		pmemfile_getcwd;
 		pmemfile_getdents;
 		pmemfile_getdents64;

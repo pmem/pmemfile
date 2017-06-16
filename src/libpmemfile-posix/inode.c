@@ -55,8 +55,8 @@ log_leak(uint64_t key, void *value)
 #ifdef DEBUG
 	(void) key;
 	struct pmemfile_vinode *vinode = value;
-	LOG(LDBG, "inode reference leak %s", vinode->path ? vinode->path :
-				"unknown path");
+	ERR("inode reference leak %s",
+			vinode->path ? vinode->path : "unknown path");
 #else
 	(void) key;
 	(void) value;

@@ -174,10 +174,10 @@ out_init(const char *log_prefix, const char *log_level_var,
 		setvbuf(Out_fp, NULL, _IOLBF, 0);
 
 #ifdef DEBUG
-	LOG(1, "pid %d: program: %s", os_getpid(), os_getexecname());
+	LOG(LDBG, "pid %d: program: %s", os_getpid(), os_getexecname());
 #endif
-	LOG(1, "%s version %d.%d", log_prefix, major_version, minor_version);
-	LOG(1, "src version %s", nvml_src_version);
+	LOG(LDBG, "%s version %d.%d", log_prefix, major_version, minor_version);
+	LOG(LDBG, "src version %s", nvml_src_version);
 #ifdef USE_VG_PMEMCHECK
 	/*
 	 * Attribute "used" to prevent compiler from optimizing out the variable
@@ -185,22 +185,22 @@ out_init(const char *log_prefix, const char *log_level_var,
 	 */
 	static pf_used_var const char *pmemcheck_msg =
 			"compiled with support for Valgrind pmemcheck";
-	LOG(1, "%s", pmemcheck_msg);
+	LOG(LDBG, "%s", pmemcheck_msg);
 #endif /* USE_VG_PMEMCHECK */
 #ifdef USE_VG_HELGRIND
 	static pf_used_var const char *helgrind_msg =
 			"compiled with support for Valgrind helgrind";
-	LOG(1, "%s", helgrind_msg);
+	LOG(LDBG, "%s", helgrind_msg);
 #endif /* USE_VG_HELGRIND */
 #ifdef USE_VG_MEMCHECK
 	static pf_used_var const char *memcheck_msg =
 			"compiled with support for Valgrind memcheck";
-	LOG(1, "%s", memcheck_msg);
+	LOG(LDBG, "%s", memcheck_msg);
 #endif /* USE_VG_MEMCHECK */
 #ifdef USE_VG_DRD
 	static pf_used_var const char *drd_msg =
 			"compiled with support for Valgrind drd";
-	LOG(1, "%s", drd_msg);
+	LOG(LDBG, "%s", drd_msg);
 #endif /* USE_VG_DRD */
 
 	Last_errormsg_key_alloc();

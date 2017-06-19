@@ -833,8 +833,9 @@ TEST_F(rw, fallocate)
 	/* But first make sure it is not allowed without the KEEP_SIZE flag */
 	r = pmemfile_fallocate(pfp, f, PMEMFILE_FALLOC_FL_PUNCH_HOLE, 0x0007,
 			       0x4123);
+
 	ASSERT_EQ(r, -1);
-	ASSERT_EQ(errno, EINVAL);
+	ASSERT_EQ(errno, EOPNOTSUPP);
 
 	r = pmemfile_fallocate(pfp, f, PMEMFILE_FALLOC_FL_PUNCH_HOLE |
 				       PMEMFILE_FALLOC_FL_KEEP_SIZE,

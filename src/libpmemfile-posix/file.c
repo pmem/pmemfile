@@ -199,6 +199,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		mode = va_arg(ap, pmemfile_mode_t);
 		LOG(LDBG, "mode %o", mode);
 		mode &= PMEMFILE_ALLPERMS;
+		mode &= ~pfp->umask;
 	}
 	va_end(ap);
 
@@ -690,7 +691,9 @@ pmemfile_dup2(PMEMfilepool *pfp, PMEMfile *file, PMEMfile *file2)
 pmemfile_mode_t
 pmemfile_umask(PMEMfilepool *pfp, pmemfile_mode_t mask)
 {
-	(void) mask;
+	mode_t prev_umask = pfp->umask;
 
-	return 0;
+	pfp->umask = mask;
+
+	return prev_umask;
 }

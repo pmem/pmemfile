@@ -57,108 +57,87 @@ static struct syscall_early_filter_entry filter_table[] = {
 	},
 	[SYS_close] = {
 		.must_handle = true,
-		.fd_first_arg = true,
-		.fd_wlock = true,
 	},
 	[SYS_creat] = {
 		.must_handle = true,
 		.cwd_rlock = true,
-		.fd_wlock = true,
 	},
 	[SYS_faccessat] = {
 		.must_handle = true,
 		.cwd_rlock = true,
-		.fd_rlock = true,
 	},
 	[SYS_fadvise64] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 		.returns_zero = true,
 	},
 	[SYS_fallocate] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 	},
 	[SYS_fchmodat] = {
 		.must_handle = true,
 		.cwd_rlock = true,
-		.fd_rlock = true,
 	},
 	[SYS_fchmod] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 	},
 	[SYS_fchownat] = {
 		.must_handle = true,
 		.cwd_rlock = true,
-		.fd_rlock = true,
 	},
 	[SYS_fchown] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 	},
 	[SYS_fcntl] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 	},
 	[SYS_fdatasync] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 		.returns_zero = true,
 	},
 	[SYS_fgetxattr] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 		.returns_zero = true,
 	},
 	[SYS_flock] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 	},
 	[SYS_fsetxattr] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 		.returns_ENOTSUP = true,
 	},
 	[SYS_fstat] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 	},
 	[SYS_fsync] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 		.returns_zero = true,
 	},
 	[SYS_ftruncate] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 	},
 	[SYS_futimesat] = {
 		.must_handle = true,
 		.cwd_rlock = true,
-		.fd_rlock = true,
 	},
 	[SYS_getdents64] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 	},
 	[SYS_getdents] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 	},
 	[SYS_getxattr] = {
 		.must_handle = true,
@@ -174,7 +153,6 @@ static struct syscall_early_filter_entry filter_table[] = {
 	},
 	[SYS_linkat] = {
 		.must_handle = true,
-		.fd_rlock = true,
 		.cwd_rlock = true,
 	},
 	[SYS_link] = {
@@ -184,7 +162,6 @@ static struct syscall_early_filter_entry filter_table[] = {
 	[SYS_lseek] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 	},
 	[SYS_lsetxattr] = {
 		.must_handle = true,
@@ -197,7 +174,6 @@ static struct syscall_early_filter_entry filter_table[] = {
 	[SYS_mkdirat] = {
 		.must_handle = true,
 		.cwd_rlock = true,
-		.fd_rlock = true,
 	},
 	[SYS_mkdir] = {
 		.must_handle = true,
@@ -214,57 +190,46 @@ static struct syscall_early_filter_entry filter_table[] = {
 	[SYS_newfstatat] = {
 		.must_handle = true,
 		.cwd_rlock = true,
-		.fd_rlock = true,
 	},
 	[SYS_openat] = {
 		.must_handle = true,
 		.cwd_rlock = true,
-		.fd_wlock = true,
 	},
 	[SYS_open] = {
 		.must_handle = true,
 		.cwd_rlock = true,
-		.fd_wlock = true,
 	},
 	[SYS_pread64] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 	},
 	[SYS_preadv] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 	},
 	[SYS_preadv2] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 	},
 	[SYS_pwrite64] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 	},
 	[SYS_pwritev] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 	},
 	[SYS_pwritev2] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 	},
 	[SYS_read] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 	},
 	[SYS_readlinkat] = {
 		.must_handle = true,
 		.cwd_rlock = true,
-		.fd_rlock = true,
 	},
 	[SYS_readlink] = {
 		.must_handle = true,
@@ -273,17 +238,14 @@ static struct syscall_early_filter_entry filter_table[] = {
 	[SYS_readv] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 	},
 	[SYS_renameat2] = {
 		.must_handle = true,
 		.cwd_rlock = true,
-		.fd_rlock = true,
 	},
 	[SYS_renameat] = {
 		.must_handle = true,
 		.cwd_rlock = true,
-		.fd_rlock = true,
 	},
 	[SYS_rename] = {
 		.must_handle = true,
@@ -331,7 +293,6 @@ static struct syscall_early_filter_entry filter_table[] = {
 	[SYS_symlinkat] = {
 		.must_handle = true,
 		.cwd_rlock = true,
-		.fd_rlock = true,
 	},
 	[SYS_symlink] = {
 		.must_handle = true,
@@ -341,7 +302,6 @@ static struct syscall_early_filter_entry filter_table[] = {
 		.must_handle = true,
 		.fd_first_arg = true,
 		.cwd_rlock = true,
-		.fd_rlock = true,
 		.returns_zero = true,
 	},
 	[SYS_truncate] = {
@@ -354,7 +314,6 @@ static struct syscall_early_filter_entry filter_table[] = {
 	[SYS_unlinkat] = {
 		.must_handle = true,
 		.cwd_rlock = true,
-		.fd_rlock = true,
 	},
 	[SYS_unlink] = {
 		.must_handle = true,
@@ -367,7 +326,6 @@ static struct syscall_early_filter_entry filter_table[] = {
 	[SYS_utimensat] = {
 		.must_handle = true,
 		.cwd_rlock = true,
-		.fd_rlock = true,
 	},
 	[SYS_utimes] = {
 		.must_handle = true,
@@ -376,12 +334,10 @@ static struct syscall_early_filter_entry filter_table[] = {
 	[SYS_write] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 	},
 	[SYS_writev] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 	},
 
 	/* Syscalls not handled yet */
@@ -395,19 +351,16 @@ static struct syscall_early_filter_entry filter_table[] = {
 	[SYS_dup2] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 		.returns_ENOTSUP = true,
 	},
 	[SYS_dup3] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 		.returns_ENOTSUP = true,
 	},
 	[SYS_dup] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 		.returns_ENOTSUP = true,
 	},
 	[SYS_execveat] = {
@@ -421,13 +374,11 @@ static struct syscall_early_filter_entry filter_table[] = {
 	[SYS_flistxattr] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 		.returns_ENOTSUP = true,
 	},
 	[SYS_fremovexattr] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 		.returns_ENOTSUP = true,
 	},
 	[SYS_listxattr] = {
@@ -444,7 +395,6 @@ static struct syscall_early_filter_entry filter_table[] = {
 	},
 	[SYS_mmap] = {
 		.must_handle = true,
-		.fd_rlock = true,
 	},
 	[SYS_name_to_handle_at] = {
 		.must_handle = true,
@@ -452,7 +402,6 @@ static struct syscall_early_filter_entry filter_table[] = {
 	[SYS_readahead] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.fd_rlock = true,
 		.returns_ENOTSUP = true,
 	},
 	[SYS_removexattr] = {
@@ -461,22 +410,11 @@ static struct syscall_early_filter_entry filter_table[] = {
 	},
 	[SYS_sendfile] = {
 		.must_handle = true,
-		.fd_rlock = true,
 	},
 	[SYS_splice] = {
 		.must_handle = true,
 	},
 };
-
-void
-syscall_early_filter_init(void)
-{
-	const char *e = getenv("LIBPMEMFILE__EXPERIMENTAL_AVOID_FD_RLOCKS");
-	if (e != NULL && e[0] != '0') {
-		for (size_t i = 0; i < ARRAY_SIZE(filter_table); ++i)
-			filter_table[i].fd_rlock = false;
-	}
-}
 
 struct syscall_early_filter_entry
 get_early_filter_entry(long syscall_number)

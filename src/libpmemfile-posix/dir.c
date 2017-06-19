@@ -228,6 +228,14 @@ inode_add_dirent(PMEMfilepool *pfp,
 	 * or deletion of files in that directory."
 	 */
 	TX_SET_DIRECT(parent, mtime, tm);
+
+	/*
+	 * From "open" man page:
+	 * "If the file is newly created, its st_atime, st_ctime, st_mtime
+	 * fields (...) are set to the current time, and so are the st_ctime
+	 * and st_mtime fields of the parent directory."
+	 */
+	TX_SET_DIRECT(parent, ctime, tm);
 }
 
 /*

@@ -71,8 +71,13 @@ vinode_chmod(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 				!(cap & (1 << PMEMFILE_CAP_FOWNER)))
 			pmemfile_tx_abort(EPERM);
 
-		TX_ADD_DIRECT(&inode->flags);
+		struct pmemfile_time tm;
+		tx_get_current_time(&tm);
 
+		TX_ADD_DIRECT(&inode->ctime);
+		inode->ctime = tm;
+
+		TX_ADD_DIRECT(&inode->flags);
 		inode->flags = (inode->flags & ~(uint64_t)PMEMFILE_ALLPERMS)
 				| mode;
 	} TX_ONABORT {

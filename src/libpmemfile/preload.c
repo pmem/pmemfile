@@ -61,6 +61,7 @@
 #include <stdio.h>
 #include <limits.h>
 #include <linux/fs.h>
+#include <sys/fsuid.h>
 
 #include <asm-generic/errno.h>
 
@@ -1550,6 +1551,7 @@ static void
 open_new_pool_under_lock(struct pool_description *p)
 {
 	PMEMfilepool *pfp;
+	int oerrno;
 
 	if (p->pool != NULL)
 		return; /* already open */
@@ -1557,14 +1559,53 @@ open_new_pool_under_lock(struct pool_description *p)
 	if ((pfp = pmemfile_pool_open(p->poolfile_path)) == NULL)
 		return; /* failed to open */
 
-	if (pmemfile_stat(pfp, "/", &p->pmem_stat) != 0) {
-		int oerrno = errno;
-		pmemfile_pool_close(pfp);
-		errno = oerrno;
-		return; /* stat failed */
+	if (pmemfile_setreuid(pfp, getuid(), geteuid()))
+		goto err;
+
+	uid_t fsuid = (uid_t)setfsuid(geteuid());
+	setfsuid(fsuid);
+	if (pmemfile_setfsuid(pfp, fsuid) < 0)
+		goto err;
+
+	if (pmemfile_setregid(pfp, getgid(), getegid()))
+		goto err;
+
+	gid_t fsgid = (gid_t)setfsgid(getegid());
+	setfsgid(fsgid);
+	if (pmemfile_setfsgid(pfp, fsgid) < 0)
+		goto err;
+
+	int gnum = getgroups(0, NULL);
+	if (gnum > 0) {
+		gid_t *groups = malloc((unsigned)gnum * sizeof(*groups));
+		if (!groups)
+			goto err;
+
+		if (getgroups(gnum, groups) != gnum) {
+			free(groups);
+			goto err;
+		}
+
+		if (pmemfile_setgroups(pfp, (unsigned)gnum, groups)) {
+			free(groups);
+			goto err;
+		}
+
+		free(groups);
+	} else if (gnum < 0) {
+		goto err;
 	}
 
+	if (pmemfile_stat(pfp, "/", &p->pmem_stat) != 0)
+		goto err;
+
 	__atomic_store_n(&p->pool, pfp, __ATOMIC_RELEASE);
+	return;
+
+err:
+	oerrno = errno;
+	pmemfile_pool_close(pfp);
+	errno = oerrno;
 }
 
 static void

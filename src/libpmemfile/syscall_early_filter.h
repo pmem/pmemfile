@@ -56,10 +56,6 @@ struct syscall_early_filter_entry {
 	/* Might this be pmemfile related, or can this syscall be ignored? */
 	bool must_handle;
 
-	/* Flags to signal the need for locking the fd association table. */
-	bool fd_rlock;
-	bool fd_wlock;
-
 	/*
 	 * In the case some syscalls, an argument containing a path must
 	 * be parsed. The cwd_rlock flag signals the need for locking (for
@@ -78,6 +74,9 @@ struct syscall_early_filter_entry {
 	 * as their first argument. This allows libpmemfile to easily isolate
 	 * the process of checking the first argument, and making a decision
 	 * based on that fd being associated with pmemfile-posix or not.
+	 * This is used to fetch pmemfile pointer and pass it to syscall
+	 * instead of fd. One exception is close which must get fd so flag
+	 * is not set for that syscall.
 	 * Some obvious examples: read, write, fstat, etc...
 	 *
 	 * But:
@@ -125,12 +124,6 @@ struct syscall_early_filter_entry {
 	 */
 	bool returns_ENOTSUP;
 };
-
-/*
- * syscall_early_filter_init -- must be called before any call
- * to get_early_filter_entry.
- */
-void syscall_early_filter_init(void);
 
 /*
  * get_early_filter_entry -- returns a filter entry with flags corresponging

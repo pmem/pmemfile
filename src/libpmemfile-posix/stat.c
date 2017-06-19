@@ -190,7 +190,7 @@ pmemfile_fstatat(PMEMfilepool *pfp, PMEMfile *dir, const char *path,
 	}
 
 	if (!path) {
-		errno = ENOENT;
+		errno = EFAULT;
 		return -1;
 	}
 

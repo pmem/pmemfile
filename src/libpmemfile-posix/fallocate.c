@@ -154,7 +154,7 @@ fallocate_check_arguments(int mode, pmemfile_off_t offset,
 		 */
 		if (mode != (PMEMFILE_FALLOC_FL_PUNCH_HOLE |
 				PMEMFILE_FALLOC_FL_KEEP_SIZE))
-			return EINVAL;
+			return EOPNOTSUPP;
 	} else { /* Allocating disk space */
 		/*
 		 * Note: According to 'man 2 fallocate' FALLOC_FL_UNSHARE

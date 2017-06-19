@@ -90,6 +90,9 @@ pmemfile_ssize_t pmemfile_copy_file_range(PMEMfilepool *,
 		PMEMfile *file_out, pmemfile_off_t *off_out,
 		size_t len, unsigned flags);
 
+int pmemfile_mknodat(PMEMfilepool *, PMEMfile *dir, const char *path,
+		pmemfile_mode_t mode, pmemfile_dev_t dev);
+
 /*
  * Other:
  * 	futimesat

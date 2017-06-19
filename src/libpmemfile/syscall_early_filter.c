@@ -193,6 +193,14 @@ static struct syscall_early_filter_entry filter_table[] = {
 		.must_handle = true,
 		.cwd_rlock = true,
 	},
+	[SYS_mknod] = {
+		.must_handle = true,
+		.cwd_rlock = true,
+	},
+	[SYS_mknodat] = {
+		.must_handle = true,
+		.cwd_rlock = true,
+	},
 	[SYS_newfstatat] = {
 		.must_handle = true,
 		.cwd_rlock = true,

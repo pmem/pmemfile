@@ -1255,6 +1255,33 @@ hook_mmap(long arg0, long arg1, long arg2,
 }
 
 static long
+hook_mknodat(struct fd_desc at, const char *path, mode_t mode, dev_t dev)
+{
+	struct resolved_path where;
+
+	resolve_path(at, path, &where, NO_RESOLVE_LAST_SLINK);
+
+	if (where.error_code != 0)
+		return where.error_code;
+
+	if (is_fda_null(&where.at.pmem_fda))
+		return syscall_no_intercept(SYS_mknodat,
+		    where.at.kernel_fd, where.path, mode, dev);
+
+	long r = pmemfile_mknodat(where.at.pmem_fda.pool->pool,
+	    where.at.pmem_fda.file, where.path, (mode_t)mode, (dev_t)dev);
+
+	log_write("pmemfile_mknodat(%p, %p, \"%s\", 0%o, %ld) = %ld",
+	    (void *)where.at.pmem_fda.pool->pool,
+	    (void *)where.at.pmem_fda.file, where.path, mode, dev, r);
+
+	if (r)
+		return check_errno(-errno, SYS_mknodat);
+
+	return 0;
+}
+
+static long
 dispatch_syscall(long syscall_number,
 			long arg0, long arg1,
 			long arg2, long arg3,
@@ -1469,6 +1496,14 @@ dispatch_syscall(long syscall_number,
 
 	case SYS_sendfile:
 		return hook_sendfile(arg0, arg1, (off_t *)arg2, (size_t)arg3);
+
+	case SYS_mknod:
+		return hook_mknodat(cwd_desc(), (const char *)arg0,
+				(mode_t)arg1, (dev_t)arg2);
+
+	case SYS_mknodat:
+		return hook_mknodat(fetch_fd(arg0), (const char *)arg1,
+				(mode_t)arg2, (dev_t)arg3);
 
 	/*
 	 * Some syscalls that have a path argument, but are not ( yet ) handled

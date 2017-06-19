@@ -1,4 +1,4 @@
 total $(N)
-drwxrwxrwx 3 $(N) .
-drwxrwxrwx 3 $(N) ..
-drwxrwxrwx 68 $(N) g
+drwxr-xr-x 3 $(N) .
+drwxr-xr-x 3 $(N) ..
+drwxr-xr-x 68 $(N) g

@@ -1784,6 +1784,10 @@ open_new_pool_under_lock(struct pool_description *p)
 		goto err;
 	}
 
+	mode_t um = umask(0);
+	umask(um);
+	pmemfile_umask(pfp, um);
+
 	if (pmemfile_stat(pfp, "/", &p->pmem_stat) != 0)
 		goto err;
 

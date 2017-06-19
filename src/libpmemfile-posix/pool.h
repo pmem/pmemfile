@@ -49,6 +49,7 @@ struct pmemfilepool {
 
 	/* root directory */
 	struct pmemfile_vinode *root;
+	mode_t umask;
 
 	/* current working directory */
 	struct pmemfile_vinode *cwd;

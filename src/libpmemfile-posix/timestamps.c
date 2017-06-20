@@ -349,26 +349,9 @@ pmemfile_utimensat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 			(flags & PMEMFILE_AT_SYMLINK_NOFOLLOW) ?
 			NO_RESOLVE_LAST_SYMLINK : RESOLVE_LAST_SYMLINK;
 
-	if (!times) {
-		/*
-		 * Linux nonstandard syscall-level feature. Glibc behaves
-		 * differently, but we have to emulate kernel behavior because
-		 * futimens at glibc level is implemented using utimensat with
-		 * NULL pathname. See "C library/ kernel ABI differences"
-		 * section in man utimensat.
-		 */
-		if (pathname == NULL) {
-			if (!dir || dir == PMEMFILE_AT_CWD) {
-				errno = EFAULT;
-				return -1;
-			}
-
-			return vinode_file_time_set(pfp, dir->vinode, NULL,
-					UTIME_MACROS_DISABLED);
-		}
+	if (!times)
 		return pmemfile_file_time_set(pfp, dir, pathname, NULL,
 				last_symlink, UTIME_MACROS_DISABLED);
-	}
 
 	struct pmemfile_time tm[2];
 
@@ -376,17 +359,6 @@ pmemfile_utimensat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 	tm[0].nsec = times[0].tv_nsec;
 	tm[1].sec = times[1].tv_sec;
 	tm[1].nsec = times[1].tv_nsec;
-
-	/* see comment above */
-	if (pathname == NULL) {
-		if (!dir || dir == PMEMFILE_AT_CWD) {
-			errno = EFAULT;
-			return -1;
-		}
-
-		return vinode_file_time_set(pfp, dir->vinode, tm,
-				UTIME_MACROS_ENABLED);
-	}
 
 	return pmemfile_file_time_set(pfp, dir, pathname, tm, last_symlink,
 			UTIME_MACROS_ENABLED);

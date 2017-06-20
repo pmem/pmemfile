@@ -560,29 +560,11 @@ TEST_F(timestamps, utimensat)
 	ASSERT_EQ(pmemfile_utimensat(pfp, d, "file", tm, 0), -1);
 	EXPECT_EQ(errno, EINVAL);
 
-	/* Glibc-kernel mismatch. We implement kernel interface. */
-	ASSERT_EQ(pmemfile_utimensat(pfp, d, NULL, NULL, 0), 0);
-
-	pmemfile_stat_t dst2;
-	memset(&dst2, 0, sizeof(dst2));
-	ASSERT_EQ(pmemfile_stat(pfp, "/d", &dst2), 0);
-
-	ASSERT_GE(dst2.st_atim.tv_sec, dst.st_atim.tv_sec);
-	ASSERT_GE(dst2.st_atim.tv_nsec, 0);
-	ASSERT_LT(dst2.st_atim.tv_nsec, 1000000000);
-	if (dst2.st_atim.tv_sec == dst.st_atim.tv_sec)
-		ASSERT_GT(dst2.st_atim.tv_nsec, dst.st_atim.tv_nsec);
-
-	ASSERT_GE(dst2.st_mtim.tv_sec, dst.st_mtim.tv_sec);
-	ASSERT_GE(dst2.st_mtim.tv_nsec, 0);
-	ASSERT_LT(dst2.st_mtim.tv_nsec, 1000000000);
-	if (dst2.st_mtim.tv_sec == dst.st_mtim.tv_sec)
-		ASSERT_GT(dst2.st_mtim.tv_nsec, dst.st_mtim.tv_nsec);
+	ASSERT_EQ(pmemfile_utimensat(pfp, d, NULL, NULL, 0), -1);
+	EXPECT_EQ(errno, ENOENT);
 
 	tm[0] = {1, 1};
 	tm[1] = {2, 2};
-	ASSERT_EQ(pmemfile_utimensat(pfp, d, NULL, tm, 0), 0);
-
 	ASSERT_EQ(pmemfile_utimensat(pfp, PMEMFILE_AT_CWD, "d/file", tm, 0), 0);
 
 	errno = 0;
@@ -595,11 +577,11 @@ TEST_F(timestamps, utimensat)
 
 	errno = 0;
 	ASSERT_EQ(pmemfile_utimensat(pfp, NULL, NULL, NULL, 0), -1);
-	EXPECT_EQ(errno, EFAULT);
+	EXPECT_EQ(errno, ENOENT);
 
 	errno = 0;
 	ASSERT_EQ(pmemfile_utimensat(pfp, NULL, NULL, tm, 0), -1);
-	EXPECT_EQ(errno, EFAULT);
+	EXPECT_EQ(errno, ENOENT);
 
 	errno = 0;
 	ASSERT_EQ(pmemfile_utimensat(pfp, d, "file", NULL, -1), -1);

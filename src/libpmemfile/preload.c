@@ -1207,25 +1207,68 @@ utimensat_helper(int sc, struct fd_desc at, const char *path,
 		    where.at.kernel_fd, where.path, times, flags);
 	}
 
-	int r = pmemfile_utimensat(where.at.pmem_fda.pool->pool,
-			where.at.pmem_fda.file, where.path, times, flags);
+	int r;
 
-	if (r != 0)
-		r = -errno;
+	/*
+	 * Linux nonstandard syscall-level feature. Glibc behaves differently,
+	 * but we have to emulate kernel behavior because futimens at glibc
+	 * level is implemented using utimensat with NULL pathname. See
+	 * "C library/ kernel ABI differences" section in man utimensat.
+	 */
+	if (path == NULL) {
+		/*
+		 * Currently the only defined flag for utimensat is
+		 * AT_SYMLINK_NOFOLLOW. We have to detect any other flag set
+		 * and return error just in case future kernel will accept some
+		 * new flag.
+		 */
+		if (flags & ~AT_SYMLINK_NOFOLLOW)
+			return -EINVAL;
 
-	if (times) {
-		log_write(
-			"pmemfile_utimensat(%p, %p, \"%s\", [%ld,%ld,%ld,%ld], %d) = %d",
-		    (void *)where.at.pmem_fda.pool->pool,
-		    (void *)where.at.pmem_fda.file, where.path, times[0].tv_sec,
-		    times[0].tv_nsec, times[1].tv_sec, times[1].tv_nsec, flags,
-		    r);
+		r = pmemfile_futimens(where.at.pmem_fda.pool->pool,
+				where.at.pmem_fda.file, times);
+
+		if (r != 0)
+			r = -errno;
+
+		if (times) {
+			log_write(
+				"pmemfile_futimens(%p, %p, [%ld,%ld,%ld,%ld]) = %d",
+			    (void *)where.at.pmem_fda.pool->pool,
+			    (void *)where.at.pmem_fda.file,
+			    times[0].tv_sec, times[0].tv_nsec,
+			    times[1].tv_sec, times[1].tv_nsec, r);
+		} else {
+			log_write(
+				"pmemfile_futimens(%p, %p, NULL) = %d",
+			    (void *)where.at.pmem_fda.pool->pool,
+			    (void *)where.at.pmem_fda.file, r);
+
+		}
+
 	} else {
-		log_write("pmemfile_utimensat(%p, %p, \"%s\", NULL, %d) = %d",
-		    (void *)where.at.pmem_fda.pool->pool,
-		    (void *)where.at.pmem_fda.file,
-		    where.path, flags, r);
+		r = pmemfile_utimensat(where.at.pmem_fda.pool->pool,
+				where.at.pmem_fda.file, where.path, times,
+				flags);
 
+		if (r != 0)
+			r = -errno;
+
+		if (times) {
+			log_write(
+				"pmemfile_utimensat(%p, %p, \"%s\", [%ld,%ld,%ld,%ld], %d) = %d",
+			    (void *)where.at.pmem_fda.pool->pool,
+			    (void *)where.at.pmem_fda.file, where.path,
+			    times[0].tv_sec, times[0].tv_nsec,
+			    times[1].tv_sec, times[1].tv_nsec, flags, r);
+		} else {
+			log_write(
+				"pmemfile_utimensat(%p, %p, \"%s\", NULL, %d) = %d",
+			    (void *)where.at.pmem_fda.pool->pool,
+			    (void *)where.at.pmem_fda.file,
+			    where.path, flags, r);
+
+		}
 	}
 
 	return check_errno(r, sc);
@@ -1235,6 +1278,9 @@ static long
 hook_utime(const char *path, const struct utimbuf *times)
 {
 	struct timespec timespec[2];
+
+	if (path == NULL)
+		return -EFAULT;
 
 	timespec[0].tv_sec = times->actime;
 	timespec[0].tv_nsec = 0;
@@ -1248,6 +1294,9 @@ static long
 hook_utimes(const char *path, const struct timeval times[2])
 {
 	struct timespec timespec[2];
+
+	if (path == NULL)
+		return -EFAULT;
 
 	timespec[0].tv_sec = times[0].tv_sec;
 	timespec[0].tv_nsec = times[0].tv_usec * 1000;

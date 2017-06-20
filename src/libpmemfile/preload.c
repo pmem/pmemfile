@@ -1427,6 +1427,22 @@ hook_setuid(uid_t uid)
 }
 
 static long
+hook_umask(mode_t mask)
+{
+	long ret = syscall_no_intercept(SYS_umask, mask);
+
+	for (int i = 0; i < pool_count; ++i) {
+		struct pool_description *p = pools + i;
+		if (!p->pool)
+			continue;
+		if (pmemfile_umask(p->pool, mask) != ret)
+			FATAL("inconsistent umask state");
+	}
+
+	return ret;
+}
+
+static long
 dispatch_syscall(long syscall_number,
 			long arg0, long arg1,
 			long arg2, long arg3,
@@ -1660,6 +1676,8 @@ dispatch_syscall(long syscall_number,
 		return hook_setreuid((uid_t)arg0, (uid_t)arg1);
 	case SYS_setuid:
 		return hook_setuid((uid_t)arg0);
+	case SYS_umask:
+		return hook_umask((mode_t)arg0);
 
 	/*
 	 * Some syscalls that have a path argument, but are not ( yet ) handled

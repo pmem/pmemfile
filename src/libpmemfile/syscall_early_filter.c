@@ -330,6 +330,9 @@ static struct syscall_early_filter_entry filter_table[] = {
 		.must_handle = true,
 		.cwd_rlock = true,
 	},
+	[SYS_umask] = {
+		.must_handle = true,
+	},
 	[SYS_unlinkat] = {
 		.must_handle = true,
 		.cwd_rlock = true,

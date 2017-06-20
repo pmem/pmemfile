@@ -60,6 +60,11 @@ static struct syscall_early_filter_entry filter_table[] = {
 		.fd_first_arg = true,
 		.fd_wlock = true,
 	},
+	[SYS_creat] = {
+		.must_handle = true,
+		.cwd_rlock = true,
+		.fd_wlock = true,
+	},
 	[SYS_faccessat] = {
 		.must_handle = true,
 		.cwd_rlock = true,

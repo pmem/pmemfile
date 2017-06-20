@@ -394,29 +394,29 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		if (tmpfile)
 			os_rwlock_unlock(&pfp->super_rwlock);
 
-		if (!error) {
-			/*
-			 * Refing needs to happen before anyone can access this
-			 * inode. vparent write lock guarantees that.
-			 * Without that another thread may unlink this file
-			 * before we ref it and make our tinode invalid.
-			 */
-			vinode = inode_ref(pfp, tinode, vparent, info.remaining,
-					namelen);
-			if (vinode == NULL) {
-				error = errno;
-				goto end;
-			}
-
-			if (tmpfile)
-				vinode->orphaned = orphan_info;
+		if (error) {
+			os_rwlock_unlock(&vparent->rwlock);
+			goto end;
 		}
 
-		os_rwlock_unlock(&vparent->rwlock);
-
-		if (error)
+		/*
+		 * Refing needs to happen before anyone can access this inode.
+		 * vparent write lock guarantees that. Without that another
+		 * thread may unlink this file before we ref it and make our
+		 * tinode invalid.
+		 */
+		vinode = inode_ref(pfp, tinode, vparent, info.remaining,
+				namelen);
+		if (vinode == NULL) {
+			error = errno;
+			os_rwlock_unlock(&vparent->rwlock);
 			goto end;
+		}
 
+		if (tmpfile)
+			vinode->orphaned = orphan_info;
+
+		os_rwlock_unlock(&vparent->rwlock);
 	} else if (flags & PMEMFILE_O_TRUNC) {
 		os_rwlock_wrlock(&vinode->rwlock);
 

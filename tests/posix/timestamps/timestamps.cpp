@@ -81,6 +81,10 @@ TEST_F(timestamps, utime)
 	if (st2.st_mtim.tv_sec == st.st_mtim.tv_sec)
 		ASSERT_GT(st2.st_mtim.tv_nsec, st.st_mtim.tv_nsec);
 
+	tm.actime = std::numeric_limits<decltype(tm.actime)>::max();
+	tm.modtime = std::numeric_limits<decltype(tm.modtime)>::max();
+	ASSERT_EQ(pmemfile_utime(pfp, "/file", &tm), 0);
+
 	tm.actime = -1;
 	tm.modtime = 56789;
 	errno = 0;

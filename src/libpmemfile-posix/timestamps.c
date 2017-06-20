@@ -46,6 +46,12 @@
 
 enum utime_macros { UTIME_MACROS_DISABLED, UTIME_MACROS_ENABLED };
 
+static bool
+is_tm_valid(const struct pmemfile_time *tm)
+{
+	return tm->nsec >= 0 && tm->nsec <= 999999999 && tm->sec >= 0;
+}
+
 static int
 vinode_file_time_set(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		const struct pmemfile_time *tm, enum utime_macros utm)
@@ -61,7 +67,7 @@ vinode_file_time_set(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 
 		tm = tm_buf;
 	} else if (utm == UTIME_MACROS_ENABLED) {
-		memcpy(tm_buf, tm, 2 * sizeof(*tm));
+		memcpy(tm_buf, tm, sizeof(tm_buf));
 
 		for (int i = 0; i < 2; ++i) {
 			if (tm_buf[i].nsec == PMEMFILE_UTIME_NOW) {
@@ -69,9 +75,7 @@ vinode_file_time_set(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 					return -1;
 			} else if (tm_buf[i].nsec == PMEMFILE_UTIME_OMIT) {
 				/* nothing */
-			} else if (tm_buf[i].nsec < 0 ||
-					tm_buf[i].nsec > 999999999 ||
-					tm_buf[i].sec < 0) {
+			} else if (!is_tm_valid(&tm_buf[i])) {
 				errno = EINVAL;
 				return -1;
 			}
@@ -80,8 +84,7 @@ vinode_file_time_set(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		tm = tm_buf;
 	} else {
 		for (int i = 0; i < 2; ++i) {
-			if (tm[i].nsec < 0 || tm[i].nsec > 999999999 ||
-					tm[i].sec < 0) {
+			if (!is_tm_valid(&tm[i])) {
 				errno = EINVAL;
 				return -1;
 			}

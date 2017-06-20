@@ -190,7 +190,7 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 			}
 
 			struct pmemfile_time tm;
-			get_current_time(&tm);
+			tx_get_current_time(&tm);
 			TX_SET_DIRECT(inode, mtime, tm);
 		}
 	} TX_ONABORT {

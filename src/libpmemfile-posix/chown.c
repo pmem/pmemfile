@@ -93,6 +93,12 @@ vinode_chown(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 			inode->uid = owner;
 		if (group != (pmemfile_gid_t)-1)
 			inode->gid = group;
+
+		struct pmemfile_time tm;
+		tx_get_current_time(&tm);
+
+		TX_ADD_DIRECT(&inode->ctime);
+		inode->ctime = tm;
 	} TX_ONABORT {
 		error = errno;
 	} TX_END

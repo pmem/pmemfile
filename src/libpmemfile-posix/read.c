@@ -179,14 +179,18 @@ pmemfile_preadv_internal(PMEMfilepool *pfp,
 
 	if (update_atime) {
 		struct pmemfile_time tm1d;
-		get_current_time(&tm);
-		tm1d.nsec = tm.nsec;
-		tm1d.sec = tm.sec - 86400;
+		if (get_current_time(&tm)) {
+			LOG(LINF, "can not get current time");
+			update_atime = false;
+		} else {
+			tm1d.nsec = tm.nsec;
+			tm1d.sec = tm.sec - 86400;
 
-		/* relatime */
-		update_atime =	time_cmp(&inode->atime, &tm1d) < 0 ||
+			/* relatime */
+			update_atime =	time_cmp(&inode->atime, &tm1d) < 0 ||
 				time_cmp(&inode->atime, &inode->ctime) < 0 ||
 				time_cmp(&inode->atime, &inode->mtime) < 0;
+		}
 	}
 
 	os_rwlock_unlock(&vinode->rwlock);

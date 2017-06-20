@@ -129,17 +129,17 @@ fallocate_check_arguments(int mode, pmemfile_off_t offset,
 	 * punching holes.
 	 */
 	if (mode & PMEMFILE_FALLOC_FL_COLLAPSE_RANGE) {
-		LOG(LSUP, "PMEMFILE_FL_COLLAPSE_RANGE is not supported");
+		ERR("PMEMFILE_FL_COLLAPSE_RANGE is not supported");
 		return EOPNOTSUPP;
 	}
 
 	if (mode & PMEMFILE_FALLOC_FL_ZERO_RANGE) {
-		LOG(LSUP, "PMEMFILE_FL_ZERO_RANGE is not supported");
+		ERR("PMEMFILE_FL_ZERO_RANGE is not supported");
 		return EOPNOTSUPP;
 	}
 
 	if (mode & PMEMFILE_FALLOC_FL_INSERT_RANGE) {
-		LOG(LSUP, "PMEMFILE_FL_INSERT_RANGE is not supported");
+		ERR("PMEMFILE_FL_INSERT_RANGE is not supported");
 		return EOPNOTSUPP;
 	}
 

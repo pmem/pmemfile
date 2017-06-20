@@ -33,9 +33,11 @@ include(${SRC_DIR}/../../helpers.cmake)
 
 function(setup)
 	common_setup()
+	set(ENV{PMEMFILE_POSIX_LOG_LEVEL} 1)
 endfunction()
 
 function(cleanup)
+	unset(ENV{PMEMFILE_POSIX_LOG_LEVEL})
 	common_cleanup()
 endfunction()
 

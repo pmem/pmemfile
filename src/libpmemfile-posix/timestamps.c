@@ -223,6 +223,28 @@ pmemfile_utime(PMEMfilepool *pfp, const char *filename,
 			RESOLVE_LAST_SYMLINK, UTIME_MACROS_DISABLED);
 }
 
+static bool
+is_timeval_valid(const pmemfile_timeval_t *tm)
+{
+	return tm->tv_usec >= 0 && tm->tv_usec <= 999999 && tm->tv_sec >= 0;
+}
+
+static int
+timeval_to_time(const pmemfile_timeval_t times[2], struct pmemfile_time tm[2])
+{
+	for (int i = 0; i < 2; ++i) {
+		if (!is_timeval_valid(&times[i])) {
+			errno = EINVAL;
+			return -1;
+		}
+
+		tm[i].sec = times[i].tv_sec;
+		tm[i].nsec = times[i].tv_usec * 1000;
+	}
+
+	return 0;
+}
+
 int
 pmemfile_utimes(PMEMfilepool *pfp, const char *filename,
 		const pmemfile_timeval_t times[2])
@@ -233,11 +255,8 @@ pmemfile_utimes(PMEMfilepool *pfp, const char *filename,
 				UTIME_MACROS_DISABLED);
 
 	struct pmemfile_time tm[2];
-
-	tm[0].sec = times[0].tv_sec;
-	tm[0].nsec = times[0].tv_usec * 1000;
-	tm[1].sec = times[1].tv_sec;
-	tm[1].nsec = times[1].tv_usec * 1000;
+	if (timeval_to_time(times, tm))
+		return -1;
 
 	return pmemfile_file_time_set(pfp, PMEMFILE_AT_CWD, filename, tm,
 			RESOLVE_LAST_SYMLINK, UTIME_MACROS_DISABLED);
@@ -275,11 +294,8 @@ pmemfile_futimes(PMEMfilepool *pfp, PMEMfile *file,
 				UTIME_MACROS_DISABLED);
 
 	struct pmemfile_time tm[2];
-
-	tm[0].sec = tv[0].tv_sec;
-	tm[0].nsec = tv[0].tv_usec * 1000;
-	tm[1].sec = tv[1].tv_sec;
-	tm[1].nsec = tv[1].tv_usec * 1000;
+	if (timeval_to_time(tv, tm))
+		return -1;
 
 	return vinode_file_time_set(pfp, file->vinode, tm,
 			UTIME_MACROS_DISABLED);
@@ -296,10 +312,8 @@ pmemfile_lutimes(PMEMfilepool *pfp, const char *filename,
 
 	struct pmemfile_time tm[2];
 
-	tm[0].sec = tv[0].tv_sec;
-	tm[0].nsec = tv[0].tv_usec * 1000;
-	tm[1].sec = tv[1].tv_sec;
-	tm[1].nsec = tv[1].tv_usec * 1000;
+	if (timeval_to_time(tv, tm))
+		return -1;
 
 	return pmemfile_file_time_set(pfp, PMEMFILE_AT_CWD, filename, tm,
 			NO_RESOLVE_LAST_SYMLINK, UTIME_MACROS_DISABLED);
@@ -315,10 +329,8 @@ pmemfile_futimesat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 
 	struct pmemfile_time tm[2];
 
-	tm[0].sec = tv[0].tv_sec;
-	tm[0].nsec = tv[0].tv_usec * 1000;
-	tm[1].sec = tv[1].tv_sec;
-	tm[1].nsec = tv[1].tv_usec * 1000;
+	if (timeval_to_time(tv, tm))
+		return -1;
 
 	return pmemfile_file_time_set(pfp, dir, pathname, tm,
 			RESOLVE_LAST_SYMLINK, UTIME_MACROS_DISABLED);

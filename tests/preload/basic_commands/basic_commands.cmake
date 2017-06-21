@@ -118,4 +118,9 @@ execute(mv ${DIR}/mount_point/file_b ${DIR}/mount_point/file_b_moved)
 execute_with_output(${DIR}/pmemfile_ls_root_after_mv.log ls ${DIR}/mount_point)
 cmp(${DIR}/pmemfile_ls_root_after_mv.log ${SRC_DIR}/ls_root_after_mv_expected_log)
 
+execute(chmod 0644 ${DIR}/mount_point/file_b_linked)
+execute(cp ${SRC_DIR}/repo_dummy_file_a ${DIR}/mount_point/file_b_linked)
+execute(chmod 0444 ${DIR}/mount_point/file_b_linked)
+execute_expect_failure(cp ${SRC_DIR}/repo_dummy_file_a ${DIR}/mount_point/file_b_linked)
+
 cleanup()

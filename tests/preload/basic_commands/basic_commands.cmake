@@ -99,10 +99,8 @@ unset(ENV{PMEMFILE_CD})
 execute(ls -lR ${DIR})
 execute(stat ${DIR}/dir_outside)
 
-# todo: when rm works...
-#  only faccessat seems to be missing for rm to work
-# expect_normal_exit rm ${DIR}/dummy_mount_point/file_a
-# expect_normal_exit ls ${DIR}/dummy_mount_point > pmemfile_ls_root_after_rm.log
-# cmp pmemfile_ls_root_after_rm.log ls_root_after_rm_expected_log
+execute(rm ${DIR}/mount_point/file_a)
+execute_with_output(${DIR}/pmemfile_ls_root_after_rm.log ls ${DIR}/mount_point)
+cmp(${DIR}/pmemfile_ls_root_after_rm.log ${SRC_DIR}/ls_root_after_rm_expected_log)
 
 cleanup()

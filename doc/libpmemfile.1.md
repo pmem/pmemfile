@@ -259,7 +259,7 @@ As per manpage.
 
 
 # SPECIAL FILES #
-The system calls that manage block or character special files are not supported when pathname points to a pmemfile-backed file system.
+The system calls that manage special files are not supported when pathname points to a pmemfile-backed file system and file type is not a regular file.
 
 ```c
 int mknod(const char *pathname, mode_t mode, dev_t dev);
@@ -516,7 +516,7 @@ int ioctl(int d, int request,...);
 int pivot_root(const char *new_root, const char* put_old);
 int swapon(const char *path, int swapflags);
 int swapoff(const char *path);
-int fadvisa64(int fd, off_t offset, off_t len, int advice);
+int fadvise64(int fd, off_t offset, off_t len, int advice);
 ```
 
 Are not supported.

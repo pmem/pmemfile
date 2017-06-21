@@ -80,6 +80,7 @@
 		pmemfile_lutimes;
 		pmemfile_mkdir;
 		pmemfile_mkdirat;
+		pmemfile_mknodat;
 		pmemfile_open_parent;
 		pmemfile_open;
 		pmemfile_openat;

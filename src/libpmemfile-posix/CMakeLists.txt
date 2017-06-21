@@ -53,6 +53,7 @@ set(SOURCES
 	locks.c
 	lseek.c
 	mkdir.c
+	mknod.c
 	mmap.c
 	os_thread_pthread.c
 	os_util_linux.c

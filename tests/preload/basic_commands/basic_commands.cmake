@@ -111,4 +111,7 @@ execute(ln -s file_b ${DIR}/mount_point/file_b_symlinked)
 execute_with_output(${DIR}/pmemfile_ls_root_after_lns.log ls ${DIR}/mount_point)
 cmp(${DIR}/pmemfile_ls_root_after_lns.log ${SRC_DIR}/ls_root_after_lns_expected_log)
 
+execute_with_output(${DIR}/pmemfile_readlink_after_lns.log readlink ${DIR}/mount_point/file_b_symlinked)
+cmp(${DIR}/pmemfile_readlink_after_lns.log ${SRC_DIR}/readlink_after_lns_expected_log)
+
 cleanup()

@@ -280,7 +280,7 @@ resolve_path(struct fd_desc at,
 	for (size = 0; path[size] != '\0'; ++size) {
 		/* leave one more byte for the null terminator */
 		if (size == sizeof(result->path) - 1) {
-			result->error_code = ENAMETOOLONG;
+			result->error_code = -ENAMETOOLONG;
 			return;
 		}
 		result->path[size] = path[size];

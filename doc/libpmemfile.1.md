@@ -259,7 +259,7 @@ As per manpage.
 
 
 # SPECIAL FILES #
-The system calls that manage block or character special files are not supported when pathname points to a pmemfile-backed file system.
+The system calls that manage special files are not supported when pathname points to a pmemfile-backed file system and file type is not a regular file.
 
 ```c
 int mknod(const char *pathname, mode_t mode, dev_t dev);

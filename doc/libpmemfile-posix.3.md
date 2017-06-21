@@ -305,3 +305,12 @@ int pmemfile_futimens(PMEMfilepool *pfp, PMEMfile *file,
 mode_t pmemfile_umask(PMEMfilepool *pfp, mode_t mask);
 
 ```
+
+## SPECIAL FILES ##
+```c
+int pmemfile_mknodat(PMEMfilepool *pfp, PMEMfile *dir, const char *path,
+		pmemfile_mode_t mode, pmemfile_dev_t dev);
+```
+
+For now only S_IFREG file type is supported. This function's API is subject
+to change. Don't use it yet.

@@ -134,7 +134,9 @@ _pmemfile_fchownat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		vinode = vinode_ref(pfp, dir);
 	} else {
 		vinode = resolve_pathat_full(pfp, &cred, dir, path, &info, 0,
-				!(flags & PMEMFILE_AT_SYMLINK_NOFOLLOW));
+				(flags & PMEMFILE_AT_SYMLINK_NOFOLLOW) ?
+						NO_RESOLVE_LAST_SYMLINK :
+						RESOLVE_LAST_SYMLINK);
 		if (info.error) {
 			error = info.error;
 			goto end;

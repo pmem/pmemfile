@@ -58,11 +58,12 @@ void resolve_pathat(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *parent, const char *path,
 		struct pmemfile_path_info *path_info, int flags);
 
+enum symlink_resolve { RESOLVE_LAST_SYMLINK, NO_RESOLVE_LAST_SYMLINK };
 struct pmemfile_vinode *
 resolve_pathat_full(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *parent, const char *path,
 		struct pmemfile_path_info *path_info, int flags,
-		bool resolve_last_symlink);
+		enum symlink_resolve last_symlink);
 
 void resolve_symlink(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_vinode *vinode,

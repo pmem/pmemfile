@@ -113,6 +113,7 @@ build_test(file_permissions permissions/permissions.cpp)
 build_test(file_rw rw/rw.cpp)
 build_test(file_stat stat/stat.cpp)
 build_test(file_symlinks symlinks/symlinks.cpp)
+build_test(file_timestamps timestamps/timestamps.cpp)
 
 # Configures test ${name} using tracer ${tracer} and gtest filter ${filter}
 # Optional next argument is passed as is to test.
@@ -223,6 +224,9 @@ add_test_generic(stat pmemcheck)
 
 add_test_generic(symlinks none)
 add_test_generic(symlinks memcheck)
+
+add_test_generic(timestamps none)
+add_test_generic(timestamps memcheck)
 
 if(NOT LONG_TESTS)
 	add_test(NAME SOME_TESTS_WERE_SKIPPED_BECAUSE_LONG_TESTS_ARE_DISABLED

@@ -96,8 +96,8 @@ pmemfile_chdir(PMEMfilepool *pfp, const char *path)
 
 	at = pool_get_dir_for_path(pfp, PMEMFILE_AT_CWD, path, &at_unref);
 
-	struct pmemfile_vinode *dir =
-		resolve_pathat_full(pfp, &cred, at, path, &info, 0, true);
+	struct pmemfile_vinode *dir = resolve_pathat_full(pfp, &cred, at, path,
+			&info, 0, RESOLVE_LAST_SYMLINK);
 
 	if (info.error) {
 		error = info.error;

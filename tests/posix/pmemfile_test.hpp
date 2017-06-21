@@ -177,6 +177,9 @@ public:
 	void
 	TearDown()
 	{
+		if (HasFatalFailure())
+			return;
+
 		// XXX always enable
 		if (test_empty_dir_on_teardown)
 			/* Again. Lower-case assert on purpose. */

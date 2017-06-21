@@ -43,6 +43,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/uio.h>
+#include <utime.h>
 
 #define PMEMFILE_PATH_MAX 4096
 
@@ -165,6 +166,9 @@
 #define PMEMFILE_RENAME_EXCHANGE	(1 << 1)
 #define PMEMFILE_RENAME_WHITEOUT	(1 << 2)
 
+#define PMEMFILE_UTIME_NOW	((1l << 30) - 1l)
+#define PMEMFILE_UTIME_OMIT	((1l << 30) - 2l)
+
 #define PMEMFILE_MAP_FAILED	((void *) -1)
 
 #ifdef __cplusplus
@@ -193,6 +197,8 @@ typedef ino64_t pmemfile_ino_t;
 typedef struct iovec pmemfile_iovec_t;
 
 typedef struct timespec pmemfile_timespec_t;
+typedef struct utimbuf pmemfile_utimbuf_t;
+typedef struct timeval pmemfile_timeval_t;
 typedef struct stat pmemfile_stat_t;
 
 #define PMEMFILE_AT_CWD ((PMEMfile *)(((unsigned char *)0) - 1))
@@ -314,6 +320,21 @@ int pmemfile_access(PMEMfilepool *, const char *path, int mode);
 int pmemfile_euidaccess(PMEMfilepool *, const char *pathname, int mode);
 int pmemfile_faccessat(PMEMfilepool *, PMEMfile *dir, const char *pathname,
 		int mode, int flags);
+
+int pmemfile_utime(PMEMfilepool *, const char *filename,
+		const pmemfile_utimbuf_t *times);
+int pmemfile_utimes(PMEMfilepool *, const char *filename,
+		const pmemfile_timeval_t times[2]);
+int pmemfile_futimes(PMEMfilepool *, PMEMfile *file,
+		const pmemfile_timeval_t tv[2]);
+int pmemfile_futimesat(PMEMfilepool *, PMEMfile *dir, const char *pathname,
+		const pmemfile_timeval_t tv[2]);
+int pmemfile_lutimes(PMEMfilepool *, const char *filename,
+		const pmemfile_timeval_t tv[2]);
+int pmemfile_utimensat(PMEMfilepool *, PMEMfile *dir, const char *pathname,
+		const pmemfile_timespec_t times[2], int flags);
+int pmemfile_futimens(PMEMfilepool *, PMEMfile *file,
+		const pmemfile_timespec_t times[2]);
 
 #define PMEMFILE_CAP_CHOWN 0
 #define PMEMFILE_CAP_FOWNER 3

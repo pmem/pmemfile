@@ -178,7 +178,6 @@ pmemfile_truncate(PMEMfilepool *pfp, const char *path, pmemfile_off_t length)
 		return -1;
 
 	int error = 0;
-	struct pmemfile_vinode *vinode = NULL;
 	struct pmemfile_vinode *vparent = NULL;
 	bool unref_vparent = false;
 	struct pmemfile_path_info info;
@@ -191,7 +190,8 @@ pmemfile_truncate(PMEMfilepool *pfp, const char *path, pmemfile_off_t length)
 		unref_vparent = true;
 	}
 
-	vinode = resolve_pathat_full(pfp, cred, vparent, path, &info, 0, true);
+	struct pmemfile_vinode *vinode = resolve_pathat_full(pfp, cred, vparent,
+			path, &info, 0, RESOLVE_LAST_SYMLINK);
 
 	if (info.error) {
 		error = info.error;

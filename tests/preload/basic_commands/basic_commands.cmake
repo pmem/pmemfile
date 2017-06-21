@@ -123,4 +123,7 @@ execute(cp ${SRC_DIR}/repo_dummy_file_a ${DIR}/mount_point/file_b_linked)
 execute(chmod 0444 ${DIR}/mount_point/file_b_linked)
 execute_expect_failure(cp ${SRC_DIR}/repo_dummy_file_a ${DIR}/mount_point/file_b_linked)
 
+execute(ln -s symlink_to_itself ${DIR}/mount_point/symlink_to_itself)
+execute_expect_failure(cat ${DIR}/mount_point/symlink_to_itself)
+
 cleanup()

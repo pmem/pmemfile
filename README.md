@@ -97,7 +97,8 @@ Environment variables:
 
 libsyscall_intercept.so:
 * INTERCEPT_LOG - log file for all intercepted syscalls
-* LIBC_HOOK_CMDLINE_FILTER
+* INTERCEPT_HOOK_CMDLINE_FILTER - intercept syscalls only when process name
+  matches this variable (used to skip gdb from intercepting)
 
 libpmemobj.so:
 * PMEMOBJ_LOG_FILE - log file

@@ -103,4 +103,8 @@ execute(rm ${DIR}/mount_point/file_a)
 execute_with_output(${DIR}/pmemfile_ls_root_after_rm.log ls ${DIR}/mount_point)
 cmp(${DIR}/pmemfile_ls_root_after_rm.log ${SRC_DIR}/ls_root_after_rm_expected_log)
 
+execute(ln ${DIR}/mount_point/file_b ${DIR}/mount_point/file_b_linked)
+execute_with_output(${DIR}/pmemfile_ls_root_after_ln.log ls ${DIR}/mount_point)
+cmp(${DIR}/pmemfile_ls_root_after_ln.log ${SRC_DIR}/ls_root_after_ln_expected_log)
+
 cleanup()

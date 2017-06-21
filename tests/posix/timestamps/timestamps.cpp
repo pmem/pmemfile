@@ -149,6 +149,10 @@ TEST_F(timestamps, utimes)
 	if (st2.st_mtim.tv_sec == st.st_mtim.tv_sec)
 		ASSERT_GT(st2.st_mtim.tv_nsec, st.st_mtim.tv_nsec);
 
+	tm[0] = {std::numeric_limits<decltype(tm[0].tv_sec)>::max(), 1};
+	tm[1] = {std::numeric_limits<decltype(tm[1].tv_sec)>::max(), 1};
+	ASSERT_EQ(pmemfile_utimes(pfp, "/file", tm), 0);
+
 	tm[0] = {-1, 1};
 	tm[1] = {1, 1};
 	errno = 0;
@@ -162,6 +166,12 @@ TEST_F(timestamps, utimes)
 	EXPECT_EQ(errno, EINVAL);
 
 	tm[0] = {1, 1000000};
+	tm[1] = {1, 1};
+	errno = 0;
+	ASSERT_EQ(pmemfile_utimes(pfp, "/file", tm), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	tm[0] = {1, std::numeric_limits<decltype(tm[0].tv_usec)>::max()};
 	tm[1] = {1, 1};
 	errno = 0;
 	ASSERT_EQ(pmemfile_utimes(pfp, "/file", tm), -1);
@@ -181,6 +191,12 @@ TEST_F(timestamps, utimes)
 
 	tm[0] = {1, 1};
 	tm[1] = {1, 1000000};
+	errno = 0;
+	ASSERT_EQ(pmemfile_utimes(pfp, "/file", tm), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	tm[0] = {1, 1};
+	tm[1] = {1, std::numeric_limits<decltype(tm[1].tv_usec)>::max()};
 	errno = 0;
 	ASSERT_EQ(pmemfile_utimes(pfp, "/file", tm), -1);
 	EXPECT_EQ(errno, EINVAL);
@@ -239,6 +255,10 @@ TEST_F(timestamps, futimes)
 	if (st2.st_mtim.tv_sec == st.st_mtim.tv_sec)
 		ASSERT_GT(st2.st_mtim.tv_nsec, st.st_mtim.tv_nsec);
 
+	tm[0] = {std::numeric_limits<decltype(tm[0].tv_sec)>::max(), 1};
+	tm[1] = {std::numeric_limits<decltype(tm[1].tv_sec)>::max(), 1};
+	ASSERT_EQ(pmemfile_futimes(pfp, f, tm), 0);
+
 	tm[0] = {-1, 1};
 	tm[1] = {1, 1};
 	errno = 0;
@@ -252,6 +272,12 @@ TEST_F(timestamps, futimes)
 	EXPECT_EQ(errno, EINVAL);
 
 	tm[0] = {1, 1000000};
+	tm[1] = {1, 1};
+	errno = 0;
+	ASSERT_EQ(pmemfile_futimes(pfp, f, tm), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	tm[0] = {1, std::numeric_limits<decltype(tm[0].tv_usec)>::max()};
 	tm[1] = {1, 1};
 	errno = 0;
 	ASSERT_EQ(pmemfile_futimes(pfp, f, tm), -1);
@@ -271,6 +297,12 @@ TEST_F(timestamps, futimes)
 
 	tm[0] = {1, 1};
 	tm[1] = {1, 1000000};
+	errno = 0;
+	ASSERT_EQ(pmemfile_futimes(pfp, f, tm), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	tm[0] = {1, 1};
+	tm[1] = {1, std::numeric_limits<decltype(tm[1].tv_usec)>::max()};
 	errno = 0;
 	ASSERT_EQ(pmemfile_futimes(pfp, f, tm), -1);
 	EXPECT_EQ(errno, EINVAL);
@@ -336,6 +368,10 @@ TEST_F(timestamps, futimens)
 	if (st2.st_mtim.tv_sec == st.st_mtim.tv_sec)
 		ASSERT_GT(st2.st_mtim.tv_nsec, st.st_mtim.tv_nsec);
 
+	tm[0] = {std::numeric_limits<decltype(tm[0].tv_sec)>::max(), 1};
+	tm[1] = {std::numeric_limits<decltype(tm[1].tv_sec)>::max(), 1};
+	ASSERT_EQ(pmemfile_futimens(pfp, f, tm), 0);
+
 	tm[0] = {-1, 1};
 	tm[1] = {1, 1};
 	errno = 0;
@@ -349,6 +385,12 @@ TEST_F(timestamps, futimens)
 	EXPECT_EQ(errno, EINVAL);
 
 	tm[0] = {1, 1000000000};
+	tm[1] = {1, 1};
+	errno = 0;
+	ASSERT_EQ(pmemfile_futimens(pfp, f, tm), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	tm[0] = {1, std::numeric_limits<decltype(tm[0].tv_nsec)>::max()};
 	tm[1] = {1, 1};
 	errno = 0;
 	ASSERT_EQ(pmemfile_futimens(pfp, f, tm), -1);
@@ -368,6 +410,12 @@ TEST_F(timestamps, futimens)
 
 	tm[0] = {1, 1};
 	tm[1] = {1, 1000000000};
+	errno = 0;
+	ASSERT_EQ(pmemfile_futimens(pfp, f, tm), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	tm[0] = {1, 1};
+	tm[1] = {1, std::numeric_limits<decltype(tm[1].tv_nsec)>::max()};
 	errno = 0;
 	ASSERT_EQ(pmemfile_futimens(pfp, f, tm), -1);
 	EXPECT_EQ(errno, EINVAL);
@@ -528,6 +576,10 @@ TEST_F(timestamps, utimensat)
 	ASSERT_EQ(fst3.st_mtim.tv_sec, fst2.st_mtim.tv_sec);
 	ASSERT_EQ(fst3.st_mtim.tv_nsec, fst2.st_mtim.tv_nsec);
 
+	tm[0] = {std::numeric_limits<decltype(tm[0].tv_sec)>::max(), 1};
+	tm[1] = {std::numeric_limits<decltype(tm[0].tv_sec)>::max(), 1};
+	ASSERT_EQ(pmemfile_utimensat(pfp, d, "file", tm, 0), 0);
+
 	tm[0] = {-1, 1};
 	tm[1] = {1, 1};
 	errno = 0;
@@ -541,6 +593,12 @@ TEST_F(timestamps, utimensat)
 	EXPECT_EQ(errno, EINVAL);
 
 	tm[0] = {1, 1000000000};
+	tm[1] = {1, 1};
+	errno = 0;
+	ASSERT_EQ(pmemfile_utimensat(pfp, d, "file", tm, 0), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	tm[0] = {1, std::numeric_limits<decltype(tm[0].tv_nsec)>::max()};
 	tm[1] = {1, 1};
 	errno = 0;
 	ASSERT_EQ(pmemfile_utimensat(pfp, d, "file", tm, 0), -1);
@@ -560,6 +618,12 @@ TEST_F(timestamps, utimensat)
 
 	tm[0] = {1, 1};
 	tm[1] = {1, 1000000000};
+	errno = 0;
+	ASSERT_EQ(pmemfile_utimensat(pfp, d, "file", tm, 0), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	tm[0] = {1, 1};
+	tm[1] = {1, std::numeric_limits<decltype(tm[1].tv_nsec)>::max()};
 	errno = 0;
 	ASSERT_EQ(pmemfile_utimensat(pfp, d, "file", tm, 0), -1);
 	EXPECT_EQ(errno, EINVAL);

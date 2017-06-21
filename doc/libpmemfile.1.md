@@ -516,7 +516,7 @@ int ioctl(int d, int request,...);
 int pivot_root(const char *new_root, const char* put_old);
 int swapon(const char *path, int swapflags);
 int swapoff(const char *path);
-int fadvisa64(int fd, off_t offset, off_t len, int advice);
+int fadvise64(int fd, off_t offset, off_t len, int advice);
 ```
 
 Are not supported.

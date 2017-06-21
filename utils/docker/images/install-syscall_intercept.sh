@@ -36,7 +36,7 @@
 
 git clone https://github.com/pmem/syscall_intercept syscall_intercept
 cd syscall_intercept
-git checkout 570b63868fa49bfd98dded2fd2fb0a80dd1d6e00
+git checkout c78808f814eff103ff1fa543679dbcef80f30a3e
 ./utils/build-$1.sh
 if [ "$1" = "deb" ]; then
 	sudo dpkg -i build-deb/libsyscall-*.deb

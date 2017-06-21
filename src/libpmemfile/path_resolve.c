@@ -303,6 +303,7 @@ resolve_path(struct fd_desc at,
 		result->at.pmem_fda.pool = NULL;
 
 	bool at_pmem_root = false;
+	int num_symlinks = 0;
 
 	/*
 	 * XXX
@@ -360,6 +361,16 @@ resolve_path(struct fd_desc at,
 		if (S_ISLNK(stat_buf.st_mode)) {
 			resolve_symlink(result,
 				&resolved, &end, &size, &is_last_component);
+			num_symlinks++;
+			/*
+			 * 40 is the same value as used by Linux.
+			 * See path_resolution(7).
+			 */
+			if (num_symlinks > 40) {
+				result->error_code = -ELOOP;
+				break;
+			}
+
 			continue;
 		} else if (!S_ISDIR(stat_buf.st_mode)) {
 			if (!is_last_component)

@@ -1714,6 +1714,71 @@ TEST_F(permissions, truncate)
 	ASSERT_EQ(pmemfile_unlink(pfp, "/aaa"), 0);
 }
 
+TEST_F(permissions, umask_file)
+{
+	PMEMfile *f = pmemfile_open(pfp, "/file1",
+				    PMEMFILE_O_CREAT | PMEMFILE_O_RDONLY, 0777);
+	ASSERT_NE(f, nullptr);
+	pmemfile_close(pfp, f);
+
+	pmemfile_umask(pfp, 022);
+
+	f = pmemfile_open(pfp, "/file2", PMEMFILE_O_CREAT | PMEMFILE_O_RDONLY,
+			  0777);
+	ASSERT_NE(f, nullptr);
+	pmemfile_close(pfp, f);
+
+	pmemfile_umask(pfp, 0);
+
+	f = pmemfile_open(pfp, "/file3", PMEMFILE_O_CREAT | PMEMFILE_O_RDONLY,
+			  0777);
+	ASSERT_NE(f, nullptr);
+	pmemfile_close(pfp, f);
+
+	pmemfile_stat_t st;
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/file1", &st), 0);
+	EXPECT_EQ(st.st_mode & PMEMFILE_ACCESSPERMS, (mode_t)0777);
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/file2", &st), 0);
+	EXPECT_EQ(st.st_mode & PMEMFILE_ACCESSPERMS, (mode_t)0755);
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/file3", &st), 0);
+	EXPECT_EQ(st.st_mode & PMEMFILE_ACCESSPERMS, (mode_t)0777);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file2"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file3"), 0);
+}
+
+TEST_F(permissions, umask_dir)
+{
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0777), 0);
+
+	pmemfile_umask(pfp, 022);
+
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir2", 0777), 0);
+
+	pmemfile_umask(pfp, 0);
+
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir3", 0777), 0);
+
+	pmemfile_stat_t st;
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir1", &st), 0);
+	EXPECT_EQ(st.st_mode & PMEMFILE_ACCESSPERMS, (mode_t)0777);
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir2", &st), 0);
+	EXPECT_EQ(st.st_mode & PMEMFILE_ACCESSPERMS, (mode_t)0755);
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir3", &st), 0);
+	EXPECT_EQ(st.st_mode & PMEMFILE_ACCESSPERMS, (mode_t)0777);
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir2"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir3"), 0);
+}
+
 int
 main(int argc, char *argv[])
 {

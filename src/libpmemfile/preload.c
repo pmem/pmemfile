@@ -62,6 +62,7 @@
 #include <limits.h>
 #include <linux/fs.h>
 #include <utime.h>
+#include <sys/fsuid.h>
 
 #include <asm-generic/errno.h>
 
@@ -1425,6 +1426,193 @@ hook_mknodat(struct fd_desc at, const char *path, mode_t mode, dev_t dev)
 }
 
 static long
+hook_setfsuid(uid_t fsuid)
+{
+	long old = syscall_no_intercept(SYS_setfsuid, fsuid);
+
+	/*
+	 * There's no way to determine if setfsuid succeeded just by looking at
+	 * its return value. We have to invoke it again with an invalid argument
+	 * and verify that previous fsuid matches what we passed initially.
+	 */
+	if (syscall_no_intercept(SYS_setfsuid, -1) != fsuid)
+		return old;
+
+	for (int i = 0; i < pool_count; ++i) {
+		struct pool_description *p = pools + i;
+		if (!p->pool)
+			continue;
+		if (pmemfile_setfsuid(p->pool, fsuid) != old)
+			FATAL("inconsistent fsuid state");
+	}
+
+	return old;
+}
+
+static long
+hook_setfsgid(gid_t fsgid)
+{
+	long old = syscall_no_intercept(SYS_setfsgid, fsgid);
+
+	/* See hook_setfsuid. */
+	if (syscall_no_intercept(SYS_setfsgid, -1) != fsgid)
+		return old;
+
+	for (int i = 0; i < pool_count; ++i) {
+		struct pool_description *p = pools + i;
+		if (!p->pool)
+			continue;
+		if (pmemfile_setfsgid(p->pool, fsgid) != old)
+			FATAL("inconsistent fsgid state");
+	}
+
+	return old;
+}
+
+static long
+hook_setgid(gid_t gid)
+{
+	long ret = syscall_no_intercept(SYS_setgid, gid);
+	if (ret)
+		return ret;
+
+	for (int i = 0; i < pool_count; ++i) {
+		struct pool_description *p = pools + i;
+		if (!p->pool)
+			continue;
+		if (pmemfile_setgid(p->pool, gid))
+			FATAL("inconsistent gid state");
+	}
+
+	return 0;
+}
+
+static long
+hook_setgroups(size_t size, const gid_t *list)
+{
+	long ret = syscall_no_intercept(SYS_setgroups, size, list);
+	if (ret)
+		return ret;
+
+	for (int i = 0; i < pool_count; ++i) {
+		struct pool_description *p = pools + i;
+		if (!p->pool)
+			continue;
+		if (pmemfile_setgroups(p->pool, size, list))
+			FATAL("inconsistent groups state");
+	}
+
+	return 0;
+}
+
+static long
+hook_setregid(gid_t rgid, gid_t egid)
+{
+	long ret = syscall_no_intercept(SYS_setregid, rgid, egid);
+	if (ret)
+		return ret;
+
+	for (int i = 0; i < pool_count; ++i) {
+		struct pool_description *p = pools + i;
+		if (!p->pool)
+			continue;
+		if (pmemfile_setregid(p->pool, rgid, egid))
+			FATAL("inconsistent regid state");
+	}
+
+	return 0;
+}
+
+static long
+hook_setresgid(gid_t rgid, gid_t egid, gid_t sgid)
+{
+	long ret = syscall_no_intercept(SYS_setresgid, rgid, egid, sgid);
+	if (ret)
+		return ret;
+
+	for (int i = 0; i < pool_count; ++i) {
+		struct pool_description *p = pools + i;
+		if (!p->pool)
+			continue;
+		if (pmemfile_setregid(p->pool, rgid, egid))
+			FATAL("inconsistent resgid state");
+	}
+
+	return 0;
+
+}
+
+static long
+hook_setresuid(uid_t ruid, uid_t euid, uid_t suid)
+{
+	long ret = syscall_no_intercept(SYS_setresuid, ruid, euid, suid);
+	if (ret)
+		return ret;
+
+	for (int i = 0; i < pool_count; ++i) {
+		struct pool_description *p = pools + i;
+		if (!p->pool)
+			continue;
+		if (pmemfile_setreuid(p->pool, ruid, euid))
+			FATAL("inconsistent resuid state");
+	}
+
+	return 0;
+}
+
+static long
+hook_setreuid(uid_t ruid, uid_t euid)
+{
+	long ret = syscall_no_intercept(SYS_setreuid, ruid, euid);
+	if (ret)
+		return ret;
+
+	for (int i = 0; i < pool_count; ++i) {
+		struct pool_description *p = pools + i;
+		if (!p->pool)
+			continue;
+		if (pmemfile_setreuid(p->pool, ruid, euid))
+			FATAL("inconsistent reuid state");
+	}
+
+	return 0;
+}
+
+static long
+hook_setuid(uid_t uid)
+{
+	long ret = syscall_no_intercept(SYS_setuid, uid);
+	if (ret)
+		return ret;
+
+	for (int i = 0; i < pool_count; ++i) {
+		struct pool_description *p = pools + i;
+		if (!p->pool)
+			continue;
+		if (pmemfile_setuid(p->pool, uid))
+			FATAL("inconsistent uid state");
+	}
+
+	return 0;
+}
+
+static long
+hook_umask(mode_t mask)
+{
+	long ret = syscall_no_intercept(SYS_umask, mask);
+
+	for (int i = 0; i < pool_count; ++i) {
+		struct pool_description *p = pools + i;
+		if (!p->pool)
+			continue;
+		if (pmemfile_umask(p->pool, mask) != ret)
+			FATAL("inconsistent umask state");
+	}
+
+	return ret;
+}
+
+static long
 dispatch_syscall(long syscall_number,
 			long arg0, long arg1,
 			long arg2, long arg3,
@@ -1648,6 +1836,36 @@ dispatch_syscall(long syscall_number,
 		return hook_mknodat(fetch_fd(arg0), (const char *)arg1,
 				(mode_t)arg2, (dev_t)arg3);
 
+	case SYS_setfsuid:
+		return hook_setfsuid((uid_t)arg0);
+
+	case SYS_setfsgid:
+		return hook_setfsgid((gid_t)arg0);
+
+	case SYS_setgid:
+		return hook_setgid((gid_t)arg0);
+
+	case SYS_setgroups:
+		return hook_setgroups((size_t)arg0, (const gid_t *)arg1);
+
+	case SYS_setregid:
+		return hook_setregid((gid_t)arg0, (gid_t)arg1);
+
+	case SYS_setresgid:
+		return hook_setresgid((gid_t)arg0, (gid_t)arg1, (gid_t)arg2);
+
+	case SYS_setresuid:
+		return hook_setresuid((uid_t)arg0, (uid_t)arg1, (uid_t)arg2);
+
+	case SYS_setreuid:
+		return hook_setreuid((uid_t)arg0, (uid_t)arg1);
+
+	case SYS_setuid:
+		return hook_setuid((uid_t)arg0);
+
+	case SYS_umask:
+		return hook_umask((mode_t)arg0);
+
 	/*
 	 * Some syscalls that have a path argument, but are not ( yet ) handled
 	 * by libpmemfile-posix. The argument of these are not interpreted,
@@ -1738,6 +1956,7 @@ static void
 open_new_pool_under_lock(struct pool_description *p)
 {
 	PMEMfilepool *pfp;
+	int oerrno;
 
 	if (p->pool != NULL)
 		return; /* already open */
@@ -1745,14 +1964,57 @@ open_new_pool_under_lock(struct pool_description *p)
 	if ((pfp = pmemfile_pool_open(p->poolfile_path)) == NULL)
 		return; /* failed to open */
 
-	if (pmemfile_stat(pfp, "/", &p->pmem_stat) != 0) {
-		int oerrno = errno;
-		pmemfile_pool_close(pfp);
-		errno = oerrno;
-		return; /* stat failed */
+	if (pmemfile_setreuid(pfp, getuid(), geteuid()))
+		goto err;
+
+	uid_t fsuid = (uid_t)setfsuid(geteuid());
+	setfsuid(fsuid);
+	if (pmemfile_setfsuid(pfp, fsuid) < 0)
+		goto err;
+
+	if (pmemfile_setregid(pfp, getgid(), getegid()))
+		goto err;
+
+	gid_t fsgid = (gid_t)setfsgid(getegid());
+	setfsgid(fsgid);
+	if (pmemfile_setfsgid(pfp, fsgid) < 0)
+		goto err;
+
+	int gnum = getgroups(0, NULL);
+	if (gnum > 0) {
+		gid_t *groups = malloc((unsigned)gnum * sizeof(*groups));
+		if (!groups)
+			goto err;
+
+		if (getgroups(gnum, groups) != gnum) {
+			free(groups);
+			goto err;
+		}
+
+		if (pmemfile_setgroups(pfp, (unsigned)gnum, groups)) {
+			free(groups);
+			goto err;
+		}
+
+		free(groups);
+	} else if (gnum < 0) {
+		goto err;
 	}
 
+	mode_t um = umask(0);
+	umask(um);
+	pmemfile_umask(pfp, um);
+
+	if (pmemfile_stat(pfp, "/", &p->pmem_stat) != 0)
+		goto err;
+
 	__atomic_store_n(&p->pool, pfp, __ATOMIC_RELEASE);
+	return;
+
+err:
+	oerrno = errno;
+	pmemfile_pool_close(pfp);
+	errno = oerrno;
 }
 
 static void

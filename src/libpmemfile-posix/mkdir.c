@@ -67,6 +67,7 @@ vinode_new_dir(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 		ERR("invalid mode flags 0%o", mode);
 		pmemfile_tx_abort(EINVAL);
 	}
+	mode &= ~pfp->umask;
 
 	TOID(struct pmemfile_inode) tchild =
 			inode_alloc(pfp, cred, PMEMFILE_S_IFDIR | mode);

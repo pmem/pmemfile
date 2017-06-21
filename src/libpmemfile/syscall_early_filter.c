@@ -297,6 +297,33 @@ static struct syscall_early_filter_entry filter_table[] = {
 		.must_handle = true,
 		.cwd_rlock = true,
 	},
+	[SYS_setfsuid] = {
+		.must_handle = true,
+	},
+	[SYS_setfsgid] = {
+		.must_handle = true,
+	},
+	[SYS_setgid] = {
+		.must_handle = true,
+	},
+	[SYS_setgroups] = {
+		.must_handle = true,
+	},
+	[SYS_setregid] = {
+		.must_handle = true,
+	},
+	[SYS_setresgid] = {
+		.must_handle = true,
+	},
+	[SYS_setresuid] = {
+		.must_handle = true,
+	},
+	[SYS_setreuid] = {
+		.must_handle = true,
+	},
+	[SYS_setuid] = {
+		.must_handle = true,
+	},
 	[SYS_stat] = {
 		.must_handle = true,
 		.cwd_rlock = true,
@@ -320,6 +347,9 @@ static struct syscall_early_filter_entry filter_table[] = {
 	[SYS_truncate] = {
 		.must_handle = true,
 		.cwd_rlock = true,
+	},
+	[SYS_umask] = {
+		.must_handle = true,
 	},
 	[SYS_unlinkat] = {
 		.must_handle = true,

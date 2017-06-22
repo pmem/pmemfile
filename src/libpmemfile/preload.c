@@ -369,7 +369,8 @@ hook_linkat(struct fd_desc at0, long arg0,
 	struct resolved_path where_new;
 
 	resolve_path(at0, (const char *)arg0, &where_old, RESOLVE_LAST_SLINK);
-	resolve_path(at1, (const char *)arg1, &where_new, RESOLVE_LAST_SLINK);
+	resolve_path(at1, (const char *)arg1, &where_new,
+			NO_RESOLVE_LAST_SLINK);
 
 	if (where_old.error_code != 0)
 		return where_old.error_code;

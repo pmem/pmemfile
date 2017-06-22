@@ -99,10 +99,31 @@ unset(ENV{PMEMFILE_CD})
 execute(ls -lR ${DIR})
 execute(stat ${DIR}/dir_outside)
 
-# todo: when rm works...
-#  only faccessat seems to be missing for rm to work
-# expect_normal_exit rm ${DIR}/dummy_mount_point/file_a
-# expect_normal_exit ls ${DIR}/dummy_mount_point > pmemfile_ls_root_after_rm.log
-# cmp pmemfile_ls_root_after_rm.log ls_root_after_rm_expected_log
+execute(rm ${DIR}/mount_point/file_a)
+execute_with_output(${DIR}/pmemfile_ls_root_after_rm.log ls ${DIR}/mount_point)
+cmp(${DIR}/pmemfile_ls_root_after_rm.log ${SRC_DIR}/ls_root_after_rm_expected_log)
+
+execute(ln ${DIR}/mount_point/file_b ${DIR}/mount_point/file_b_linked)
+execute_with_output(${DIR}/pmemfile_ls_root_after_ln.log ls ${DIR}/mount_point)
+cmp(${DIR}/pmemfile_ls_root_after_ln.log ${SRC_DIR}/ls_root_after_ln_expected_log)
+
+execute(ln -s file_b ${DIR}/mount_point/file_b_symlinked)
+execute_with_output(${DIR}/pmemfile_ls_root_after_lns.log ls ${DIR}/mount_point)
+cmp(${DIR}/pmemfile_ls_root_after_lns.log ${SRC_DIR}/ls_root_after_lns_expected_log)
+
+execute_with_output(${DIR}/pmemfile_readlink_after_lns.log readlink ${DIR}/mount_point/file_b_symlinked)
+cmp(${DIR}/pmemfile_readlink_after_lns.log ${SRC_DIR}/readlink_after_lns_expected_log)
+
+execute(mv ${DIR}/mount_point/file_b ${DIR}/mount_point/file_b_moved)
+execute_with_output(${DIR}/pmemfile_ls_root_after_mv.log ls ${DIR}/mount_point)
+cmp(${DIR}/pmemfile_ls_root_after_mv.log ${SRC_DIR}/ls_root_after_mv_expected_log)
+
+execute(chmod 0644 ${DIR}/mount_point/file_b_linked)
+execute(cp ${SRC_DIR}/repo_dummy_file_a ${DIR}/mount_point/file_b_linked)
+execute(chmod 0444 ${DIR}/mount_point/file_b_linked)
+execute_expect_failure(cp ${SRC_DIR}/repo_dummy_file_a ${DIR}/mount_point/file_b_linked)
+
+execute(ln -s symlink_to_itself ${DIR}/mount_point/symlink_to_itself)
+execute_expect_failure(cat ${DIR}/mount_point/symlink_to_itself)
 
 cleanup()

@@ -65,8 +65,6 @@ void *pmemfile_mremap(PMEMfilepool *, void *old_addr, size_t old_size,
 int pmemfile_msync(PMEMfilepool *, void *addr, size_t len, int flags);
 int pmemfile_mprotect(PMEMfilepool *, void *addr, size_t len, int prot);
 
-pmemfile_mode_t pmemfile_umask(PMEMfilepool *, pmemfile_mode_t mask);
-
 pmemfile_ssize_t pmemfile_copy_file_range(PMEMfilepool *,
 		PMEMfile *file_in, pmemfile_off_t *off_in,
 		PMEMfile *file_out, pmemfile_off_t *off_out,
@@ -77,7 +75,6 @@ int pmemfile_mknodat(PMEMfilepool *, PMEMfile *dir, const char *path,
 
 /*
  * Other:
- * 	futimesat
  *	sendfile
  *	tee
  *	splice

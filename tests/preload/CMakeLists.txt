@@ -38,6 +38,9 @@ add_cstyle(tests-preload-config ${CMAKE_CURRENT_SOURCE_DIR}/config/config.c)
 add_check_whitespace(tests-preload-basic ${CMAKE_CURRENT_SOURCE_DIR}/basic/basic.c)
 add_check_whitespace(tests-preload-config ${CMAKE_CURRENT_SOURCE_DIR}/config/config.c)
 
+add_library(setumask SHARED setumask.c)
+set_target_properties(setumask PROPERTIES INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR}/src)
+
 # Configures test ${name}${sub_name} using test dir ${name} and executable ${main_executable}
 function(add_test_generic name sub_name main_executable)
 	add_test(NAME preload_${name}${sub_name}
@@ -46,7 +49,7 @@ function(add_test_generic name sub_name main_executable)
 			-DTEST_NAME=${name}${sub_name}
 			-DSRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/${name}${sub_name}
 			-DBIN_DIR=${CMAKE_CURRENT_BINARY_DIR}/${name}${sub_name}
-			-DPRELOAD_LIB=$<TARGET_FILE:pmemfile_shared>
+			-DPRELOAD_LIB=$<TARGET_FILE:pmemfile_shared>:$<TARGET_FILE:setumask>
 			-DMAIN_EXECUTABLE=${main_executable}
 			${ARGN}
 			-P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/${name}.cmake)

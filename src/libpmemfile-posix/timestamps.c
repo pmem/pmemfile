@@ -58,8 +58,6 @@ vinode_file_time_set(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 {
 	struct pmemfile_time tm_buf[2];
 	if (!tm) {
-		tm = tm_buf;
-
 		if (get_current_time(&tm_buf[0]))
 			return -1;
 

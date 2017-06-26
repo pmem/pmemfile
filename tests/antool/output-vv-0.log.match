@@ -64,7 +64,4 @@ Yet-unsupported syscalls detected (will be supported):
    splice              		 /tmp/mnt/pmem/file [PMEM]   /tmp/mnt/nonp/file
    splice              		 /tmp/mnt/nonp/file /tmp/mnt/pmem/file [PMEM]  
    splice              		 /tmp/mnt/pmem/file [PMEM]   /tmp/mnt/pmem/file [PMEM]  
-   copy_file_range     		 /tmp/mnt/pmem/file [PMEM]   /tmp/mnt/nonp/file
-   copy_file_range     		 /tmp/mnt/nonp/file /tmp/mnt/pmem/file [PMEM]  
-   copy_file_range     		 /tmp/mnt/pmem/file [PMEM]   /tmp/mnt/pmem/file [PMEM]  
 

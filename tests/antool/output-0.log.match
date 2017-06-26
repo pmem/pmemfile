@@ -54,5 +54,4 @@ Yet-unsupported syscalls detected (will be supported):
    flock
    sendfile64
    splice
-   copy_file_range
 

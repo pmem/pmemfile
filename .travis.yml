@@ -3,6 +3,8 @@ dist: trusty
 # until Travis fixes issue with mounting permissions
 group: deprecated-2017Q2
 
+sudo: required
+
 language: c
 
 env:
@@ -20,6 +22,7 @@ before_install:
   - export HOST_WORKDIR=`pwd`
   - export GITHUB_REPO=pmem/pmemfile
   - export DOCKERHUB_REPO=pmem/pmemfile
+  - sudo apt-get install -y linux-headers-$(uname -r)
   - cd utils/docker
   - ./prepare-environment.sh
   - ./pull-or-rebuild-image.sh

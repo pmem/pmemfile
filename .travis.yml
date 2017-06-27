@@ -1,3 +1,8 @@
+dist: trusty
+# use temporarily the previous version of Trusty image
+# until Travis fixes issue with mounting permissions
+group: deprecated-2017Q2
+
 language: c
 
 env:

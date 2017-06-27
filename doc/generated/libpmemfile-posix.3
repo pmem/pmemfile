@@ -36,13 +36,10 @@
 \f[B]libpmemfile\-posix\f[] \- user space persistent memory aware file
 system API
 .SH SYNOPSIS
-.IP
-.nf
-\f[C]
-#include\ <libpmemfile\-posix.h>
-cc\ \-std=gnu99\ ..\ \-lpmemfile\-posix\ \-lpmemobj
-\f[]
-.fi
+.PP
+\f[C]#include\ <libpmemfile\-posix.h>\f[]
+.PP
+\f[C]cc\ \-std=c99\ \-D_GNU_SOURCE\ ..\ `pkg\-config\ libpmemfile\-posix\ \-\-cflags\ \-\-libs`\f[]
 .SH DESCRIPTION
 .PP
 \f[B]libpmemfile\-posix\f[] provides a file system for persistent memory

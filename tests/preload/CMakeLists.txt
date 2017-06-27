@@ -31,15 +31,21 @@
 
 add_executable(preload_basic basic/basic.c)
 add_executable(preload_config config/config.c)
+add_executable(preload_pool_locking pool_locking/pool_locking.c)
 
 add_cstyle(tests-preload-basic ${CMAKE_CURRENT_SOURCE_DIR}/basic/basic.c)
 add_cstyle(tests-preload-config ${CMAKE_CURRENT_SOURCE_DIR}/config/config.c)
+add_cstyle(tests-preload-pool-locking ${CMAKE_CURRENT_SOURCE_DIR}/pool_locking/pool_locking.c)
 
 add_check_whitespace(tests-preload-basic ${CMAKE_CURRENT_SOURCE_DIR}/basic/basic.c)
 add_check_whitespace(tests-preload-config ${CMAKE_CURRENT_SOURCE_DIR}/config/config.c)
+add_check_whitespace(tests-preload-pool-locking ${CMAKE_CURRENT_SOURCE_DIR}/pool_locking/pool_locking.c)
 
 add_library(setumask SHARED setumask.c)
 set_target_properties(setumask PROPERTIES INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR}/src)
+
+find_package(Threads REQUIRED)
+target_link_libraries(preload_pool_locking "${CMAKE_THREAD_LIBS_INIT}")
 
 # Configures test ${name}${sub_name} using test dir ${name} and executable ${main_executable}
 function(add_test_generic name sub_name main_executable)
@@ -68,7 +74,7 @@ endif()
 add_test_generic(basic "" $<TARGET_FILE:preload_basic>)
 add_test_generic(basic_commands "" none)
 add_test_generic(nested_dirs "" none)
-
+add_test_generic(pool_locking "" $<TARGET_FILE:preload_pool_locking>)
 
 add_test_generic(config "_valid_via_symlink" $<TARGET_FILE:preload_config> -DTEST_PATH=some_dir/some_link/a)
 set_tests_properties("preload_config_valid_via_symlink"

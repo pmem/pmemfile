@@ -81,6 +81,7 @@ sudo docker run --rm --privileged=true --name=$containerName -ti \
 	--env http_proxy=$http_proxy \
 	--env https_proxy=$https_proxy \
 	--env COMPILER=$COMPILER \
+	--env COMPILERXX=$COMPILERXX \
 	--env WORKDIR=$WORKDIR \
 	--env TRAVIS=$TRAVIS \
 	--env TRAVIS_COMMIT_RANGE=$TRAVIS_COMMIT_RANGE \

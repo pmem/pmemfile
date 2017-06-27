@@ -38,8 +38,9 @@
 # Build all and run tests
 cd $WORKDIR
 mkdir /tmp/pmemfile-tests
-if [ -n "$COMPILER" ]; then
+if [ -n "$COMPILER" ] && [ -n "$COMPILERXX" ]; then
 	export CC=$COMPILER
+	export CXX=$COMPILERXX
 fi
 cp /googletest-1.8.0.zip .
 

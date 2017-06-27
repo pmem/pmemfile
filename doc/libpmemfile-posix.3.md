@@ -48,10 +48,9 @@ date: "pmemfile-posix API version 0.1.0
 **libpmemfile-posix** - user space persistent memory aware file system API
 
 # SYNOPSIS #
-```c
-#include <libpmemfile-posix.h>
-cc -std=gnu99 .. -lpmemfile-posix -lpmemobj
-```
+```#include <libpmemfile-posix.h>```
+
+```cc -std=gnu99 .. -lpmemfile-posix -lpmemobj```
 
 # DESCRIPTION #
 **libpmemfile-posix** provides a file system for persistent memory which runs in user-space.

@@ -44,13 +44,11 @@ date: pmemfile API version 0.1.0
 
 # SYNOPSIS #
 
-```c
-export LD_PRELOAD=libpmemfile.so
-```
+```export LD_PRELOAD=libpmemfile.so```
+
 **or**
-```c
-LD_PRELOAD=libpmemfile.so <invoke application via cli>
-```
+
+```LD_PRELOAD=libpmemfile.so <invoke application via cli>```
 
 # DESCRIPTION #
 **Pmemfile** is a user space persistent memory file system which is

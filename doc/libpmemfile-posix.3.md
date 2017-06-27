@@ -50,7 +50,7 @@ date: "pmemfile-posix API version 0.1.0
 # SYNOPSIS #
 ```#include <libpmemfile-posix.h>```
 
-```cc -std=gnu99 .. -lpmemfile-posix -lpmemobj```
+```cc -std=c99 -D_GNU_SOURCE .. `pkg-config libpmemfile-posix --cflags --libs` ```
 
 # DESCRIPTION #
 **libpmemfile-posix** provides a file system for persistent memory which runs in user-space.

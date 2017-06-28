@@ -49,7 +49,7 @@ enum utime_macros { UTIME_MACROS_DISABLED, UTIME_MACROS_ENABLED };
 static bool
 is_tm_valid(const struct pmemfile_time *tm)
 {
-	return tm->nsec >= 0 && tm->nsec <= 999999999 && tm->sec >= 0;
+	return tm->nsec >= 0 && tm->nsec <= 999999999;
 }
 
 static int
@@ -226,7 +226,7 @@ pmemfile_utime(PMEMfilepool *pfp, const char *filename,
 static bool
 is_timeval_valid(const pmemfile_timeval_t *tm)
 {
-	return tm->tv_usec >= 0 && tm->tv_usec <= 999999 && tm->tv_sec >= 0;
+	return tm->tv_usec >= 0 && tm->tv_usec <= 999999;
 }
 
 static int

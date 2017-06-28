@@ -82,13 +82,6 @@ vinode_file_time_set(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		}
 
 		tm = tm_buf;
-	} else {
-		for (int i = 0; i < 2; ++i) {
-			if (!is_tm_valid(&tm[i])) {
-				errno = EINVAL;
-				return -1;
-			}
-		}
 	}
 
 	os_rwlock_wrlock(&vinode->rwlock);

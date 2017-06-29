@@ -320,9 +320,17 @@ TEST_F(timestamps, futimes)
 	f = pmemfile_open(pfp, "/file", PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr);
 
+	tm[0] = {1, 2};
+	tm[1] = {3, 4};
 	errno = 0;
-	ASSERT_EQ(pmemfile_futimes(pfp, f, NULL), -1);
-	EXPECT_EQ(errno, EBADF);
+	ASSERT_EQ(pmemfile_futimes(pfp, f, tm), 0);
+	memset(&st2, 0, sizeof(st2));
+	ASSERT_EQ(pmemfile_stat(pfp, "/file", &st2), 0);
+
+	ASSERT_EQ(st2.st_atim.tv_sec, tm[0].tv_sec);
+	ASSERT_EQ(st2.st_atim.tv_nsec, tm[0].tv_usec * 1000);
+	ASSERT_EQ(st2.st_mtim.tv_sec, tm[1].tv_sec);
+	ASSERT_EQ(st2.st_mtim.tv_nsec, tm[1].tv_usec * 1000);
 
 	pmemfile_close(pfp, f);
 
@@ -433,9 +441,17 @@ TEST_F(timestamps, futimens)
 	f = pmemfile_open(pfp, "/file", PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr);
 
+	tm[0] = {1, 2};
+	tm[1] = {3, 4};
 	errno = 0;
-	ASSERT_EQ(pmemfile_futimens(pfp, f, NULL), -1);
-	EXPECT_EQ(errno, EBADF);
+	ASSERT_EQ(pmemfile_futimens(pfp, f, tm), 0);
+	memset(&st2, 0, sizeof(st2));
+	ASSERT_EQ(pmemfile_stat(pfp, "/file", &st2), 0);
+
+	ASSERT_EQ(st2.st_atim.tv_sec, tm[0].tv_sec);
+	ASSERT_EQ(st2.st_atim.tv_nsec, tm[0].tv_nsec);
+	ASSERT_EQ(st2.st_mtim.tv_sec, tm[1].tv_sec);
+	ASSERT_EQ(st2.st_mtim.tv_nsec, tm[1].tv_nsec);
 
 	pmemfile_close(pfp, f);
 

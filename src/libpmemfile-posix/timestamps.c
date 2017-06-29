@@ -278,17 +278,6 @@ pmemfile_futimes(PMEMfilepool *pfp, PMEMfile *file,
 		return -1;
 	}
 
-	uint64_t flags;
-
-	os_mutex_lock(&file->mutex);
-	flags = file->flags;
-	os_mutex_unlock(&file->mutex);
-
-	if (!(flags & PFILE_WRITE)) {
-		errno = EBADF;
-		return -1;
-	}
-
 	if (!tv)
 		return vinode_file_time_set(pfp, file->vinode, NULL,
 				UTIME_MACROS_DISABLED);
@@ -377,17 +366,6 @@ pmemfile_futimens(PMEMfilepool *pfp, PMEMfile *file,
 	if (!file) {
 		LOG(LUSR, "NULL file");
 		errno = EFAULT;
-		return -1;
-	}
-
-	uint64_t flags;
-
-	os_mutex_lock(&file->mutex);
-	flags = file->flags;
-	os_mutex_unlock(&file->mutex);
-
-	if (!(flags & PFILE_WRITE)) {
-		errno = EBADF;
 		return -1;
 	}
 

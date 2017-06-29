@@ -41,6 +41,20 @@ add_check_whitespace(tests-preload-config ${CMAKE_CURRENT_SOURCE_DIR}/config/con
 add_library(setumask SHARED setumask.c)
 set_target_properties(setumask PROPERTIES INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR}/src)
 
+set(PRELOAD_LIB_LIST $<TARGET_FILE:pmemfile_shared>:$<TARGET_FILE:setumask>)
+if(SANITIZERS)
+#
+# Some of these tests use executables on the system which are built without
+# sanitizer flags, and therefore libasan must be preloaded.
+#
+# The ASAN library must come first among the libraries, otherwise one might
+# greeted by an error message such as:
+#
+# "ASan runtime does not come first in initial library list; you should
+# either link runtime to your application or manually preload it with LD_PRELOAD."
+	set(PRELOAD_LIB_LIST ${SANITIZERS_PRELOAD}:${PRELOAD_LIB_LIST})
+endif()
+
 # Configures test ${name}${sub_name} using test dir ${name} and executable ${main_executable}
 function(add_test_generic name sub_name main_executable)
 	add_test(NAME preload_${name}${sub_name}
@@ -49,7 +63,7 @@ function(add_test_generic name sub_name main_executable)
 			-DTEST_NAME=${name}${sub_name}
 			-DSRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/${name}${sub_name}
 			-DBIN_DIR=${CMAKE_CURRENT_BINARY_DIR}/${name}${sub_name}
-			-DPRELOAD_LIB=$<TARGET_FILE:pmemfile_shared>:$<TARGET_FILE:setumask>
+			-DPRELOAD_LIB=${PRELOAD_LIB_LIST}
 			-DMAIN_EXECUTABLE=${main_executable}
 			${ARGN}
 			-P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/${name}.cmake)

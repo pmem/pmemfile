@@ -677,8 +677,19 @@ TEST_F(timestamps, utimensat)
 
 	ASSERT_EQ(pmemfile_fchmodat(pfp, d, "file", 0, 0), 0);
 	errno = 0;
-	ASSERT_EQ(pmemfile_utimensat(pfp, d, "file", NULL, 0), -1);
-	EXPECT_EQ(errno, EACCES);
+
+	tm[0] = {1, 2};
+	tm[1] = {3, 4};
+	ASSERT_EQ(pmemfile_utimensat(pfp, d, "file", tm, 0), 0);
+
+	memset(&fst2, 0, sizeof(fst2));
+	ASSERT_EQ(pmemfile_stat(pfp, "/d/file", &fst2), 0);
+
+	ASSERT_EQ(fst2.st_atim.tv_sec, tm[0].tv_sec);
+	ASSERT_EQ(fst2.st_atim.tv_nsec, tm[0].tv_nsec);
+
+	ASSERT_EQ(fst2.st_mtim.tv_sec, tm[1].tv_sec);
+	ASSERT_EQ(fst2.st_mtim.tv_nsec, tm[1].tv_nsec);
 
 	pmemfile_close(pfp, d);
 

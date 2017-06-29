@@ -176,11 +176,6 @@ pmemfile_file_time_set(PMEMfilepool *pfp, PMEMfile *dir, const char *filename,
 		goto end;
 	}
 
-	if (!_vinode_can_access(&cred, vinode, PFILE_WANT_WRITE)) {
-		error = EACCES;
-		goto end;
-	}
-
 	if (vinode_file_time_set(pfp, vinode, tm, utm))
 		error = errno;
 

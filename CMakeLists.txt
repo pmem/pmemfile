@@ -188,12 +188,14 @@ add_c_flag(-Wmissing-prototypes)
 
 check_c_compiler_flag(-Wl,-z,relro LINKER_HAS_RELRO)
 if(LINKER_HAS_RELRO)
-	set(CMAKE_LD_FLAGS  "${CMAKE_LD_FLAGS}  -Wl,-z,relro")
+	set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS}  -Wl,-z,relro")
+	set(CMAKE_SHARED_LINKER_FLAGS  "${CMAKE_SHARED_LINKER_FLAGS}  -Wl,-z,relro")
 endif()
 
 check_c_compiler_flag(-Wl,--warn-common LINKER_HAS_WARN_COMMON)
 if(LINKER_HAS_WARN_COMMON)
-	set(CMAKE_LD_FLAGS  "${CMAKE_LD_FLAGS} -Wl,--warn-common")
+	set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -Wl,--warn-common")
+	set(CMAKE_SHARED_LINKER_FLAGS  "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--warn-common")
 endif()
 
 add_flag(-ggdb DEBUG)
@@ -227,7 +229,7 @@ if(SANITIZERS)
 	endif()
 
 	if(C_HAS_ASAN_UBSAN OR CXX_HAS_ASAN_UBSAN)
-		set(CMAKE_LD_FLAGS "${CMAKE_LD_FLAGS} -fsanitize=address,undefined")
+		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address,undefined")
 	endif()
 
 	set(CMAKE_REQUIRED_LIBRARIES ${SAVED_CMAKE_REQUIRED_LIBRARIES})
@@ -238,7 +240,8 @@ if(DEVELOPER_MODE)
 
 	check_c_compiler_flag(-Wl,--fatal-warnings LINKER_HAS_FATAL_WARNINGS)
 	if(LINKER_HAS_FATAL_WARNINGS)
-		set(CMAKE_LD_FLAGS  "${CMAKE_LD_FLAGS} -Wl,--fatal-warnings")
+		set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -Wl,--fatal-warnings")
+		set(CMAKE_SHARED_LINKER_FLAGS  "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--fatal-warnings")
 	endif()
 endif(DEVELOPER_MODE)
 

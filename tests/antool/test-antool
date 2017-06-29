@@ -101,7 +101,7 @@ RUN_VLTRACE="ulimit -l 10240 && ulimit -n 10240 && $VLTRACE $OPT_VLTRACE"
 TEST_DIR=$(dirname $0)
 [ "$TEST_DIR" == "." ] && TEST_DIR=$(pwd)
 
-ANTOOL_DIR=$TEST_DIR/../../tools/antool
+ANTOOL=$TEST_DIR/../../src/tools/antool/antool.py
 
 OUTBIN=output-bin-$TEST_NUM.log
 OUT=output-$TEST_NUM.log
@@ -128,14 +128,14 @@ fi
 
 set +e
 
-echo "$ $ANTOOL_DIR/antool.py -t syscalls_table.dat -b $OUTBIN -s -o $OUT_ANTOOL -p $DIR/$PMEM > $OUT"
-$ANTOOL_DIR/antool.py -t syscalls_table.dat -b $OUTBIN -s -o $OUT_ANTOOL -p $DIR/$PMEM > $OUT
+echo "$ $ANTOOL -t syscalls_table.dat -b $OUTBIN -s -o $OUT_ANTOOL -p $DIR/$PMEM > $OUT"
+$ANTOOL -t syscalls_table.dat -b $OUTBIN -s -o $OUT_ANTOOL -p $DIR/$PMEM > $OUT
 
-echo "$ $ANTOOL_DIR/antool.py -t syscalls_table.dat -b $OUTBIN -s -o $OUT_ANTOOL -p $DIR/$PMEM -v > $OUTv"
-$ANTOOL_DIR/antool.py -t syscalls_table.dat -b $OUTBIN -s -o $OUT_ANTOOL -p $DIR/$PMEM -v > $OUTv
+echo "$ $ANTOOL -t syscalls_table.dat -b $OUTBIN -s -o $OUT_ANTOOL -p $DIR/$PMEM -v > $OUTv"
+$ANTOOL -t syscalls_table.dat -b $OUTBIN -s -o $OUT_ANTOOL -p $DIR/$PMEM -v > $OUTv
 
-echo "$ $ANTOOL_DIR/antool.py -t syscalls_table.dat -b $OUTBIN -s -o $OUT_ANTOOL -p $DIR/$PMEM -vv > $OUTvv"
-$ANTOOL_DIR/antool.py -t syscalls_table.dat -b $OUTBIN -s -o $OUT_ANTOOL -p $DIR/$PMEM -vv > $OUTvv
+echo "$ $ANTOOL -t syscalls_table.dat -b $OUTBIN -s -o $OUT_ANTOOL -p $DIR/$PMEM -vv > $OUTvv"
+$ANTOOL -t syscalls_table.dat -b $OUTBIN -s -o $OUT_ANTOOL -p $DIR/$PMEM -vv > $OUTvv
 
 set -e
 

@@ -52,11 +52,9 @@
 
 int pmemfile_flock(PMEMfilepool *, PMEMfile *file, int operation);
 
-// De we need dup, dup2 in libpmemfile-posix? Maybe, dunno...
 PMEMfile *pmemfile_dup(PMEMfilepool *, PMEMfile *);
 PMEMfile *pmemfile_dup2(PMEMfilepool *, PMEMfile *file, PMEMfile *file2);
 
-// Memory mapping pmemfiles, these need extra suppport in the preloadable lib
 void *pmemfile_mmap(PMEMfilepool *, void *addr, size_t len,
 		int prot, int flags, PMEMfile *file, pmemfile_off_t off);
 int pmemfile_munmap(PMEMfilepool *, void *addr, size_t len);

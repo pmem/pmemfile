@@ -49,7 +49,7 @@ enum utime_macros { UTIME_MACROS_DISABLED, UTIME_MACROS_ENABLED };
 static bool
 is_tm_valid(const struct pmemfile_time *tm)
 {
-	return tm->nsec >= 0 && tm->nsec <= 999999999 && tm->sec >= 0;
+	return tm->nsec >= 0 && tm->nsec <= 999999999;
 }
 
 static int
@@ -80,13 +80,6 @@ vinode_file_time_set(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		}
 
 		tm = tm_buf;
-	} else {
-		for (int i = 0; i < 2; ++i) {
-			if (!is_tm_valid(&tm[i])) {
-				errno = EINVAL;
-				return -1;
-			}
-		}
 	}
 
 	os_rwlock_wrlock(&vinode->rwlock);
@@ -224,7 +217,7 @@ pmemfile_utime(PMEMfilepool *pfp, const char *filename,
 static bool
 is_timeval_valid(const pmemfile_timeval_t *tm)
 {
-	return tm->tv_usec >= 0 && tm->tv_usec <= 999999 && tm->tv_sec >= 0;
+	return tm->tv_usec >= 0 && tm->tv_usec <= 999999;
 }
 
 static int

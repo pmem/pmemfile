@@ -240,7 +240,7 @@ enter_pool(struct resolved_path *result, struct pool_description *pool,
 /*
  * exit_pool - continue resolving the remaining part of path by asking
  * the kernel.
- * E.g.: after refering a ".." entry at the root of a pmemfile pool.
+ * E.g.: after referring a ".." entry at the root of a pmemfile pool.
  */
 static void
 exit_pool(struct resolved_path *result, size_t resolved, size_t *size)
@@ -252,7 +252,7 @@ exit_pool(struct resolved_path *result, size_t resolved, size_t *size)
 }
 
 /*
- * resolve_path - the main logic for resolving paths containing arbitary
+ * resolve_path - the main logic for resolving paths containing arbitrary
  * combinations of path components in the kernel's vfs and pmemfile pools.
  *
  * The at argument describes the starting directory of the path resolution,

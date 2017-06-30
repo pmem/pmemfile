@@ -167,11 +167,6 @@ pmemfile_file_time_set(PMEMfilepool *pfp, PMEMfile *dir, const char *filename,
 		goto end;
 	}
 
-	if (!_vinode_can_access(&cred, vinode, PFILE_WANT_WRITE)) {
-		error = EACCES;
-		goto end;
-	}
-
 	if (vinode_file_time_set(pfp, vinode, tm, utm))
 		error = errno;
 
@@ -269,17 +264,6 @@ pmemfile_futimes(PMEMfilepool *pfp, PMEMfile *file,
 		return -1;
 	}
 
-	uint64_t flags;
-
-	os_mutex_lock(&file->mutex);
-	flags = file->flags;
-	os_mutex_unlock(&file->mutex);
-
-	if (!(flags & PFILE_WRITE)) {
-		errno = EBADF;
-		return -1;
-	}
-
 	if (!tv)
 		return vinode_file_time_set(pfp, file->vinode, NULL,
 				UTIME_MACROS_DISABLED);
@@ -368,17 +352,6 @@ pmemfile_futimens(PMEMfilepool *pfp, PMEMfile *file,
 	if (!file) {
 		LOG(LUSR, "NULL file");
 		errno = EFAULT;
-		return -1;
-	}
-
-	uint64_t flags;
-
-	os_mutex_lock(&file->mutex);
-	flags = file->flags;
-	os_mutex_unlock(&file->mutex);
-
-	if (!(flags & PFILE_WRITE)) {
-		errno = EBADF;
 		return -1;
 	}
 

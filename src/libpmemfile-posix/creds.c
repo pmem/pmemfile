@@ -449,6 +449,9 @@ gid_in_list(const struct pmemfile_cred *cred, pmemfile_gid_t gid)
 bool
 can_access(const struct pmemfile_cred *cred, struct inode_perms perms, int acc)
 {
+	if (cred->caps & (1 << PMEMFILE_CAP_FOWNER))
+		return true;
+
 	pmemfile_mode_t perm = perms.flags & PMEMFILE_ACCESSPERMS;
 	pmemfile_mode_t req = 0;
 	pmemfile_uid_t uid;

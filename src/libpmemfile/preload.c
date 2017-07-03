@@ -2237,7 +2237,7 @@ lookup_pd_by_inode(struct stat *stat)
 }
 
 /*
- * Return values expected by libcintercept :
+ * Return values expected by libsyscall_intercept:
  * A non-zero return value if it should execute the syscall,
  * zero return value if it should not execute the syscall, and
  * use *result value as the syscall's result.
@@ -2349,7 +2349,7 @@ static void
 init_hooking(void)
 {
 	/*
-	 * Install the callback to be calleb by the syscall intercepting library
+	 * Install the callback to be called by the syscall intercepting library
 	 */
 	intercept_hook_point = &hook_reentrance_guard_wrapper;
 }
@@ -2465,7 +2465,7 @@ open_mount_point(struct pool_description *pool)
  * semicolon separated list of path-pairs:
  * mount_point_path:pool_file_path
  * Mount point path is where the application is meant to observe a pmemfile
- * pool mounted -- this should be an actual directory accessoble by the
+ * pool mounted -- this should be an actual directory accessible by the
  * application. The pool file path should point to the path of the actual
  * pmemfile pool.
  */

@@ -95,7 +95,7 @@ struct syscall_early_filter_entry {
 	 * descriptor, and just return zero whenever that fd is associated
 	 * with a pmemfile-posix handled file. This allows an easy
 	 * implementation of some effectively NOP syscalls, e.g.:
-	 * The syncfs syscall can always be considered successfull when
+	 * The syncfs syscall can always be considered successful when
 	 * called with an fd referring to a pmemfile resident file -- thus
 	 * libpmemfile can return zero (indicating success), without parsing
 	 * any of the syscall arguments.
@@ -116,7 +116,7 @@ struct syscall_early_filter_entry {
 	bool returns_zero;
 
 	/*
-	 * The idea behind the returns_ENOTSUP flag is the exactlye the same
+	 * The idea behind the returns_ENOTSUP flag is the exactly the same
 	 * as in the case of the returns_zero flag (except for the return
 	 * value). E.g. as long as writev is not implemented for pmemfile
 	 * handled files, the libpmemfile library can return ENOTSUP for a
@@ -126,7 +126,7 @@ struct syscall_early_filter_entry {
 };
 
 /*
- * get_early_filter_entry -- returns a filter entry with flags corresponging
+ * get_early_filter_entry -- returns a filter entry with flags corresponding
  * to the syscall number. When called with an invalid syscall number (e.g. -1),
  * all returned flags are set to false.
  */

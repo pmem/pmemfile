@@ -47,7 +47,7 @@ set_target_properties(setumask PROPERTIES INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR
 target_link_libraries(preload_pool_locking "${CMAKE_THREAD_LIBS_INIT}")
 
 set(PRELOAD_LIB_LIST $<TARGET_FILE:pmemfile_shared>:$<TARGET_FILE:setumask>)
-if(SANITIZERS)
+if(USE_ASAN)
 #
 # Some of these tests use executables on the system which are built without
 # sanitizer flags, and therefore libasan must be preloaded.
@@ -57,7 +57,7 @@ if(SANITIZERS)
 #
 # "ASan runtime does not come first in initial library list; you should
 # either link runtime to your application or manually preload it with LD_PRELOAD."
-	set(PRELOAD_LIB_LIST ${SANITIZERS_PRELOAD}:${PRELOAD_LIB_LIST})
+	set(PRELOAD_LIB_LIST ${ASAN_RUNTIME}:${PRELOAD_LIB_LIST})
 endif()
 
 # Configures test ${name}${sub_name} using test dir ${name} and executable ${main_executable}

@@ -210,32 +210,40 @@ add_flag("-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2" RELEASE)
 
 add_flag(-D_LARGEFILE64_SOURCE)
 
-option(SANITIZERS "enable AddressSanitizer and UndefinedBehaviorSanitizer (debugging) (using with BUILD_LIBPMEMFILE=ON is experimental)" OFF)
-set(SANITIZERS_PRELOAD "" CACHE STRING "(experimental) path to preloadable lib for sanitizers e.g.: /usr/lib/gcc/x86_64-linux-gnu/6/libasan.so")
+option(USE_ASAN "enable AddressSanitizer (debugging) (using with BUILD_LIBPMEMFILE=ON is experimental)" OFF)
+option(USE_UBSAN "enable UndefinedBehaviorSanitizer (debugging) (using with BUILD_LIBPMEMFILE=ON is experimental)" OFF)
+set(ASAN_RUNTIME "" CACHE STRING "(experimental) path to preloadable lib for sanitizers e.g.: /usr/lib/gcc/x86_64-linux-gnu/6/libasan.so")
 
-if(SANITIZERS)
+macro(add_sanitizer_flag flag)
 	if(BUILD_LIBPMEMFILE)
-		message(WARNING "Sanitizers might be incompatible with LIBPMEMFILE. Running tests with SANITIZERS and BUILD_LIBPMEMFILE is experimental")
+		message(WARNING "Sanitizers might be incompatible with LIBPMEMFILE. Running tests with sanitizers and BUILD_LIBPMEMFILE is experimental")
 	endif()
 
 	set(SAVED_CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES})
-	set(CMAKE_REQUIRED_LIBRARIES "${CMAKE_REQUIRED_LIBRARIES} -fsanitize=address,undefined")
+	set(CMAKE_REQUIRED_LIBRARIES "${CMAKE_REQUIRED_LIBRARIES} -fsanitize=${flag}")
 
-	check_c_compiler_flag("-fsanitize=address,undefined" C_HAS_ASAN_UBSAN)
+	check_c_compiler_flag("-fsanitize=${flag}" C_HAS_ASAN_UBSAN)
 	if(C_HAS_ASAN_UBSAN)
-		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address,undefined")
+		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=${flag}")
 	endif()
 
-	check_cxx_compiler_flag("-fsanitize=address,undefined" CXX_HAS_ASAN_UBSAN)
+	check_cxx_compiler_flag("-fsanitize=${flag}" CXX_HAS_ASAN_UBSAN)
 	if(CXX_HAS_ASAN_UBSAN)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=${flag}")
 	endif()
 
 	if(C_HAS_ASAN_UBSAN OR CXX_HAS_ASAN_UBSAN)
-		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address,undefined")
+		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=${flag}")
 	endif()
 
 	set(CMAKE_REQUIRED_LIBRARIES ${SAVED_CMAKE_REQUIRED_LIBRARIES})
+endmacro()
+
+if(USE_ASAN)
+	add_sanitizer_flag(address)
+endif()
+if(USE_UBSAN)
+	add_sanitizer_flag(undefined)
 endif()
 
 if(DEVELOPER_MODE)

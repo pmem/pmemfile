@@ -141,7 +141,7 @@ function(add_test_with_filter name filter tracer)
 		endif()
 	endif()
 
-	if (SANITIZERS AND ${tracer} IN_LIST vg_tracers)
+	if ((USE_ASAN OR USE_UBSAN) AND ${tracer} IN_LIST vg_tracers)
 		return()
 	endif()
 

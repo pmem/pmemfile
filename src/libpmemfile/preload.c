@@ -162,10 +162,16 @@ acquire_new_fd(const char *path)
 {
 	long fd;
 
-	if (is_memfd_syscall_available)
+	if (is_memfd_syscall_available) {
 		fd = syscall_no_intercept(SYS_memfd_create, path, 0);
-	else
+		/* memfd_create can fail for too long name */
+		if (fd < 0) {
+			fd = syscall_no_intercept(SYS_open, "/dev/null",
+					O_RDONLY);
+		}
+	} else {
 		fd = syscall_no_intercept(SYS_open, "/dev/null", O_RDONLY);
+	}
 
 	if (fd > PMEMFILE_MAX_FD) {
 		syscall_no_intercept(SYS_close, fd);

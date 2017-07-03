@@ -54,21 +54,18 @@ vinode_chmod(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 {
 	struct pmemfile_inode *inode = vinode->inode;
 	int error = 0;
-	pmemfile_uid_t fsuid;
-	int cap;
 
 	ASSERT_NOT_IN_TX();
 
-	os_rwlock_rdlock(&pfp->cred_rwlock);
-	fsuid = pfp->cred.fsuid;
-	cap = pfp->cred.caps;
-	os_rwlock_unlock(&pfp->cred_rwlock);
+	struct pmemfile_cred cred;
+	if (cred_acquire(pfp, &cred))
+		return errno;
 
 	os_rwlock_wrlock(&vinode->rwlock);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		if (vinode->inode->uid != fsuid &&
-				!(cap & (1 << PMEMFILE_CAP_FOWNER)))
+		if (vinode->inode->uid != cred.fsuid &&
+				!(cred.caps & (1 << PMEMFILE_CAP_FOWNER)))
 			pmemfile_tx_abort(EPERM);
 
 		struct pmemfile_time tm;
@@ -80,11 +77,19 @@ vinode_chmod(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		TX_ADD_DIRECT(&inode->flags);
 		inode->flags = (inode->flags & ~(uint64_t)PMEMFILE_ALLPERMS)
 				| mode;
+
+		if (vinode->inode->gid != cred.fsgid &&
+				!gid_in_list(&cred, vinode->inode->gid) &&
+				!(cred.caps & (1 << PMEMFILE_CAP_FSETID)))
+			inode->flags &= ~(uint64_t)PMEMFILE_S_ISGID;
+
 	} TX_ONABORT {
 		error = errno;
 	} TX_END
 
 	os_rwlock_unlock(&vinode->rwlock);
+
+	cred_release(&cred);
 
 	return error;
 }

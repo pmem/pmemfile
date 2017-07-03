@@ -29,24 +29,20 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-option(TESTS_USE_FORCED_PMEM "let tests force enable or force disable use of optimized flush in libpmemobj (to speed them up)" OFF)
+execute_process(COMMAND which vltrace
+		RESULT_VARIABLE VLTRACE_FOUND
+		OUTPUT_VARIABLE VLTRACE_BIN
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+		ERROR_QUIET)
 
-set(GLOBAL_TEST_ARGS
-	-DPERL_EXECUTABLE=${PERL_EXECUTABLE}
-	-DMATCH_SCRIPT=${PROJECT_SOURCE_DIR}/tests/match
-	-DMKFS_EXECUTABLE=$<TARGET_FILE:mkfs.pmemfile>
-	-DCAT_EXECUTABLE=$<TARGET_FILE:pmemfile-cat>
-	-DPARENT_DIR=${TEST_DIR}/
-	-DTESTS_USE_FORCED_PMEM=${TESTS_USE_FORCED_PMEM})
+if(${VLTRACE_FOUND} EQUAL 0)
+	# vltrace found
+	include(FindThreads)
+	add_executable(test_syscalls test_syscalls.c)
+	target_link_libraries(test_syscalls ${CMAKE_THREAD_LIBS_INIT})
 
-if(TRACE_TESTS)
-	set(GLOBAL_TEST_ARGS ${GLOBAL_TEST_ARGS} --trace-expand)
+	add_test(NAME "analyzing-tool"
+		COMMAND ${CMAKE_SOURCE_DIR}/tests/antool/test-antool ${VLTRACE_BIN} $<TARGET_FILE:test_syscalls> 0)
+else()
+	message(WARNING "vltrace not found, antool tests will not be performed.")
 endif()
-
-add_subdirectory(posix)
-
-if(BUILD_LIBPMEMFILE)
-	add_subdirectory(preload)
-endif()
-
-add_subdirectory(antool)

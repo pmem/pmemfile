@@ -1629,6 +1629,13 @@ update_capabilities(PMEMfilepool *pfp)
 	else
 		pmemfile_clrcap(pfp, PMEMFILE_CAP_FOWNER);
 
+	if (cap_get_flag(caps, CAP_FSETID, CAP_EFFECTIVE, &v))
+		FATAL("!cap_get_flag failed");
+	if (v)
+		pmemfile_setcap(pfp, PMEMFILE_CAP_FSETID);
+	else
+		pmemfile_clrcap(pfp, PMEMFILE_CAP_FSETID);
+
 	cap_free(caps);
 }
 

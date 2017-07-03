@@ -42,6 +42,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <linux/fs.h>
+#include <sys/capability.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -170,6 +171,10 @@ VERIFY(UTIME_NOW);
 VERIFY(UTIME_OMIT);
 
 VERIFY(MAP_FAILED);
+
+VERIFY(CAP_FOWNER);
+VERIFY(CAP_CHOWN);
+VERIFY(CAP_FSETID);
 
 #undef VERIFY
 

@@ -49,7 +49,10 @@ fd_close(void *x)
 	for (int i = 0; i < 100000; i++) {
 		close(fd);
 
-		fd = open(filename, O_RDWR);
+		int new_fd = open(filename, O_RDWR);
+
+		if (new_fd != fd)
+			close(new_fd);
 	}
 
 	return NULL;

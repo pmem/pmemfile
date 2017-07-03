@@ -266,7 +266,7 @@ resolve_path(struct fd_desc at,
 			int follow_last)
 {
 	if (path == NULL) {
-		result->error_code = -ENOTDIR;
+		result->error_code = -EFAULT;
 		return;
 	}
 

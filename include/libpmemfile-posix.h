@@ -340,6 +340,7 @@ int pmemfile_futimens(PMEMfilepool *, PMEMfile *file,
 
 #define PMEMFILE_CAP_CHOWN 0
 #define PMEMFILE_CAP_FOWNER 3
+#define PMEMFILE_CAP_FSETID 4
 int pmemfile_setcap(PMEMfilepool *, int cap);
 int pmemfile_clrcap(PMEMfilepool *, int cap);
 

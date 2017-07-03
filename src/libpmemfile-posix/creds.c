@@ -333,6 +333,7 @@ pmemfile_setcap(PMEMfilepool *pfp, int cap)
 	switch (cap) {
 		case PMEMFILE_CAP_CHOWN:
 		case PMEMFILE_CAP_FOWNER:
+		case PMEMFILE_CAP_FSETID:
 			pfp->cred.caps |= 1 << cap;
 			break;
 		default:
@@ -361,6 +362,7 @@ pmemfile_clrcap(PMEMfilepool *pfp, int cap)
 	switch (cap) {
 		case PMEMFILE_CAP_CHOWN:
 		case PMEMFILE_CAP_FOWNER:
+		case PMEMFILE_CAP_FSETID:
 			pfp->cred.caps &= ~(1 << cap);
 			break;
 		default:

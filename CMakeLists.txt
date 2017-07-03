@@ -210,11 +210,12 @@ add_flag("-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2" RELEASE)
 
 add_flag(-D_LARGEFILE64_SOURCE)
 
-option(SANITIZERS "enable AddressSanitizer and UndefinedBehaviorSanitizer (debugging) (incompatible with BUILD_LIBPMEMFILE=ON)" OFF)
+option(SANITIZERS "enable AddressSanitizer and UndefinedBehaviorSanitizer (debugging) (using with BUILD_LIBPMEMFILE=ON is experimental)" OFF)
+set(SANITIZERS_PRELOAD "" CACHE STRING "(experimental) path to preloadable lib for sanitizers e.g.: /usr/lib/gcc/x86_64-linux-gnu/6/libasan.so")
 
 if(SANITIZERS)
 	if(BUILD_LIBPMEMFILE)
-		message(FATAL_ERROR "Sanitizers are incompatible with LIBPMEMFILE. If you want to test LIBPMEMFILE-POSIX with SANITIZERS define BUILD_LIBPMEMFILE to 0/OFF.")
+		message(WARNING "Sanitizers might be incompatible with LIBPMEMFILE. Running tests with SANITIZERS and BUILD_LIBPMEMFILE is experimental")
 	endif()
 
 	set(SAVED_CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES})

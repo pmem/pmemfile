@@ -184,13 +184,16 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 		 * was != 0.
 		 */
 		if (ret > 0) {
+			struct pmemfile_time tm;
+			tx_get_current_time(&tm);
+
 			if (offset > inode->size) {
 				TX_ADD_FIELD_DIRECT(inode, size);
 				inode->size = offset;
+
+				TX_SET_DIRECT(inode, ctime, tm);
 			}
 
-			struct pmemfile_time tm;
-			tx_get_current_time(&tm);
 			TX_SET_DIRECT(inode, mtime, tm);
 		}
 	} TX_ONABORT {

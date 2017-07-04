@@ -87,6 +87,8 @@ struct pool_description {
 
 #define RESOLVE_LAST_SLINK 1
 #define NO_RESOLVE_LAST_SLINK 2
+#define RESOLVE_LAST_SLINK_MASK 3
+#define NO_AT_PATH (1<<30)
 
 struct pool_description *lookup_pd_by_inode(struct stat *stat);
 
@@ -129,6 +131,6 @@ struct resolved_path {
 void resolve_path(struct fd_desc at,
 			const char *path,
 			struct resolved_path *result,
-			int resolve_last_or_not);
+			int flags);
 
 #endif

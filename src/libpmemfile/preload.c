@@ -798,7 +798,7 @@ hook_getxattr(long arg0, long arg1, long arg2, long arg3,
 		return where.error_code;
 
 	if (is_fda_null(&where.at.pmem_fda)) {
-		if (where.at.kernel_fd == AT_FDCWD)
+		if (where.at.kernel_fd != AT_FDCWD)
 			return check_errno(-ENOTSUP, SYS_getxattr); /* XXX */
 
 		return syscall_no_intercept(SYS_getxattr,
@@ -822,7 +822,7 @@ hook_setxattr(long arg0, long arg1, long arg2, long arg3, long arg4,
 	if (!is_fda_null(&where.at.pmem_fda))
 		return check_errno(-ENOTSUP, SYS_setxattr);
 
-	if (where.at.kernel_fd == AT_FDCWD)
+	if (where.at.kernel_fd != AT_FDCWD)
 		return check_errno(-ENOTSUP, SYS_setxattr); /* XXX */
 
 	return syscall_no_intercept(SYS_setxattr, where.path, arg1, arg2, arg3,

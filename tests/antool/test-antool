@@ -107,6 +107,9 @@ OUTBIN=output-bin-$TEST_NUM.log
 OUT=output-$TEST_NUM.log
 OUTv=output-v-$TEST_NUM.log
 OUTvv=output-vv-$TEST_NUM.log
+OUTf=output-f-$TEST_NUM.log
+OUTfv=output-fv-$TEST_NUM.log
+OUTfvv=output-fvv-$TEST_NUM.log
 OUT_ANTOOL=output-antool-$TEST_NUM.log
 
 if [ "$VLTRACE_SKIP" != "1" ]; then
@@ -128,14 +131,26 @@ fi
 
 set +e
 
-echo "$ $ANTOOL -t syscalls_table.dat -b $OUTBIN -s -o $OUT_ANTOOL -p $DIR/$PMEM > $OUT"
-$ANTOOL -t syscalls_table.dat -b $OUTBIN -s -o $OUT_ANTOOL -p $DIR/$PMEM > $OUT
+COMMON_OPTS="-t syscalls_table.dat -b $OUTBIN -s -o $OUT_ANTOOL -p $DIR/$PMEM"
+ANTOOL="$ANTOOL $COMMON_OPTS"
 
-echo "$ $ANTOOL -t syscalls_table.dat -b $OUTBIN -s -o $OUT_ANTOOL -p $DIR/$PMEM -v > $OUTv"
-$ANTOOL -t syscalls_table.dat -b $OUTBIN -s -o $OUT_ANTOOL -p $DIR/$PMEM -v > $OUTv
+echo "$ $ANTOOL > $OUT"
+$ANTOOL > $OUT
 
-echo "$ $ANTOOL -t syscalls_table.dat -b $OUTBIN -s -o $OUT_ANTOOL -p $DIR/$PMEM -vv > $OUTvv"
-$ANTOOL -t syscalls_table.dat -b $OUTBIN -s -o $OUT_ANTOOL -p $DIR/$PMEM -vv > $OUTvv
+echo "$ $ANTOOL -v > $OUTv"
+$ANTOOL -v > $OUTv
+
+echo "$ $ANTOOL -vv > $OUTvv"
+$ANTOOL -vv > $OUTvv
+
+echo "$ $ANTOOL -f > $OUTf"
+$ANTOOL -f $COMMON_OPTS > $OUTf
+
+echo "$ $ANTOOL -f -v > $OUTfv"
+$ANTOOL -f $COMMON_OPTS -v > $OUTfv
+
+echo "$ $ANTOOL -f -vv > $OUTfvv"
+$ANTOOL -f $COMMON_OPTS -vv > $OUTfvv
 
 set -e
 

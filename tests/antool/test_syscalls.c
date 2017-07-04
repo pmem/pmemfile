@@ -231,7 +231,6 @@ test_analyzing_tool(char *dir, char *pmem, char *nonp)
 	s(); syscall(__NR_copy_file_range, fdnonp, 0, fdpmem, 0, 1, 0);
 	s(); syscall(__NR_copy_file_range, fdpmem, 0, fdpmem, 0, 1, 0);
 
-
 	s(); open(absnonp, O_RDONLY);
 	s(); open(abspmem, O_RDONLY);
 	s(); open(absnonp, O_RDONLY | O_ASYNC);

@@ -43,23 +43,46 @@ DO_GO_ON = 2
 ###############################################################################
 # AnalyzingTool
 ###############################################################################
-class AnalyzingTool:
-    def __init__(self, convert_mode, script_mode, debug_mode, fileout, max_packets, verbose_mode):
+class AnalyzingTool(ListSyscalls):
+    def __init__(self, convert_mode, pmem_paths, script_mode, debug_mode,
+                    fileout, max_packets, verbose_mode, offline_mode):
         self.convert_mode = convert_mode
         self.script_mode = script_mode
         self.debug_mode = debug_mode
+        self.offline_mode = offline_mode
         if verbose_mode:
             self.verbose_mode = verbose_mode
         else:
             self.verbose_mode = 0
 
+        self.print_progress = not (self.debug_mode or self.script_mode or (self.convert_mode and not self.offline_mode))
+
         self.cwd = ""
         self.syscall_table = []
         self.syscall = []
 
-        self.list_ok = ListSyscalls(script_mode, debug_mode)
-        self.list_no_exit = ListSyscalls(script_mode, debug_mode)
-        self.list_others = ListSyscalls(script_mode, debug_mode)
+        paths = str(pmem_paths)
+        self.pmem_paths = paths.split(':')
+
+        # counting PIDs
+        self.pid_table = []
+        self.npids = 0
+        self.last_pid = -1
+        self.last_pid_ind = 0
+
+        self.all_strings = ["(stdin)", "(stdout)", "(stderr)"]
+        self.all_fd_tables = []
+        self.path_is_pmem = [0, 0, 0]
+
+        self.list_unsup = []
+        self.list_unsup_yet = []
+        self.list_unsup_rel = []
+        self.list_unsup_flag = []
+
+        self.ind_unsup = []
+        self.ind_unsup_yet = []
+        self.ind_unsup_rel = []
+        self.ind_unsup_flag = []
 
         if max_packets:
             self.max_packets = int(max_packets)
@@ -78,6 +101,10 @@ class AnalyzingTool:
                     print("Notice: output of analysis will be saved in the file: /tmp/antool-analysis-output")
                 self.fileout = "/tmp/antool-analysis-output"
                 self.fhout = open_file(self.fileout, 'wt')
+
+        self.list_ok = ListSyscalls(script_mode, debug_mode, self.verbose_mode, self.fhout)
+        self.list_no_exit = ListSyscalls(script_mode, debug_mode, self.verbose_mode, self.fhout)
+        self.list_others = ListSyscalls(script_mode, debug_mode, self.verbose_mode, self.fhout)
 
     def read_syscall_table(self, path_to_syscalls_table_dat):
         self.syscall_table = SyscallTable()
@@ -142,6 +169,19 @@ class AnalyzingTool:
             self.list_others.append(self.syscall)
             return DO_REINIT
 
+
+    ###############################################################################
+    # do_analyse - do syscall analysis
+    ###############################################################################
+    def do_analyse(self, syscall):
+        syscall.pid_ind = self.count_pids(syscall.pid_tid)
+        if self.has_entry_content(syscall):
+            self.match_fd_with_path(syscall)
+            syscall.unsupported = self.check_if_supported(syscall)
+            self.add_to_unsupported_lists_or_print(syscall)
+        return syscall
+
+
     ###############################################################################
     # read_and_parse_data - read and parse data
     ###############################################################################
@@ -180,23 +220,20 @@ class AnalyzingTool:
         state = STATE_INIT
         while True:
             try:
-                if not self.debug_mode and not self.script_mode:
-                    print("\r{0:d}".format(n), end=' ')
-                n += 1
-
-                if state == STATE_COMPLETED:
-                    if n > self.max_packets > 0:
-                        if not self.script_mode:
-                            print("done (read maximum number of packets: {0:d})".format(n - 1))
-                        break
-                    state = STATE_INIT
-
                 data_size, info_all, pid_tid, sc_id, timestamp = read_fmt_data(fh, 'IIQQQ')
                 data_size = data_size - (sizeI + 3 * sizeQ)
-
-                # read the rest of data
                 bdata = read_bdata(fh, data_size)
 
+                n += 1
+                if self.print_progress:
+                    print("\r{0:d}".format(n), end=' ')
+                if n >= self.max_packets > 0:
+                    if not self.script_mode:
+                        print("done (read maximum number of packets: {0:d})".format(n))
+                    break
+
+                if state == STATE_COMPLETED:
+                    state = STATE_INIT
                 if state == STATE_INIT:
                     self.syscall = Syscall(pid_tid, sc_id, self.syscall_table.get(sc_id), buf_size, self.debug_mode)
 
@@ -213,10 +250,13 @@ class AnalyzingTool:
                 state = self.syscall.add_data(info_all, bdata, timestamp)
 
                 if state == STATE_COMPLETED:
-                    self.list_ok.append(self.syscall)
+                    if self.offline_mode:
+                        self.list_ok.append(self.syscall)
+                    elif not self.convert_mode:
+                        self.syscall = self.do_analyse(self.syscall)
 
-                if self.debug_mode:
-                    self.syscall.debug_print()
+                if (self.convert_mode and not self.offline_mode) or self.debug_mode:
+                    self.syscall.print_single_record()
 
                 if self.syscall.truncated:
                     truncated = self.syscall.truncated
@@ -232,27 +272,30 @@ class AnalyzingTool:
                 print("Unexpected error:", exc_info()[0], file=stderr)
                 raise
 
-        if not self.debug_mode and not self.script_mode:
-            print("\rDone (read {0:d} packets).".format(n))
         fh.close()
+
+        if self.print_progress:
+            print("\rDone (read {0:d} packets).".format(n))
 
         if len(self.list_no_exit):
             self.list_ok += self.list_no_exit
-
         if len(self.list_others):
             self.list_ok += self.list_others
-
         self.list_ok.sort()
-        # self.list_ok.make_time_relative()
 
-    def count_pids(self):
-        self.list_ok.count_pids(self.fhout)
+        if not self.convert_mode and not self.offline_mode:
+            for n in range(len(self.list_ok)):
+                self.list_ok[n] = self.do_analyse(self.list_ok[n])
+            self.print_unsupported_syscalls()
 
-    def match_fd_with_path(self, pmem_paths):
-        self.list_ok.match_fd_with_path(self.cwd, pmem_paths, self.fhout)
+    def count_pids_offline(self):
+        self.list_ok.count_pids_offline()
 
-    def print_unsupported_syscalls(self):
-        self.list_ok.print_unsupported_syscalls(self.verbose_mode)
+    def match_fd_with_path_offline(self, pmem_paths):
+        self.list_ok.match_fd_with_path_offline(self.cwd, pmem_paths)
+
+    def print_unsupported_syscalls_offline(self):
+        self.list_ok.print_unsupported_syscalls_offline()
 
 
 ###############################################################################
@@ -283,20 +326,24 @@ def main():
     parser.add_argument("-v", "--verbose", action='count', required=False,
                         help="verbose mode (-v: verbose, -vv: very verbose)")
     parser.add_argument("-d", "--debug", action='store_true', required=False, help="debug mode")
+    parser.add_argument("-f", "--offline", action='store_true', required=False, help="offline analysis mode")
 
     args = parser.parse_args()
 
-    at = AnalyzingTool(args.convert, args.script, args.debug, args.output, args.max_packets, args.verbose)
+    at = AnalyzingTool(args.convert, args.pmem, args.script, args.debug,
+                        args.output, args.max_packets, args.verbose, args.offline)
     at.read_syscall_table(args.table)
     at.read_and_parse_data(args.binlog)
 
-    if args.convert or args.log:
+    if args.offline and (args.convert or args.log):
         at.print_log()
 
-    if not args.convert:
-        at.count_pids()
-        at.match_fd_with_path(args.pmem)
-        at.print_unsupported_syscalls()
+    if args.convert or not args.offline:
+        return
+
+    at.count_pids_offline()
+    at.match_fd_with_path_offline(args.pmem)
+    at.print_unsupported_syscalls_offline()
 
 
 if __name__ == "__main__":

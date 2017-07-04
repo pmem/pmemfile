@@ -263,7 +263,7 @@ void
 resolve_path(struct fd_desc at,
 			const char *path,
 			struct resolved_path *result,
-			int follow_last)
+			int flags)
 {
 	if (path == NULL) {
 		result->error_code = -EFAULT;
@@ -315,6 +315,7 @@ resolve_path(struct fd_desc at,
 		result->at.pmem_fda.pool = NULL;
 
 	int num_symlinks = 0;
+	struct pool_description *last_pool = NULL;
 
 	/*
 	 * XXX
@@ -341,7 +342,8 @@ resolve_path(struct fd_desc at,
 
 		bool is_last_component = (result->path[end] == '\0');
 
-		if (is_last_component && follow_last == NO_RESOLVE_LAST_SLINK)
+		if (is_last_component && ((flags & RESOLVE_LAST_SLINK_MASK) ==
+						NO_RESOLVE_LAST_SLINK))
 			break;
 
 		result->path[end] = '\0';
@@ -361,6 +363,7 @@ resolve_path(struct fd_desc at,
 		 */
 		if (at_pmem_root && (end - resolved) == 2 &&
 				memcmp(&result->path[resolved], "..", 2) == 0) {
+			last_pool = result->at.pmem_fda.pool;
 			exit_pool(result, resolved, &size);
 			at_pmem_root = false;
 			continue;
@@ -413,5 +416,26 @@ resolve_path(struct fd_desc at,
 		result->path[size] = '/';
 		++size;
 		result->path[size] = '\0';
+	}
+
+	/*
+	 * If everything succeeded, we have a path that doesn't point to
+	 * pmemfile and is relative to a mount point and user wants path for
+	 * interfaces that do not have *at variant, then prepend the path with
+	 * the mount point path.
+	 */
+	if (result->error_code == 0 && is_fda_null(&result->at.pmem_fda) &&
+			(flags & NO_AT_PATH) && last_pool) {
+		size_t rem_len = strlen(result->path);
+		size_t mnt_len = strlen(last_pool->mount_point);
+
+		if (mnt_len + 1 + rem_len + 1 > sizeof(result->path)) {
+			result->error_code = ENAMETOOLONG;
+			return;
+		}
+
+		memmove(result->path + mnt_len + 1, result->path, rem_len + 1);
+		memcpy(result->path, last_pool->mount_point, mnt_len);
+		result->path[mnt_len] = '/';
 	}
 }

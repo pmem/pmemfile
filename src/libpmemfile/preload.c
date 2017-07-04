@@ -803,20 +803,16 @@ hook_getxattr(long arg0, long arg1, long arg2, long arg3,
 {
 	struct resolved_path where;
 
-	resolve_path(cwd_desc(), (const char *)arg0, &where, resolve_last);
+	resolve_path(cwd_desc(), (const char *)arg0, &where,
+			resolve_last | NO_AT_PATH);
 
 	if (where.error_code != 0)
 		return where.error_code;
 
-	if (is_fda_null(&where.at.pmem_fda)) {
-		if (where.at.kernel_fd != AT_FDCWD)
-			return check_errno(-ENOTSUP, SYS_getxattr); /* XXX */
+	if (!is_fda_null(&where.at.pmem_fda))
+		return check_errno(-ENOTSUP, SYS_getxattr);
 
-		return syscall_no_intercept(SYS_getxattr,
-		    where.path, arg1, arg2, arg3);
-	}
-
-	return 0;
+	return syscall_no_intercept(SYS_getxattr, where.path, arg1, arg2, arg3);
 }
 
 static long
@@ -825,16 +821,14 @@ hook_setxattr(long arg0, long arg1, long arg2, long arg3, long arg4,
 {
 	struct resolved_path where;
 
-	resolve_path(cwd_desc(), (const char *)arg0, &where, resolve_last);
+	resolve_path(cwd_desc(), (const char *)arg0, &where,
+			resolve_last | NO_AT_PATH);
 
 	if (where.error_code != 0)
 		return where.error_code;
 
 	if (!is_fda_null(&where.at.pmem_fda))
 		return check_errno(-ENOTSUP, SYS_setxattr);
-
-	if (where.at.kernel_fd != AT_FDCWD)
-		return check_errno(-ENOTSUP, SYS_setxattr); /* XXX */
 
 	return syscall_no_intercept(SYS_setxattr, where.path, arg1, arg2, arg3,
 			arg4);

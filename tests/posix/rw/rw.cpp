@@ -626,7 +626,7 @@ TEST_F(rw, ftruncate)
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
 
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", 0777), 0);
-	f = pmemfile_open(pfp, "/dir", PMEMFILE_O_RDWR, 0);
+	f = pmemfile_open(pfp, "/dir", PMEMFILE_O_DIRECTORY, 0);
 	ASSERT_NE(f, nullptr);
 
 	errno = 0;

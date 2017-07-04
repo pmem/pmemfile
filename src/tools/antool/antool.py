@@ -30,7 +30,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from sys import exc_info, stderr, stdout
+from sys import exc_info, stderr
 import argparse
 
 from syscalltable import *
@@ -89,22 +89,19 @@ class AnalyzingTool(ListSyscalls):
         else:
             self.max_packets = -1
 
-        if fileout:
-            self.fileout = fileout
-            self.fhout = open_file(self.fileout, 'wt')
+        if debug_mode:
+            logging.basicConfig(level=logging.DEBUG)
+        elif not script_mode:
+            logging.basicConfig(level=logging.INFO)
         else:
-            if self.convert_mode or self.debug_mode:
-                self.fileout = ""
-                self.fhout = stdout
-            else:
-                if not script_mode:
-                    print("Notice: output of analysis will be saved in the file: /tmp/antool-analysis-output")
-                self.fileout = "/tmp/antool-analysis-output"
-                self.fhout = open_file(self.fileout, 'wt')
+            logging.basicConfig(level=logging.WARNING)
 
-        self.list_ok = ListSyscalls(script_mode, debug_mode, self.verbose_mode, self.fhout)
-        self.list_no_exit = ListSyscalls(script_mode, debug_mode, self.verbose_mode, self.fhout)
-        self.list_others = ListSyscalls(script_mode, debug_mode, self.verbose_mode, self.fhout)
+        if fileout:
+            logging.basicConfig(filename=fileout)
+
+        self.list_ok = ListSyscalls(script_mode, debug_mode, self.verbose_mode)
+        self.list_no_exit = ListSyscalls(script_mode, debug_mode, self.verbose_mode)
+        self.list_others = ListSyscalls(script_mode, debug_mode, self.verbose_mode)
 
     def read_syscall_table(self, path_to_syscalls_table_dat):
         self.syscall_table = SyscallTable()
@@ -217,9 +214,9 @@ class AnalyzingTool(ListSyscalls):
 
         if not self.script_mode:
             # noinspection PyTypeChecker
-            print("Current working directory:", self.cwd, file=self.fhout)
+            logging.info("Current working directory: {0:s}".format(self.cwd))
             # noinspection PyTypeChecker
-            print("Command line:", argv, file=self.fhout)
+            logging.info("Command line: {0:s}".format(argv))
             if not self.debug_mode:
                 print("\nReading packets:")
 

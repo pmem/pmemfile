@@ -268,6 +268,8 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto end;
 	}
 
+	int accmode = flags & PMEMFILE_O_ACCMODE;
+
 	if (tmpfile) {
 		if (!vinode) {
 			error = ENOENT;
@@ -279,7 +281,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 			goto end;
 		}
 
-		if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_RDONLY) {
+		if (accmode == PMEMFILE_O_RDONLY) {
 			error = EINVAL;
 			goto end;
 		}
@@ -312,17 +314,15 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	if (vinode) {
 		if (!(flags & PMEMFILE_O_PATH)) {
-			int acc = flags & PMEMFILE_O_ACCMODE;
-
-			if (acc == PMEMFILE_O_ACCMODE) {
+			if (accmode == PMEMFILE_O_ACCMODE) {
 				error = EINVAL;
 				goto end;
 			}
 
 			int acc2;
-			if (acc == PMEMFILE_O_RDWR)
+			if (accmode == PMEMFILE_O_RDWR)
 				acc2 = PFILE_WANT_READ | PFILE_WANT_WRITE;
-			else if (acc == PMEMFILE_O_RDONLY)
+			else if (accmode == PMEMFILE_O_RDONLY)
 				acc2 = PFILE_WANT_READ;
 			else
 				acc2 = PFILE_WANT_WRITE;
@@ -345,7 +345,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 				goto end;
 			}
 
-			if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_RDONLY) {
+			if (accmode == PMEMFILE_O_RDONLY) {
 				LOG(LUSR, "O_TRUNC without write permissions");
 				error = EACCES;
 				goto end;
@@ -433,11 +433,11 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	if (flags & PMEMFILE_O_PATH)
 		file->flags = PFILE_PATH;
-	else if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_RDONLY)
+	else if (accmode == PMEMFILE_O_RDONLY)
 		file->flags = PFILE_READ;
-	else if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_WRONLY)
+	else if (accmode == PMEMFILE_O_WRONLY)
 		file->flags = PFILE_WRITE;
-	else if ((flags & PMEMFILE_O_ACCMODE) == PMEMFILE_O_RDWR)
+	else if (accmode == PMEMFILE_O_RDWR)
 		file->flags = PFILE_READ | PFILE_WRITE;
 
 	if (flags & PMEMFILE_O_NOATIME)

@@ -107,15 +107,22 @@ F_PTHREAD_CREATE = 0x3d0f00
 
 
 class ListSyscalls(list):
-    def __init__(self, script_mode, debug_mode):
+    def __init__(self, script_mode, debug_mode, verbose_mode, fhout):
         list.__init__(self)
+
         self.script_mode = script_mode
         self.debug_mode = debug_mode
+        self.verbose_mode = verbose_mode
+        self.fhout = fhout
+
         self.cwd = ""
         self.time0 = 0
 
+        # counting PIDs
         self.pid_table = []
         self.npids = 0
+        self.last_pid = -1
+        self.last_pid_ind = 0
 
         self.all_strings = ["(stdin)", "(stdout)", "(stderr)"]
         self.all_fd_tables = []
@@ -150,6 +157,7 @@ class ListSyscalls(list):
             self.all_strings.append(string)
             self.path_is_pmem.append(is_pmem)
             str_ind = len(self.all_strings) - 1
+            # XXX print("all_strings_append =", str_ind, string, is_pmem)  # XXX
         else:
             str_ind = self.all_strings.index(string)
         return str_ind
@@ -189,401 +197,369 @@ class ListSyscalls(list):
                 return syscall
         return -1
 
-    def count_pids(self, fhout):
-        last_pid = -1
-        pid_ind = 0
+    def count_pids(self, pid_tid):
+        pid = pid_tid >> 32
+        if pid != self.last_pid:
+            self.last_pid = pid
+            if self.pid_table.count(pid) == 0:
+                self.pid_table.append(pid)
+                self.all_fd_tables.append([0, 1, 2])
+                self.npids = len(self.pid_table)
+                self.last_pid_ind = len(self.pid_table) - 1
+            else:
+                self.last_pid_ind = self.pid_table.index(pid)
+        return self.last_pid_ind
+
+    def count_pids_offline(self):
         length = len(self)
         if not self.script_mode:
             print("\nCounting PIDs:")
-        for n in range(len(self)):
+        for n in range(length):
             if not self.script_mode:
                 print("\r{0:d} of {1:d} ({2:d}%)".format(n + 1, length, int((100 * (n + 1)) / length)), end='')
-            pid = self[n].pid_tid >> 32
-            if pid != last_pid:
-                last_pid = pid
-                if self.pid_table.count(pid) == 0:
-                    self.pid_table.append(pid)
-                    pid_ind = len(self.pid_table) - 1
-                else:
-                    pid_ind = self.pid_table.index(pid)
-            self[n].pid_ind = pid_ind
-        self.npids = len(self.pid_table)
+            self[n].pid_ind = self.count_pids(self[n].pid_tid)
         if not self.script_mode:
             print(" done.")
-
         if self.debug_mode:
             for n in range(len(self.pid_table)):
-                print("PID[{0:d}] = {1:016X}".format(n, self.pid_table[n]), file=fhout)
+                print("PID[{0:d}] = {1:016X}".format(n, self.pid_table[n]), file=self.fhout)
 
-    def arg_is_pmem(self, n, narg):
-        if narg > self[n].sc.nargs:
+    def arg_is_pmem(self, syscall, narg):
+        if narg > syscall.sc.nargs:
             return 0
         narg -= 1
-        if self[n].has_mask(Arg_is_path[narg] | Arg_is_fd[narg]):
-            str_ind = self[n].args[narg]
+        if syscall.has_mask(Arg_is_path[narg] | Arg_is_fd[narg]):
+            str_ind = syscall.args[narg]
             if str_ind != -1 and str_ind < len(self.path_is_pmem) and self.path_is_pmem[str_ind]:
                 return 1
         return 0
 
-    def check_fallocate_flags(self, n):
-        ret = 0
-        if self[n].args[1] == F_FALLOC_FL_COLLAPSE_RANGE:
-            self[n].unsupported_flag = "FALLOC_FL_COLLAPSE_RANGE"
-            ret = 1
-        elif self[n].args[1] == F_FALLOC_FL_ZERO_RANGE:
-            self[n].unsupported_flag = "FALLOC_FL_ZERO_RANGE"
-            ret = 1
-        elif self[n].args[1] == F_FALLOC_FL_INSERT_RANGE:
-            self[n].unsupported_flag = "FALLOC_FL_INSERT_RANGE"
-            ret = 1
-        if ret == 1:
-            self[n].unsupported = RESULT_UNSUPPORTED_FLAG
-            return 1
+    def check_fallocate_flags(self, syscall):
+        syscall.unsupported_flag = ""
+        if syscall.args[1] == F_FALLOC_FL_COLLAPSE_RANGE:
+            syscall.unsupported_flag = "FALLOC_FL_COLLAPSE_RANGE"
+        elif syscall.args[1] == F_FALLOC_FL_ZERO_RANGE:
+            syscall.unsupported_flag = "FALLOC_FL_ZERO_RANGE"
+        elif syscall.args[1] == F_FALLOC_FL_INSERT_RANGE:
+            syscall.unsupported_flag = "FALLOC_FL_INSERT_RANGE"
+        if syscall.unsupported_flag != "":
+            return RESULT_UNSUPPORTED_FLAG
         else:
-            return 0
+            return RESULT_SUPPORTED
 
-    def check_fcntl_flags(self, n):
-        ret = 0
-        if self[n].args[1] == F_SETFD and (self[n].args[2] & FD_CLOEXEC == 0):
-            self[n].unsupported_flag = "F_SETFD: not possible to clear FD_CLOEXEC flag"
-            ret = 1
-        elif self[n].args[1] == F_GETLK:
-            self[n].unsupported_flag = "F_GETLK"
-            ret = 1
-        elif self[n].args[1] == F_SETLK:
-            self[n].unsupported_flag = "F_SETLK"
-            ret = 1
-        elif self[n].args[1] == F_SETLKW:
-            self[n].unsupported_flag = "F_SETLKW"
-            ret = 1
-        elif self[n].args[1] == F_SETOWN:
-            self[n].unsupported_flag = "F_SETOWN"
-            ret = 1
-        elif self[n].args[1] == F_GETOWN:
-            self[n].unsupported_flag = "F_GETOWN"
-            ret = 1
-        elif self[n].args[1] == F_SETSIG:
-            self[n].unsupported_flag = "F_SETSIG"
-            ret = 1
-        elif self[n].args[1] == F_GETSIG:
-            self[n].unsupported_flag = "F_GETSIG"
-            ret = 1
-        elif self[n].args[1] == F_SETOWN_EX:
-            self[n].unsupported_flag = "F_SETOWN_EX"
-            ret = 1
-        elif self[n].args[1] == F_GETOWN_EX:
-            self[n].unsupported_flag = "F_GETOWN_EX"
-            ret = 1
-        elif self[n].args[1] == F_OFD_GETLK:
-            self[n].unsupported_flag = "F_OFD_GETLK"
-            ret = 1
-        elif self[n].args[1] == F_OFD_SETLK:
-            self[n].unsupported_flag = "F_OFD_SETLK"
-            ret = 1
-        elif self[n].args[1] == F_OFD_SETLKW:
-            self[n].unsupported_flag = "F_OFD_SETLKW"
-            ret = 1
-        elif self[n].args[1] == F_SETLEASE:
-            self[n].unsupported_flag = "F_SETLEASE"
-            ret = 1
-        elif self[n].args[1] == F_GETLEASE:
-            self[n].unsupported_flag = "F_GETLEASE"
-            ret = 1
-        elif self[n].args[1] == F_NOTIFY:
-            self[n].unsupported_flag = "F_NOTIFY"
-            ret = 1
-        elif self[n].args[1] == F_ADD_SEALS:
-            self[n].unsupported_flag = "F_ADD_SEALS"
-            ret = 1
-        elif self[n].args[1] == F_GET_SEALS:
-            self[n].unsupported_flag = "F_GET_SEALS"
-            ret = 1
-        if ret == 1:
-            self[n].unsupported = RESULT_UNSUPPORTED_FLAG
-            return 1
+    def check_fcntl_flags(self, syscall):
+        syscall.unsupported_flag = ""
+        if syscall.args[1] == F_SETFD and (syscall.args[2] & FD_CLOEXEC == 0):
+            syscall.unsupported_flag = "F_SETFD: not possible to clear FD_CLOEXEC flag"
+        elif syscall.args[1] == F_GETLK:
+            syscall.unsupported_flag = "F_GETLK"
+        elif syscall.args[1] == F_SETLK:
+            syscall.unsupported_flag = "F_SETLK"
+        elif syscall.args[1] == F_SETLKW:
+            syscall.unsupported_flag = "F_SETLKW"
+        elif syscall.args[1] == F_SETOWN:
+            syscall.unsupported_flag = "F_SETOWN"
+        elif syscall.args[1] == F_GETOWN:
+            syscall.unsupported_flag = "F_GETOWN"
+        elif syscall.args[1] == F_SETSIG:
+            syscall.unsupported_flag = "F_SETSIG"
+        elif syscall.args[1] == F_GETSIG:
+            syscall.unsupported_flag = "F_GETSIG"
+        elif syscall.args[1] == F_SETOWN_EX:
+            syscall.unsupported_flag = "F_SETOWN_EX"
+        elif syscall.args[1] == F_GETOWN_EX:
+            syscall.unsupported_flag = "F_GETOWN_EX"
+        elif syscall.args[1] == F_OFD_GETLK:
+            syscall.unsupported_flag = "F_OFD_GETLK"
+        elif syscall.args[1] == F_OFD_SETLK:
+            syscall.unsupported_flag = "F_OFD_SETLK"
+        elif syscall.args[1] == F_OFD_SETLKW:
+            syscall.unsupported_flag = "F_OFD_SETLKW"
+        elif syscall.args[1] == F_SETLEASE:
+            syscall.unsupported_flag = "F_SETLEASE"
+        elif syscall.args[1] == F_GETLEASE:
+            syscall.unsupported_flag = "F_GETLEASE"
+        elif syscall.args[1] == F_NOTIFY:
+            syscall.unsupported_flag = "F_NOTIFY"
+        elif syscall.args[1] == F_ADD_SEALS:
+            syscall.unsupported_flag = "F_ADD_SEALS"
+        elif syscall.args[1] == F_GET_SEALS:
+            syscall.unsupported_flag = "F_GET_SEALS"
+        if syscall.unsupported_flag != "":
+            return RESULT_UNSUPPORTED_FLAG
         else:
-            return 0
+            return RESULT_SUPPORTED
 
-    def check_if_supported(self, n):
-        if self[n].name in ("fork", "vfork"):
-            self[n].unsupported = RESULT_UNSUPPORTED
-            return
+    def check_if_supported(self, syscall):
+        if syscall.name in ("fork", "vfork"):
+            return RESULT_UNSUPPORTED
 
-        if self[n].name == "clone" and self[n].args[0] != F_PTHREAD_CREATE:
-            self[n].unsupported_flag = "flags other than set by pthread_create()"
-            self[n].unsupported = RESULT_UNSUPPORTED_FLAG
-            return
+        if syscall.name == "clone" and syscall.args[0] != F_PTHREAD_CREATE:
+            syscall.unsupported_flag = "flags other than set by pthread_create()"
+            return RESULT_UNSUPPORTED_FLAG
 
-        if len(self[n].strings) > 0:
-            if (len(self[n].strings[0]) > 0 and self[n].strings[0][0] != '/') or self[n].strings[0] == "":
-                if self[n].name in ("chroot", "getxattr", "lgetxattr", "setxattr", "lsetxattr"):
-                    self[n].unsupported = RESULT_UNSUPPORTED_RELATIVE
-                    return
+        if len(syscall.strings) > 0:
+            if (len(syscall.strings[0]) > 0 and syscall.strings[0][0] != '/') or syscall.strings[0] == "":
+                if syscall.name in ("chroot", "getxattr", "lgetxattr", "setxattr", "lsetxattr"):
+                    return RESULT_UNSUPPORTED_RELATIVE
 
-        if not self[n].is_pmem:
-            return
+        if not syscall.is_pmem:
+            return RESULT_SUPPORTED
 
-        if self[n].has_mask(EM_rfd):  # open & openat - O_ASYNC
-            if (self[n].is_mask(Arg_is_path[0]) and self[n].args[1] & FLAG_O_ASYNC and self[n].name == "open") or \
-               (self[n].is_mask(Arg_is_fd[0] | Arg_is_path[1] | EM_fileat) and self[n].args[2] & FLAG_O_ASYNC and
-               self[n].name == "openat"):
-                self[n].unsupported_flag = "O_ASYNC"
-                self[n].unsupported = RESULT_UNSUPPORTED_FLAG
-            return
+        if syscall.has_mask(EM_rfd):  # open & openat - O_ASYNC
+            if (syscall.is_mask(Arg_is_path[0]) and syscall.args[1] & FLAG_O_ASYNC and syscall.name == "open") or \
+               (syscall.is_mask(Arg_is_fd[0] | Arg_is_path[1] | EM_fileat) and syscall.args[2] & FLAG_O_ASYNC and
+               syscall.name == "openat"):
+                syscall.unsupported_flag = "O_ASYNC"
+                return RESULT_UNSUPPORTED_FLAG
+            return RESULT_SUPPORTED
 
-        if self[n].is_mask(EM_isfileat):
-            if self[n].name in ("execveat", "name_to_handle_at"):
-                self[n].unsupported = RESULT_UNSUPPORTED
-            elif self[n].name in ("futimesat", "utimensat"):
-                self[n].unsupported = RESULT_UNSUPPORTED_YET
+        if syscall.is_mask(EM_isfileat):
+            if syscall.name in ("execveat", "name_to_handle_at"):
+                return RESULT_UNSUPPORTED
+            elif syscall.name in ("futimesat", "utimensat"):
+                return RESULT_UNSUPPORTED_YET
             # renameat2 - RENAME_WHITEOUT
-            elif self[n].sc.nargs == 5 and self[n].name in "renameat2" and self[n].args[4] & FLAG_RENAME_WHITEOUT:
-                self[n].unsupported_flag = "RENAME_WHITEOUT"
-                self[n].unsupported = RESULT_UNSUPPORTED_FLAG
-            return
+            elif syscall.sc.nargs == 5 and syscall.name in "renameat2" and syscall.args[4] & FLAG_RENAME_WHITEOUT:
+                syscall.unsupported_flag = "RENAME_WHITEOUT"
+                return RESULT_UNSUPPORTED_FLAG
+            return RESULT_SUPPORTED
 
         # fallocate - FALLOC_FL_COLLAPSE_RANGE or FALLOC_FL_ZERO_RANGE or FALLOC_FL_INSERT_RANGE
-        if self[n].has_mask(EM_fd_1):
-            if self[n].name == "fallocate" and self[n].args[1] & self.check_fallocate_flags(n):
-                return
-            if self[n].name == "fcntl" and self.check_fcntl_flags(n):
-                return
+        if syscall.has_mask(EM_fd_1):
+            if syscall.name == "fallocate" and syscall.args[1]:
+                return self.check_fallocate_flags(syscall)
+            if syscall.name == "fcntl":
+                return self.check_fcntl_flags(syscall)
 
-        if self.arg_is_pmem(n, 1):
-            if self[n].name in (
+        if self.arg_is_pmem(syscall, 1):
+            if syscall.name in (
                     "chroot", "execve", "readahead",
                     "setxattr", "lsetxattr", "fsetxattr",
                     "listxattr", "llistxattr", "flistxattr",
                     "removexattr", "lremovexattr", "fremovexattr"):
-                self[n].unsupported = RESULT_UNSUPPORTED
-            elif self[n].name in (
+                return RESULT_UNSUPPORTED
+            elif syscall.name in (
                     "dup", "dup2", "dup3", "utime", "utimes", "flock"):
-                self[n].unsupported = RESULT_UNSUPPORTED_YET
+                return RESULT_UNSUPPORTED_YET
 
-        if (self.arg_is_pmem(n, 1) or self.arg_is_pmem(n, 3)) and self[n].name in ("copy_file_range", "splice"):
-            self[n].unsupported = RESULT_UNSUPPORTED_YET
-            return
+        if (self.arg_is_pmem(syscall, 1) or self.arg_is_pmem(syscall, 3)) and syscall.name in ("copy_file_range", "splice"):
+            return RESULT_UNSUPPORTED_YET
 
-        if (self.arg_is_pmem(n, 1) or self.arg_is_pmem(n, 2)) and self[n].name in ("sendfile", "sendfile64"):
-            self[n].unsupported = RESULT_UNSUPPORTED_YET
-            return
+        if (self.arg_is_pmem(syscall, 1) or self.arg_is_pmem(syscall, 2)) and syscall.name in ("sendfile", "sendfile64"):
+            return RESULT_UNSUPPORTED_YET
 
-        if self.arg_is_pmem(n, 5) and self[n].name == "mmap":
-            self[n].unsupported = RESULT_UNSUPPORTED_YET
-            return
+        if self.arg_is_pmem(syscall, 5) and syscall.name == "mmap":
+            return RESULT_UNSUPPORTED_YET
 
-        return
+        return RESULT_SUPPORTED
 
-    def handle_fileat(self, n, arg1, arg2, fhout):
-        dirfd = self[n].args[arg1]
+    def handle_fileat(self, syscall, arg1, arg2, fhout):
+        dirfd = syscall.args[arg1]
         if dirfd == 0xFFFFFFFFFFFFFF9C:  # AT_FDCWD
             dirfd = -100
-        path = self[n].strings[self[n].args[arg2]]
-        fd_out = self[n].iret
+        path = syscall.strings[syscall.args[arg2]]
+        fd_out = syscall.iret
 
         # check if AT_EMPTY_PATH is set
-        if self[n].sc.nargs > (arg2 + 1) and self[n].has_mask(Arg_is_path[arg2 + 1] | Arg_is_fd[arg2 + 1]) == 0 and\
-           self[n].args[arg2 + 1] & AT_EMPTY_PATH:
+        if syscall.sc.nargs > (arg2 + 1) and syscall.has_mask(Arg_is_path[arg2 + 1] | Arg_is_fd[arg2 + 1]) == 0 and\
+           syscall.args[arg2 + 1] & AT_EMPTY_PATH:
             path = ""
 
         dir_str = ""
         newpath = path
         unknown_dirfd = 0
-        if (len(path) == 0 and not self[n].read_error) or (len(path) != 0 and path[0] != '/'):
-            fd_table = self.all_fd_tables[self[n].pid_ind]
+        if (len(path) == 0 and not syscall.read_error) or (len(path) != 0 and path[0] != '/'):
+            fd_table = self.all_fd_tables[syscall.pid_ind]
             if dirfd == -100:
                 dir_str = self.cwd
                 newpath = dir_str + "/" + path
             elif 0 <= dirfd < len(fd_table):
                 str_ind = fd_table[dirfd]
-                self[n].args[arg1] = str_ind
+                syscall.args[arg1] = str_ind
                 dir_str = self.all_strings[str_ind]
                 newpath = dir_str + "/" + path
-            elif self[n].has_mask(EM_rfd) and fd_out != -1:
+            elif syscall.has_mask(EM_rfd) and fd_out != -1:
                 unknown_dirfd = 1
 
         if newpath != path:
             print(" {0:s} {1:s}".format(dir_str, path), end='', file=fhout)
+            path = newpath
         else:
             print(" ({0:d}) {1:s}".format(dirfd, path), end='', file=fhout)
 
-        is_pmem = self.check_if_path_is_pmem(newpath)
+        is_pmem = self.check_if_path_is_pmem(path)
         str_ind = self.all_strings_append(path, is_pmem)
-        self[n].args[arg2] = str_ind
-        path = newpath
-        self[n].is_pmem |= is_pmem
+        syscall.args[arg2] = str_ind
+        syscall.is_pmem |= is_pmem
         if is_pmem:
             print(" [PMEM]", end='', file=fhout)
         if unknown_dirfd:
             print("Error: unknown dirfd :", dirfd, file=fhout)
         return path, is_pmem, fd_out
 
-    def match_fd_with_path(self, cwd, pmem_paths, fhout):
+    def match_fd_with_path(self, syscall):
+        if syscall.read_error:
+            if not self.script_mode:
+                print(file=stderr)
+            print("Warning: BPF read error occurred, path is empty in syscall:", syscall.name, file=stderr)
+            print("Warning: BPF read error occurred, path is empty in syscall:", syscall.name, file=self.fhout)
+
+        # syscalls: SyS_open or SyS_creat
+        if syscall.is_mask(EM_fd_from_path):
+            path = syscall.strings[0]
+            if (len(path) == 0 or path[0] != '/') and not syscall.read_error:
+                path = self.cwd + "/" + path
+            is_pmem = self.check_if_path_is_pmem(path)
+            syscall.is_pmem = is_pmem
+            str_ind = self.all_strings_append(path, is_pmem)
+            syscall.args[0] = str_ind
+            if is_pmem:
+                print("{0:20s} {1:s} [PMEM]".format(syscall.name, path), file=self.fhout)
+            else:
+                print("{0:20s} {1:s}".format(syscall.name, path), file=self.fhout)
+            fd_out = syscall.iret
+            if fd_out != -1:
+                fd_table = self.all_fd_tables[syscall.pid_ind]
+                self.fd_table_assign(fd_table, fd_out, str_ind)
+
+        # all *at syscalls
+        elif syscall.is_mask(EM_isfileat):
+            print("{0:20s}".format(syscall.name), end='', file=self.fhout)
+            path, is_pmem, fd_out = self.handle_fileat(syscall, 0, 1, self.fhout)
+            # syscall SyS_openat
+            if syscall.has_mask(EM_rfd) and fd_out != -1:
+                str_ind = self.all_strings_append(path, is_pmem)
+                fd_table = self.all_fd_tables[syscall.pid_ind]
+                self.fd_table_assign(fd_table, fd_out, str_ind)
+            if syscall.is_mask(EM_isfileat2):
+                self.handle_fileat(syscall, 2, 3, self.fhout)
+            print(file=self.fhout)
+
+        # syscalls: SyS_dup*
+        elif syscall.is_mask(EM_fd_from_fd):
+            fd_table = self.all_fd_tables[syscall.pid_ind]
+            fd_in = syscall.args[0]
+            fd_out = syscall.iret
+            if 0 <= fd_in < len(fd_table):
+                str_ind = fd_table[fd_in]
+                syscall.args[0] = str_ind
+                path = self.all_strings[str_ind]
+                if self.path_is_pmem[str_ind]:
+                    syscall.is_pmem = 1
+                    print("{0:20s} {1:s} [PMEM]".format(syscall.name, path), file=self.fhout)
+                else:
+                    print("{0:20s} {1:s}".format(syscall.name, path), file=self.fhout)
+                if fd_out != -1:
+                    self.fd_table_assign(fd_table, fd_out, str_ind)
+            else:
+                syscall.args[0] = -1
+                print("{0:20s} ({1:d})".format(syscall.name, fd_in), file=self.fhout)
+                if fd_out != -1:
+                    print("Error: unknown fd :", fd_in, file=self.fhout)
+
+        # close ()
+        elif syscall.name == "close":
+            fd_in = syscall.args[0]
+            fd_table = self.all_fd_tables[syscall.pid_ind]
+            if 0 <= fd_in < len(fd_table):
+                str_ind = fd_table[fd_in]
+                fd_table[fd_in] = -1
+                path = self.all_strings[str_ind]
+                if self.path_is_pmem[str_ind]:
+                    syscall.is_pmem = 1
+                    print("{0:20s} {1:s} [PMEM]".format(syscall.name, path), file=self.fhout)
+                else:
+                    print("{0:20s} {1:s}".format(syscall.name, path), file=self.fhout)
+            else:
+                print("{0:20s} (0x{1:016X})".format(syscall.name, fd_in), file=self.fhout)
+
+        # syscalls with path or file descriptor
+        elif syscall.has_mask(EM_str_all | EM_fd_all):
+            print("{0:20s}".format(syscall.name), end='', file=self.fhout)
+            for narg in range(syscall.sc.nargs):
+                if syscall.has_mask(Arg_is_str[narg]):
+                    is_pmem = 0
+                    path = syscall.strings[syscall.args[narg]]
+                    if syscall.has_mask(Arg_is_path[narg]):
+                        syscall.str_is_path.append(1)
+                        if len(path) != 0 and path[0] != '/':
+                            self.all_strings_append(path, 0)  # add relative path as non-pmem
+                            path = self.cwd + "/" + path
+                        elif len(path) == 0 and not syscall.read_error:
+                            path = self.cwd
+                        is_pmem = self.check_if_path_is_pmem(path)
+                    else:
+                        syscall.str_is_path.append(0)
+                    syscall.is_pmem |= is_pmem
+                    str_ind = self.all_strings_append(path, is_pmem)
+                    syscall.args[narg] = str_ind
+                    if is_pmem:
+                        print(" {0:s} [PMEM]".format(path), end='', file=self.fhout)
+                    else:
+                        print(" {0:s}".format(path), end='', file=self.fhout)
+                if syscall.has_mask(Arg_is_fd[narg]):
+                    fd_table = self.all_fd_tables[syscall.pid_ind]
+                    fd = syscall.args[narg]
+                    if fd in (0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF):
+                        fd = -1
+                    if 0 <= fd < len(fd_table):
+                        str_ind = fd_table[fd]
+                        path = self.all_strings[str_ind]
+                        if self.path_is_pmem[str_ind]:
+                            syscall.is_pmem = 1
+                            print(" {0:s} [PMEM]".format(path), end='', file=self.fhout)
+                        else:
+                            print(" {0:s}".format(path), end='', file=self.fhout)
+                        syscall.args[narg] = str_ind
+                    else:
+                        if fd < 1024:
+                            print(" ({0:d})".format(fd), end='', file=self.fhout)
+                        else:
+                            print(" (0x{0:016X})".format(fd), end='', file=self.fhout)
+                        syscall.args[narg] = -1
+            print(file=self.fhout)
+
+    def has_entry_content(self, syscall):
+        if not (syscall.content & CNT_ENTRY):  # no entry info (no info about arguments)
+            if syscall.name not in ("clone", "fork", "vfork"):
+                if not self.script_mode:
+                    print()
+                print("Warning: missing info about arguments of syscall: {0:s} - skipping..."
+                      .format(syscall.name), file=stderr)
+            return 0
+        return 1
+
+    def match_fd_with_path_offline(self, cwd, pmem_paths):
         self.cwd = cwd
         paths = str(pmem_paths)
         self.pmem_paths = paths.split(':')
-
-        fd_table = [0, 1, 2]
-        for p in range(len(self.pid_table)):
-            self.all_fd_tables.append(fd_table)
 
         length = len(self)
         if not self.script_mode:
             print("\nAnalyzing:")
 
         for n in range(length):
-            if fhout != stdout and not self.script_mode:
+            if self.fhout != stdout and not self.script_mode:
                 print("\r{0:d} of {1:d} ({2:d}%)".format(n + 1, length, int((100 * (n + 1)) / length)), end='')
-
-            if not (self[n].content & CNT_ENTRY):  # no entry info (no info about arguments)
-                if self[n].name not in ("clone", "fork", "vfork"):
-                    if not self.script_mode:
-                        print()
-                    print("Warning: missing info about arguments of syscall: {0:s} - skipping..."
-                          .format(self[n].name), file=stderr)
+            if not self.has_entry_content(self[n]):
                 continue
+            self.match_fd_with_path(self[n])
+            self[n].unsupported = self.check_if_supported(self[n])
 
-            # syscalls: SyS_open or SyS_creat
-            if self[n].is_mask(EM_fd_from_path):
-                path = self[n].strings[0]
-                if self[n].read_error and len(path) == 0:
-                    print("Warning: BPF read error occurred, a path is empty in syscall:", self[n].name, file=fhout)
-                    if not self.script_mode:
-                        print()
-                    print("Warning: BPF read error occurred, a path is empty in syscall:", self[n].name, file=stderr)
-                elif len(path) == 0 or path[0] != '/':
-                    path = self.cwd + "/" + path
-                is_pmem = self.check_if_path_is_pmem(path)
-                self[n].is_pmem = is_pmem
-                str_ind = self.all_strings_append(path, is_pmem)
-                self[n].args[0] = str_ind
-                if is_pmem:
-                    print("{0:20s} {1:s} [PMEM]".format(self[n].name, path), file=fhout)
-                else:
-                    print("{0:20s} {1:s}".format(self[n].name, path), file=fhout)
-                fd_out = self[n].iret
-                if fd_out != -1:
-                    fd_table = self.all_fd_tables[self[n].pid_ind]
-                    self.fd_table_assign(fd_table, fd_out, str_ind)
-
-            # all *at syscalls
-            elif self[n].is_mask(EM_isfileat):
-                if self[n].read_error:
-                    print("Warning: BPF read error occurred, path is empty in syscall:", self[n].name, file=fhout)
-                    if not self.script_mode:
-                        print()
-                    print("Warning: BPF read error occurred, path is empty in syscall:", self[n].name, file=stderr)
-                print("{0:20s}".format(self[n].name), end='', file=fhout)
-                path, is_pmem, fd_out = self.handle_fileat(n, 0, 1, fhout)
-                # syscall SyS_openat
-                if self[n].has_mask(EM_rfd) and fd_out != -1:
-                    str_ind = self.all_strings_append(path, is_pmem)
-                    fd_table = self.all_fd_tables[self[n].pid_ind]
-                    self.fd_table_assign(fd_table, fd_out, str_ind)
-                if self[n].is_mask(EM_isfileat2):
-                    self.handle_fileat(n, 2, 3, fhout)
-                print(file=fhout)
-
-            # syscalls: SyS_dup*
-            elif self[n].is_mask(EM_fd_from_fd):
-                fd_table = self.all_fd_tables[self[n].pid_ind]
-                fd_in = self[n].args[0]
-                fd_out = self[n].iret
-                if 0 <= fd_in < len(fd_table):
-                    str_ind = fd_table[fd_in]
-                    self[n].args[0] = str_ind
-                    path = self.all_strings[str_ind]
-                    if self.path_is_pmem[str_ind]:
-                        self[n].is_pmem = 1
-                        print("{0:20s} {1:s} [PMEM]".format(self[n].name, path), file=fhout)
-                    else:
-                        print("{0:20s} {1:s}".format(self[n].name, path), file=fhout)
-                    if fd_out != -1:
-                        self.fd_table_assign(fd_table, fd_out, str_ind)
-                else:
-                    self[n].args[0] = -1
-                    print("{0:20s} ({1:d})".format(self[n].name, fd_in), file=fhout)
-                    if fd_out != -1:
-                        print("Error: unknown fd :", fd_in, file=fhout)
-
-            # close ()
-            elif self[n].name == "close":
-                fd_in = self[n].args[0]
-                fd_table = self.all_fd_tables[self[n].pid_ind]
-                if 0 <= fd_in < len(fd_table):
-                    str_ind = fd_table[fd_in]
-                    fd_table[fd_in] = -1
-                    path = self.all_strings[str_ind]
-                    if self.path_is_pmem[str_ind]:
-                        self[n].is_pmem = 1
-                        print("{0:20s} {1:s} [PMEM]".format(self[n].name, path), file=fhout)
-                    else:
-                        print("{0:20s} {1:s}".format(self[n].name, path), file=fhout)
-                else:
-                    print("{0:20s} (0x{1:016X})".format(self[n].name, fd_in), file=fhout)
-
-            # syscalls with path or file descriptor
-            elif self[n].has_mask(EM_str_all | EM_fd_all):
-                if self[n].read_error:
-                    print("Warning: BPF read error occurred, path is empty in syscall:", self[n].name, file=fhout)
-                    if not self.script_mode:
-                        print()
-                    print("Warning: BPF read error occurred, path is empty in syscall:", self[n].name, file=stderr)
-                print("{0:20s}".format(self[n].name), end='', file=fhout)
-                for narg in range(self[n].sc.nargs):
-                    if self[n].has_mask(Arg_is_str[narg]):
-                        if self[n].has_mask(Arg_is_path[narg]):
-                            self[n].str_is_path.append(1)
-                        else:
-                            self[n].str_is_path.append(0)
-                        path = self[n].strings[self[n].args[narg]]
-                        if self[n].has_mask(Arg_is_path[narg]):
-                            if (len(path) == 0 and not self[n].read_error) or (len(path) != 0 and path[0] != '/'):
-                                path = self.cwd + "/" + path
-                        is_pmem = self.check_if_path_is_pmem(path)
-                        self[n].is_pmem |= is_pmem
-                        str_ind = self.all_strings_append(path, is_pmem)
-                        self[n].args[narg] = str_ind
-                        if is_pmem:
-                            print(" {0:s} [PMEM]".format(path), end='', file=fhout)
-                        else:
-                            print(" {0:s}".format(path), end='', file=fhout)
-                    if self[n].has_mask(Arg_is_fd[narg]):
-                        fd_table = self.all_fd_tables[self[n].pid_ind]
-                        fd = self[n].args[narg]
-                        if fd in (0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF):
-                            fd = -1
-                        if 0 <= fd < len(fd_table):
-                            str_ind = fd_table[fd]
-                            path = self.all_strings[str_ind]
-                            if self.path_is_pmem[str_ind]:
-                                self[n].is_pmem = 1
-                                print(" {0:s} [PMEM]".format(path), end='', file=fhout)
-                            else:
-                                print(" {0:s}".format(path), end='', file=fhout)
-                            self[n].args[narg] = str_ind
-                        else:
-                            if fd < 1024:
-                                print(" ({0:d})".format(fd), end='', file=fhout)
-                            else:
-                                print(" (0x{0:016X})".format(fd), end='', file=fhout)
-                            self[n].args[narg] = -1
-                print(file=fhout)
-
-            self.check_if_supported(n)
-
-        if fhout != stdout and not self.script_mode:
+        if self.fhout != stdout and not self.script_mode:
             print(" done.\n")
 
-    def print_syscall(self, n, relative, end):
-        print("   {0:20s}\t\t".format(self[n].name), end='')
+    def print_syscall(self, syscall, relative, end):
+        # print("\t{0:16s}\t".format(syscall.name), end='')
+        print("   {0:20s}\t\t".format(syscall.name), end='')
         if relative:
-            for nstr in range(len(self[n].strings)):
-                print(" {0:s}".format(self[n].strings[nstr]), end='')
+            for nstr in range(len(syscall.strings)):
+                print(" {0:s}".format(syscall.strings[nstr]), end='')
         else:
-            for narg in range(self[n].sc.nargs):
-                if self[n].has_mask(Arg_is_str[narg] | Arg_is_fd[narg]):
-                    str_ind = self[n].args[narg]
+            for narg in range(syscall.sc.nargs):
+                if syscall.has_mask(Arg_is_str[narg] | Arg_is_fd[narg]):
+                    str_ind = syscall.args[narg]
                     if str_ind != -1:
                         if self.path_is_pmem[str_ind]:
                             print(" {0:s} [PMEM]  ".format(self.all_strings[str_ind]), end='')
@@ -592,10 +568,10 @@ class ListSyscalls(list):
         if end:
             print()
 
-    def print_unsupported(self, l_names, l_inds, verbose_mode):
+    def print_unsupported(self, l_names, l_inds):
         len_names = len(l_names)
         for n in range(len_names):
-            if not verbose_mode:
+            if not self.verbose_mode:
                 print("   {0:s}".format(l_names[n]))
             else:
                 list_ind = l_inds[n]
@@ -610,7 +586,24 @@ class ListSyscalls(list):
                     else:
                         print("\t\t{0:s}".format(self.all_strings[list_ind[i]]))
 
-    def add_to_unsupported_lists(self, n, name, l_names, l_inds, relative):
+    def print_unsupported_verbose2(self, msg, syscall, relative, end):
+        print("{0:28s}\t{1:16s}\t".format(msg, syscall.name), end='')
+        if relative:
+            for nstr in range(len(syscall.strings)):
+                print(" {0:s}".format(syscall.strings[nstr]), end='')
+        else:
+            for narg in range(syscall.sc.nargs):
+                if syscall.has_mask(Arg_is_path[narg] | Arg_is_fd[narg]):
+                    str_ind = syscall.args[narg]
+                    if str_ind != -1:
+                        if self.path_is_pmem[str_ind]:
+                            print(" {0:s} [PMEM]  ".format(self.all_strings[str_ind]), end='')
+                        else:
+                            print(" {0:s}".format(self.all_strings[str_ind]), end='')
+        if end:
+            print()
+
+    def add_to_unsupported_lists(self, syscall, name, l_names, l_inds, relative):
         if l_names.count(name) == 0:
             l_names.append(name)
             ind = len(l_names) - 1
@@ -622,94 +615,81 @@ class ListSyscalls(list):
             list_ind = l_inds[ind]
 
         if relative:
-            for nstr in range(len(self[n].strings)):
-                if self[n].str_is_path[nstr]:
-                    string = self[n].strings[nstr]
-                    if self.all_strings.count(string):
-                        str_ind = self.all_strings.index(string)
-                        if list_ind.count(str_ind) == 0:
-                            list_ind.append(str_ind)
+            for nstr in range(len(syscall.strings)):
+                if syscall.str_is_path[nstr]:
+                    string = syscall.strings[nstr]
+                    assert (self.all_strings.count(string))
+                    str_ind = self.all_strings.index(string)
+                    if list_ind.count(str_ind) == 0:
+                        list_ind.append(str_ind)
         else:
-            for narg in range(self[n].sc.nargs):
-                if self[n].has_mask(Arg_is_path[narg] | Arg_is_fd[narg]):
-                    str_ind = self[n].args[narg]
+            for narg in range(syscall.sc.nargs):
+                if syscall.has_mask(Arg_is_path[narg] | Arg_is_fd[narg]):
+                    str_ind = syscall.args[narg]
                     if str_ind != -1:
                         if list_ind.count(str_ind) == 0:
                             list_ind.append(str_ind)
         l_inds[ind] = list_ind
 
-    def print_unsupported_syscalls(self, verbose_mode):
-        length = len(self)
+    def add_to_unsupported_lists_or_print(self, syscall):
+        if syscall.unsupported == RESULT_UNSUPPORTED:
+            if self.verbose_mode >= 2:
+                self.print_unsupported_verbose2("unsupported syscall:", syscall, relative=0, end=1)
+            else:
+                self.add_to_unsupported_lists(syscall, syscall.name, self.list_unsup, self.ind_unsup, relative=0)
+
+        elif syscall.unsupported == RESULT_UNSUPPORTED_FLAG:
+            if self.verbose_mode >= 2:
+                self.print_unsupported_verbose2("unsupported flag:", syscall, relative=0, end=0)
+                print(" [unsupported flag:]", syscall.unsupported_flag)
+            else:
+                name = syscall.name + " <" + syscall.unsupported_flag + ">"
+                self.add_to_unsupported_lists(syscall, name, self.list_unsup_flag, self.ind_unsup_flag, relative=0)
+
+        elif syscall.unsupported == RESULT_UNSUPPORTED_RELATIVE:
+            if self.verbose_mode >= 2:
+                self.print_unsupported_verbose2("unsupported relative path:", syscall, relative=1, end=1)
+            else:
+                self.add_to_unsupported_lists(syscall, syscall.name, self.list_unsup_rel, self.ind_unsup_rel, relative=1)
+
+        elif syscall.unsupported == RESULT_UNSUPPORTED_YET:
+            if self.verbose_mode >= 2:
+                self.print_unsupported_verbose2("unsupported syscall yet:", syscall, relative=0, end=1)
+            else:
+                self.add_to_unsupported_lists(syscall, syscall.name, self.list_unsup_yet, self.ind_unsup_yet, relative=0)
+
+    def print_unsupported_syscalls(self):
+        if self.verbose_mode >= 2:
+            return
 
         # RESULT_UNSUPPORTED
-        relative = 0
-        for n in range(length):
-            if self[n].unsupported == RESULT_UNSUPPORTED:
-                if not self.unsupported:
-                    print("Unsupported syscalls detected:")
-                    self.unsupported = 1
-                if verbose_mode > 1:
-                    self.print_syscall(n, relative, end=1)
-                else:
-                    name = self[n].name
-                    self.add_to_unsupported_lists(n, name, self.list_unsup, self.ind_unsup, relative)
-        if verbose_mode <= 1:
-            self.print_unsupported(self.list_unsup, self.ind_unsup, verbose_mode)
-        if self.unsupported:
+        if len(self.list_unsup):
+            print("Unsupported syscalls detected:")
+            self.print_unsupported(self.list_unsup, self.ind_unsup)
             print()
 
         # RESULT_UNSUPPORTED_FLAG
-        relative = 0
-        for n in range(length):
-            if self[n].unsupported == RESULT_UNSUPPORTED_FLAG:
-                if not self.unsupported_flag:
-                    print("Unsupported syscall's flag detected:")
-                    self.unsupported_flag = 1
-                if verbose_mode > 1:
-                    self.print_syscall(n, relative, end=0)
-                    print(" [unsupported flag:]", self[n].unsupported_flag)
-                else:
-                    name = self[n].name + " <" + self[n].unsupported_flag + ">"
-                    self.add_to_unsupported_lists(n, name, self.list_unsup_flag, self.ind_unsup_flag, relative)
-        if verbose_mode <= 1:
-            self.print_unsupported(self.list_unsup_flag, self.ind_unsup_flag, verbose_mode)
-        if self.unsupported_flag:
+        if len(self.list_unsup_flag):
+            print("Unsupported syscall's flag detected:")
+            self.print_unsupported(self.list_unsup_flag, self.ind_unsup_flag)
             print()
 
         # RESULT_UNSUPPORTED_RELATIVE
-        relative = 1
-        for n in range(length):
-            if self[n].unsupported == RESULT_UNSUPPORTED_RELATIVE:
-                if not self.unsupported_rel:
-                    print("Unsupported syscalls with relative path detected:")
-                    self.unsupported_rel = 1
-                if verbose_mode > 1:
-                    self.print_syscall(n, relative, end=1)
-                else:
-                    name = self[n].name
-                    self.add_to_unsupported_lists(n, name, self.list_unsup_rel, self.ind_unsup_rel, relative)
-        if verbose_mode <= 1:
-            self.print_unsupported(self.list_unsup_rel, self.ind_unsup_rel, verbose_mode)
-        if self.unsupported_rel:
+        if len(self.list_unsup_rel):
+            print("Unsupported syscalls with relative path detected:")
+            self.print_unsupported(self.list_unsup_rel, self.ind_unsup_rel)
             print()
 
         # RESULT_UNSUPPORTED_YET
-        relative = 0
-        for n in range(length):
-            if self[n].unsupported == RESULT_UNSUPPORTED_YET:
-                if not self.unsupported_yet:
-                    print("Yet-unsupported syscalls detected (will be supported):")
-                    self.unsupported_yet = 1
-                if verbose_mode > 1:
-                    self.print_syscall(n, relative, end=1)
-                else:
-                    name = self[n].name
-                    self.add_to_unsupported_lists(n, name, self.list_unsup_yet, self.ind_unsup_yet, relative)
-        if verbose_mode <= 1:
-            self.print_unsupported(self.list_unsup_yet, self.ind_unsup_yet, verbose_mode)
-        if self.unsupported_yet:
+        if len(self.list_unsup_yet):
+            print("Yet-unsupported syscalls detected (will be supported):")
+            self.print_unsupported(self.list_unsup_yet, self.ind_unsup_yet)
             print()
 
-        if not (self.unsupported or self.unsupported_flag or self.unsupported_rel or self.unsupported_yet):
+        if not (len(self.list_unsup) or len(self.list_unsup_flag) or len(self.list_unsup_rel) or len(self.list_unsup_yet)):
             print("All syscalls are supported.")
 
+    def print_unsupported_syscalls_offline(self):
+        for n in range(len(self)):
+            self.add_to_unsupported_lists_or_print(self[n])
+        self.print_unsupported_syscalls()

@@ -220,11 +220,11 @@ class Syscall:
             return -1
 
     ###############################################################################
-    def debug_print(self):
+    def print_single_record(self):
         if self.truncated:
             return
 
-        if self.state not in (STATE_IN_ENTRY, STATE_ENTRY_COMPLETED, STATE_COMPLETED):
+        if self.debug_mode and self.state not in (STATE_IN_ENTRY, STATE_ENTRY_COMPLETED, STATE_COMPLETED):
             print("DEBUG STATE =", self.state)
 
         if self.state == STATE_ENTRY_COMPLETED:

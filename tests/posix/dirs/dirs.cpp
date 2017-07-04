@@ -369,7 +369,7 @@ TEST_F(dirs, read_write_dir)
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", PMEMFILE_S_IRWXU), 0);
 
 	PMEMfile *dir = pmemfile_open(pfp, "/dir",
-				      PMEMFILE_O_DIRECTORY | PMEMFILE_O_RDWR);
+				      PMEMFILE_O_DIRECTORY | PMEMFILE_O_RDONLY);
 	ASSERT_NE(dir, nullptr);
 
 	char buf[10];

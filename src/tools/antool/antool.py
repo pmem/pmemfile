@@ -36,9 +36,9 @@ import argparse
 from syscalltable import *
 from listsyscalls import *
 
-DO_REINIT = 0
-DO_CONTINUE = 1
-DO_GO_ON = 2
+DO_GO_ON = 0
+DO_REINIT = 1
+DO_SKIP = 2
 
 ###############################################################################
 # AnalyzingTool
@@ -131,28 +131,33 @@ class AnalyzingTool(ListSyscalls):
     def analyze_check(self, check, info_all, pid_tid, sc_id, name, retval):
 
         if CHECK_IGNORE == check:
-            return DO_CONTINUE
+            return DO_SKIP
 
-        elif CHECK_SKIP == check:
+        if CHECK_SKIP == check:
             if self.debug_mode:
                 print("Warning: skipping wrong packet type {0:d} of {1:s} ({2:d})"
                       .format(info_all, self.syscall_table.name(sc_id), sc_id))
-            return DO_CONTINUE
+            return DO_SKIP
 
-        elif CHECK_NO_EXIT == check:
+        if CHECK_NO_EXIT == check:
             self.list_no_exit.append(self.syscall)
             return DO_REINIT
 
-        elif check in (CHECK_NO_ENTRY, CHECK_SAVE_IN_ENTRY, CHECK_WRONG_EXIT):
+        if check in (CHECK_NO_ENTRY, CHECK_SAVE_IN_ENTRY, CHECK_WRONG_EXIT):
             old_syscall = self.syscall
+
             if CHECK_SAVE_IN_ENTRY == check:
                 self.list_others.append(self.syscall)
+
             if retval != 0 or name not in ("clone", "fork", "vfork"):
                 self.syscall = self.list_no_exit.search(info_all, pid_tid, sc_id, name, retval)
+
             if CHECK_WRONG_EXIT == check:
                 self.list_no_exit.append(old_syscall)
+
             if retval == 0 and name in ("clone", "fork", "vfork"):
                 return DO_REINIT
+
             if self.debug_mode:
                 if self.syscall == -1:
                     print("Warning: NO ENTRY found: exit without entry info found: {0:s} (sc_id:{1:d})"
@@ -160,15 +165,17 @@ class AnalyzingTool(ListSyscalls):
                 else:
                     print("Notice: found matching ENTRY for: {0:s} (sc_id:{1:d} pid:{2:016X}):"
                           .format(name, sc_id, pid_tid))
+
             if self.syscall == -1:
                 return DO_REINIT
-            else:
-                return DO_GO_ON
 
-        elif CHECK_WRONG_ID == check:
+            return DO_GO_ON
+
+        if CHECK_WRONG_ID == check:
             self.list_others.append(self.syscall)
             return DO_REINIT
 
+        return DO_GO_ON
 
     ###############################################################################
     # do_analyse - do syscall analysis
@@ -234,6 +241,7 @@ class AnalyzingTool(ListSyscalls):
 
                 if state == STATE_COMPLETED:
                     state = STATE_INIT
+
                 if state == STATE_INIT:
                     self.syscall = Syscall(pid_tid, sc_id, self.syscall_table.get(sc_id), buf_size, self.debug_mode)
 
@@ -242,9 +250,9 @@ class AnalyzingTool(ListSyscalls):
 
                 check = self.syscall.do_check(info_all, pid_tid, sc_id, name, retval)
                 result = self.analyze_check(check, info_all, pid_tid, sc_id, name, retval)
-                if result == DO_CONTINUE:
+                if result == DO_SKIP:
                     continue
-                elif result == DO_REINIT:
+                if result == DO_REINIT:
                     self.syscall = Syscall(pid_tid, sc_id, self.syscall_table.get(sc_id), buf_size, self.debug_mode)
 
                 state = self.syscall.add_data(info_all, bdata, timestamp)
@@ -268,6 +276,7 @@ class AnalyzingTool(ListSyscalls):
                 if err.val > 0:
                     print("Warning: log file is truncated:", path_to_trace_log, file=stderr)
                 break
+
             except:
                 print("Unexpected error:", exc_info()[0], file=stderr)
                 raise

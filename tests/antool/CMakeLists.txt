@@ -37,7 +37,6 @@ execute_process(COMMAND which vltrace
 
 if(${VLTRACE_FOUND} EQUAL 0)
 	# vltrace found
-	include(FindThreads)
 	add_executable(test_syscalls test_syscalls.c)
 	target_link_libraries(test_syscalls ${CMAKE_THREAD_LIBS_INIT})
 

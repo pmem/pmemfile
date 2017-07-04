@@ -381,7 +381,7 @@ class Syscall:
             max_len = self.buf_size - 2
             # check if string ended
             if len(str_p) == (max_len + 1):
-                # string did not ended
+                # string did not end
                 self.str_fini = 0
                 if self.will_be_cont == 0:
                     # error: string is truncated

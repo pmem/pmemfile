@@ -106,10 +106,10 @@ worker(void *arg)
  * test_analyzing_tool -- test unsupported syscalls #2
  */
 static void
-test_analyzing_tool(char *dir, char *pmem, char *nonp)
+test_analyzing_tool(const char *dir, const char *pmem, const char *nonp)
 {
 	char buf[BUF_SIZE];
-	char *const argv[2] = {pmem, pmem};
+	char *const argv[2] = {"path1", "path2"};
 	int rv;
 
 	if (!dir || !pmem || !nonp) {

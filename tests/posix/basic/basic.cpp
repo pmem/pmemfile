@@ -44,7 +44,7 @@ public:
 
 TEST_F(basic, open_create_close)
 {
-	PMEMfile *f1, *f2;
+	PMEMfile *f1, *f2, *dir;
 
 	/* NULL file name */
 	errno = 0;
@@ -130,6 +130,30 @@ TEST_F(basic, open_create_close)
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/aaa"), 0);
 	ASSERT_EQ(pmemfile_unlink(pfp, "/bbb"), 0);
+
+	/* make directory */
+	errno = 0;
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", 0777), 0);
+
+	/* successful open directory */
+	dir = pmemfile_open(pfp, "/dir",
+			    PMEMFILE_O_DIRECTORY | PMEMFILE_O_RDONLY);
+	ASSERT_NE(dir, nullptr);
+	pmemfile_close(pfp, dir);
+
+	/* wrong flags passed */
+	dir = pmemfile_open(pfp, "/dir",
+			    PMEMFILE_O_DIRECTORY | PMEMFILE_O_WRONLY);
+	ASSERT_EQ(dir, nullptr);
+	ASSERT_EQ(errno, EISDIR);
+
+	errno = 0;
+	dir = pmemfile_open(pfp, "/dir",
+			    PMEMFILE_O_DIRECTORY | PMEMFILE_O_RDWR);
+	ASSERT_EQ(dir, nullptr);
+	ASSERT_EQ(errno, EISDIR);
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
 }
 
 TEST_F(basic, link)

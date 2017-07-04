@@ -338,6 +338,11 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 			goto end;
 		}
 
+		if ((flags & PMEMFILE_O_RDWR) && vinode_is_dir(vinode)) {
+			error = EISDIR;
+			goto end;
+		}
+
 		if (flags & PMEMFILE_O_TRUNC) {
 			if (!vinode_is_regular_file(vinode)) {
 				LOG(LUSR, "truncating non regular file");

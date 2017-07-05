@@ -194,14 +194,23 @@ vinode_rename(PMEMfilepool *pfp,
 
 	size_t new_name_len = component_length(dst->remaining);
 
-	/*
-	 * From rename man page:
-	 * "oldpath can specify a directory.  In this case, newpath must either
-	 * not exist, or it must specify an empty directory."
-	 */
-	if (vinode_is_dir(src_info->vinode) && dst_info->dirent &&
-			!vinode_is_dir(dst_info->vinode))
-		return ENOTDIR;
+	if (vinode_is_dir(src_info->vinode)) {
+		/*
+		 * From rename man page:
+		 * "oldpath can specify a directory.  In this case, newpath must
+		 * either not exist, or it must specify an empty directory."
+		 */
+		if (dst_info->dirent && !vinode_is_dir(dst_info->vinode))
+			return ENOTDIR;
+	} else {
+		/*
+		 * From rename man page:
+		 * "EISDIR newpath is an existing directory, but oldpath is not
+		 * a directory."
+		 */
+		if (dst_info->dirent && vinode_is_dir(dst_info->vinode))
+			return EISDIR;
+	}
 
 	struct pmemfile_time t;
 	if (get_current_time(&t))

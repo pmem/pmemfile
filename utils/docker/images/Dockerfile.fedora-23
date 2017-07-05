@@ -48,6 +48,7 @@ RUN dnf install -y \
 	doxygen \
 	gcc \
 	git \
+	libcap-devel \
 	libunwind-devel \
 	make \
 	pandoc \

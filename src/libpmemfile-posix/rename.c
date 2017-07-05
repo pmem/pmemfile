@@ -219,6 +219,12 @@ vinode_rename(PMEMfilepool *pfp,
 
 		if (src->parent == dst->parent) {
 			/* optimized rename */
+
+			if (new_name_len > PMEMFILE_MAX_FILE_NAME) {
+				LOG(LUSR, "file name too long");
+				pmemfile_tx_abort(ENAMETOOLONG);
+			}
+
 			pmemobj_tx_add_range_direct(src_info->dirent->name,
 					new_name_len + 1);
 

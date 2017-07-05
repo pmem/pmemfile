@@ -32,6 +32,7 @@
 
 import struct
 import argparse
+import logging
 
 from syscalltable import *
 from listsyscalls import *
@@ -40,9 +41,9 @@ DO_GO_ON = 0
 DO_REINIT = 1
 DO_SKIP = 2
 
-###############################################################################
+########################################################################################################################
 # AnalyzingTool
-###############################################################################
+########################################################################################################################
 class AnalyzingTool(ListSyscalls):
     def __init__(self, convert_mode, pmem_paths, script_mode, debug_mode,
                     fileout, max_packets, verbose_mode, offline_mode):
@@ -116,12 +117,14 @@ class AnalyzingTool(ListSyscalls):
         self.list_no_exit = ListSyscalls(script_mode, debug_mode, self.verbose_mode)
         self.list_others = ListSyscalls(script_mode, debug_mode, self.verbose_mode)
 
+    ####################################################################################################################
     def read_syscall_table(self, path_to_syscalls_table_dat):
         self.syscall_table = SyscallTable()
         if self.syscall_table.read(path_to_syscalls_table_dat):
             logging.error("error while reading syscalls table")
             exit(-1)
 
+    ####################################################################################################################
     def print_log(self):
         self.list_ok.print()
 
@@ -135,10 +138,10 @@ class AnalyzingTool(ListSyscalls):
             self.list_others.sort()
             self.list_others.print_always()
 
-    ###############################################################################
-    # analyze_check - analyze check result
-    ###############################################################################
-    def analyze_check(self, check, info_all, pid_tid, sc_id, name, retval):
+    ####################################################################################################################
+    # decide_what_to_do_next - decide what to do next basing on the check done
+    ####################################################################################################################
+    def decide_what_to_do_next(self, check, info_all, pid_tid, sc_id, name, retval):
 
         if CHECK_IGNORE == check:
             return DO_SKIP
@@ -160,7 +163,7 @@ class AnalyzingTool(ListSyscalls):
                 self.list_others.append(self.syscall)
 
             if retval != 0 or name not in ("clone", "fork", "vfork"):
-                self.syscall = self.list_no_exit.search(info_all, pid_tid, sc_id, name, retval)
+                self.syscall = self.list_no_exit.look_for_matching_record(info_all, pid_tid, sc_id, name, retval)
 
             if CHECK_WRONG_EXIT == check:
                 self.list_no_exit.append(old_syscall)
@@ -188,10 +191,10 @@ class AnalyzingTool(ListSyscalls):
         return DO_GO_ON
 
 
-    ###############################################################################
-    # do_analyse - do syscall analysis
-    ###############################################################################
-    def do_analyse(self, syscall):
+    ####################################################################################################################
+    # analyse_if_supported - check if the syscall is supported by pmemfile
+    ####################################################################################################################
+    def analyse_if_supported(self, syscall):
         syscall.pid_ind = self.count_pids(syscall.pid_tid)
         if self.has_entry_content(syscall):
             self.match_fd_with_path(syscall)
@@ -200,9 +203,9 @@ class AnalyzingTool(ListSyscalls):
         return syscall
 
 
-    ###############################################################################
-    # read_and_parse_data - read and parse data
-    ###############################################################################
+    ####################################################################################################################
+    # read_and_parse_data - read and parse data from a vltrace binary log file
+    ####################################################################################################################
     def read_and_parse_data(self, path_to_trace_log):
         sizei = struct.calcsize('i')
         sizeI = struct.calcsize('I')
@@ -257,10 +260,10 @@ class AnalyzingTool(ListSyscalls):
                     self.syscall = Syscall(pid_tid, sc_id, self.syscall_table.get(sc_id), buf_size, self.debug_mode)
 
                 name = self.syscall_table.name(sc_id)
-                retval = self.syscall.get_ret(bdata)
+                retval = self.syscall.get_return_value(bdata)
 
-                check = self.syscall.do_check(info_all, pid_tid, sc_id, name, retval)
-                result = self.analyze_check(check, info_all, pid_tid, sc_id, name, retval)
+                check = self.syscall.check_next_record(info_all, pid_tid, sc_id, name, retval)
+                result = self.decide_what_to_do_next(check, info_all, pid_tid, sc_id, name, retval)
                 if result == DO_SKIP:
                     continue
                 if result == DO_REINIT:
@@ -272,7 +275,7 @@ class AnalyzingTool(ListSyscalls):
                     if self.offline_mode:
                         self.list_ok.append(self.syscall)
                     elif not self.convert_mode:
-                        self.syscall = self.do_analyse(self.syscall)
+                        self.syscall = self.analyse_if_supported(self.syscall)
 
                 if (self.convert_mode and not self.offline_mode) or self.debug_mode:
                     self.syscall.print_single_record()
@@ -304,22 +307,25 @@ class AnalyzingTool(ListSyscalls):
 
         if not self.convert_mode and not self.offline_mode:
             for n in range(len(self.list_ok)):
-                self.list_ok[n] = self.do_analyse(self.list_ok[n])
+                self.list_ok[n] = self.analyse_if_supported(self.list_ok[n])
             self.print_unsupported_syscalls()
 
+    ####################################################################################################################
     def count_pids_offline(self):
         self.list_ok.count_pids_offline()
 
+    ####################################################################################################################
     def match_fd_with_path_offline(self, pmem_paths):
         self.list_ok.match_fd_with_path_offline(self.cwd, pmem_paths)
 
+    ####################################################################################################################
     def print_unsupported_syscalls_offline(self):
         self.list_ok.print_unsupported_syscalls_offline()
 
 
-###############################################################################
+########################################################################################################################
 # main
-###############################################################################
+########################################################################################################################
 
 def main():
     parser = argparse.ArgumentParser(

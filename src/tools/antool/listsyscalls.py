@@ -106,7 +106,13 @@ AT_EMPTY_PATH = 0x1000
 #   CLONE_PARENT_SETTID|CLONE_CHILD_CLEARTID
 F_PTHREAD_CREATE = 0x3d0f00
 
+AT_FDCWD_HEX = 0xFFFFFFFFFFFFFF9C  # = AT_FDCWD (hex)
+AT_FDCWD_DEC = -100                # = AT_FDCWD (dec)
 
+
+########################################################################################################################
+# ListSyscalls
+########################################################################################################################
 class ListSyscalls(list):
     def __init__(self, script_mode, debug_mode, verbose_mode):
 
@@ -144,6 +150,7 @@ class ListSyscalls(list):
         self.ind_unsup_rel = []
         self.ind_unsup_flag = []
 
+    ####################################################################################################################
     def check_if_path_is_pmem(self, string):
         string = str(string)
         for n in range(len(self.pmem_paths)):
@@ -151,6 +158,10 @@ class ListSyscalls(list):
                 return 1
         return 0
 
+
+    ####################################################################################################################
+    # all_strings_append -- append the string to the list of all strings
+    ####################################################################################################################
     def all_strings_append(self, string, is_pmem):
         if self.all_strings.count(string) == 0:
             self.all_strings.append(string)
@@ -160,41 +171,43 @@ class ListSyscalls(list):
             str_ind = self.all_strings.index(string)
         return str_ind
 
+
+    ####################################################################################################################
     @staticmethod
     def fd_table_assign(table, fd, val):
         for i in range(len(table), fd + 1):
             table.append(-1)
         table[fd] = val
 
-    def get_rel_time(self, timestamp):
-        if self.time0:
-            return timestamp - self.time0
-        else:
-            self.time0 = timestamp
-            return 0
 
-    def make_time_relative(self):
-        for n in range(len(self)):
-            self[n].time_start = self.get_rel_time(self[n].time_start)
-            self[n].time_end = self.get_rel_time(self[n].time_end)
-
+    ####################################################################################################################
     def print(self):
         for n in range(len(self)):
             self[n].print()
 
+
+    ####################################################################################################################
     def print_always(self):
         for n in range(len(self)):
             self[n].print_always()
 
-    def search(self, info_all, pid_tid, sc_id, name, retval):
+
+    ####################################################################################################################
+    # look_for_matching_record -- look for matching record in a list of incomplete syscalls
+    ####################################################################################################################
+    def look_for_matching_record(self, info_all, pid_tid, sc_id, name, retval):
         for n in range(len(self)):
             syscall = self[n]
-            check = syscall.do_check(info_all, pid_tid, sc_id, name, retval)
+            check = syscall.check_next_record(info_all, pid_tid, sc_id, name, retval)
             if check == CHECK_OK:
                 del self[n]
                 return syscall
         return -1
 
+
+    ####################################################################################################################
+    # count_pids -- count different PIDs in the log and create a new table of file descriptors for each of them
+    ####################################################################################################################
     def count_pids(self, pid_tid):
         pid = pid_tid >> 32
         if pid != self.last_pid:
@@ -208,6 +221,8 @@ class ListSyscalls(list):
                 self.last_pid_ind = self.pid_table.index(pid)
         return self.last_pid_ind
 
+
+    ####################################################################################################################
     def count_pids_offline(self):
         length = len(self)
         if not self.script_mode:
@@ -222,6 +237,10 @@ class ListSyscalls(list):
             for n in range(len(self.pid_table)):
                 logging.debug("PID[{0:d}] = {1:016X}".format(n, self.pid_table[n]))
 
+
+    ####################################################################################################################
+    # arg_is_pmem -- check if a path argument is located on the pmem filesystem
+    ####################################################################################################################
     def arg_is_pmem(self, syscall, narg):
         if narg > syscall.sc.nargs:
             return 0
@@ -232,6 +251,10 @@ class ListSyscalls(list):
                 return 1
         return 0
 
+
+    ####################################################################################################################
+    # check_fallocate_flags -- check if the fallocate flags are supported by pmemfile
+    ####################################################################################################################
     def check_fallocate_flags(self, syscall):
         syscall.unsupported_flag = ""
         if syscall.args[1] == F_FALLOC_FL_COLLAPSE_RANGE:
@@ -245,6 +268,10 @@ class ListSyscalls(list):
         else:
             return RESULT_SUPPORTED
 
+
+    ####################################################################################################################
+    # check_fcntl_flags -- check if the fcntl flags are supported by pmemfile
+    ####################################################################################################################
     def check_fcntl_flags(self, syscall):
         syscall.unsupported_flag = ""
         if syscall.args[1] == F_SETFD and (syscall.args[2] & FD_CLOEXEC == 0):
@@ -288,6 +315,10 @@ class ListSyscalls(list):
         else:
             return RESULT_SUPPORTED
 
+
+    ####################################################################################################################
+    # check_if_supported -- check if the syscall is supported by pmemfile
+    ####################################################################################################################
     def check_if_supported(self, syscall):
         if syscall.name in ("fork", "vfork"):
             return RESULT_UNSUPPORTED
@@ -353,6 +384,7 @@ class ListSyscalls(list):
         return RESULT_SUPPORTED
 
 
+    ####################################################################################################################
     def log_print_path(self, is_pmem, name, path):
         if is_pmem:
             logging.debug("{0:20s} {1:s} [PMEM]".format(name, path))
@@ -360,6 +392,7 @@ class ListSyscalls(list):
             logging.debug("{0:20s} {1:s}".format(name, path))
 
 
+    ####################################################################################################################
     def log_build_msg(self, msg, is_pmem, path):
         if is_pmem:
             msg += " {0:s} [PMEM]".format(path)
@@ -368,10 +401,13 @@ class ListSyscalls(list):
         return msg
 
 
+    ####################################################################################################################
+    # handle_fileat -- helper function of match_fd_with_path() - handles *at syscalls
+    ####################################################################################################################
     def handle_fileat(self, syscall, arg1, arg2, msg):
         dirfd = syscall.args[arg1]
-        if dirfd == 0xFFFFFFFFFFFFFF9C:  # AT_FDCWD
-            dirfd = -100
+        if dirfd == AT_FDCWD_HEX:
+            dirfd = AT_FDCWD_DEC
         path = syscall.strings[syscall.args[arg2]]
         fd_out = syscall.iret
 
@@ -385,7 +421,7 @@ class ListSyscalls(list):
         unknown_dirfd = 0
         if (len(path) == 0 and not syscall.read_error) or (len(path) != 0 and path[0] != '/'):
             fd_table = self.all_fd_tables[syscall.pid_ind]
-            if dirfd == -100:
+            if dirfd == AT_FDCWD_DEC:
                 dir_str = self.cwd
                 newpath = dir_str + "/" + path
             elif 0 <= dirfd < len(fd_table):
@@ -412,6 +448,10 @@ class ListSyscalls(list):
             logging.error("Unknown dirfd : {0:d}".format(dirfd))
         return path, is_pmem, fd_out, msg
 
+
+    ####################################################################################################################
+    # match_fd_with_path -- match file descriptors with paths
+    ####################################################################################################################
     def match_fd_with_path(self, syscall):
         if syscall.read_error:
             logging.warning("BPF read error occurred, path is empty in syscall: {0:s}".format(syscall.name))
@@ -519,13 +559,7 @@ class ListSyscalls(list):
             logging.debug(msg)
 
 
-    def has_entry_content(self, syscall):
-        if not (syscall.content & CNT_ENTRY):  # no entry info (no info about arguments)
-            if syscall.name not in ("clone", "fork", "vfork"):
-                logging.warning("missing info about arguments of syscall: {0:s} - skipping...".format(syscall.name))
-            return 0
-        return 1
-
+    ####################################################################################################################
     def match_fd_with_path_offline(self, cwd, pmem_paths):
         self.cwd = cwd
         paths = str(pmem_paths)
@@ -546,6 +580,17 @@ class ListSyscalls(list):
         if not self.script_mode:
             print(" done.\n")
 
+
+    ####################################################################################################################
+    def has_entry_content(self, syscall):
+        if not (syscall.content & CNT_ENTRY):  # no entry info (no info about arguments)
+            if syscall.name not in ("clone", "fork", "vfork"):
+                logging.warning("missing info about arguments of syscall: {0:s} - skipping...".format(syscall.name))
+            return 0
+        return 1
+
+
+    ####################################################################################################################
     def print_syscall(self, syscall, relative, end):
         print("   {0:20s}\t\t".format(syscall.name), end='')
         if relative:
@@ -563,6 +608,8 @@ class ListSyscalls(list):
         if end:
             print()
 
+
+    ####################################################################################################################
     def print_unsupported(self, l_names, l_inds):
         len_names = len(l_names)
         for n in range(len_names):
@@ -581,6 +628,8 @@ class ListSyscalls(list):
                     else:
                         print("\t\t{0:s}".format(self.all_strings[list_ind[i]]))
 
+
+    ####################################################################################################################
     def print_unsupported_verbose2(self, msg, syscall, relative, end):
         print("{0:28s}\t{1:16s}\t".format(msg, syscall.name), end='')
         if relative:
@@ -598,6 +647,8 @@ class ListSyscalls(list):
         if end:
             print()
 
+
+    ####################################################################################################################
     def add_to_unsupported_lists(self, syscall, name, l_names, l_inds, relative):
         if l_names.count(name) == 0:
             l_names.append(name)
@@ -626,6 +677,8 @@ class ListSyscalls(list):
                             list_ind.append(str_ind)
         l_inds[ind] = list_ind
 
+
+    ####################################################################################################################
     def add_to_unsupported_lists_or_print(self, syscall):
         if syscall.unsupported == RESULT_UNSUPPORTED:
             if self.verbose_mode >= 2:
@@ -653,6 +706,8 @@ class ListSyscalls(list):
             else:
                 self.add_to_unsupported_lists(syscall, syscall.name, self.list_unsup_yet, self.ind_unsup_yet, relative=0)
 
+
+    ####################################################################################################################
     def print_unsupported_syscalls(self):
         if self.verbose_mode >= 2:
             return
@@ -684,6 +739,8 @@ class ListSyscalls(list):
         if not (len(self.list_unsup) or len(self.list_unsup_flag) or len(self.list_unsup_rel) or len(self.list_unsup_yet)):
             print("All syscalls are supported.")
 
+
+    ####################################################################################################################
     def print_unsupported_syscalls_offline(self):
         for n in range(len(self)):
             self.add_to_unsupported_lists_or_print(self[n])

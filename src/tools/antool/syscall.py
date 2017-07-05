@@ -83,11 +83,14 @@ def is_exit(etype):
     return (etype & 0x01) == 1
 
 
+########################################################################################################################
+# Syscall
+########################################################################################################################
 class Syscall:
     __str = "---------------- ----------------"
     __arg_str_mask = [1, 2, 4, 8, 16, 32]
 
-    ###############################################################################
+    ####################################################################################################################
     def __init__(self, pid_tid, sc_id, sc_info, buf_size, debug):
         self.debug_mode = debug
         self.state = STATE_INIT
@@ -140,26 +143,38 @@ class Syscall:
         self.is_pmem = 0
         self.unsupported = RESULT_SUPPORTED
 
+
+    ####################################################################################################################
     def __lt__(self, other):
         return self.time_start < other.time_start
 
+
+    ####################################################################################################################
     def is_mask(self, mask):
         return self.mask & mask == mask
 
+
+    ####################################################################################################################
     def has_mask(self, mask):
         return self.mask & mask
 
+
+    ####################################################################################################################
     def check_if_is_cont(self):
         return self.arg_first == self.arg_last
 
-    ###############################################################################
+
+    ####################################################################################################################
     def is_string(self, n):
         if self.sc.mask & self.__arg_str_mask[n] == self.__arg_str_mask[n]:
             return 1
         else:
             return 0
 
-    ###############################################################################
+
+    ####################################################################################################################
+    # get_str_arg -- get n-th string argument
+    ####################################################################################################################
     def get_str_arg(self, n, aux_str):
         string = ""
         max_len = 0
@@ -221,7 +236,8 @@ class Syscall:
         else:
             return -1
 
-    ###############################################################################
+
+    ####################################################################################################################
     def print_single_record(self):
         if self.truncated:
             return
@@ -237,7 +253,8 @@ class Syscall:
             else:
                 self.print_exit()
 
-    ###############################################################################
+
+    ####################################################################################################################
     def print_always(self):
         if self.debug_mode and self.state not in (STATE_ENTRY_COMPLETED, STATE_COMPLETED):
             print("DEBUG STATE =", self.state)
@@ -247,20 +264,27 @@ class Syscall:
         if (self.state == STATE_COMPLETED) and (self.sc.mask & EM_no_ret == 0):
             self.print_exit()
 
-    ###############################################################################
+
+    ####################################################################################################################
+    # print -- print record only in non-debug mode
+    ####################################################################################################################
     def print(self):
         if self.debug_mode:
             return
         self.print_always()
 
-    ###############################################################################
+
+    ####################################################################################################################
     def log_print(self, msg):
         if self.debug_mode:
             logging.debug(msg)
         else:
             print(msg)
 
-    ###############################################################################
+
+    ####################################################################################################################
+    # print_entry -- print entry info of the syscall
+    ####################################################################################################################
     def print_entry(self):
         if not (self.content & CNT_ENTRY):
             return
@@ -285,7 +309,10 @@ class Syscall:
 
         self.log_print(msg)
 
-    ###############################################################################
+
+    ####################################################################################################################
+    # print_exit -- print exit info of the syscall
+    ####################################################################################################################
     def print_exit(self):
         if not (self.content & CNT_EXIT):
             return
@@ -297,7 +324,8 @@ class Syscall:
             self.log_print("{0:016X} {1:016X} {2:016X} {3:016X} sys_exit {4:016X}".format(
                             self.time_end, self.pid_tid, self.err, self.ret, self.sc_id))
 
-    ###############################################################################
+
+    ####################################################################################################################
     def print_mismatch_info(self, etype, pid_tid, sc_id, name):
         print("ERROR: packet type mismatch: etype {0:d} while state {1:d}".format(etype, self.state))
         print("       previous syscall: {0:016X} {1:s} (sc_id:{2:d}) state {3:d}"
@@ -305,9 +333,11 @@ class Syscall:
         print("       current syscall: {0:016X} {1:s} (sc_id:{2:d}) etype {3:d}"
               .format(pid_tid, name, sc_id, etype))
 
-    ###############################################################################
-    def do_check(self, info_all, pid_tid, sc_id, name, retval):
 
+    ####################################################################################################################
+    # check_next_record -- check if the recently read data record contains correct data
+    ####################################################################################################################
+    def check_next_record(self, info_all, pid_tid, sc_id, name, retval):
         etype = info_all & 0x03
         ret = CHECK_OK
 
@@ -317,8 +347,10 @@ class Syscall:
         if self.state == STATE_INIT and is_exit(etype):
             if sc_id == 0xFFFFFFFFFFFFFFFF:  # 0xFFFFFFFFFFFFFFFF = sys_exit of rt_sigreturn
                 return CHECK_OK
+
             if retval == 0 and name in ("clone", "fork", "vfork"):
                 return CHECK_OK
+
             return CHECK_NO_ENTRY
 
         if self.state == STATE_IN_ENTRY and is_exit(etype):
@@ -330,7 +362,8 @@ class Syscall:
                 if self.debug_mode and self.name not in ("clone", "fork", "vfork"):
                     logging.debug("Notice: exit info not found: {0:s}".format(self.name))
                 return CHECK_NO_EXIT
-            elif is_exit(etype) and ret == CHECK_WRONG_ID:
+
+            if is_exit(etype) and ret == CHECK_WRONG_ID:
                 return CHECK_WRONG_EXIT
 
         if ret != CHECK_OK:
@@ -338,7 +371,9 @@ class Syscall:
 
         return ret
 
-    ###############################################################################
+    ####################################################################################################################
+    # add_data -- add the read data to the syscall record
+    ####################################################################################################################
     def add_data(self, info_all, bdata, timestamp):
         etype = info_all & E_MASK
         info_all &= ~E_MASK
@@ -353,7 +388,10 @@ class Syscall:
         else:
             return STATE_UNKNOWN_EVENT
 
-    ###############################################################################
+
+    ####################################################################################################################
+    # add_kprobe_entry -- add the kprobe entry info to the syscall record
+    ####################################################################################################################
     def add_kprobe_entry(self, info_all, bdata, timestamp):
         self.time_start = timestamp
 
@@ -470,21 +508,25 @@ class Syscall:
 
         return self.state
 
-    ###############################################################################
-    def get_ret(self, bdata):
+
+    ####################################################################################################################
+    def get_return_value(self, bdata):
         retval = -1
         if len(bdata) >= self.size_fmt_exit:
             bret = bdata[0: self.size_fmt_exit]
             retval, = struct.unpack(self.fmt_exit, bret)
         return retval
 
-    ###############################################################################
+
+    ####################################################################################################################
+    # add_exit -- add the exit info to the syscall record
+    ####################################################################################################################
     def add_exit(self, bdata, timestamp):
         if self.state == STATE_INIT:
             self.time_start = timestamp
         self.time_end = timestamp
 
-        retval = self.get_ret(bdata)
+        retval = self.get_return_value(bdata)
 
         # split return value into result and errno
         if retval >= 0:
@@ -500,5 +542,3 @@ class Syscall:
         self.state = STATE_COMPLETED
 
         return self.state
-
-

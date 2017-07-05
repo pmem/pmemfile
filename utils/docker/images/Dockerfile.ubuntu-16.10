@@ -50,6 +50,7 @@ RUN apt-get install -y \
 	devscripts \
 	doxygen \
 	git \
+	libattr1-dev \
 	libcapstone-dev \
 	libcap-dev \
 	libc6-dbg \

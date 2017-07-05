@@ -48,6 +48,7 @@ RUN dnf install -y \
 	doxygen \
 	gcc \
 	git \
+	libattr-devel \
 	libcap-devel \
 	libunwind-devel \
 	make \

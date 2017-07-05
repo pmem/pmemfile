@@ -194,25 +194,28 @@ vinode_rename(PMEMfilepool *pfp,
 
 	size_t new_name_len = component_length(dst->remaining);
 
+	struct pmemfile_time t;
+	if (get_current_time(&t))
+		return errno;
+
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (dst_info->dirent) {
 			if (vinode_is_dir(dst_info->vinode)) {
 				vinode_unlink_dir(pfp, dst->parent,
 						dst_info->dirent,
 						dst_info->vinode,
-						new_path);
+						new_path,
+						t);
 			} else {
 				vinode_unlink_file(pfp, dst->parent,
 						dst_info->dirent,
-						dst_info->vinode);
+						dst_info->vinode,
+						t);
 			}
 
 			if (dst_info->vinode->inode->nlink == 0)
 				vinode_orphan_unlocked(pfp, dst_info->vinode);
 		}
-
-		struct pmemfile_time t;
-		tx_get_current_time(&t);
 
 		if (src->parent == dst->parent) {
 			/* optimized rename */
@@ -235,7 +238,7 @@ vinode_rename(PMEMfilepool *pfp,
 					src_info->vinode->tinode, t);
 
 			vinode_unlink_file(pfp, src->parent, src_info->dirent,
-					src_info->vinode);
+					src_info->vinode, t);
 
 			if (vinode_is_dir(src_info->vinode))
 				vinode_update_parent(pfp, src_info->vinode,

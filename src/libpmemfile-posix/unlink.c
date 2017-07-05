@@ -55,7 +55,8 @@ void
 vinode_unlink_file(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent,
 		struct pmemfile_dirent *dirent,
-		struct pmemfile_vinode *vinode)
+		struct pmemfile_vinode *vinode,
+		struct pmemfile_time tm)
 {
 	LOG(LDBG, "parent 0x%" PRIx64 " ppath %s name %s",
 		parent->tinode.oid.off, pmfi_path(parent), dirent->name);
@@ -73,9 +74,6 @@ vinode_unlink_file(PMEMfilepool *pfp,
 	 * to overwrite just one byte) using one call.
 	 */
 	pmemobj_tx_add_range_direct(dirent, sizeof(dirent->inode) + 1);
-
-	struct pmemfile_time tm;
-	tx_get_current_time(&tm);
 
 	if (--inode->nlink > 0) {
 		/*
@@ -147,9 +145,15 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	ASSERT_NOT_IN_TX();
 
+	struct pmemfile_time t;
+	if (get_current_time(&t)) {
+		error = errno;
+		goto end_vinode;
+	}
+
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		vinode_unlink_file(pfp, info.parent, dirent_info.dirent,
-				dirent_info.vinode);
+				dirent_info.vinode, t);
 
 		if (dirent_info.vinode->inode->nlink == 0)
 			vinode_orphan(pfp, dirent_info.vinode);

@@ -38,7 +38,8 @@ void vinode_unlink_dir(PMEMfilepool *pfp,
 		struct pmemfile_vinode *vparent,
 		struct pmemfile_dirent *dirent,
 		struct pmemfile_vinode *vdir,
-		const char *path);
+		const char *path,
+		struct pmemfile_time tm);
 
 int pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		const char *path);

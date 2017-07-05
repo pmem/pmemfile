@@ -32,6 +32,7 @@
 
 from sys import stdout
 from syscall import *
+import logging
 
 EM_str_1 = 1 << 0  # syscall has string as 1. argument
 EM_str_2 = 1 << 1  # syscall has string as 2. argument
@@ -107,13 +108,11 @@ F_PTHREAD_CREATE = 0x3d0f00
 
 
 class ListSyscalls(list):
-    def __init__(self, script_mode, debug_mode, verbose_mode, fhout):
-        list.__init__(self)
+    def __init__(self, script_mode, debug_mode, verbose_mode):
 
         self.script_mode = script_mode
         self.debug_mode = debug_mode
         self.verbose_mode = verbose_mode
-        self.fhout = fhout
 
         self.cwd = ""
         self.time0 = 0
@@ -157,7 +156,6 @@ class ListSyscalls(list):
             self.all_strings.append(string)
             self.path_is_pmem.append(is_pmem)
             str_ind = len(self.all_strings) - 1
-            # XXX print("all_strings_append =", str_ind, string, is_pmem)  # XXX
         else:
             str_ind = self.all_strings.index(string)
         return str_ind
@@ -222,7 +220,7 @@ class ListSyscalls(list):
             print(" done.")
         if self.debug_mode:
             for n in range(len(self.pid_table)):
-                print("PID[{0:d}] = {1:016X}".format(n, self.pid_table[n]), file=self.fhout)
+                logging.debug("PID[{0:d}] = {1:016X}".format(n, self.pid_table[n]))
 
     def arg_is_pmem(self, syscall, narg):
         if narg > syscall.sc.nargs:
@@ -354,7 +352,23 @@ class ListSyscalls(list):
 
         return RESULT_SUPPORTED
 
-    def handle_fileat(self, syscall, arg1, arg2, fhout):
+
+    def log_print_path(self, is_pmem, name, path):
+        if is_pmem:
+            logging.debug("{0:20s} {1:s} [PMEM]".format(name, path))
+        else:
+            logging.debug("{0:20s} {1:s}".format(name, path))
+
+
+    def log_build_msg(self, msg, is_pmem, path):
+        if is_pmem:
+            msg += " {0:s} [PMEM]".format(path)
+        else:
+            msg += " {0:s}".format(path)
+        return msg
+
+
+    def handle_fileat(self, syscall, arg1, arg2, msg):
         dirfd = syscall.args[arg1]
         if dirfd == 0xFFFFFFFFFFFFFF9C:  # AT_FDCWD
             dirfd = -100
@@ -383,27 +397,24 @@ class ListSyscalls(list):
                 unknown_dirfd = 1
 
         if newpath != path:
-            print(" {0:s} {1:s}".format(dir_str, path), end='', file=fhout)
+            msg += " {0:s} {1:s}".format(dir_str, path)
             path = newpath
         else:
-            print(" ({0:d}) {1:s}".format(dirfd, path), end='', file=fhout)
+            msg += " ({0:d}) {1:s}".format(dirfd, path)
 
         is_pmem = self.check_if_path_is_pmem(path)
         str_ind = self.all_strings_append(path, is_pmem)
         syscall.args[arg2] = str_ind
         syscall.is_pmem |= is_pmem
         if is_pmem:
-            print(" [PMEM]", end='', file=fhout)
+            msg += " [PMEM]"
         if unknown_dirfd:
-            print("Error: unknown dirfd :", dirfd, file=fhout)
-        return path, is_pmem, fd_out
+            logging.error("Unknown dirfd : {0:d}".format(dirfd))
+        return path, is_pmem, fd_out, msg
 
     def match_fd_with_path(self, syscall):
         if syscall.read_error:
-            if not self.script_mode:
-                print(file=stderr)
-            print("Warning: BPF read error occurred, path is empty in syscall:", syscall.name, file=stderr)
-            print("Warning: BPF read error occurred, path is empty in syscall:", syscall.name, file=self.fhout)
+            logging.warning("BPF read error occurred, path is empty in syscall: {0:s}".format(syscall.name))
 
         # syscalls: SyS_open or SyS_creat
         if syscall.is_mask(EM_fd_from_path):
@@ -411,13 +422,10 @@ class ListSyscalls(list):
             if (len(path) == 0 or path[0] != '/') and not syscall.read_error:
                 path = self.cwd + "/" + path
             is_pmem = self.check_if_path_is_pmem(path)
-            syscall.is_pmem = is_pmem
+            syscall.is_pmem |= is_pmem
             str_ind = self.all_strings_append(path, is_pmem)
             syscall.args[0] = str_ind
-            if is_pmem:
-                print("{0:20s} {1:s} [PMEM]".format(syscall.name, path), file=self.fhout)
-            else:
-                print("{0:20s} {1:s}".format(syscall.name, path), file=self.fhout)
+            self.log_print_path(is_pmem, syscall.name, path)
             fd_out = syscall.iret
             if fd_out != -1:
                 fd_table = self.all_fd_tables[syscall.pid_ind]
@@ -425,16 +433,16 @@ class ListSyscalls(list):
 
         # all *at syscalls
         elif syscall.is_mask(EM_isfileat):
-            print("{0:20s}".format(syscall.name), end='', file=self.fhout)
-            path, is_pmem, fd_out = self.handle_fileat(syscall, 0, 1, self.fhout)
+            msg = "{0:20s}".format(syscall.name)
+            path, is_pmem, fd_out, msg = self.handle_fileat(syscall, 0, 1, msg)
             # syscall SyS_openat
             if syscall.has_mask(EM_rfd) and fd_out != -1:
                 str_ind = self.all_strings_append(path, is_pmem)
                 fd_table = self.all_fd_tables[syscall.pid_ind]
                 self.fd_table_assign(fd_table, fd_out, str_ind)
             if syscall.is_mask(EM_isfileat2):
-                self.handle_fileat(syscall, 2, 3, self.fhout)
-            print(file=self.fhout)
+                path, is_pmem, fd_out, msg = self.handle_fileat(syscall, 2, 3, msg)
+            logging.debug(msg)
 
         # syscalls: SyS_dup*
         elif syscall.is_mask(EM_fd_from_fd):
@@ -445,18 +453,15 @@ class ListSyscalls(list):
                 str_ind = fd_table[fd_in]
                 syscall.args[0] = str_ind
                 path = self.all_strings[str_ind]
-                if self.path_is_pmem[str_ind]:
-                    syscall.is_pmem = 1
-                    print("{0:20s} {1:s} [PMEM]".format(syscall.name, path), file=self.fhout)
-                else:
-                    print("{0:20s} {1:s}".format(syscall.name, path), file=self.fhout)
+                syscall.is_pmem |= self.path_is_pmem[str_ind]
+                self.log_print_path(syscall.is_pmem, syscall.name, path)
                 if fd_out != -1:
                     self.fd_table_assign(fd_table, fd_out, str_ind)
             else:
                 syscall.args[0] = -1
-                print("{0:20s} ({1:d})".format(syscall.name, fd_in), file=self.fhout)
+                logging.debug("{0:20s} ({1:d})".format(syscall.name, fd_in))
                 if fd_out != -1:
-                    print("Error: unknown fd :", fd_in, file=self.fhout)
+                    logging.error("Unknown fd : {0:d}".format(fd_in))
 
         # close ()
         elif syscall.name == "close":
@@ -466,17 +471,14 @@ class ListSyscalls(list):
                 str_ind = fd_table[fd_in]
                 fd_table[fd_in] = -1
                 path = self.all_strings[str_ind]
-                if self.path_is_pmem[str_ind]:
-                    syscall.is_pmem = 1
-                    print("{0:20s} {1:s} [PMEM]".format(syscall.name, path), file=self.fhout)
-                else:
-                    print("{0:20s} {1:s}".format(syscall.name, path), file=self.fhout)
+                syscall.is_pmem |= self.path_is_pmem[str_ind]
+                self.log_print_path(syscall.is_pmem, syscall.name, path)
             else:
-                print("{0:20s} (0x{1:016X})".format(syscall.name, fd_in), file=self.fhout)
+                logging.debug("{0:20s} (0x{1:016X})".format(syscall.name, fd_in))
 
         # syscalls with path or file descriptor
         elif syscall.has_mask(EM_str_all | EM_fd_all):
-            print("{0:20s}".format(syscall.name), end='', file=self.fhout)
+            msg = "{0:20s}".format(syscall.name)
             for narg in range(syscall.sc.nargs):
                 if syscall.has_mask(Arg_is_str[narg]):
                     is_pmem = 0
@@ -494,10 +496,8 @@ class ListSyscalls(list):
                     syscall.is_pmem |= is_pmem
                     str_ind = self.all_strings_append(path, is_pmem)
                     syscall.args[narg] = str_ind
-                    if is_pmem:
-                        print(" {0:s} [PMEM]".format(path), end='', file=self.fhout)
-                    else:
-                        print(" {0:s}".format(path), end='', file=self.fhout)
+                    msg = self.log_build_msg(msg, is_pmem, path)
+
                 if syscall.has_mask(Arg_is_fd[narg]):
                     fd_table = self.all_fd_tables[syscall.pid_ind]
                     fd = syscall.args[narg]
@@ -506,27 +506,23 @@ class ListSyscalls(list):
                     if 0 <= fd < len(fd_table):
                         str_ind = fd_table[fd]
                         path = self.all_strings[str_ind]
-                        if self.path_is_pmem[str_ind]:
-                            syscall.is_pmem = 1
-                            print(" {0:s} [PMEM]".format(path), end='', file=self.fhout)
-                        else:
-                            print(" {0:s}".format(path), end='', file=self.fhout)
+                        syscall.is_pmem |= self.path_is_pmem[str_ind]
                         syscall.args[narg] = str_ind
+                        msg = self.log_build_msg(msg, syscall.is_pmem, path)
                     else:
                         if fd < 1024:
-                            print(" ({0:d})".format(fd), end='', file=self.fhout)
+                            msg += " ({0:d})".format(fd)
                         else:
-                            print(" (0x{0:016X})".format(fd), end='', file=self.fhout)
+                            msg += " (0x{0:016X})".format(fd)
                         syscall.args[narg] = -1
-            print(file=self.fhout)
+
+            logging.debug(msg)
+
 
     def has_entry_content(self, syscall):
         if not (syscall.content & CNT_ENTRY):  # no entry info (no info about arguments)
             if syscall.name not in ("clone", "fork", "vfork"):
-                if not self.script_mode:
-                    print()
-                print("Warning: missing info about arguments of syscall: {0:s} - skipping..."
-                      .format(syscall.name), file=stderr)
+                logging.warning("missing info about arguments of syscall: {0:s} - skipping...".format(syscall.name))
             return 0
         return 1
 
@@ -540,18 +536,17 @@ class ListSyscalls(list):
             print("\nAnalyzing:")
 
         for n in range(length):
-            if self.fhout != stdout and not self.script_mode:
+            if not self.script_mode:
                 print("\r{0:d} of {1:d} ({2:d}%)".format(n + 1, length, int((100 * (n + 1)) / length)), end='')
             if not self.has_entry_content(self[n]):
                 continue
             self.match_fd_with_path(self[n])
             self[n].unsupported = self.check_if_supported(self[n])
 
-        if self.fhout != stdout and not self.script_mode:
+        if not self.script_mode:
             print(" done.\n")
 
     def print_syscall(self, syscall, relative, end):
-        # print("\t{0:16s}\t".format(syscall.name), end='')
         print("   {0:20s}\t\t".format(syscall.name), end='')
         if relative:
             for nstr in range(len(syscall.strings)):

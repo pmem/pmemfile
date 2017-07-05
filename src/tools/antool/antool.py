@@ -30,7 +30,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from sys import exc_info, stderr, stdout
+import struct
 import argparse
 
 from syscalltable import *
@@ -46,6 +46,7 @@ DO_SKIP = 2
 class AnalyzingTool(ListSyscalls):
     def __init__(self, convert_mode, pmem_paths, script_mode, debug_mode,
                     fileout, max_packets, verbose_mode, offline_mode):
+
         self.convert_mode = convert_mode
         self.script_mode = script_mode
         self.debug_mode = debug_mode
@@ -55,7 +56,8 @@ class AnalyzingTool(ListSyscalls):
         else:
             self.verbose_mode = 0
 
-        self.print_progress = not (self.debug_mode or self.script_mode or (self.convert_mode and not self.offline_mode))
+        self.print_progress = not (self.debug_mode or self.script_mode or (self.convert_mode and not self.offline_mode)
+                                    or (not self.convert_mode and self.verbose_mode >= 2))
 
         self.cwd = ""
         self.syscall_table = []
@@ -89,39 +91,47 @@ class AnalyzingTool(ListSyscalls):
         else:
             self.max_packets = -1
 
-        if fileout:
-            self.fileout = fileout
-            self.fhout = open_file(self.fileout, 'wt')
-        else:
-            if self.convert_mode or self.debug_mode:
-                self.fileout = ""
-                self.fhout = stdout
-            else:
-                if not script_mode:
-                    print("Notice: output of analysis will be saved in the file: /tmp/antool-analysis-output")
-                self.fileout = "/tmp/antool-analysis-output"
-                self.fhout = open_file(self.fileout, 'wt')
+        format = '%(levelname)s: %(message)s'
 
-        self.list_ok = ListSyscalls(script_mode, debug_mode, self.verbose_mode, self.fhout)
-        self.list_no_exit = ListSyscalls(script_mode, debug_mode, self.verbose_mode, self.fhout)
-        self.list_others = ListSyscalls(script_mode, debug_mode, self.verbose_mode, self.fhout)
+        if debug_mode:
+            level=logging.DEBUG
+        elif verbose_mode:
+            level=logging.INFO
+        else:
+            level=logging.WARNING
+
+        if fileout:
+            logging.basicConfig(format=format, level=level, filename=fileout)
+        else:
+            logging.basicConfig(format=format, level=level)
+
+        logging.debug("convert_mode   = {0:d}".format(self.convert_mode))
+        logging.debug("script_mode    = {0:d}".format(self.script_mode))
+        logging.debug("offline_mode   = {0:d}".format(self.offline_mode))
+        logging.debug("verbose_mode   = {0:d}".format(self.verbose_mode))
+        logging.debug("debug_mode     = {0:d}".format(self.debug_mode))
+        logging.debug("print_progress = {0:d}".format(self.print_progress))
+
+        self.list_ok = ListSyscalls(script_mode, debug_mode, self.verbose_mode)
+        self.list_no_exit = ListSyscalls(script_mode, debug_mode, self.verbose_mode)
+        self.list_others = ListSyscalls(script_mode, debug_mode, self.verbose_mode)
 
     def read_syscall_table(self, path_to_syscalls_table_dat):
         self.syscall_table = SyscallTable()
         if self.syscall_table.read(path_to_syscalls_table_dat):
-            print("Error while reading syscalls table", file=stderr)
+            logging.error("error while reading syscalls table")
             exit(-1)
 
     def print_log(self):
         self.list_ok.print()
 
         if self.debug_mode and len(self.list_no_exit):
-            print("\nWarning: list 'list_no_exit' is not empty!")
+            print("\nWARNING: list 'list_no_exit' is not empty!")
             self.list_no_exit.sort()
             self.list_no_exit.print_always()
 
         if self.debug_mode and len(self.list_others):
-            print("\nWarning: list 'list_others' is not empty!")
+            print("\nWARNING: list 'list_others' is not empty!")
             self.list_others.sort()
             self.list_others.print_always()
 
@@ -135,8 +145,8 @@ class AnalyzingTool(ListSyscalls):
 
         if CHECK_SKIP == check:
             if self.debug_mode:
-                print("Warning: skipping wrong packet type {0:d} of {1:s} ({2:d})"
-                      .format(info_all, self.syscall_table.name(sc_id), sc_id))
+                logging.debug("WARNING: skipping wrong packet type {0:d} of {1:s} ({2:d})"
+                                .format(info_all, self.syscall_table.name(sc_id), sc_id))
             return DO_SKIP
 
         if CHECK_NO_EXIT == check:
@@ -160,11 +170,11 @@ class AnalyzingTool(ListSyscalls):
 
             if self.debug_mode:
                 if self.syscall == -1:
-                    print("Warning: NO ENTRY found: exit without entry info found: {0:s} (sc_id:{1:d})"
-                          .format(name, sc_id))
+                    logging.debug("WARNING: no entry found: exit without entry info found: {0:s} (sc_id:{1:d})"
+                                    .format(name, sc_id))
                 else:
-                    print("Notice: found matching ENTRY for: {0:s} (sc_id:{1:d} pid:{2:016X}):"
-                          .format(name, sc_id, pid_tid))
+                    logging.debug("Notice: found matching entry for: {0:s} (sc_id:{1:d} pid:{2:016X}):"
+                                    .format(name, sc_id, pid_tid))
 
             if self.syscall == -1:
                 return DO_REINIT
@@ -218,11 +228,11 @@ class AnalyzingTool(ListSyscalls):
 
         if not self.script_mode:
             # noinspection PyTypeChecker
-            print("Current working directory:", self.cwd, file=self.fhout)
+            logging.info("Command line: {0:s}".format(argv))
             # noinspection PyTypeChecker
-            print("Command line:", argv, file=self.fhout)
-            if not self.debug_mode:
-                print("\nReading packets:")
+            logging.info("Current working directory: {0:s}".format(self.cwd))
+            if self.print_progress:
+                print("Reading packets:")
 
         n = 0
         state = STATE_INIT
@@ -269,17 +279,16 @@ class AnalyzingTool(ListSyscalls):
 
                 if self.syscall.truncated:
                     truncated = self.syscall.truncated
-                    print("Error: string argument number {0:d} is truncated!: {1:s}"
-                          .format(truncated, self.syscall.args[truncated - 1]), file=stderr)
-                    exit(-1)
+                    logging.error("string argument number {0:d} is truncated: {1:s}"
+                                    .format(truncated, self.syscall.args[truncated - 1]))
 
             except EndOfFile as err:
                 if err.val > 0:
-                    print("Warning: log file is truncated:", path_to_trace_log, file=stderr)
+                    logging.error("log file is truncated: {0:s}".format(path_to_trace_log))
                 break
 
             except:
-                print("Unexpected error:", exc_info()[0], file=stderr)
+                logging.critical("unexpected error")
                 raise
 
         fh.close()

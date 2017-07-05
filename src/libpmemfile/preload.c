@@ -1247,31 +1247,21 @@ hook_readlinkat(long fd, const char *path,
 }
 
 static long
-nosup_syscall_with_path(long syscall_number,
-			long path, int resolve_last,
-			long arg0, long arg1,
-			long arg2, long arg3,
-			long arg4, long arg5)
+nosup_syscall_with_path(long syscall_number, const char *path, int resolve_last,
+			long arg1, long arg2, long arg3, long arg4, long arg5)
 {
 	struct resolved_path where;
 
-	resolve_path(cwd_desc(), (const char *)path, &where, resolve_last);
+	resolve_path(cwd_desc(), path, &where, resolve_last | NO_AT_PATH);
 
 	if (where.error_code != 0)
 		return where.error_code;
 
-	/*
-	 * XXX only forward these to the kernel, if the path is not relative
-	 * to some fd. Normally, the _at version of the syscall would be used
-	 * here, i.e.: xxx_at(kernel_fd, path, ...), but some of these syscalls
-	 * don't have an _at version. So for now these are only handled, if the
-	 * path is relative to AT_FDCWD.
-	 */
-	if (is_fda_null(&where.at.pmem_fda) && where.at.kernel_fd == AT_FDCWD)
-		return syscall_no_intercept(syscall_number,
-		    arg0, arg1, arg2, arg3, arg4, arg5);
+	if (!is_fda_null(&where.at.pmem_fda))
+		return check_errno(-ENOTSUP, syscall_number);
 
-	return check_errno(-ENOTSUP, syscall_number);
+	return syscall_no_intercept(syscall_number, where.path, arg1, arg2,
+			arg3, arg4, arg5);
 }
 
 static long
@@ -1963,7 +1953,7 @@ dispatch_syscall(long syscall_number,
 		return hook_umask((mode_t)arg0);
 
 	/*
-	 * Some syscalls that have a path argument, but are not ( yet ) handled
+	 * Some syscalls that have a path argument, but are not (yet) handled
 	 * by libpmemfile-posix. The argument of these are not interpreted,
 	 * except for the path itself. If the path points to something pmemfile
 	 * resident, -ENOTSUP is returned, otherwise, the call is forwarded
@@ -1973,14 +1963,14 @@ dispatch_syscall(long syscall_number,
 	case SYS_listxattr:
 	case SYS_removexattr:
 		return nosup_syscall_with_path(syscall_number,
-		    arg0, RESOLVE_LAST_SLINK,
-		    arg0, arg1, arg2, arg3, arg4, arg5);
+		    (const char *)arg0, RESOLVE_LAST_SLINK,
+		    arg1, arg2, arg3, arg4, arg5);
 
 	case SYS_llistxattr:
 	case SYS_lremovexattr:
 		return nosup_syscall_with_path(syscall_number,
-		    arg0, NO_RESOLVE_LAST_SLINK,
-		    arg0, arg1, arg2, arg3, arg4, arg5);
+		    (const char *)arg0, NO_RESOLVE_LAST_SLINK,
+		    arg1, arg2, arg3, arg4, arg5);
 
 	case SYS_readlink:
 		return hook_readlinkat(AT_FDCWD, (const char *)arg0,

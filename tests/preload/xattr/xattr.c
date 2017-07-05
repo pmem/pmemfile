@@ -109,5 +109,15 @@ main(int argc, char *argv[])
 	if (strcmp("meh", value) != 0)
 		err(13, "unexpected attr1 value: %s (2)", value);
 
+	memset(value, 0, sizeof(value));
+	size = listxattr(path, value, sizeof(value));
+	if (size < 0)
+		err(14, "listxattr failed");
+	if (size != 11)
+		errx(15, "listxattr returned unexpected value: %ld", size);
+
+	if (lremovexattr(path, "user.attr1"))
+		err(16, "lremovexattr failed");
+
 	return 0;
 }

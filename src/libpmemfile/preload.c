@@ -56,8 +56,10 @@
 #include <setjmp.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/un.h>
 #include <stdio.h>
 #include <limits.h>
 #include <linux/fs.h>
@@ -1772,6 +1774,45 @@ hook_umask(mode_t mask)
 }
 
 static long
+hook_bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
+{
+	if (addr->sa_family != AF_UNIX ||
+			addrlen < sizeof(struct sockaddr_un)) {
+		return syscall_no_intercept(SYS_bind, sockfd, addr, addrlen);
+	}
+
+	const struct sockaddr_un *uaddr = (struct sockaddr_un *)addr;
+
+	struct resolved_path where;
+
+	struct fd_desc at = cwd_desc();
+
+	resolve_path(at, uaddr->sun_path, &where,
+			NO_RESOLVE_LAST_SLINK | NO_AT_PATH);
+
+	if (where.error_code != 0)
+		return where.error_code;
+
+	if (!is_fda_null(&where.at.pmem_fda))
+		return check_errno(-ENOTSUP, SYS_bind);
+
+	struct sockaddr_un tmp_uaddr;
+
+	tmp_uaddr.sun_family = AF_UNIX;
+
+	size_t len = strlen(where.path);
+
+	if (len >= sizeof(tmp_uaddr.sun_path))
+		return -ENAMETOOLONG;
+
+	strncpy(tmp_uaddr.sun_path, where.path, len);
+	tmp_uaddr.sun_path[len] = 0;
+
+	return syscall_no_intercept(SYS_bind, sockfd, &tmp_uaddr,
+			sizeof(tmp_uaddr));
+}
+
+static long
 dispatch_syscall(long syscall_number,
 			long arg0, long arg1,
 			long arg2, long arg3,
@@ -2015,6 +2056,10 @@ dispatch_syscall(long syscall_number,
 	case SYS_copy_file_range:
 		return hook_copy_file_range(arg0, (loff_t *)arg1,
 		    arg2, (loff_t *)arg3, (size_t)arg4, (unsigned)arg5);
+
+	case SYS_bind:
+		return hook_bind((int)arg0, (const struct sockaddr *)arg1,
+				(socklen_t)arg2);
 
 	default:
 		/* Did we miss something? */

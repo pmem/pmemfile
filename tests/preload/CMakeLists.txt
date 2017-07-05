@@ -33,16 +33,19 @@ add_executable(preload_basic basic/basic.c)
 add_executable(preload_config config/config.c)
 add_executable(preload_pool_locking pool_locking/pool_locking.c)
 add_executable(preload_xattr xattr/xattr.c)
+add_executable(preload_unix unix/unix.c)
 
 add_cstyle(tests-preload-basic ${CMAKE_CURRENT_SOURCE_DIR}/basic/basic.c)
 add_cstyle(tests-preload-config ${CMAKE_CURRENT_SOURCE_DIR}/config/config.c)
 add_cstyle(tests-preload-pool-locking ${CMAKE_CURRENT_SOURCE_DIR}/pool_locking/pool_locking.c)
 add_cstyle(tests-preload-xattr ${CMAKE_CURRENT_SOURCE_DIR}/xattr/xattr.c)
+add_cstyle(tests-preload-unix ${CMAKE_CURRENT_SOURCE_DIR}/unix/unix.c)
 
 add_check_whitespace(tests-preload-basic ${CMAKE_CURRENT_SOURCE_DIR}/basic/basic.c)
 add_check_whitespace(tests-preload-config ${CMAKE_CURRENT_SOURCE_DIR}/config/config.c)
 add_check_whitespace(tests-preload-pool-locking ${CMAKE_CURRENT_SOURCE_DIR}/pool_locking/pool_locking.c)
 add_check_whitespace(tests-preload-xattr ${CMAKE_CURRENT_SOURCE_DIR}/xattr/xattr.c)
+add_check_whitespace(tests-preload-unix ${CMAKE_CURRENT_SOURCE_DIR}/unix/unix.c)
 
 add_library(setumask SHARED setumask.c)
 set_target_properties(setumask PROPERTIES INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR}/src)
@@ -121,3 +124,4 @@ set_tests_properties("preload_config_outer_via_invalid"
 	PROPERTIES PASS_REGULAR_EXPRESSION "EIO")
 
 add_test_generic(xattr "" $<TARGET_FILE:preload_xattr>)
+add_test_generic(unix "" $<TARGET_FILE:preload_unix>)

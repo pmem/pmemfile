@@ -341,6 +341,10 @@ static struct syscall_early_filter_entry filter_table[] = {
 	},
 
 	/* Syscalls not handled yet */
+	[SYS_bind] = {
+		.must_handle = true,
+		.cwd_rlock = true,
+	},
 	[SYS_chroot] = {
 		.must_handle = true,
 		.cwd_rlock = true,

@@ -441,6 +441,13 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 			goto end_unlock;
 		}
 	}
+	if (strcmp(src.remaining, ".") == 0 ||
+			strcmp(src.remaining, "..") == 0 ||
+			strcmp(dst.remaining, ".") == 0 ||
+			strcmp(dst.remaining, "..") == 0) {
+		error = EINVAL;
+		goto end_unlock;
+	}
 
 	if (flags & PMEMFILE_RENAME_EXCHANGE) {
 		error = vinode_exchange(pfp, &src, &src_info, &dst, &dst_info);

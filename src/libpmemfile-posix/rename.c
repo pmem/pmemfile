@@ -232,6 +232,13 @@ vinode_rename(PMEMfilepool *pfp,
 			 * or deletion of files in that directory."
 			 */
 			TX_SET_DIRECT(src->parent->inode, mtime, t);
+
+			/*
+			 * Even though in this case we are not updating any
+			 * metadata we have to update ctime, because that's what
+			 * file system tests expect :/.
+			 */
+			TX_SET_DIRECT(src_info->vinode->inode, ctime, t);
 		} else {
 			inode_add_dirent(pfp, dst->parent->tinode,
 					dst->remaining, new_name_len,

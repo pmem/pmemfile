@@ -31,7 +31,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import struct
-from sys import exc_info, stderr
+import logging
+from sys import exc_info
 
 from endoffile import *
 from utils import *
@@ -64,9 +65,9 @@ class SyscallTable:
 
         size_check, = read_fmt_data(fh, 'i')
         if size_check != size_fmt:
-            print("Error: wrong format of syscalls table file:", path_to_syscalls_table_dat, file=stderr)
-            print("       format size : ", size_fmt, file=stderr)
-            print("       data size   : ", size_check, file=stderr)
+            logging.error("wrong format of syscalls table file: {0:s}".format(path_to_syscalls_table_dat))
+            logging.error("      format size : {0:d}".format(size_fmt))
+            logging.error("      data size   : {0:d}".format(size_check))
             return -1
 
         while True:
@@ -76,10 +77,10 @@ class SyscallTable:
                 syscall = SyscallInfo(num, num_str, pname, name, length, nargs, mask, avail, nstrargs, positions)
             except EndOfFile as err:
                 if err.val > 0:
-                    print("Input file is truncated:", path_to_syscalls_table_dat, file=stderr)
+                    logging.error("input file is truncated: {0:s}".format(path_to_syscalls_table_dat))
                 break
             except:
-                print("Unexpected error:", exc_info()[0], file=stderr)
+                logging.error("Unexpected error: {0:s}".format(exc_info()[0]))
                 raise
             else:
                 self.table.append(syscall)

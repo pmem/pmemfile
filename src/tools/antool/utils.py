@@ -31,8 +31,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import struct
+import logging
 
-from sys import stderr
 from endoffile import *
 
 
@@ -44,7 +44,7 @@ def open_file(path, flags):
     try:
         fh = open(path, flags)
     except FileNotFoundError:
-        print("Error: file not found:", path, file=stderr)
+        logging.error("file not found: {0:s}".format(path))
         exit(1)
     return fh
 

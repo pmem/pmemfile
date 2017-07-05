@@ -30,8 +30,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from sys import stderr
 import struct
+import logging
 
 FIRST_PACKET = 0  # this is the first packet for this syscall
 LAST_PACKET = 7   # this is the last packet for this syscall
@@ -74,8 +74,10 @@ EM_fileat2 = 1 << 19  # double '*at' type syscall (dirfd + path)
 EM_no_ret = 1 << 20  # syscall does not return
 EM_rfd = 1 << 21  # syscall returns a file descriptor
 
+
 def is_entry(etype):
     return (etype & 0x01) == 0
+
 
 def is_exit(etype):
     return (etype & 0x01) == 1
@@ -193,7 +195,7 @@ class Syscall:
                 assert (self.num_str <= 3)
 
         else:
-            print("\n\nERROR: unsupported number of string arguments:", self.sc.nstrargs)
+            logging.error("unsupported number of string arguments: {0:d}".format(self.sc.nstrargs))
             assert (self.sc.nstrargs <= 3)
 
         str_p = str(string.decode(errors="ignore"))
@@ -225,7 +227,7 @@ class Syscall:
             return
 
         if self.debug_mode and self.state not in (STATE_IN_ENTRY, STATE_ENTRY_COMPLETED, STATE_COMPLETED):
-            print("DEBUG STATE =", self.state)
+            logging.debug("STATE = {0:s}".format(self.state))
 
         if self.state == STATE_ENTRY_COMPLETED:
             self.print_entry()
@@ -252,45 +254,55 @@ class Syscall:
         self.print_always()
 
     ###############################################################################
+    def log_print(self, msg):
+        if self.debug_mode:
+            logging.debug(msg)
+        else:
+            print(msg)
+
+    ###############################################################################
     def print_entry(self):
         if not (self.content & CNT_ENTRY):
             return
+
         if self.read_error:
-            print("Warning: BPF read error occurred, a string argument is empty in syscall:", self.name)
-        print("{0:016X} {1:016X} {2:s} {3:s}".format(
-            self.time_start, self.pid_tid, self.__str, self.name), end='')
+            warn_str = "BPF read error occurred, a string argument is empty in syscall: {0:s}\n".format(self.name)
+            if self.debug_mode:
+                logging.warning(warn_str)
+            else:
+                print("WARNING: " + warn_str)
+
+        msg = "{0:016X} {1:016X} {2:s} {3:s}".format(self.time_start, self.pid_tid, self.__str, self.name)
+
         for n in range(0, self.sc.nargs):
-            print(" ", end='')
             if self.is_string(n):
                 if self.strings[self.args[n]] != "":
-                    print("{0:s}".format(self.strings[self.args[n]]), end='')
+                    msg += " {0:s}".format(self.strings[self.args[n]])
                 else:
-                    print("\"\"", end='')
+                    msg += " \"\""
             else:
-                print("{0:016X}".format(self.args[n]), end='')
-        print()
+                msg += " {0:016X}".format(self.args[n])
 
-        if self.sc.nstrargs != len(self.strings):
-            print("self.sc.nstrargs =", self.sc.nstrargs)
-            print("len(self.strings) =", len(self.strings))
-            assert (self.sc.nstrargs == len(self.strings))
+        log_print(msg)
 
     ###############################################################################
     def print_exit(self):
         if not (self.content & CNT_EXIT):
             return
-        if len(self.name) > 0:
-            print("{0:016X} {1:016X} {2:016X} {3:016X} {4:s}".format(
-                self.time_end, self.pid_tid, self.err, self.ret, self.name))
-        else:
-            print("{0:016X} {1:016X} {2:016X} {3:016X} sys_exit {4:016X}".format(
-                self.time_end, self.pid_tid, self.err, self.ret, self.sc_id))
 
+        if len(self.name) > 0:
+            log_print("{0:016X} {1:016X} {2:016X} {3:016X} {4:s}".format(
+                        self.time_end, self.pid_tid, self.err, self.ret, self.name))
+        else:
+            log_print("{0:016X} {1:016X} {2:016X} {3:016X} sys_exit {4:016X}".format(
+                        self.time_end, self.pid_tid, self.err, self.ret, self.sc_id))
+
+    ###############################################################################
     def print_mismatch_info(self, etype, pid_tid, sc_id, name):
-        print("Error: packet type mismatch: etype {0:d} while state {1:d}".format(etype, self.state))
+        print("ERROR: packet type mismatch: etype {0:d} while state {1:d}".format(etype, self.state))
         print("       previous syscall: {0:016X} {1:s} (sc_id:{2:d}) state {3:d}"
               .format(self.pid_tid, self.name, self.sc_id, self.state))
-        print("        current syscall: {0:016X} {1:s} (sc_id:{2:d}) etype {3:d}"
+        print("       current syscall: {0:016X} {1:s} (sc_id:{2:d}) etype {3:d}"
               .format(pid_tid, name, sc_id, etype))
 
     ###############################################################################
@@ -316,7 +328,7 @@ class Syscall:
         if self.state == STATE_ENTRY_COMPLETED:
             if is_entry(etype):
                 if self.debug_mode and self.name not in ("clone", "fork", "vfork"):
-                    print("Notice: exit info not found:", self.name)
+                    logging.debug("Notice: exit info not found: {0:s}".format(self.name))
                 return CHECK_NO_EXIT
             elif is_exit(etype) and ret == CHECK_WRONG_ID:
                 return CHECK_WRONG_EXIT
@@ -332,7 +344,7 @@ class Syscall:
         info_all &= ~E_MASK
         if etype == E_KP_ENTRY:
             if self.state not in (STATE_INIT, STATE_IN_ENTRY):
-                print("Error: wrong state for etype == E_KP_ENTRY:", self.state, file=stderr)
+                logging.error("wrong state for etype == E_KP_ENTRY: {0:d}".format(self.state))
             # kprobe entry handler
             return self.add_kprobe_entry(info_all, bdata, timestamp)
         elif (etype == E_KP_EXIT) or (etype == E_TP_EXIT):
@@ -356,12 +368,12 @@ class Syscall:
             self.is_cont = (info_all >> 9) & 0x1  # bit 9 (is a continuation)
 
         if self.state == STATE_INIT and self.arg_first > FIRST_PACKET:
-            print("Error: missed first packet of syscall :", self.name, file=stderr)
-            print("       packet :", self.info_all, file=stderr)
-            print("       arg_first :", self.arg_first, file=stderr)
-            print("       arg_last :", self.arg_last, file=stderr)
-            print("       will_be_cont :", self.will_be_cont, file=stderr)
-            print("       is_cont :", self.is_cont, file=stderr)
+            logging.error("missed first packet of syscall : {0:s}".format(self.name))
+            logging.error("       packet       : 0x{0:x}".format(self.info_all))
+            logging.error("       arg_first    : {0:d}".format(self.arg_first))
+            logging.error("       arg_last     : {0:d}".format(self.arg_last))
+            logging.error("       will_be_cont : {0:d}".format(self.will_be_cont))
+            logging.error("       is_cont      : {0:d}".format(self.is_cont))
 
         # is it a continuation of a string ?
         if self.check_if_is_cont():

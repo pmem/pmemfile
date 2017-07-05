@@ -73,6 +73,43 @@
 #include "preload.h"
 #include "syscall_early_filter.h"
 
+static long log_fd = -1;
+
+static void
+log_init(const char *path, const char *trunc)
+{
+	if (path != NULL) {
+		int flags = O_CREAT | O_RDWR | O_APPEND | O_TRUNC;
+		if (trunc && trunc[0] == '0')
+			flags &= ~O_TRUNC;
+
+		log_fd = syscall_no_intercept(SYS_open, path, flags, 0600);
+	}
+}
+
+static  pf_printf_like(1, 2) void
+log_write(const char *fmt, ...)
+{
+	if (log_fd < 0)
+		return;
+
+	char buf[0x1000];
+	int len;
+	va_list ap;
+
+	va_start(ap, fmt);
+	len = vsnprintf(buf, sizeof(buf) - 1, fmt, ap);
+	va_end(ap);
+
+
+	if (len < 1)
+		return;
+
+	buf[len++] = '\n';
+
+	syscall_no_intercept(SYS_write, log_fd, buf, len);
+}
+
 static struct pool_description pools[0x100];
 static int pool_count;
 
@@ -120,97 +157,6 @@ is_fd_in_table(long fd)
 
 static pthread_rwlock_t pmem_cwd_lock = PTHREAD_RWLOCK_INITIALIZER;
 static struct pool_description *volatile cwd_pool;
-
-static int exit_on_ENOTSUP;
-static long check_errno(long e, long syscall_no)
-{
-	if (e == -ENOTSUP && exit_on_ENOTSUP) {
-		char buf[100];
-		sprintf(buf, "syscall %ld not supported by pmemfile, exiting",
-				syscall_no);
-
-		exit_with_msg(PMEMFILE_PRELOAD_EXIT_NOT_SUPPORTED, buf);
-	}
-
-	return e;
-}
-
-#ifdef SYS_memfd_create
-
-static void
-check_memfd_syscall(void)
-{
-	long fd = syscall_no_intercept(SYS_memfd_create, "check", 0);
-	if (fd >= 0) {
-		is_memfd_syscall_available = true;
-		syscall_no_intercept(SYS_close, fd);
-	}
-}
-
-#else
-
-#define SYS_memfd_create 0
-#define check_memfd_syscall()
-
-#endif
-
-/*
- * acquire_new_fd - grab a new file descriptor from the kernel
- */
-static long
-acquire_new_fd(const char *path)
-{
-	long fd;
-
-	if (is_memfd_syscall_available)
-		fd = syscall_no_intercept(SYS_memfd_create, path, 0);
-	else
-		fd = syscall_no_intercept(SYS_open, "/dev/null", O_RDONLY);
-
-	if (fd > PMEMFILE_MAX_FD) {
-		syscall_no_intercept(SYS_close, fd);
-		return -ENFILE;
-	}
-
-	return fd;
-}
-
-static long log_fd = -1;
-
-static void
-log_init(const char *path, const char *trunc)
-{
-	if (path != NULL) {
-		int flags = O_CREAT | O_RDWR | O_APPEND | O_TRUNC;
-		if (trunc && trunc[0] == '0')
-			flags &= ~O_TRUNC;
-
-		log_fd = syscall_no_intercept(SYS_open, path, flags, 0600);
-	}
-}
-
-static  pf_printf_like(1, 2) void
-log_write(const char *fmt, ...)
-{
-	if (log_fd < 0)
-		return;
-
-	char buf[0x1000];
-	int len;
-	va_list ap;
-
-	va_start(ap, fmt);
-	len = vsnprintf(buf, sizeof(buf) - 1, fmt, ap);
-	va_end(ap);
-
-
-	if (len < 1)
-		return;
-
-	buf[len++] = '\n';
-
-	syscall_no_intercept(SYS_write, log_fd, buf, len);
-}
 
 static int fd_ref_table[PMEMFILE_MAX_FD + 1];
 static pthread_mutex_t fd_table_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -281,6 +227,60 @@ fd_release(struct fd_desc *at)
 {
 	if (!is_fda_null(&at->pmem_fda) && at->pmem_fda.file != PMEMFILE_AT_CWD)
 		fd_unref(at->kernel_fd, &at->pmem_fda);
+}
+
+static int exit_on_ENOTSUP;
+static long check_errno(long e, long syscall_no)
+{
+	if (e == -ENOTSUP && exit_on_ENOTSUP) {
+		char buf[100];
+		sprintf(buf, "syscall %ld not supported by pmemfile, exiting",
+				syscall_no);
+
+		exit_with_msg(PMEMFILE_PRELOAD_EXIT_NOT_SUPPORTED, buf);
+	}
+
+	return e;
+}
+
+#ifdef SYS_memfd_create
+
+static void
+check_memfd_syscall(void)
+{
+	long fd = syscall_no_intercept(SYS_memfd_create, "check", 0);
+	if (fd >= 0) {
+		is_memfd_syscall_available = true;
+		syscall_no_intercept(SYS_close, fd);
+	}
+}
+
+#else
+
+#define SYS_memfd_create 0
+#define check_memfd_syscall()
+
+#endif
+
+/*
+ * acquire_new_fd - grab a new file descriptor from the kernel
+ */
+static long
+acquire_new_fd(const char *path)
+{
+	long fd;
+
+	if (is_memfd_syscall_available)
+		fd = syscall_no_intercept(SYS_memfd_create, path, 0);
+	else
+		fd = syscall_no_intercept(SYS_open, "/dev/null", O_RDONLY);
+
+	if (fd > PMEMFILE_MAX_FD) {
+		syscall_no_intercept(SYS_close, fd);
+		return -ENFILE;
+	}
+
+	return fd;
 }
 
 void

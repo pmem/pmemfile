@@ -50,6 +50,7 @@ RUN apt-get install -y \
 	devscripts \
 	doxygen \
 	git \
+	libcap-dev \
 	libcapstone-dev \
 	libc6-dbg \
 	libtext-diff-perl \

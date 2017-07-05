@@ -90,6 +90,8 @@ vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		}
 	} TX_ONABORT {
 		error = errno;
+		if (error == ENOMEM)
+			error = EFBIG;
 		vinode_restore_on_abort(vinode);
 	} TX_END
 

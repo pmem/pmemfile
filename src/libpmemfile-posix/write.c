@@ -202,6 +202,8 @@ end:
 	os_rwlock_unlock(&vinode->rwlock);
 
 	if (error) {
+		if (error == ENOMEM)
+			error = ENOSPC;
 		errno = error;
 		return -1;
 	}

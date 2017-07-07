@@ -671,6 +671,9 @@ test_analyzing_tool(char *dir, char *pmem, char *nonp)
 	if (fdnonp == -1)
 		perror(absnonp);
 
+	s(); chdir(dir);
+	s(); fchdir(dirfd);
+
 	s(); chroot(nonp);
 	s(); chroot(pmem);
 	s(); chroot(absnonp);

@@ -2283,22 +2283,25 @@ hook(long syscall_number,
 		util_rwlock_rdlock(&pmem_cwd_lock);
 
 	is_hooked = HOOKED;
-	if (filter_entry.returns_zero)
-		*syscall_return_value = 0;
-	else if (filter_entry.returns_ENOTSUP)
-		*syscall_return_value = check_errno(-ENOTSUP,
-				syscall_number);
-	else if (filter_entry.fd_first_arg) {
+
+	if (filter_entry.fd_first_arg) {
 		struct fd_association file = fd_ref(arg0);
 
-		if (!is_fda_null(&file)) {
-			*syscall_return_value = dispatch_syscall_fd_first(
-					syscall_number, &file, arg1, arg2, arg3,
-					arg4, arg5);
-
-			fd_unref(arg0, &file);
-		} else
+		if (is_fda_null(&file)) {
 			is_hooked = NOT_HOOKED;
+		} else if (filter_entry.returns_zero) {
+			*syscall_return_value = 0;
+		} else if (filter_entry.returns_ENOTSUP) {
+			*syscall_return_value =
+			    check_errno(-ENOTSUP, syscall_number);
+		} else {
+			*syscall_return_value =
+			    dispatch_syscall_fd_first(syscall_number,
+			    &file, arg1, arg2, arg3, arg4, arg5);
+		}
+
+		if (!is_fda_null(&file))
+			fd_unref(arg0, &file);
 	}
 	else
 		*syscall_return_value = dispatch_syscall(syscall_number,

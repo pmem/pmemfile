@@ -40,8 +40,87 @@ if(${VLTRACE_FOUND} EQUAL 0)
 	add_executable(test_syscalls test_syscalls.c)
 	target_link_libraries(test_syscalls ${CMAKE_THREAD_LIBS_INIT})
 
+	set(TEST_ANTOOL ${CMAKE_SOURCE_DIR}/tests/antool/test-antool)
+	set(TEST_PARSER ${CMAKE_SOURCE_DIR}/tests/antool/test-parser)
+	set(TEST_APP $<TARGET_FILE:test_syscalls>)
+
 	add_test(NAME "analyzing-tool"
-		COMMAND ${CMAKE_SOURCE_DIR}/tests/antool/test-antool ${VLTRACE_BIN} $<TARGET_FILE:test_syscalls> 0)
+		COMMAND ${TEST_ANTOOL} ${VLTRACE_BIN} ${TEST_APP} 15)
+
+	foreach(STR_LEN 126 382)
+		# 1
+		add_test(NAME "${STR_LEN}-basic-syscalls"
+			COMMAND ${TEST_PARSER} ${VLTRACE_BIN} ${STR_LEN} ${TEST_APP} 0)
+
+		# 2
+		add_test(NAME "${STR_LEN}-basic-syscalls-with-fork"
+			COMMAND ${TEST_PARSER} -f ${VLTRACE_BIN} ${STR_LEN} ${TEST_APP} 1)
+
+		# 3
+		add_test(NAME "${STR_LEN}-basic-syscalls-with-double-fork"
+			COMMAND ${TEST_PARSER} -f ${VLTRACE_BIN} ${STR_LEN} ${TEST_APP} 5)
+
+		# 4
+		add_test(NAME "${STR_LEN}-unsupported-syscalls"
+			COMMAND ${TEST_PARSER} ${VLTRACE_BIN} ${STR_LEN} ${TEST_APP} 2)
+
+		# 5
+		add_test(NAME "${STR_LEN}-unsupported-syscalls-with-fork"
+			COMMAND ${TEST_PARSER} -f ${VLTRACE_BIN} ${STR_LEN} ${TEST_APP} 3)
+
+		# 6
+		add_test(NAME "${STR_LEN}-unsupported-syscalls-with-double-fork"
+			COMMAND ${TEST_PARSER} -f ${VLTRACE_BIN} ${STR_LEN} ${TEST_APP} 6)
+
+		# 7
+		add_test(NAME "${STR_LEN}-syscall-vfork"
+			COMMAND ${TEST_PARSER} ${VLTRACE_BIN} ${STR_LEN} ${TEST_APP} 4)
+
+		# 8
+		add_test(NAME "${STR_LEN}-syscall-sigaction"
+			COMMAND ${TEST_PARSER} ${VLTRACE_BIN} ${STR_LEN} ${TEST_APP} 7)
+	endforeach(STR_LEN)
+
+	add_test(NAME "126-syscalls-string-arguments-126"
+		COMMAND ${TEST_PARSER} ${VLTRACE_BIN} 126 ${TEST_APP} 8)
+	add_test(NAME "126-syscalls-string-arguments-382"
+		COMMAND ${TEST_PARSER} ${VLTRACE_BIN} 382 ${TEST_APP} 8)
+	add_test(NAME "126-syscalls-string-arguments-765"
+		COMMAND ${TEST_PARSER} ${VLTRACE_BIN} 765 ${TEST_APP} 8)
+	add_test(NAME "126-syscalls-string-arguments-1148"
+		COMMAND ${TEST_PARSER} ${VLTRACE_BIN} 1148 ${TEST_APP} 8)
+	add_test(NAME "126-syscalls-string-arguments-1531"
+		COMMAND ${TEST_PARSER} ${VLTRACE_BIN} 1531 ${TEST_APP} 8)
+
+	add_test(NAME "382-syscalls-string-arguments-382"
+		COMMAND ${TEST_PARSER} ${VLTRACE_BIN} 382 ${TEST_APP} 9)
+	add_test(NAME "382-syscalls-string-arguments-765"
+		COMMAND ${TEST_PARSER} ${VLTRACE_BIN} 765 ${TEST_APP} 9)
+	add_test(NAME "382-syscalls-string-arguments-1148"
+		COMMAND ${TEST_PARSER} ${VLTRACE_BIN} 1148 ${TEST_APP} 9)
+	add_test(NAME "382-syscalls-string-arguments-1531"
+		COMMAND ${TEST_PARSER} ${VLTRACE_BIN} 1531 ${TEST_APP} 9)
+
+	add_test(NAME "765-syscalls-string-arguments-765"
+		COMMAND ${TEST_PARSER} ${VLTRACE_BIN} 765 ${TEST_APP} 10)
+	add_test(NAME "765-syscalls-string-arguments-1148"
+		COMMAND ${TEST_PARSER} ${VLTRACE_BIN} 1148 ${TEST_APP} 10)
+	add_test(NAME "765-syscalls-string-arguments-1531"
+		COMMAND ${TEST_PARSER} ${VLTRACE_BIN} 1531 ${TEST_APP} 10)
+
+	add_test(NAME "1148-syscalls-string-arguments-1148"
+		COMMAND ${TEST_PARSER} ${VLTRACE_BIN} 1148 ${TEST_APP} 11)
+	add_test(NAME "1148-syscalls-string-arguments-1531"
+		COMMAND ${TEST_PARSER} ${VLTRACE_BIN} 1531 ${TEST_APP} 11)
+
+	add_test(NAME "1531-syscalls-string-arguments-1531"
+		COMMAND ${TEST_PARSER} ${VLTRACE_BIN} 1531 ${TEST_APP} 12)
+
+	add_test(NAME "1531-syscalls-string-arguments-with-fork"
+		COMMAND ${TEST_PARSER} -f ${VLTRACE_BIN} 1531 ${TEST_APP} 13)
+	add_test(NAME "1531-syscalls-string-arguments-with-double-fork"
+		COMMAND ${TEST_PARSER} -f ${VLTRACE_BIN} 1531 ${TEST_APP} 14)
+
 else()
 	message(WARNING "vltrace not found, antool tests will not be performed.")
 endif()

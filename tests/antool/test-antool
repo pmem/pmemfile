@@ -1,0 +1,157 @@
+#!/bin/bash -e
+#
+# Copyright 2017, Intel Corporation
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+#     * Redistributions of source code must retain the above copyright
+#       notice, this list of conditions and the following disclaimer.
+#
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in
+#       the documentation and/or other materials provided with the
+#       distribution.
+#
+#     * Neither the name of the copyright holder nor the names of its
+#       contributors may be used to endorse or promote products derived
+#       from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+#
+# test-antool -- test for analyzing tool
+#
+
+if [ "$3" == "" ]; then
+	echo "Usage: $0 <path-to-vltrace> <test-app> <test-number>"
+	exit 1
+fi
+
+VLTRACE=$1
+TEST_FILE=$2
+TEST_NUM=$3
+
+DIR=/tmp/mnt
+PMEM=pmem
+NONP=nonp
+FILE=file
+
+#
+# require_superuser -- require superuser capabilities
+#
+function require_superuser() {
+	local user_id=$(sudo -n id -u)
+	[ "$user_id" == "0" ] && return
+	echo "Superuser rights required, please enter root's password:"
+	sudo date > /dev/null
+	[ $? -eq 0 ] && return
+	echo "Authentication failed, aborting..."
+	exit 1
+}
+
+#
+# check -- check test results (using .match files)
+#
+function check() {
+	local MATCH_OUT="match-${TEST_NUM}.log"
+	set +e
+
+	# copy match files
+	[ "$TEST_DIR" != "$(pwd)" ] && cp -v -f $TEST_DIR/*-${TEST_NUM}.log.match .
+
+	# create missing log files
+	ls -1 *-${TEST_NUM}.log.match | sed 's/\.match//g' | xargs touch
+
+	# finally run 'match'
+	$TEST_DIR/../match *-${TEST_NUM}.log.match >$MATCH_OUT 2>&1
+	RV=$?
+	set -e
+	[ $RV -eq 0 ] && rm -f $MATCH_OUT && return
+
+	# match failed - print few last lines
+	tail -n11 $MATCH_OUT
+
+	return $RV
+}
+
+[ ! -x $VLTRACE ] \
+	&& echo "Error: executable file '$VLTRACE' does not exist" \
+	&& exit 1
+
+if [ ! -x $TEST_FILE ]; then
+	echo "Error: executable file '$TEST_FILE' does not exist"
+	exit 1
+fi
+
+OPT_VLTRACE="-f -l bin -t -r"
+RUN_VLTRACE="ulimit -l 10240 && ulimit -n 10240 && $VLTRACE $OPT_VLTRACE"
+
+TEST_DIR=$(dirname $0)
+[ "$TEST_DIR" == "." ] && TEST_DIR=$(pwd)
+
+ANTOOL=$TEST_DIR/../../src/tools/antool/antool.py
+
+OUTBIN=output-bin-$TEST_NUM.log
+OUT=output-$TEST_NUM.log
+OUTv=output-v-$TEST_NUM.log
+OUTvv=output-vv-$TEST_NUM.log
+OUTf=output-f-$TEST_NUM.log
+OUTfv=output-fv-$TEST_NUM.log
+OUTfvv=output-fvv-$TEST_NUM.log
+OUT_ANTOOL=output-antool-$TEST_NUM.log
+
+if [ "$VLTRACE_SKIP" != "1" ]; then
+	require_superuser
+
+	mkdir -p $DIR/$PMEM
+	mkdir -p $DIR/$NONP
+	touch $DIR/$PMEM/$FILE
+	touch $DIR/$NONP/$FILE
+
+	USER=$(stat --format=%U $TEST_FILE)
+	chown -R $USER.$USER $DIR/*
+
+	# remove all logs and match files of the current test
+	rm -f *-$TEST_NUM.log*
+	echo "$ sudo bash -c \"$RUN_VLTRACE -o $OUTBIN $TEST_FILE $TEST_NUM $DIR $PMEM/$FILE $NONP/$FILE\""
+	sudo bash -c "$RUN_VLTRACE -o $OUTBIN $TEST_FILE $TEST_NUM $DIR $PMEM/$FILE $NONP/$FILE"
+fi
+
+set +e
+
+COMMON_OPTS="-t syscalls_table.dat -b $OUTBIN -s -o $OUT_ANTOOL -p $DIR/$PMEM"
+ANTOOL="$ANTOOL $COMMON_OPTS"
+
+echo "$ $ANTOOL > $OUT"
+$ANTOOL > $OUT
+
+echo "$ $ANTOOL -v > $OUTv"
+$ANTOOL -v > $OUTv
+
+echo "$ $ANTOOL -vv > $OUTvv"
+$ANTOOL -vv > $OUTvv
+
+echo "$ $ANTOOL -f > $OUTf"
+$ANTOOL -f > $OUTf
+
+echo "$ $ANTOOL -f -v > $OUTfv"
+$ANTOOL -f -v > $OUTfv
+
+echo "$ $ANTOOL -f -vv > $OUTfvv"
+$ANTOOL -f -vv > $OUTfvv
+
+set -e
+
+check

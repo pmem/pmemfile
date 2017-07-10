@@ -1,5 +1,6 @@
+#!/usr/bin/python3
 #
-# Copyright 2017, Intel Corporation
+# Copyright (c) 2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -13,7 +14,7 @@
 #       the documentation and/or other materials provided with the
 #       distribution.
 #
-#     * Neither the name of the copyright holder nor the names of its
+#     * Neither the name of Intel Corporation nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
 #
@@ -29,24 +30,21 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-option(TESTS_USE_FORCED_PMEM "let tests force enable or force disable use of optimized flush in libpmemobj (to speed them up)" OFF)
 
-set(GLOBAL_TEST_ARGS
-	-DPERL_EXECUTABLE=${PERL_EXECUTABLE}
-	-DMATCH_SCRIPT=${PROJECT_SOURCE_DIR}/tests/match
-	-DMKFS_EXECUTABLE=$<TARGET_FILE:mkfs.pmemfile>
-	-DCAT_EXECUTABLE=$<TARGET_FILE:pmemfile-cat>
-	-DPARENT_DIR=${TEST_DIR}/
-	-DTESTS_USE_FORCED_PMEM=${TESTS_USE_FORCED_PMEM})
+class SyscallInfo:
+    def __init__(self, num, num_str, pname, name, length, nargs, mask, avail, nstrargs, positions):
+        bname = bytes(name)
+        sname = str(bname.decode(errors="ignore"))
+        name = sname.split('\0')[0]
+        name = name[4:]
 
-if(TRACE_TESTS)
-	set(GLOBAL_TEST_ARGS ${GLOBAL_TEST_ARGS} --trace-expand)
-endif()
-
-add_subdirectory(posix)
-
-if(BUILD_LIBPMEMFILE)
-	add_subdirectory(preload)
-endif()
-
-add_subdirectory(antool)
+        self.num = num
+        self.num_str = num_str
+        self.pname = pname
+        self.name = name
+        self.length = length
+        self.nargs = nargs
+        self.mask = mask
+        self.avail = avail
+        self.nstrargs = nstrargs
+        self.positions = positions

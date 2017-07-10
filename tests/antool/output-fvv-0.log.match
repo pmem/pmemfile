@@ -1,0 +1,62 @@
+unsupported relative path:  	chroot          	 nonp/file
+unsupported relative path:  	chroot          	 pmem/file
+unsupported syscall:        	chroot          	 /tmp/mnt/pmem/file [PMEM]  
+unsupported relative path:  	setxattr        	 pmem/file any-string
+unsupported relative path:  	lsetxattr       	 pmem/file any-string
+unsupported relative path:  	getxattr        	 pmem/file any-string
+unsupported relative path:  	lgetxattr       	 pmem/file any-string
+unsupported syscall:        	setxattr        	 /tmp/mnt/pmem/file [PMEM]  
+unsupported syscall:        	lsetxattr       	 /tmp/mnt/pmem/file [PMEM]  
+unsupported syscall:        	fsetxattr       	 /tmp/mnt/pmem/file [PMEM]  
+unsupported syscall:        	listxattr       	 /tmp/mnt/pmem/file [PMEM]  
+unsupported syscall:        	llistxattr      	 /tmp/mnt/pmem/file [PMEM]  
+unsupported syscall:        	flistxattr      	 /tmp/mnt/pmem/file [PMEM]  
+unsupported syscall:        	removexattr     	 /tmp/mnt/pmem/file [PMEM]  
+unsupported syscall:        	lremovexattr    	 /tmp/mnt/pmem/file [PMEM]  
+unsupported syscall:        	fremovexattr    	 /tmp/mnt/pmem/file [PMEM]  
+unsupported syscall yet:    	mmap            	 /tmp/mnt/pmem/file [PMEM]  
+unsupported syscall:        	execve          	 /tmp/mnt/pmem/file [PMEM]  
+unsupported syscall:        	execveat        	 /tmp/mnt /tmp/mnt/pmem/file [PMEM]  
+unsupported syscall yet:    	flock           	 /tmp/mnt/pmem/file [PMEM]  
+unsupported syscall:        	readahead       	 /tmp/mnt/pmem/file [PMEM]  
+unsupported syscall yet:    	sendfile64      	 /tmp/mnt/pmem/file [PMEM]   /tmp/mnt/nonp/file
+unsupported syscall yet:    	sendfile64      	 /tmp/mnt/nonp/file /tmp/mnt/pmem/file [PMEM]  
+unsupported syscall yet:    	sendfile64      	 /tmp/mnt/pmem/file [PMEM]   /tmp/mnt/pmem/file [PMEM]  
+unsupported syscall yet:    	splice          	 /tmp/mnt/pmem/file [PMEM]   /tmp/mnt/nonp/file
+unsupported syscall yet:    	splice          	 /tmp/mnt/nonp/file /tmp/mnt/pmem/file [PMEM]  
+unsupported syscall yet:    	splice          	 /tmp/mnt/pmem/file [PMEM]   /tmp/mnt/pmem/file [PMEM]  
+unsupported syscall:        	name_to_handle_at	 /tmp/mnt /tmp/mnt/pmem/file [PMEM]  
+unsupported syscall yet:    	copy_file_range 	 /tmp/mnt/pmem/file [PMEM]   /tmp/mnt/nonp/file
+unsupported syscall yet:    	copy_file_range 	 /tmp/mnt/nonp/file /tmp/mnt/pmem/file [PMEM]  
+unsupported syscall yet:    	copy_file_range 	 /tmp/mnt/pmem/file [PMEM]   /tmp/mnt/pmem/file [PMEM]  
+unsupported flag:           	open            	 /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] O_ASYNC
+unsupported flag:           	openat          	 /tmp/mnt /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] O_ASYNC
+unsupported flag:           	renameat2       	 /tmp/mnt /tmp/mnt/pmem/file [PMEM]   /tmp/mnt /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] RENAME_WHITEOUT
+unsupported flag:           	fallocate       	 /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] FALLOC_FL_COLLAPSE_RANGE
+unsupported flag:           	fallocate       	 /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] FALLOC_FL_ZERO_RANGE
+unsupported flag:           	fallocate       	 /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] FALLOC_FL_INSERT_RANGE
+unsupported flag:           	fcntl           	 /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] F_SETFD: not possible to clear FD_CLOEXEC flag
+unsupported flag:           	fcntl           	 /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] F_GETLK
+unsupported flag:           	fcntl           	 /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] F_SETLK
+unsupported flag:           	fcntl           	 /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] F_SETLKW
+unsupported flag:           	fcntl           	 /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] F_SETOWN
+unsupported flag:           	fcntl           	 /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] F_GETOWN_EX
+unsupported flag:           	fcntl           	 /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] F_SETSIG
+unsupported flag:           	fcntl           	 /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] F_GETSIG
+unsupported flag:           	fcntl           	 /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] F_SETOWN_EX
+unsupported flag:           	fcntl           	 /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] F_GETOWN_EX
+unsupported flag:           	fcntl           	 /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] F_OFD_GETLK
+unsupported flag:           	fcntl           	 /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] F_OFD_SETLK
+unsupported flag:           	fcntl           	 /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] F_OFD_SETLKW
+unsupported flag:           	fcntl           	 /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] F_SETLEASE
+unsupported flag:           	fcntl           	 /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] F_GETLEASE
+unsupported flag:           	fcntl           	 /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] F_NOTIFY
+unsupported flag:           	fcntl           	 /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] F_ADD_SEALS
+unsupported flag:           	fcntl           	 /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] F_GET_SEALS
+unsupported flag:           	clone           	 [unsupported flag:] flags other than set by pthread_create()
+unsupported syscall:        	fork            	
+unsupported syscall:        	fork            	
+unsupported syscall:        	vfork           	
+unsupported syscall:        	vfork           	
+unsupported syscall:        	vfork           	
+unsupported syscall:        	vfork           	

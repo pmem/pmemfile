@@ -277,6 +277,18 @@ resolve_path(struct fd_desc at,
 	size_t size; /* The length of the whole path to be resolved. */
 	bool last_component_is_dir = false;
 
+	struct stat stat_buf;
+	result->path[0] = '.';
+	result->path[1] = 0;
+
+	if (get_stat(result, &stat_buf) != 0)
+		return;
+
+	const struct fd_association *pmem_fda = &result->at.pmem_fda;
+
+	bool at_pmem_root = pmem_fda->pool &&
+			same_inode(&stat_buf, &pmem_fda->pool->pmem_stat);
+
 	for (size = 0; path[size] != '\0'; ++size) {
 		/* leave one more byte for the null terminator */
 		if (size == sizeof(result->path) - 1) {
@@ -302,7 +314,6 @@ resolve_path(struct fd_desc at,
 	if (path[0] == '/')
 		result->at.pmem_fda.pool = NULL;
 
-	bool at_pmem_root = false;
 	int num_symlinks = 0;
 
 	/*
@@ -335,11 +346,10 @@ resolve_path(struct fd_desc at,
 
 		result->path[end] = '\0';
 
-		struct stat stat_buf;
 		if (get_stat(result, &stat_buf) != 0)
 			break;
 
-		const struct fd_association *pmem_fda = &result->at.pmem_fda;
+		pmem_fda = &result->at.pmem_fda;
 
 		if (!is_last_component)
 			result->path[end] = '/';

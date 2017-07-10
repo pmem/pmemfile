@@ -126,4 +126,8 @@ execute_expect_failure(cp ${SRC_DIR}/repo_dummy_file_a ${DIR}/mount_point/file_b
 execute(ln -s symlink_to_itself ${DIR}/mount_point/symlink_to_itself)
 execute_expect_failure(cat ${DIR}/mount_point/symlink_to_itself)
 
+set(ENV{PMEMFILE_CD} ${DIR}/mount_point)
+execute(stat ../dummy_file_a)
+unset(ENV{PMEMFILE_CD})
+
 cleanup()

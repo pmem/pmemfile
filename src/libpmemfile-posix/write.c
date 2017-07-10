@@ -194,6 +194,8 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 			TX_SET_DIRECT(inode, mtime, tm);
 		}
 	} TX_ONABORT {
+		if (errno == ENOMEM)
+			errno = ENOSPC;
 		error = errno;
 		vinode_restore_on_abort(vinode);
 	} TX_END

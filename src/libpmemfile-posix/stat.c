@@ -41,6 +41,7 @@
 #include "libpmemfile-posix.h"
 #include "out.h"
 #include "utils.h"
+#include "cache.h"
 
 /*
  * pmemfile_time_to_timespec -- convert between pmemfile_time and timespec
@@ -86,10 +87,17 @@ vinode_stat(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		const struct pmemfile_block_array *arr =
 				&inode->file_data.blocks;
 		size_t sz = 0;
-		while (arr) {
-			for (uint32_t i = 0; i < arr->length; ++i)
-				sz += arr->blocks[i].size;
-			arr = PF_RO(pfp, arr->next);
+
+		if (is_cache_valid(vinode->stat_block_cache)) {
+			sz = vinode->stat_block_cache;
+		} else {
+			while (arr) {
+				for (uint32_t i = 0; i < arr->length; ++i)
+					sz += arr->blocks[i].size;
+				arr = PF_RO(pfp, arr->next);
+			}
+
+			vinode->stat_block_cache = sz;
 		}
 
 		/*
@@ -100,9 +108,16 @@ vinode_stat(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	} else if (inode_is_dir(inode)) {
 		const struct pmemfile_dir *arr = &inode->file_data.dir;
 		size_t sz = 0;
-		while (arr) {
-			sz += pmemfile_dir_size(arr->next);
-			arr = PF_RO(pfp, arr->next);
+
+		if (is_cache_valid(vinode->stat_block_cache)) {
+			sz = vinode->stat_block_cache;
+		} else {
+			while (arr) {
+				sz += pmemfile_dir_size(arr->next);
+				arr = PF_RO(pfp, arr->next);
+			}
+
+			vinode->stat_block_cache = sz;
 		}
 
 		/*

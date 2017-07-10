@@ -450,6 +450,19 @@ class ListSyscalls(list):
         return path, is_pmem, msg
 
     ####################################################################################################################
+    # handle_one_path -- helper function of match_fd_with_path() - handles one path argument of number n
+    ####################################################################################################################
+    def handle_one_path(self, syscall, n):
+        path = syscall.strings[syscall.args[n]]
+        if (len(path) == 0 or path[0] != '/') and not syscall.read_error:
+            path = self.cwd + "/" + path
+        is_pmem = self.check_if_path_is_pmem(path)
+        syscall.is_pmem |= is_pmem
+        str_ind = self.all_strings_append(path, is_pmem)
+        syscall.args[n] = str_ind
+        return path, str_ind, is_pmem
+
+    ####################################################################################################################
     # match_fd_with_path -- match file descriptors with paths
     ####################################################################################################################
     def match_fd_with_path(self, syscall):
@@ -458,13 +471,7 @@ class ListSyscalls(list):
 
         # syscalls: SyS_open or SyS_creat
         if syscall.is_mask(EM_fd_from_path):
-            path = syscall.strings[0]
-            if (len(path) == 0 or path[0] != '/') and not syscall.read_error:
-                path = self.cwd + "/" + path
-            is_pmem = self.check_if_path_is_pmem(path)
-            syscall.is_pmem |= is_pmem
-            str_ind = self.all_strings_append(path, is_pmem)
-            syscall.args[0] = str_ind
+            path, str_ind, is_pmem = self.handle_one_path(syscall, 0)
             self.log_print_path(is_pmem, syscall.name, path)
             fd_out = syscall.iret
             if fd_out != -1:
@@ -484,6 +491,14 @@ class ListSyscalls(list):
             if syscall.is_mask(EM_isfileat2):
                 path, is_pmem, msg = self.handle_fileat(syscall, 2, 3, msg)
             self.log_anls.debug(msg)
+
+        # symlinkat is a special case of *at syscalls
+        elif syscall.name == "symlinkat":
+            msg = "{0:20s}".format(syscall.name)
+            path, str_ind, is_pmem = self.handle_one_path(syscall, 0)
+            msg += self.log_build_msg(msg, is_pmem, path)
+            path, is_pmem, msg = self.handle_fileat(syscall, 1, 2, msg)
+            logging.debug(msg)
 
         # syscalls: SyS_dup*
         elif syscall.is_mask(EM_fd_from_fd):

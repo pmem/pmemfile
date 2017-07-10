@@ -73,6 +73,43 @@
 #include "preload.h"
 #include "syscall_early_filter.h"
 
+static long log_fd = -1;
+
+static void
+log_init(const char *path, const char *trunc)
+{
+	if (path != NULL) {
+		int flags = O_CREAT | O_RDWR | O_APPEND | O_TRUNC;
+		if (trunc && trunc[0] == '0')
+			flags &= ~O_TRUNC;
+
+		log_fd = syscall_no_intercept(SYS_open, path, flags, 0600);
+	}
+}
+
+static  pf_printf_like(1, 2) void
+log_write(const char *fmt, ...)
+{
+	if (log_fd < 0)
+		return;
+
+	char buf[0x1000];
+	int len;
+	va_list ap;
+
+	va_start(ap, fmt);
+	len = vsnprintf(buf, sizeof(buf) - 1, fmt, ap);
+	va_end(ap);
+
+
+	if (len < 1)
+		return;
+
+	buf[len++] = '\n';
+
+	syscall_no_intercept(SYS_write, log_fd, buf, len);
+}
+
 static struct pool_description pools[0x100];
 static int pool_count;
 
@@ -92,6 +129,11 @@ static bool is_memfd_syscall_available;
 #define RWF_SYNC 0x00000004
 #endif
 
+struct pmemfile_entry {
+	struct fd_association pmemfile;
+	int ref_count;
+};
+
 /*
  * The associations between user visible fd numbers and
  * pmemfile pointers. This is a global table, with a single
@@ -99,7 +141,7 @@ static bool is_memfd_syscall_available;
  * writing to other fds.
  * XXX - improve this situation
  */
-static struct fd_association fd_table[PMEMFILE_MAX_FD + 1];
+static struct pmemfile_entry fd_table[PMEMFILE_MAX_FD + 1];
 
 /*
  * A separate place to keep track of fds used to hold mount points open, in
@@ -115,11 +157,81 @@ is_fd_in_table(long fd)
 	if (fd < 0 || fd > PMEMFILE_MAX_FD)
 		return false;
 
-	return !is_fda_null(fd_table + fd);
+	return !is_fda_null(&fd_table[fd].pmemfile);
 }
 
 static pthread_rwlock_t pmem_cwd_lock = PTHREAD_RWLOCK_INITIALIZER;
 static struct pool_description *volatile cwd_pool;
+
+static pthread_mutex_t fd_table_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static void
+fd_unref(long fd, struct fd_association *file)
+{
+	if (__sync_sub_and_fetch(&fd_table[fd].ref_count, 1) == 0) {
+		(void) syscall_no_intercept(SYS_close, fd);
+
+		pmemfile_close(file->pool->pool, file->file);
+
+		log_write("pmemfile_close(%p, %p) = 0",
+		    (void *)file->pool->pool, (void *)file->file);
+	}
+}
+
+static struct fd_association
+fd_ref(long fd)
+{
+	struct fd_association file;
+	file.file = NULL;
+	file.pool = NULL;
+
+	util_mutex_lock(&fd_table_mutex);
+
+	if (is_fd_in_table(fd)) {
+		__sync_add_and_fetch(&fd_table[fd].ref_count, 1);
+		file = fd_table[fd].pmemfile;
+	}
+
+	util_mutex_unlock(&fd_table_mutex);
+
+	return file;
+}
+
+static struct fd_desc
+cwd_desc(void)
+{
+	struct fd_desc result;
+
+	result.kernel_fd = AT_FDCWD;
+	result.pmem_fda.pool = cwd_pool;
+	result.pmem_fda.file = PMEMFILE_AT_CWD;
+
+	return result;
+}
+
+static struct fd_desc
+fd_fetch(long fd)
+{
+	struct fd_desc result;
+
+	result.kernel_fd = fd;
+
+	if ((int)fd == AT_FDCWD) {
+		result.pmem_fda.pool = cwd_pool;
+		result.pmem_fda.file = PMEMFILE_AT_CWD;
+	} else {
+		result.pmem_fda = fd_ref(fd);
+	}
+
+	return result;
+}
+
+static void
+fd_release(struct fd_desc *at)
+{
+	if (!is_fda_null(&at->pmem_fda) && at->pmem_fda.file != PMEMFILE_AT_CWD)
+		fd_unref(at->kernel_fd, &at->pmem_fda);
+}
 
 static int exit_on_ENOTSUP;
 static long check_errno(long e, long syscall_no)
@@ -175,114 +287,6 @@ acquire_new_fd(const char *path)
 	return fd;
 }
 
-static long log_fd = -1;
-
-static void
-log_init(const char *path, const char *trunc)
-{
-	if (path != NULL) {
-		int flags = O_CREAT | O_RDWR | O_APPEND | O_TRUNC;
-		if (trunc && trunc[0] == '0')
-			flags &= ~O_TRUNC;
-
-		log_fd = syscall_no_intercept(SYS_open, path, flags, 0600);
-	}
-}
-
-static  pf_printf_like(1, 2) void
-log_write(const char *fmt, ...)
-{
-	if (log_fd < 0)
-		return;
-
-	char buf[0x1000];
-	int len;
-	va_list ap;
-
-	va_start(ap, fmt);
-	len = vsnprintf(buf, sizeof(buf) - 1, fmt, ap);
-	va_end(ap);
-
-
-	if (len < 1)
-		return;
-
-	buf[len++] = '\n';
-
-	syscall_no_intercept(SYS_write, log_fd, buf, len);
-}
-
-static int fd_ref_table[PMEMFILE_MAX_FD + 1];
-static pthread_mutex_t fd_table_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-static void
-fd_unref(long fd, struct fd_association *file)
-{
-	if (__sync_sub_and_fetch(fd_ref_table + fd, 1) == 0) {
-		(void) syscall_no_intercept(SYS_close, fd);
-
-		pmemfile_close(file->pool->pool, file->file);
-
-		log_write("pmemfile_close(%p, %p) = 0",
-		    (void *)file->pool->pool, (void *)file->file);
-	}
-}
-
-static struct fd_association
-fd_ref(long fd)
-{
-	struct fd_association file;
-	file.file = NULL;
-	file.pool = NULL;
-
-	util_mutex_lock(&fd_table_mutex);
-
-	if (is_fd_in_table(fd)) {
-		__sync_add_and_fetch(fd_ref_table + fd, 1);
-		file = fd_table[fd];
-	}
-
-	util_mutex_unlock(&fd_table_mutex);
-
-	return file;
-}
-
-static struct fd_desc
-cwd_desc(void)
-{
-	struct fd_desc result;
-
-	result.kernel_fd = AT_FDCWD;
-	result.pmem_fda.pool = cwd_pool;
-	result.pmem_fda.file = PMEMFILE_AT_CWD;
-
-	return result;
-}
-
-static struct fd_desc
-fd_fetch(long fd)
-{
-	struct fd_desc result;
-
-	result.kernel_fd = fd;
-
-	if ((int)fd == AT_FDCWD) {
-		result.pmem_fda.pool = cwd_pool;
-		result.pmem_fda.file = PMEMFILE_AT_CWD;
-	} else {
-		result.pmem_fda = fd_ref(fd);
-	}
-
-	return result;
-}
-
-static void
-fd_release(struct fd_desc *at)
-{
-	if (!is_fda_null(&at->pmem_fda) && at->pmem_fda.file != PMEMFILE_AT_CWD)
-		fd_unref(at->kernel_fd, &at->pmem_fda);
-}
-
 void
 exit_with_msg(int ret, const char *msg)
 {
@@ -313,9 +317,9 @@ hook_close(long fd)
 	util_mutex_lock(&fd_table_mutex);
 
 	if (is_fd_in_table(fd)) {
-		file = fd_table[fd];
-		fd_table[fd].file = NULL;
-		fd_table[fd].pool = NULL;
+		file = fd_table[fd].pmemfile;
+		fd_table[fd].pmemfile.file = NULL;
+		fd_table[fd].pmemfile.pool = NULL;
 
 		is_fd_pmem = true;
 	}
@@ -887,9 +891,9 @@ openat_helper(long fd, struct resolved_path *where, long flags, long mode)
 
 	util_mutex_lock(&fd_table_mutex);
 
-	__sync_add_and_fetch(fd_ref_table + fd, 1);
-	fd_table[fd].pool = where->at.pmem_fda.pool;
-	fd_table[fd].file = file;
+	__sync_add_and_fetch(&fd_table[fd].ref_count, 1);
+	fd_table[fd].pmemfile.pool = where->at.pmem_fda.pool;
+	fd_table[fd].pmemfile.file = file;
 
 	util_mutex_unlock(&fd_table_mutex);
 

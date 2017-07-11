@@ -33,13 +33,21 @@ set(SOURCES path_resolve.c preload.c syscall_early_filter.c)
 
 if(PKG_CONFIG_FOUND)
 	pkg_check_modules(SYSCALL_INTERCEPT libsyscall_intercept)
+	pkg_check_modules(CAP libcap)
 else()
 	find_package(SYSCALL_INTERCEPT QUIET)
+	find_package(CAP QUIET)
 endif()
 
 if(NOT SYSCALL_INTERCEPT_FOUND)
 	message(FATAL_ERROR
 		"libsyscall_intercept not found - needed by libpmemfile
+		to skip building libpmemfile, set the BUILD_LIBPMEMFILE option to OFF")
+endif()
+
+if(NOT CAP_FOUND)
+	message(FATAL_ERROR
+		"libcap not found - needed by libpmemfile
 		to skip building libpmemfile, set the BUILD_LIBPMEMFILE option to OFF")
 endif()
 
@@ -55,6 +63,7 @@ add_library(pmemfile_shared SHARED $<TARGET_OBJECTS:pmemfile_o>)
 add_library(pmemfile_static_unscoped STATIC $<TARGET_OBJECTS:pmemfile_o>)
 
 target_link_libraries(pmemfile_shared PRIVATE ${SYSCALL_INTERCEPT_LIBRARIES})
+target_link_libraries(pmemfile_shared PRIVATE ${CAP_LIBRARIES})
 target_link_libraries(pmemfile_shared PRIVATE ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(pmemfile_shared PRIVATE pmemfile-posix_shared)
 target_link_libraries(pmemfile_shared PRIVATE -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/libpmemfile.map)

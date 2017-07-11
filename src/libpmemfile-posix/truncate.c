@@ -87,6 +87,7 @@ vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			struct pmemfile_time tm;
 			tx_get_current_time(&tm);
 			TX_SET_DIRECT(inode, mtime, tm);
+			TX_SET_DIRECT(inode, ctime, tm);
 		}
 	} TX_ONABORT {
 		error = errno;

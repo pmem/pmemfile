@@ -422,8 +422,13 @@ resolve_pathat_nested(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		if (slash == NULL || slash == ending_slash)
 			break;
 
-		child = vinode_lookup_dirent(pfp, parent, path,
-				(uintptr_t)slash - (uintptr_t)path, flags);
+		size_t namelen = (uintptr_t)slash - (uintptr_t)path;
+		if (namelen > PMEMFILE_MAX_FILE_NAME) {
+			path_info->error = ENAMETOOLONG;
+			break;
+		}
+
+		child = vinode_lookup_dirent(pfp, parent, path, namelen, flags);
 		if (!child) {
 			path_info->error = errno;
 			break;
@@ -537,6 +542,10 @@ resolve_pathat_full(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 			return NULL;
 
 		size_t namelen = component_length(path_info->remaining);
+		if (namelen > PMEMFILE_MAX_FILE_NAME) {
+			path_info->error = ENAMETOOLONG;
+			return NULL;
+		}
 
 		if (namelen == 0) {
 			ASSERT(path_info->parent == pfp->root);

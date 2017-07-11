@@ -63,6 +63,7 @@
 #include <linux/fs.h>
 #include <utime.h>
 #include <sys/fsuid.h>
+#include <sys/capability.h>
 
 #include <asm-generic/errno.h>
 
@@ -274,10 +275,16 @@ acquire_new_fd(const char *path)
 {
 	long fd;
 
-	if (is_memfd_syscall_available)
+	if (is_memfd_syscall_available) {
 		fd = syscall_no_intercept(SYS_memfd_create, path, 0);
-	else
+		/* memfd_create can fail for too long name */
+		if (fd < 0) {
+			fd = syscall_no_intercept(SYS_open, "/dev/null",
+					O_RDONLY);
+		}
+	} else {
 		fd = syscall_no_intercept(SYS_open, "/dev/null", O_RDONLY);
+	}
 
 	if (fd > PMEMFILE_MAX_FD) {
 		syscall_no_intercept(SYS_close, fd);
@@ -1604,6 +1611,38 @@ hook_mknodat(long fd, const char *path, mode_t mode, dev_t dev)
 	return ret;
 }
 
+static void
+update_capabilities(PMEMfilepool *pfp)
+{
+	cap_t caps = cap_get_proc();
+	if (!caps)
+		FATAL("!cap_get_proc");
+
+	cap_flag_value_t cap_value;
+	if (cap_get_flag(caps, CAP_CHOWN, CAP_EFFECTIVE, &cap_value))
+		FATAL("!cap_get_flag failed");
+	if (cap_value)
+		pmemfile_setcap(pfp, PMEMFILE_CAP_CHOWN);
+	else
+		pmemfile_clrcap(pfp, PMEMFILE_CAP_CHOWN);
+
+	if (cap_get_flag(caps, CAP_FOWNER, CAP_EFFECTIVE, &cap_value))
+		FATAL("!cap_get_flag failed");
+	if (cap_value)
+		pmemfile_setcap(pfp, PMEMFILE_CAP_FOWNER);
+	else
+		pmemfile_clrcap(pfp, PMEMFILE_CAP_FOWNER);
+
+	if (cap_get_flag(caps, CAP_FSETID, CAP_EFFECTIVE, &cap_value))
+		FATAL("!cap_get_flag failed");
+	if (cap_value)
+		pmemfile_setcap(pfp, PMEMFILE_CAP_FSETID);
+	else
+		pmemfile_clrcap(pfp, PMEMFILE_CAP_FSETID);
+
+	cap_free(caps);
+}
+
 static long
 hook_setfsuid(uid_t fsuid)
 {
@@ -1623,6 +1662,7 @@ hook_setfsuid(uid_t fsuid)
 			continue;
 		if (pmemfile_setfsuid(p->pool, fsuid) != old)
 			FATAL("inconsistent fsuid state");
+		update_capabilities(p->pool);
 	}
 
 	return old;
@@ -1643,6 +1683,7 @@ hook_setfsgid(gid_t fsgid)
 			continue;
 		if (pmemfile_setfsgid(p->pool, fsgid) != old)
 			FATAL("inconsistent fsgid state");
+		update_capabilities(p->pool);
 	}
 
 	return old;
@@ -1661,6 +1702,7 @@ hook_setgid(gid_t gid)
 			continue;
 		if (pmemfile_setgid(p->pool, gid))
 			FATAL("inconsistent gid state");
+		update_capabilities(p->pool);
 	}
 
 	return 0;
@@ -1679,6 +1721,7 @@ hook_setgroups(size_t size, const gid_t *list)
 			continue;
 		if (pmemfile_setgroups(p->pool, size, list))
 			FATAL("inconsistent groups state");
+		update_capabilities(p->pool);
 	}
 
 	return 0;
@@ -1697,6 +1740,7 @@ hook_setregid(gid_t rgid, gid_t egid)
 			continue;
 		if (pmemfile_setregid(p->pool, rgid, egid))
 			FATAL("inconsistent regid state");
+		update_capabilities(p->pool);
 	}
 
 	return 0;
@@ -1715,6 +1759,7 @@ hook_setresgid(gid_t rgid, gid_t egid, gid_t sgid)
 			continue;
 		if (pmemfile_setregid(p->pool, rgid, egid))
 			FATAL("inconsistent resgid state");
+		update_capabilities(p->pool);
 	}
 
 	return 0;
@@ -1734,6 +1779,7 @@ hook_setresuid(uid_t ruid, uid_t euid, uid_t suid)
 			continue;
 		if (pmemfile_setreuid(p->pool, ruid, euid))
 			FATAL("inconsistent resuid state");
+		update_capabilities(p->pool);
 	}
 
 	return 0;
@@ -1752,6 +1798,7 @@ hook_setreuid(uid_t ruid, uid_t euid)
 			continue;
 		if (pmemfile_setreuid(p->pool, ruid, euid))
 			FATAL("inconsistent reuid state");
+		update_capabilities(p->pool);
 	}
 
 	return 0;
@@ -1770,6 +1817,7 @@ hook_setuid(uid_t uid)
 			continue;
 		if (pmemfile_setuid(p->pool, uid))
 			FATAL("inconsistent uid state");
+		update_capabilities(p->pool);
 	}
 
 	return 0;
@@ -2193,6 +2241,8 @@ open_new_pool_under_lock(struct pool_description *p)
 	mode_t um = umask(0);
 	umask(um);
 	pmemfile_umask(pfp, um);
+
+	update_capabilities(pfp);
 
 	if (pmemfile_stat(pfp, "/", &p->pmem_stat) != 0)
 		goto err;

@@ -51,6 +51,7 @@ RUN apt-get install -y \
 	doxygen \
 	git \
 	libcapstone-dev \
+	libcap-dev \
 	libc6-dbg \
 	libtext-diff-perl \
 	libunwind-dev \

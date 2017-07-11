@@ -577,6 +577,18 @@ class ListSyscalls(list):
 
             self.log_anls.debug(msg)
 
+        self.post_match_action(syscall)
+
+    ####################################################################################################################
+    def post_match_action(self, syscall):
+        if syscall.name in ("chdir", "fchdir"):
+            str_ind = syscall.args[0]
+            old_cwd = self.cwd
+            self.cwd = self.all_strings[str_ind]
+            self.log_anls.debug("INFO: current working directory changed:")
+            self.log_anls.debug("      from: {0:s}".format(old_cwd))
+            self.log_anls.debug("      to:   {0:s}".format(self.cwd))
+
     ####################################################################################################################
     def set_cwd(self, cwd):
         self.cwd = cwd

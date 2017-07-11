@@ -194,28 +194,55 @@ vinode_rename(PMEMfilepool *pfp,
 
 	size_t new_name_len = component_length(dst->remaining);
 
+	if (vinode_is_dir(src_info->vinode)) {
+		/*
+		 * From rename man page:
+		 * "oldpath can specify a directory.  In this case, newpath must
+		 * either not exist, or it must specify an empty directory."
+		 */
+		if (dst_info->dirent && !vinode_is_dir(dst_info->vinode))
+			return ENOTDIR;
+	} else {
+		/*
+		 * From rename man page:
+		 * "EISDIR newpath is an existing directory, but oldpath is not
+		 * a directory."
+		 */
+		if (dst_info->dirent && vinode_is_dir(dst_info->vinode))
+			return EISDIR;
+	}
+
+	struct pmemfile_time t;
+	if (get_current_time(&t))
+		return errno;
+
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (dst_info->dirent) {
 			if (vinode_is_dir(dst_info->vinode)) {
 				vinode_unlink_dir(pfp, dst->parent,
 						dst_info->dirent,
 						dst_info->vinode,
-						new_path);
+						new_path,
+						t);
 			} else {
 				vinode_unlink_file(pfp, dst->parent,
 						dst_info->dirent,
-						dst_info->vinode);
+						dst_info->vinode,
+						t);
 			}
 
 			if (dst_info->vinode->inode->nlink == 0)
 				vinode_orphan_unlocked(pfp, dst_info->vinode);
 		}
 
-		struct pmemfile_time t;
-		tx_get_current_time(&t);
-
 		if (src->parent == dst->parent) {
 			/* optimized rename */
+
+			if (new_name_len > PMEMFILE_MAX_FILE_NAME) {
+				LOG(LUSR, "file name too long");
+				pmemfile_tx_abort(ENAMETOOLONG);
+			}
+
 			pmemobj_tx_add_range_direct(src_info->dirent->name,
 					new_name_len + 1);
 
@@ -229,13 +256,20 @@ vinode_rename(PMEMfilepool *pfp,
 			 * or deletion of files in that directory."
 			 */
 			TX_SET_DIRECT(src->parent->inode, mtime, t);
+
+			/*
+			 * Even though in this case we are not updating any
+			 * metadata we have to update ctime, because that's what
+			 * file system tests expect :/.
+			 */
+			TX_SET_DIRECT(src_info->vinode->inode, ctime, t);
 		} else {
 			inode_add_dirent(pfp, dst->parent->tinode,
 					dst->remaining, new_name_len,
 					src_info->vinode->tinode, t);
 
 			vinode_unlink_file(pfp, src->parent, src_info->dirent,
-					src_info->vinode);
+					src_info->vinode, t);
 
 			if (vinode_is_dir(src_info->vinode))
 				vinode_update_parent(pfp, src_info->vinode,
@@ -406,6 +440,13 @@ _pmemfile_renameat2(PMEMfilepool *pfp,
 			error = EINVAL;
 			goto end_unlock;
 		}
+	}
+	if (strcmp(src.remaining, ".") == 0 ||
+			strcmp(src.remaining, "..") == 0 ||
+			strcmp(dst.remaining, ".") == 0 ||
+			strcmp(dst.remaining, "..") == 0) {
+		error = EINVAL;
+		goto end_unlock;
 	}
 
 	if (flags & PMEMFILE_RENAME_EXCHANGE) {

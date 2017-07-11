@@ -384,11 +384,11 @@ TEST_F(symlinks, 1)
 
 	errno = 0;
 	ASSERT_EQ(pmemfile_symlink(pfp, NULL, "/loop1"), -1);
-	EXPECT_EQ(errno, ENOENT);
+	EXPECT_EQ(errno, EFAULT);
 
 	errno = 0;
 	ASSERT_EQ(pmemfile_symlink(pfp, "/dir1/loop", NULL), -1);
-	EXPECT_EQ(errno, ENOENT);
+	EXPECT_EQ(errno, EFAULT);
 
 	PMEMfile *file =
 		pmemfile_open(pfp, "/dir1/internal_dir/file",

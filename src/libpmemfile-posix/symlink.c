@@ -133,7 +133,7 @@ pmemfile_symlinkat(PMEMfilepool *pfp, const char *target, PMEMfile *newdir,
 	}
 
 	if (!target || !linkpath) {
-		errno = ENOENT;
+		errno = EFAULT;
 		return -1;
 	}
 

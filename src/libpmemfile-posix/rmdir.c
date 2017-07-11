@@ -54,7 +54,8 @@ vinode_unlink_dir(PMEMfilepool *pfp,
 		struct pmemfile_vinode *vparent,
 		struct pmemfile_dirent *dirent,
 		struct pmemfile_vinode *vdir,
-		const char *path)
+		const char *path,
+		struct pmemfile_time tm)
 {
 	struct pmemfile_inode *iparent = vparent->inode;
 	struct pmemfile_inode *idir = vdir->inode;
@@ -113,9 +114,6 @@ vinode_unlink_dir(PMEMfilepool *pfp,
 
 	TX_ADD_DIRECT(&iparent->nlink);
 	iparent->nlink--;
-
-	struct pmemfile_time tm;
-	tx_get_current_time(&tm);
 
 	/*
 	 * From "stat" man page:
@@ -200,9 +198,15 @@ pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	ASSERT_NOT_IN_TX();
 
+	struct pmemfile_time t;
+	if (get_current_time(&t)) {
+		error = errno;
+		goto vdir_end;
+	}
+
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		vinode_unlink_dir(pfp, info.parent, dirent_info.dirent,
-				dirent_info.vinode, path);
+				dirent_info.vinode, path, t);
 
 		vinode_orphan(pfp, dirent_info.vinode);
 	} TX_ONABORT {

@@ -258,6 +258,11 @@ vinode_lookup_dirent_by_name_locked(PMEMfilepool *pfp,
 		return NULL;
 	}
 
+	if (namelen > PMEMFILE_MAX_FILE_NAME) {
+		errno = ENAMETOOLONG;
+		return NULL;
+	}
+
 	ASSERTne(namelen, 0);
 	ASSERTne(name[0], 0);
 

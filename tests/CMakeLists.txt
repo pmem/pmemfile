@@ -48,3 +48,5 @@ add_subdirectory(posix)
 if(BUILD_LIBPMEMFILE)
 	add_subdirectory(preload)
 endif()
+
+add_subdirectory(antool)

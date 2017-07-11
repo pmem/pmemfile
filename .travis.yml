@@ -3,6 +3,8 @@ dist: trusty
 # until Travis fixes issue with mounting permissions
 group: deprecated-2017Q2
 
+sudo: required
+
 language: c
 
 env:

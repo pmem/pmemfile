@@ -55,8 +55,4 @@ unsupported flag:           	fcntl           	 /tmp/mnt/pmem/file [PMEM]   [unsu
 unsupported flag:           	fcntl           	 /tmp/mnt/pmem/file [PMEM]   [unsupported flag:] F_GET_SEALS
 unsupported flag:           	clone           	 [unsupported flag:] flags other than set by pthread_create()
 unsupported syscall:        	fork            	
-unsupported syscall:        	fork            	
-unsupported syscall:        	vfork           	
-unsupported syscall:        	vfork           	
-unsupported syscall:        	vfork           	
 unsupported syscall:        	vfork           	

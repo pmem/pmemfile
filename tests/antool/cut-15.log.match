@@ -1,0 +1,136 @@
+close                (0x0000000012345678)
+open                 /tmp/mnt
+open                 /tmp/mnt/pmem/file [PMEM]
+open                 /tmp/mnt/nonp/file
+chroot               /mnt/files/work/pmemfile/build/tests/antool/nonp/file
+chroot               /mnt/files/work/pmemfile/build/tests/antool/pmem/file
+chroot               /tmp/mnt/nonp/file
+chroot               /tmp/mnt/pmem/file [PMEM]
+setxattr             /mnt/files/work/pmemfile/build/tests/antool/pmem/file any-string
+lsetxattr            /mnt/files/work/pmemfile/build/tests/antool/pmem/file any-string
+getxattr             /mnt/files/work/pmemfile/build/tests/antool/pmem/file any-string
+lgetxattr            /mnt/files/work/pmemfile/build/tests/antool/pmem/file any-string
+setxattr             /tmp/mnt/nonp/file any-string
+setxattr             /tmp/mnt/pmem/file [PMEM] any-string
+lsetxattr            /tmp/mnt/nonp/file any-string
+lsetxattr            /tmp/mnt/pmem/file [PMEM] any-string
+fsetxattr            /tmp/mnt/nonp/file any-string
+fsetxattr            /tmp/mnt/pmem/file [PMEM] any-string
+getxattr             /tmp/mnt/nonp/file any-string
+getxattr             /tmp/mnt/pmem/file [PMEM] any-string
+lgetxattr            /tmp/mnt/nonp/file any-string
+lgetxattr            /tmp/mnt/pmem/file [PMEM] any-string
+fgetxattr            /tmp/mnt/nonp/file any-string
+fgetxattr            /tmp/mnt/pmem/file [PMEM] any-string
+listxattr            /tmp/mnt/nonp/file
+listxattr            /tmp/mnt/pmem/file [PMEM]
+llistxattr           /tmp/mnt/nonp/file
+llistxattr           /tmp/mnt/pmem/file [PMEM]
+flistxattr           /tmp/mnt/nonp/file
+flistxattr           /tmp/mnt/pmem/file [PMEM]
+removexattr          /tmp/mnt/nonp/file any-string
+removexattr          /tmp/mnt/pmem/file [PMEM] any-string
+lremovexattr         /tmp/mnt/nonp/file any-string
+lremovexattr         /tmp/mnt/pmem/file [PMEM] any-string
+fremovexattr         /tmp/mnt/nonp/file any-string
+fremovexattr         /tmp/mnt/pmem/file [PMEM] any-string
+dup                  /tmp/mnt/nonp/file
+dup                  /tmp/mnt/pmem/file [PMEM]
+dup2                 /tmp/mnt/nonp/file
+dup2                 /tmp/mnt/pmem/file [PMEM]
+dup3                 /tmp/mnt/nonp/file
+dup3                 /tmp/mnt/pmem/file [PMEM]
+mmap                 /tmp/mnt/nonp/file
+mmap                 /tmp/mnt/pmem/file [PMEM]
+execve               /tmp/mnt/nonp/file
+execve               /tmp/mnt/pmem/file [PMEM]
+execveat             /tmp/mnt nonp/file
+execveat             /tmp/mnt pmem/file [PMEM]
+flock                /tmp/mnt/nonp/file
+flock                /tmp/mnt/pmem/file [PMEM]
+readahead            /tmp/mnt/nonp/file
+readahead            /tmp/mnt/pmem/file [PMEM]
+sendfile64           /tmp/mnt/nonp/file /tmp/mnt/nonp/file
+sendfile64           /tmp/mnt/pmem/file [PMEM] /tmp/mnt/nonp/file
+sendfile64           /tmp/mnt/nonp/file /tmp/mnt/pmem/file [PMEM]
+sendfile64           /tmp/mnt/pmem/file [PMEM] /tmp/mnt/pmem/file [PMEM]
+splice               /tmp/mnt/nonp/file /tmp/mnt/nonp/file
+splice               /tmp/mnt/pmem/file [PMEM] /tmp/mnt/nonp/file
+splice               /tmp/mnt/nonp/file /tmp/mnt/pmem/file [PMEM]
+splice               /tmp/mnt/pmem/file [PMEM] /tmp/mnt/pmem/file [PMEM]
+name_to_handle_at    /tmp/mnt nonp/file
+name_to_handle_at    /tmp/mnt pmem/file [PMEM]
+copy_file_range      /tmp/mnt/nonp/file /tmp/mnt/nonp/file
+copy_file_range      /tmp/mnt/pmem/file [PMEM] /tmp/mnt/nonp/file
+copy_file_range      /tmp/mnt/nonp/file /tmp/mnt/pmem/file [PMEM]
+copy_file_range      /tmp/mnt/pmem/file [PMEM] /tmp/mnt/pmem/file [PMEM]
+open                 /tmp/mnt/nonp/file
+open                 /tmp/mnt/pmem/file [PMEM]
+open                 /tmp/mnt/nonp/file
+open                 /tmp/mnt/pmem/file [PMEM]
+openat               /tmp/mnt nonp/file
+openat               /tmp/mnt pmem/file [PMEM]
+openat               /tmp/mnt nonp/file
+openat               /tmp/mnt pmem/file [PMEM]
+renameat             /tmp/mnt nonp/file /tmp/mnt nonp/file
+renameat             /tmp/mnt pmem/file [PMEM] /tmp/mnt pmem/file [PMEM]
+renameat2            /tmp/mnt nonp/file /tmp/mnt nonp/file
+renameat2            /tmp/mnt pmem/file [PMEM] /tmp/mnt pmem/file [PMEM]
+renameat2            /tmp/mnt nonp/file /tmp/mnt nonp/file
+renameat2            /tmp/mnt pmem/file [PMEM] /tmp/mnt pmem/file [PMEM]
+fallocate            /tmp/mnt/nonp/file
+fallocate            /tmp/mnt/pmem/file [PMEM]
+fallocate            /tmp/mnt/nonp/file
+fallocate            /tmp/mnt/pmem/file [PMEM]
+fallocate            /tmp/mnt/nonp/file
+fallocate            /tmp/mnt/pmem/file [PMEM]
+fcntl                /tmp/mnt/nonp/file
+fcntl                /tmp/mnt/pmem/file [PMEM]
+fcntl                /tmp/mnt/nonp/file
+fcntl                /tmp/mnt/pmem/file [PMEM]
+fcntl                /tmp/mnt/nonp/file
+fcntl                /tmp/mnt/pmem/file [PMEM]
+fcntl                /tmp/mnt/nonp/file
+fcntl                /tmp/mnt/pmem/file [PMEM]
+fcntl                /tmp/mnt/nonp/file
+fcntl                /tmp/mnt/pmem/file [PMEM]
+fcntl                /tmp/mnt/nonp/file
+fcntl                /tmp/mnt/pmem/file [PMEM]
+fcntl                /tmp/mnt/nonp/file
+fcntl                /tmp/mnt/pmem/file [PMEM]
+fcntl                /tmp/mnt/nonp/file
+fcntl                /tmp/mnt/pmem/file [PMEM]
+fcntl                /tmp/mnt/nonp/file
+fcntl                /tmp/mnt/pmem/file [PMEM]
+fcntl                /tmp/mnt/nonp/file
+fcntl                /tmp/mnt/pmem/file [PMEM]
+fcntl                /tmp/mnt/nonp/file
+fcntl                /tmp/mnt/pmem/file [PMEM]
+fcntl                /tmp/mnt/nonp/file
+fcntl                /tmp/mnt/pmem/file [PMEM]
+fcntl                /tmp/mnt/nonp/file
+fcntl                /tmp/mnt/pmem/file [PMEM]
+fcntl                /tmp/mnt/nonp/file
+fcntl                /tmp/mnt/pmem/file [PMEM]
+fcntl                /tmp/mnt/nonp/file
+fcntl                /tmp/mnt/pmem/file [PMEM]
+fcntl                /tmp/mnt/nonp/file
+fcntl                /tmp/mnt/pmem/file [PMEM]
+fcntl                /tmp/mnt/nonp/file
+fcntl                /tmp/mnt/pmem/file [PMEM]
+fcntl                /tmp/mnt/nonp/file
+fcntl                /tmp/mnt/pmem/file [PMEM]
+fcntl                /tmp/mnt/nonp/file
+fcntl                /tmp/mnt/pmem/file [PMEM]
+mmap                 (-1)
+mmap                 (-1)
+mmap                 (-1)
+mmap                 (-1)
+mmap                 (-1)
+mmap                 (-1)
+mmap                 (-1)
+mmap                 (-1)
+mmap                 (-1)
+mmap                 (-1)
+close                /tmp/mnt/pmem/file [PMEM]
+close                (0x0000000087654321)

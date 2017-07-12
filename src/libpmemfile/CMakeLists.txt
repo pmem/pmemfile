@@ -29,7 +29,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-set(SOURCES path_resolve.c preload.c syscall_early_filter.c)
+set(SOURCES path_resolve.c preload.c syscall_early_filter.c vfd_table.c)
 
 if(PKG_CONFIG_FOUND)
 	pkg_check_modules(SYSCALL_INTERCEPT libsyscall_intercept)

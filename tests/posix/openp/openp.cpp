@@ -170,6 +170,12 @@ TEST_F(openp, 0)
 	EXPECT_TRUE(check_path(pfp, 1, "../dir1", "/", "../dir1"));
 	EXPECT_TRUE(check_path(pfp, 1, "./dir1/../../dir1", "/", "../dir1"));
 
+#ifdef FAULT_INJECTION
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	ASSERT_FALSE(check_path(pfp, 0, "dir1", "/", "dir1"));
+	EXPECT_EQ(errno, ENOMEM);
+#endif
+
 	ASSERT_EQ(pmemfile_unlink(pfp, "/dir1/dir3/dir4/file4"), 0);
 	ASSERT_EQ(pmemfile_unlink(pfp, "/dir1/dir3/file3"), 0);
 	ASSERT_EQ(pmemfile_unlink(pfp, "/dir2/file2"), 0);

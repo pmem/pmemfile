@@ -135,6 +135,13 @@ TEST_F(symlinks, 0)
 	ASSERT_TRUE(test_pmemfile_readlinkat(
 		pfp, "/dir", "sym4-not_exists-relative", "../file2"));
 
+#ifdef FAULT_INJECTION
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	ASSERT_FALSE(test_pmemfile_readlinkat(
+		pfp, "/dir", "sym4-not_exists-relative", "../file2"));
+	EXPECT_EQ(errno, ENOMEM);
+#endif
+
 	EXPECT_TRUE(
 		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
 						    {040777, 3, 4008, "."},
@@ -624,6 +631,13 @@ TEST_F(symlinks, creat_excl)
 	pmemfile_stat_t buf;
 
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", 0777), 0);
+
+#ifdef FAULT_INJECTION
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	ASSERT_EQ(pmemfile_symlink(pfp, "../file", "/dir/symlink"), -1);
+	EXPECT_EQ(errno, ENOMEM);
+#endif
+
 	ASSERT_EQ(pmemfile_symlink(pfp, "../file", "/dir/symlink"), 0);
 
 	file = pmemfile_open(pfp, "/dir/symlink",

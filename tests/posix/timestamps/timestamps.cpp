@@ -89,6 +89,12 @@ TEST_F(timestamps, utime)
 	tm.modtime = -456;
 	ASSERT_EQ(pmemfile_utime(pfp, "/file", &tm), 0);
 
+#ifdef FAULT_INJECTION
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	ASSERT_EQ(pmemfile_utime(pfp, "/file", &tm), -1);
+	EXPECT_EQ(errno, ENOMEM);
+#endif
+
 	memset(&st2, 0, sizeof(st2));
 	ASSERT_EQ(pmemfile_stat(pfp, "/file", &st2), 0);
 

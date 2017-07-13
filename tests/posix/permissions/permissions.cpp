@@ -455,6 +455,14 @@ TEST_F(permissions, fchmodat)
 				    PMEMFILE_ACCESSPERMS, 0),
 		  0);
 
+#ifdef FAULT_INJECTION
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	ASSERT_EQ(pmemfile_fchmodat(pfp, PMEMFILE_AT_CWD, "dir/aaa",
+				    PMEMFILE_ACCESSPERMS, 0),
+		  -1);
+	EXPECT_EQ(errno, ENOMEM);
+#endif
+
 	pmemfile_close(pfp, dir);
 	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/aaa"), 0);
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir/"), 0);
@@ -897,6 +905,13 @@ TEST_F(permissions, rename)
 
 	ASSERT_EQ(pmemfile_rename(pfp, "/aaa", "/dir_-wx/aaa"), 0)
 		<< strerror(errno);
+
+#ifdef FAULT_INJECTION
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir_-wx/aaa", "/aaa"), -1);
+	EXPECT_EQ(errno, ENOMEM);
+#endif
+
 	ASSERT_EQ(pmemfile_rename(pfp, "/dir_-wx/aaa", "/aaa"), 0)
 		<< strerror(errno);
 
@@ -1028,16 +1043,6 @@ TEST_F(permissions, chown)
 
 	pmemfile_gid_t groups[1] = {1002};
 	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
-
-#ifdef FAULT_INJECTION
-	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
-	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", 0755), -1);
-	EXPECT_EQ(errno, ENOMEM);
-
-	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
-	ASSERT_EQ(pmemfile_create(pfp, "/fileXXX", 0644), nullptr);
-	EXPECT_EQ(errno, ENOMEM);
-#endif
 
 	/* ruid=euid=fsuid=1000, rgid=egid=0, fsgid=1001, gids=1002 */
 
@@ -1176,6 +1181,12 @@ TEST_F(permissions, fchown)
 	ASSERT_TRUE(test_fchown(pfp, f, 1000, 1002, 0));
 	ASSERT_TRUE(test_fchown(pfp, f, 1000, 1001, 0));
 	ASSERT_TRUE(test_fchown(pfp, f, 1000, 1000, EPERM));
+
+#ifdef FAULT_INJECTION
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	ASSERT_EQ(test_fchown(pfp, f, 1000, 1000, EPERM), -1);
+	EXPECT_EQ(errno, ENOMEM);
+#endif
 
 	pmemfile_close(pfp, f);
 

@@ -1,0 +1,113 @@
+Unsupported syscalls detected:
+   chroot:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   setxattr:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   lsetxattr:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   fsetxattr:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   listxattr:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   llistxattr:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   flistxattr:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   removexattr:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   lremovexattr:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   fremovexattr:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   execve:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   execveat:
+		/tmp/antool.$(S)
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   readahead:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   name_to_handle_at:
+		/tmp/antool.$(S)
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   fork
+   vfork
+
+Unsupported syscall's flag detected:
+   open <O_ASYNC>:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   openat <O_ASYNC>:
+		/tmp/antool.$(S)
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   renameat2 <RENAME_WHITEOUT>:
+		/tmp/antool.$(S)
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   fallocate <FALLOC_FL_COLLAPSE_RANGE>:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   fallocate <FALLOC_FL_ZERO_RANGE>:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   fallocate <FALLOC_FL_INSERT_RANGE>:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   fcntl <F_SETFD: not possible to clear FD_CLOEXEC flag>:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   fcntl <F_GETLK>:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   fcntl <F_SETLK>:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   fcntl <F_SETLKW>:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   fcntl <F_SETOWN>:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   fcntl <F_GETOWN_EX>:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   fcntl <F_SETSIG>:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   fcntl <F_GETSIG>:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   fcntl <F_SETOWN_EX>:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   fcntl <F_OFD_GETLK>:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   fcntl <F_OFD_SETLK>:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   fcntl <F_OFD_SETLKW>:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   fcntl <F_SETLEASE>:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   fcntl <F_GETLEASE>:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   fcntl <F_NOTIFY>:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   fcntl <F_ADD_SEALS>:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   fcntl <F_GET_SEALS>:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   clone <flags other than set by pthread_create()>
+
+Unsupported syscalls with relative path detected:
+   chroot:
+		nonp.$(S)/tmp.$(S)
+		pmem.$(S)/tmp.$(S)
+   setxattr:
+		pmem.$(S)/tmp.$(S)
+   lsetxattr:
+		pmem.$(S)/tmp.$(S)
+   getxattr:
+		pmem.$(S)/tmp.$(S)
+   lgetxattr:
+		pmem.$(S)/tmp.$(S)
+
+Yet-unsupported syscalls detected (will be supported):
+   mmap:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   flock:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+   sendfile64:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+		/tmp/antool.$(S)/nonp.$(S)/tmp.$(S)
+   splice:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+		/tmp/antool.$(S)/nonp.$(S)/tmp.$(S)
+   copy_file_range:
+		/tmp/antool.$(S)/pmem.$(S)/tmp.$(S) [PMEM]
+		/tmp/antool.$(S)/nonp.$(S)/tmp.$(S)
+

@@ -1789,6 +1789,29 @@ TEST_F(rw, pwritev)
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
 }
 
+#ifdef FAULT_INJECTION
+TEST_F(rw, copy_cred)
+{
+	PMEMfile *f;
+
+	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT | PMEMFILE_O_RDWR,
+			  PMEMFILE_S_IRWXU);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+
+	pmemfile_gid_t groups[1] = {1002};
+	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
+
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	errno = 0;
+	ASSERT_EQ(pmemfile_truncate(pfp, "file1", 1024), -1);
+	EXPECT_EQ(errno, ENOMEM);
+
+	pmemfile_close(pfp, f);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
+}
+#endif
+
 int
 main(int argc, char *argv[])
 {

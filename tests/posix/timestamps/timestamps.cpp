@@ -752,6 +752,30 @@ TEST_F(timestamps, futimesat)
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/d"), 0);
 }
 
+#ifdef FAULT_INJECTION
+TEST_F(timestamps, copy_cred)
+{
+	pmemfile_gid_t groups[1] = {1002};
+	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
+
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/file"));
+
+	pmemfile_stat_t st;
+	ASSERT_EQ(pmemfile_stat(pfp, "/file", &st), 0);
+
+	pmemfile_utimbuf_t tm;
+	tm.actime = 12345;
+	tm.modtime = 56789;
+
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	errno = 0;
+	ASSERT_EQ(pmemfile_utime(pfp, "/file", &tm), -1);
+	EXPECT_EQ(errno, ENOMEM);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file"), 0);
+}
+#endif
+
 int
 main(int argc, char *argv[])
 {

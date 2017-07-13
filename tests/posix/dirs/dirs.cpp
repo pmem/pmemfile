@@ -1521,8 +1521,8 @@ TEST_F(dirs, openat)
 
 	f = pmemfile_openat(pfp, PMEMFILE_AT_CWD, "/file2", PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
-	pmemfile_close(pfp, f);
 
+	pmemfile_close(pfp, f);
 	pmemfile_close(pfp, dir);
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file2"), 0);
@@ -1761,6 +1761,14 @@ TEST_F(dirs, O_PATH)
 		  0);
 	EXPECT_EQ(st.st_size, 10);
 
+#ifdef FAULT_INJECTION
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	errno = 0;
+	ASSERT_EQ(pmemfile_fstatat(pfp, file, "", &st, PMEMFILE_AT_EMPTY_PATH),
+		  -1);
+	EXPECT_EQ(errno, ENOMEM);
+#endif
+
 	ASSERT_EQ(
 		pmemfile_linkat(pfp, dir, "file", PMEMFILE_AT_CWD, "file1", 0),
 		0);
@@ -1789,6 +1797,12 @@ TEST_F(dirs, O_PATH)
 		0);
 
 	ASSERT_EQ(pmemfile_faccessat(pfp, dir, "file", PMEMFILE_W_OK, 0), 0);
+
+#ifdef FAULT_INJECTION
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	ASSERT_EQ(pmemfile_faccessat(pfp, dir, "file", PMEMFILE_W_OK, 0), -1);
+	EXPECT_EQ(errno, ENOMEM);
+#endif
 
 	ASSERT_EQ(pmemfile_ftruncate(pfp, file, 0), -1);
 	EXPECT_EQ(errno, EBADF);
@@ -1826,6 +1840,99 @@ TEST_F(dirs, O_PATH)
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file2"), 0);
 }
+
+#ifdef FAULT_INJECTION
+TEST_F(dirs, copy_cred)
+{
+	pmemfile_gid_t groups[1] = {1002};
+	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
+
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	errno = 0;
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", 0755), -1);
+	EXPECT_EQ(errno, ENOMEM);
+
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	errno = 0;
+	ASSERT_EQ(pmemfile_mkdirat(pfp, PMEMFILE_AT_CWD, "dir-fault-inject",
+				   PMEMFILE_S_IRWXU),
+		  -1);
+	EXPECT_EQ(errno, ENOMEM);
+
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", PMEMFILE_S_IRWXU), 0);
+	PMEMfile *dir = pmemfile_open(pfp, "/dir", PMEMFILE_O_DIRECTORY);
+	ASSERT_NE(dir, nullptr) << strerror(errno);
+	ASSERT_TRUE(
+		test_pmemfile_create(pfp, "/dir/file", PMEMFILE_O_EXCL, 0644));
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	errno = 0;
+	ASSERT_EQ(pmemfile_unlinkat(pfp, dir, "file", 0), -1);
+	EXPECT_EQ(errno, ENOMEM);
+	ASSERT_EQ(pmemfile_unlinkat(pfp, dir, "file", 0), 0);
+	pmemfile_close(pfp, dir);
+	ASSERT_EQ(pmemfile_unlinkat(pfp, PMEMFILE_AT_CWD, "dir",
+				    PMEMFILE_AT_REMOVEDIR),
+		  0);
+
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	errno = 0;
+	ASSERT_EQ(pmemfile_chdir(pfp, "."), -1);
+	EXPECT_EQ(errno, ENOMEM);
+
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
+	PMEMfile *f = pmemfile_open(pfp, "dir1", PMEMFILE_O_DIRECTORY);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	errno = 0;
+	ASSERT_EQ(pmemfile_fchdir(pfp, f), -1);
+	EXPECT_EQ(errno, ENOMEM);
+	pmemfile_close(pfp, f);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
+
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	errno = 0;
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), -1);
+	EXPECT_EQ(errno, ENOMEM);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
+
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", PMEMFILE_ACCESSPERMS), 0);
+	ASSERT_TRUE(
+		test_pmemfile_create(pfp, "/dir/file1", 0, PMEMFILE_S_IRWXU));
+	ASSERT_EQ(pmemfile_symlink(pfp, "/dir/file1", "/symlink"), 0);
+	dir = pmemfile_open(pfp, "/dir", PMEMFILE_O_DIRECTORY);
+	ASSERT_NE(dir, nullptr) << strerror(errno);
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	errno = 0;
+	ASSERT_EQ(pmemfile_fchownat(pfp, dir, "file1", 1000, 1000, 0), -1);
+	EXPECT_EQ(errno, ENOMEM);
+	pmemfile_close(pfp, dir);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/symlink"), 0) << strerror(errno);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/file1"), 0) << strerror(errno);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
+
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", PMEMFILE_S_IRWXU), 0);
+	ASSERT_TRUE(
+		test_pmemfile_create(pfp, "/dir/file1", 0, PMEMFILE_S_IRWXU));
+	dir = pmemfile_open(pfp, "/dir", PMEMFILE_O_DIRECTORY);
+	ASSERT_NE(dir, nullptr) << strerror(errno);
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	errno = 0;
+	ASSERT_EQ(pmemfile_openat(pfp, dir, "file1", PMEMFILE_O_RDONLY),
+		  nullptr);
+	EXPECT_EQ(errno, ENOMEM);
+
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	errno = 0;
+	ASSERT_EQ(pmemfile_linkat(pfp, PMEMFILE_AT_CWD, "dir1/file1",
+				  PMEMFILE_AT_CWD, "file11", 0),
+		  -1);
+	EXPECT_EQ(errno, ENOMEM);
+	pmemfile_close(pfp, dir);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/file1"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
+}
+#endif
 
 int
 main(int argc, char *argv[])

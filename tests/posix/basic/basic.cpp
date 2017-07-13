@@ -461,6 +461,18 @@ TEST_F(basic, tmpfile)
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 0, 0, 0));
 }
 
+#ifdef FAULT_INJECTION
+TEST_F(basic, copy_cred)
+{
+	pmemfile_gid_t groups[1] = {1002};
+	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	errno = 0;
+	ASSERT_EQ(pmemfile_create(pfp, "/fileXXX", 0644), nullptr);
+	EXPECT_EQ(errno, ENOMEM);
+}
+#endif
+
 int
 main(int argc, char *argv[])
 {

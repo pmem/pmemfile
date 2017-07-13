@@ -897,6 +897,7 @@ TEST_F(permissions, rename)
 
 	ASSERT_EQ(pmemfile_rename(pfp, "/aaa", "/dir_-wx/aaa"), 0)
 		<< strerror(errno);
+
 	ASSERT_EQ(pmemfile_rename(pfp, "/dir_-wx/aaa", "/aaa"), 0)
 		<< strerror(errno);
 
@@ -1028,16 +1029,6 @@ TEST_F(permissions, chown)
 
 	pmemfile_gid_t groups[1] = {1002};
 	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
-
-#ifdef FAULT_INJECTION
-	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
-	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", 0755), -1);
-	EXPECT_EQ(errno, ENOMEM);
-
-	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
-	ASSERT_EQ(pmemfile_create(pfp, "/fileXXX", 0644), nullptr);
-	EXPECT_EQ(errno, ENOMEM);
-#endif
 
 	/* ruid=euid=fsuid=1000, rgid=egid=0, fsgid=1001, gids=1002 */
 
@@ -1788,6 +1779,65 @@ TEST_F(permissions, umask_dir)
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir2"), 0);
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir3"), 0);
 }
+
+#ifdef FAULT_INJECTION
+TEST_F(permissions, copy_cred)
+{
+	PMEMfile *dir;
+	pmemfile_stat_t statbuf;
+	pmemfile_gid_t groups[1] = {1002};
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", PMEMFILE_S_IRWXU), 0);
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/dir/aaa", PMEMFILE_O_EXCL,
+					 PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR |
+						 PMEMFILE_S_IRGRP |
+						 PMEMFILE_S_IROTH));
+	ASSERT_EQ(pmemfile_stat(pfp, "/dir/aaa", &statbuf), 0);
+	EXPECT_EQ(statbuf.st_mode & PMEMFILE_ALLPERMS,
+		  (pmemfile_mode_t)(PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR |
+				    PMEMFILE_S_IRGRP | PMEMFILE_S_IROTH));
+	dir = pmemfile_open(pfp, "/dir", PMEMFILE_O_DIRECTORY);
+	ASSERT_NE(dir, nullptr) << strerror(errno);
+
+	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	errno = 0;
+	ASSERT_EQ(pmemfile_fchmodat(pfp, PMEMFILE_AT_CWD, "dir/aaa",
+				    PMEMFILE_ACCESSPERMS, 0),
+		  -1);
+	EXPECT_EQ(errno, ENOMEM);
+
+	pmemfile_close(pfp, dir);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/aaa"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir/"), 0);
+
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir_-wx",
+				 PMEMFILE_S_IWUSR | PMEMFILE_S_IXUSR),
+		  0);
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/aaa", PMEMFILE_O_EXCL,
+					 PMEMFILE_S_IRWXU));
+	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	errno = 0;
+	ASSERT_EQ(pmemfile_rename(pfp, "/dir_-wx/aaa", "/aaa"), -1);
+	EXPECT_EQ(errno, ENOMEM);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/aaa"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir_-wx"), 0);
+
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/file", PMEMFILE_O_EXCL,
+					 PMEMFILE_S_IRWXU));
+	PMEMfile *f = pmemfile_open(pfp, "/file", PMEMFILE_O_RDONLY);
+	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
+
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	errno = 0;
+	ASSERT_TRUE(test_fchown(pfp, f, 0, 0, 12));
+	EXPECT_EQ(errno, ENOMEM);
+
+	pmemfile_close(pfp, f);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file"), 0);
+}
+#endif
 
 int
 main(int argc, char *argv[])

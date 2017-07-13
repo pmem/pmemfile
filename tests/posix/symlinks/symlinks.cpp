@@ -645,6 +645,40 @@ TEST_F(symlinks, creat_excl)
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
 }
 
+#ifdef FAULT_INJECTION
+TEST_F(symlinks, copy_cred)
+{
+	pmemfile_gid_t groups[1] = {1002};
+	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
+	ASSERT_TRUE(test_pmemfile_create(pfp, "/file1", 0, 0644));
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", 0755), 0);
+
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	errno = 0;
+	ASSERT_EQ(pmemfile_symlink(pfp, "../file", "/dir/symlink"), -1);
+	EXPECT_EQ(errno, ENOMEM);
+
+	ASSERT_EQ(pmemfile_symlink(pfp, "/file1", "/dir/sym1-exists"), 0);
+
+	static char readlink_buf[PMEMFILE_PATH_MAX];
+	PMEMfile *dir = pmemfile_open(pfp, "/dir", PMEMFILE_O_DIRECTORY);
+	ASSERT_NE(dir, nullptr);
+
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_readlinkat(pfp, dir, "/dir/sym1-exists",
+				      readlink_buf, sizeof(readlink_buf) - 1),
+		  -1);
+	EXPECT_EQ(errno, ENOMEM);
+	pmemfile_close(pfp, dir);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/dir/sym1-exists"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
+}
+#endif
+
 int
 main(int argc, char *argv[])
 {

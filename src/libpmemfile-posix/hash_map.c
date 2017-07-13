@@ -109,7 +109,7 @@ hash_map_alloc(void)
  * hash_map_traverse -- returns number of live entries
  */
 int
-hash_map_traverse(struct hash_map *map, hash_map_cb fun)
+hash_map_traverse(struct hash_map *map, hash_map_cb fun, void *arg)
 {
 	int num = 0;
 
@@ -119,7 +119,7 @@ hash_map_traverse(struct hash_map *map, hash_map_cb fun)
 		for (unsigned j = 0; j < BUCKET_SIZE; ++j) {
 			void *value = bucket->arr[j].value;
 			if (value) {
-				fun(bucket->arr[j].key, value);
+				fun(bucket->arr[j].key, value, arg);
 				num++;
 			}
 		}

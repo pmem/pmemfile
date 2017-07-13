@@ -35,12 +35,12 @@
 #include <stdint.h>
 
 struct hash_map;
-typedef void (*hash_map_cb)(uint64_t, void *);
+typedef void (*hash_map_cb)(uint64_t, void *, void *);
 
 struct hash_map *hash_map_alloc(void);
 void hash_map_free(struct hash_map *map);
 
-int hash_map_traverse(struct hash_map *c, hash_map_cb fun);
+int hash_map_traverse(struct hash_map *c, hash_map_cb fun, void *arg);
 
 int hash_map_remove(struct hash_map *map, uint64_t key, void *value);
 

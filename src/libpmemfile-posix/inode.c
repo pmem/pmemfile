@@ -51,8 +51,9 @@
 #include "utils.h"
 
 static void
-log_leak(uint64_t key, void *value)
+log_leak(uint64_t key, void *value, void *arg)
 {
+	(void) arg;
 #ifdef DEBUG
 	(void) key;
 	struct pmemfile_vinode *vinode = value;
@@ -71,7 +72,7 @@ void
 inode_map_free(PMEMfilepool *pfp)
 {
 	struct hash_map *map = pfp->inode_map;
-	int ref_leaks = hash_map_traverse(map, log_leak);
+	int ref_leaks = hash_map_traverse(map, log_leak, NULL);
 	if (ref_leaks)
 		FATAL("%d inode reference leaks", ref_leaks);
 

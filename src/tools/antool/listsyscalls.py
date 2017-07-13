@@ -37,46 +37,6 @@ RESULT_UNSUPPORTED_RELATIVE = 2
 RESULT_UNSUPPORTED_FLAG = 3
 RESULT_UNSUPPORTED = 4
 
-EM_str_1 = 1 << 0  # syscall has string as 1. argument
-EM_str_2 = 1 << 1  # syscall has string as 2. argument
-EM_str_3 = 1 << 2  # syscall has string as 3. argument
-EM_str_4 = 1 << 3  # syscall has string as 4. argument
-EM_str_5 = 1 << 4  # syscall has string as 5. argument
-EM_str_6 = 1 << 5  # syscall has string as 6. argument
-
-EM_fd_1 = 1 << 6  # syscall has fd as a 1. arg
-EM_fd_2 = 1 << 7  # syscall has fd as a 2. arg
-EM_fd_3 = 1 << 8  # syscall has fd as a 3. arg
-EM_fd_4 = 1 << 9  # syscall has fd as a 4. arg
-EM_fd_5 = 1 << 10  # syscall has fd as a 5. arg
-EM_fd_6 = 1 << 11  # syscall has fd as a 6. arg
-
-EM_path_1 = 1 << 12  # syscall has path as 1. arg
-EM_path_2 = 1 << 13  # syscall has path as 2. arg
-EM_path_3 = 1 << 14  # syscall has path as 3. arg
-EM_path_4 = 1 << 15  # syscall has path as 4. arg
-EM_path_5 = 1 << 16  # syscall has path as 5. arg
-EM_path_6 = 1 << 17  # syscall has path as 6. arg
-
-EM_fileat = 1 << 18  # '*at' type syscall (dirfd + path)
-EM_fileat2 = 1 << 19  # double '*at' type syscall (dirfd + path)
-EM_rfd = 1 << 21  # syscall returns a file descriptor
-
-EM_fd_from_path = EM_rfd | EM_path_1
-EM_fd_from_fd = EM_rfd | EM_fd_1
-EM_fd_from_dirfd_path = EM_rfd | EM_fd_1 | EM_path_2
-
-EM_isfileat = EM_fd_1 | EM_path_2 | EM_fileat
-EM_isfileat2 = EM_fd_3 | EM_path_4 | EM_fileat2
-
-EM_str_all = EM_str_1 | EM_str_2 | EM_str_3 | EM_str_4 | EM_str_5 | EM_str_6
-EM_path_all = EM_path_1 | EM_path_2 | EM_path_3 | EM_path_4 | EM_path_5 | EM_path_6
-EM_fd_all = EM_fd_1 | EM_fd_2 | EM_fd_3 | EM_fd_4 | EM_fd_5 | EM_fd_6
-
-Arg_is_str = [EM_str_1, EM_str_2, EM_str_3, EM_str_4, EM_str_5, EM_str_6]
-Arg_is_path = [EM_path_1, EM_path_2, EM_path_3, EM_path_4, EM_path_5, EM_path_6]
-Arg_is_fd = [EM_fd_1, EM_fd_2, EM_fd_3, EM_fd_4, EM_fd_5, EM_fd_6]
-
 FLAG_RENAME_WHITEOUT = (1 << 2)  # renameat2's flag: whiteout source
 FLAG_O_ASYNC = 0o20000  # open's flag
 
@@ -131,20 +91,21 @@ class ListSyscalls(list):
         self.debug_mode = debug_mode
         self.verbose_mode = verbose_mode
 
-        self.cwd = ""
+        self.print_progress = not (self.debug_mode or self.script_mode)
+
         self.time0 = 0
 
-        # counting PIDs
         self.pid_table = []
         self.npids = 0
         self.last_pid = -1
         self.last_pid_ind = 0
 
-        self.all_strings = ["(stdin)", "(stdout)", "(stderr)"]
-        self.all_fd_tables = []
+        self.fd_tables = []
+        self.cwd_table = []
 
-        self.pmem_paths = str("")
+        self.all_strings = ["(stdin)", "(stdout)", "(stderr)"]
         self.path_is_pmem = [0, 0, 0]
+        self.pmem_paths = str("")
 
         self.unsupported = 0
         self.unsupported_yet = 0
@@ -204,38 +165,44 @@ class ListSyscalls(list):
     def look_for_matching_record(self, info_all, pid_tid, sc_id, name, retval):
         for n in range(len(self)):
             syscall = self[n]
-            check = syscall.check_next_record(info_all, pid_tid, sc_id, name, retval)
+            check = syscall.check_read_data(info_all, pid_tid, sc_id, name, retval, DEBUG_OFF)
             if check == CHECK_OK:
                 del self[n]
                 return syscall
         return -1
 
     ####################################################################################################################
-    # count_pids -- count different PIDs in the log and create a new table of file descriptors for each of them
+    # set_pid_index -- set PID index and create a new FD table for each PID
     ####################################################################################################################
-    def count_pids(self, pid_tid):
+    def set_pid_index(self, pid_tid):
         pid = pid_tid >> 32
         if pid != self.last_pid:
             self.last_pid = pid
             if self.pid_table.count(pid) == 0:
                 self.pid_table.append(pid)
-                self.all_fd_tables.append([0, 1, 2])
                 self.npids = len(self.pid_table)
+
+                self.fd_tables.append([0, 1, 2])
+                self.cwd_table.append(self.cwd_table[self.last_pid_ind])
+
+                if self.npids > 1:
+                    self.log_anls.debug("DEBUG WARNING(set_pid_index): added new _empty_ FD table for new PID 0x{0:08X}"
+                                        .format(pid))
                 self.last_pid_ind = len(self.pid_table) - 1
             else:
                 self.last_pid_ind = self.pid_table.index(pid)
         return self.last_pid_ind
 
     ####################################################################################################################
-    def count_pids_offline(self):
+    def set_pid_index_offline(self):
         length = len(self)
         if not self.script_mode:
             print("\nCounting PIDs:")
         for n in range(length):
-            if not self.script_mode:
-                print("\r{0:d} of {1:d} ({2:d}%)".format(n + 1, length, int((100 * (n + 1)) / length)), end='')
-            self[n].pid_ind = self.count_pids(self[n].pid_tid)
-        if not self.script_mode:
+            if self.print_progress:
+                print("\r{0:d} of {1:d} ({2:d}%) ".format(n + 1, length, int((100 * (n + 1)) / length)), end='')
+            self[n].pid_ind = self.set_pid_index(self[n].pid_tid)
+        if self.print_progress:
             print(" done.")
         if self.debug_mode:
             for n in range(len(self.pid_table)):
@@ -245,7 +212,7 @@ class ListSyscalls(list):
     # arg_is_pmem -- check if a path argument is located on the pmem filesystem
     ####################################################################################################################
     def arg_is_pmem(self, syscall, narg):
-        if narg > syscall.sc.nargs:
+        if narg > syscall.nargs:
             return 0
         narg -= 1
         if syscall.has_mask(Arg_is_path[narg] | Arg_is_fd[narg]):
@@ -351,7 +318,7 @@ class ListSyscalls(list):
             elif syscall.name in ("futimesat", "utimensat"):
                 return RESULT_UNSUPPORTED_YET
             # renameat2 - RENAME_WHITEOUT
-            elif syscall.sc.nargs == 5 and syscall.name in "renameat2" and syscall.args[4] & FLAG_RENAME_WHITEOUT:
+            elif syscall.nargs == 5 and syscall.name in "renameat2" and syscall.args[4] & FLAG_RENAME_WHITEOUT:
                 syscall.unsupported_flag = "RENAME_WHITEOUT"
                 return RESULT_UNSUPPORTED_FLAG
             return RESULT_SUPPORTED
@@ -404,26 +371,46 @@ class ListSyscalls(list):
         return msg
 
     ####################################################################################################################
+    def set_first_cwd(self, cwd):
+        assert(len(self.cwd_table) == 0)
+        self.cwd_table.append(cwd)
+
+    ####################################################################################################################
+    def set_cwd(self, new_cwd, syscall):
+        self.cwd_table[syscall.pid_ind] = new_cwd
+
+    ####################################################################################################################
+    def get_cwd(self, syscall):
+        return self.cwd_table[syscall.pid_ind]
+
+    ####################################################################################################################
+    def get_fd_table(self, syscall):
+        return self.fd_tables[syscall.pid_ind]
+
+    ####################################################################################################################
     # handle_fileat -- helper function of match_fd_with_path() - handles *at syscalls
     ####################################################################################################################
     def handle_fileat(self, syscall, arg1, arg2, msg):
+        assert(syscall.has_mask(Arg_is_fd[arg1]))
+        assert(syscall.has_mask(Arg_is_path[arg2]))
+
         dirfd = syscall.args[arg1]
         if dirfd == AT_FDCWD_HEX:
             dirfd = AT_FDCWD_DEC
-        path = syscall.strings[syscall.args[arg2]]
 
         # check if AT_EMPTY_PATH is set
-        if syscall.sc.nargs > (arg2 + 1) and syscall.has_mask(Arg_is_path[arg2 + 1] | Arg_is_fd[arg2 + 1]) == 0 and\
-           syscall.args[arg2 + 1] & AT_EMPTY_PATH:
+        if syscall.flags_arg != -1 and syscall.args[syscall.flags_arg] & AT_EMPTY_PATH:
             path = ""
+        else:
+            path = syscall.strings[syscall.args[arg2]]
 
         dir_str = ""
         newpath = path
         unknown_dirfd = 0
         if (len(path) == 0 and not syscall.read_error) or (len(path) != 0 and path[0] != '/'):
-            fd_table = self.all_fd_tables[syscall.pid_ind]
+            fd_table = self.get_fd_table(syscall)
             if dirfd == AT_FDCWD_DEC:
-                dir_str = self.cwd
+                dir_str = self.get_cwd(syscall)
                 newpath = dir_str + "/" + path
             elif 0 <= dirfd < len(fd_table):
                 str_ind = fd_table[dirfd]
@@ -455,7 +442,7 @@ class ListSyscalls(list):
     def handle_one_path(self, syscall, n):
         path = syscall.strings[syscall.args[n]]
         if (len(path) == 0 or path[0] != '/') and not syscall.read_error:
-            path = self.cwd + "/" + path
+            path = self.get_cwd(syscall) + "/" + path
         is_pmem = self.check_if_path_is_pmem(path)
         syscall.is_pmem |= is_pmem
         str_ind = self.all_strings_append(path, is_pmem)
@@ -475,7 +462,7 @@ class ListSyscalls(list):
             self.log_print_path(is_pmem, syscall.name, path)
             fd_out = syscall.iret
             if fd_out != -1:
-                fd_table = self.all_fd_tables[syscall.pid_ind]
+                fd_table = self.get_fd_table(syscall)
                 self.fd_table_assign(fd_table, fd_out, str_ind)
 
         # all *at syscalls
@@ -486,7 +473,7 @@ class ListSyscalls(list):
             # syscall SyS_openat
             if syscall.has_mask(EM_rfd) and fd_out != -1:
                 str_ind = self.all_strings_append(path, is_pmem)
-                fd_table = self.all_fd_tables[syscall.pid_ind]
+                fd_table = self.get_fd_table(syscall)
                 self.fd_table_assign(fd_table, fd_out, str_ind)
             if syscall.is_mask(EM_isfileat2):
                 path, is_pmem, msg = self.handle_fileat(syscall, 2, 3, msg)
@@ -502,7 +489,7 @@ class ListSyscalls(list):
 
         # syscalls: SyS_dup*
         elif syscall.is_mask(EM_fd_from_fd):
-            fd_table = self.all_fd_tables[syscall.pid_ind]
+            fd_table = self.get_fd_table(syscall)
             fd_in = syscall.args[0]
             fd_out = syscall.iret
             if 0 <= fd_in < len(fd_table):
@@ -520,24 +507,10 @@ class ListSyscalls(list):
                 if fd_out != -1:
                     self.log_anls.error("Unknown fd : {0:d}".format(fd_in))
 
-        # close ()
-        elif syscall.name == "close":
-            fd_in = syscall.args[0]
-            fd_table = self.all_fd_tables[syscall.pid_ind]
-            if 0 <= fd_in < len(fd_table):
-                str_ind = fd_table[fd_in]
-                fd_table[fd_in] = -1
-                path = self.all_strings[str_ind]
-                is_pmem = self.path_is_pmem[str_ind]
-                syscall.is_pmem |= is_pmem
-                self.log_print_path(is_pmem, syscall.name, path)
-            else:
-                self.log_anls.debug("{0:20s} (0x{1:016X})".format(syscall.name, fd_in))
-
         # syscalls with path or file descriptor
         elif syscall.has_mask(EM_str_all | EM_fd_all):
             msg = "{0:20s}".format(syscall.name)
-            for narg in range(syscall.sc.nargs):
+            for narg in range(syscall.nargs):
                 if syscall.has_mask(Arg_is_str[narg]):
                     is_pmem = 0
                     path = syscall.strings[syscall.args[narg]]
@@ -545,9 +518,9 @@ class ListSyscalls(list):
                         syscall.str_is_path.append(1)
                         if len(path) != 0 and path[0] != '/':
                             self.all_strings_append(path, 0)  # add relative path as non-pmem
-                            path = self.cwd + "/" + path
+                            path = self.get_cwd(syscall) + "/" + path
                         elif len(path) == 0 and not syscall.read_error:
-                            path = self.cwd
+                            path = self.get_cwd(syscall)
                         is_pmem = self.check_if_path_is_pmem(path)
                     else:
                         syscall.str_is_path.append(0)
@@ -557,7 +530,7 @@ class ListSyscalls(list):
                     msg = self.log_build_msg(msg, is_pmem, path)
 
                 if syscall.has_mask(Arg_is_fd[narg]):
-                    fd_table = self.all_fd_tables[syscall.pid_ind]
+                    fd_table = self.get_fd_table(syscall)
                     fd = syscall.args[narg]
                     if fd in (0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF):
                         fd = -1
@@ -577,25 +550,65 @@ class ListSyscalls(list):
 
             self.log_anls.debug(msg)
 
+        # close ()
+        elif syscall.name == "close":
+            fd_in = syscall.args[0]
+            fd_table = self.get_fd_table(syscall)
+            if 0 <= fd_in < len(fd_table):
+                str_ind = fd_table[fd_in]
+                fd_table[fd_in] = -1
+                path = self.all_strings[str_ind]
+                is_pmem = self.path_is_pmem[str_ind]
+                syscall.is_pmem |= is_pmem
+                self.log_print_path(is_pmem, syscall.name, path)
+            else:
+                self.log_anls.debug("{0:20s} (0x{1:016X})".format(syscall.name, fd_in))
+
         self.post_match_action(syscall)
 
     ####################################################################################################################
     def post_match_action(self, syscall):
         if syscall.name in ("chdir", "fchdir"):
-            str_ind = syscall.args[0]
-            old_cwd = self.cwd
-            self.cwd = self.all_strings[str_ind]
+            old_cwd = self.get_cwd(syscall)
+            new_cwd = self.all_strings[syscall.args[0]]
+            self.set_cwd(new_cwd, syscall)
             self.log_anls.debug("INFO: current working directory changed:")
             self.log_anls.debug("      from: {0:s}".format(old_cwd))
-            self.log_anls.debug("      to:   {0:s}".format(self.cwd))
+            self.log_anls.debug("      to:   {0:s}".format(new_cwd))
+
+        if syscall.name in ("fork", "vfork", "clone"):
+            if syscall.iret == 0:
+                return
+            old_pid = syscall.pid_tid >> 32
+            new_pid = syscall.iret
+            self.add_pid(new_pid, old_pid)
 
     ####################################################################################################################
-    def set_cwd(self, cwd):
-        self.cwd = cwd
+    # add_pid -- add new PID to the table and copy CWD and FD table for this PID
+    ####################################################################################################################
+    def add_pid(self, new_pid, old_pid):
+        if self.pid_table.count(new_pid) == 0:
+            self.pid_table.append(new_pid)
+            self.npids = len(self.pid_table)
+
+            assert(self.pid_table.count(old_pid) == 1)
+
+            old_pid_ind = self.pid_table.index(old_pid)
+            self.cwd_table.append(self.cwd_table[old_pid_ind])
+            self.fd_tables.append(self.fd_tables[old_pid_ind])
+        else:
+            # correct the CWD and FD table
+            pid_ind = self.pid_table.index(new_pid)
+            old_pid_ind = self.pid_table.index(old_pid)
+            self.cwd_table[pid_ind] = self.cwd_table[old_pid_ind]
+            self.fd_tables[pid_ind] = self.fd_tables[old_pid_ind]
+
+        self.log_anls.debug("DEBUG Notice(add_pid): copied CWD and FD table from: "
+                            "old PID 0x{0:08X} to: new PID 0x{1:08X}".format(old_pid, new_pid))
 
     ####################################################################################################################
     def match_fd_with_path_offline(self, pmem_paths):
-        assert(self.cwd != "")
+        assert(len(self.cwd_table) > 0)
         paths = str(pmem_paths)
         self.pmem_paths = paths.split(':')
 
@@ -604,21 +617,20 @@ class ListSyscalls(list):
             print("\nAnalyzing:")
 
         for n in range(length):
-            if not self.script_mode:
-                print("\r{0:d} of {1:d} ({2:d}%)".format(n + 1, length, int((100 * (n + 1)) / length)), end='')
+            if self.print_progress:
+                print("\r{0:d} of {1:d} ({2:d}%) ".format(n + 1, length, int((100 * (n + 1)) / length)), end='')
             if not self.has_entry_content(self[n]):
                 continue
             self.match_fd_with_path(self[n])
             self[n].unsupported = self.check_if_supported(self[n])
 
-        if not self.script_mode:
+        if self.print_progress:
             print(" done.\n")
 
     ####################################################################################################################
-    @staticmethod
-    def has_entry_content(syscall):
+    def has_entry_content(self, syscall):
         if not (syscall.content & CNT_ENTRY):  # no entry info (no info about arguments)
-            if syscall.name not in ("clone", "fork", "vfork"):
+            if not (syscall.name in ("clone", "fork", "vfork") or syscall.sc_id == RT_SIGRETURN_SYS_EXIT):
                 self.log_anls.warning("missing info about arguments of syscall: '{0:s}' - skipping..."
                                       .format(syscall.name))
             return 0
@@ -631,7 +643,7 @@ class ListSyscalls(list):
             for nstr in range(len(syscall.strings)):
                 print(" {0:s}".format(syscall.strings[nstr]), end='')
         else:
-            for narg in range(syscall.sc.nargs):
+            for narg in range(syscall.nargs):
                 if syscall.has_mask(Arg_is_str[narg] | Arg_is_fd[narg]):
                     str_ind = syscall.args[narg]
                     if str_ind != -1:
@@ -668,7 +680,7 @@ class ListSyscalls(list):
             for nstr in range(len(syscall.strings)):
                 print(" {0:s}".format(syscall.strings[nstr]), end='')
         else:
-            for narg in range(syscall.sc.nargs):
+            for narg in range(syscall.nargs):
                 if syscall.has_mask(Arg_is_path[narg] | Arg_is_fd[narg]):
                     str_ind = syscall.args[narg]
                     if str_ind != -1:
@@ -700,7 +712,7 @@ class ListSyscalls(list):
                     if list_ind.count(str_ind) == 0:
                         list_ind.append(str_ind)
         else:
-            for narg in range(syscall.sc.nargs):
+            for narg in range(syscall.nargs):
                 if syscall.has_mask(Arg_is_path[narg] | Arg_is_fd[narg]):
                     str_ind = syscall.args[narg]
                     if str_ind != -1:

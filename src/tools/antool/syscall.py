@@ -33,6 +33,14 @@
 import struct
 import logging
 
+from syscallinfo import *
+
+E_KP_ENTRY = 0
+E_KP_EXIT = 1
+E_TP_ENTRY = 2
+E_TP_EXIT = 3
+E_MASK = 0x03
+
 FIRST_PACKET = 0  # this is the first packet for this syscall
 LAST_PACKET = 7   # this is the last packet for this syscall
 READ_ERROR = 1 << 10  # bpf_probe_read error occurred
@@ -43,6 +51,7 @@ STATE_ENTRY_COMPLETED = 2
 STATE_COMPLETED = 3
 STATE_CORRUPTED_ENTRY = 4
 STATE_UNKNOWN_EVENT = 5
+STATE_REINIT = 6
 
 CNT_NONE = 0
 CNT_ENTRY = 1
@@ -56,14 +65,14 @@ CHECK_NO_EXIT = 2
 CHECK_WRONG_ID = 3
 CHECK_WRONG_EXIT = 4
 CHECK_SAVE_IN_ENTRY = 5
-
-E_KP_ENTRY = 0
-E_KP_EXIT = 1
-E_TP_ENTRY = 2
-E_TP_EXIT = 3
-E_MASK = 0x03
+CHECK_NOT_FIRST_PACKET = 6
 
 EM_no_ret = 1 << 20  # syscall does not return
+
+RT_SIGRETURN_SYS_EXIT = 0xFFFFFFFFFFFFFFFF  # = sys_exit of rt_sigreturn
+
+DEBUG_OFF = 0
+DEBUG_ON = 1
 
 
 def is_entry(etype):
@@ -77,12 +86,14 @@ def is_exit(etype):
 ########################################################################################################################
 # Syscall
 ########################################################################################################################
-class Syscall:
+class Syscall(SyscallInfo):
     __str = "---------------- ----------------"
     __arg_str_mask = [1, 2, 4, 8, 16, 32]
 
     ####################################################################################################################
     def __init__(self, pid_tid, sc_id, sc_info, buf_size, debug):
+
+        SyscallInfo.__init__(self, sc_info.name, sc_info.mask, sc_info.nargs, sc_info.nstrargs)
 
         self.log_parse = logging.getLogger("parser")
 
@@ -98,10 +109,6 @@ class Syscall:
         self.ret = 0
         self.iret = 0
         self.err = 0
-
-        self.sc = sc_info
-        self.name = sc_info.name
-        self.mask = sc_info.mask
 
         self.string = ""
         self.num_str = 0
@@ -142,20 +149,12 @@ class Syscall:
         return self.time_start < other.time_start
 
     ####################################################################################################################
-    def is_mask(self, mask):
-        return self.mask & mask == mask
-
-    ####################################################################################################################
-    def has_mask(self, mask):
-        return self.mask & mask
-
-    ####################################################################################################################
     def check_if_is_cont(self):
         return self.arg_first == self.arg_last
 
     ####################################################################################################################
     def is_string(self, n):
-        if self.sc.mask & self.__arg_str_mask[n] == self.__arg_str_mask[n]:
+        if self.mask & self.__arg_str_mask[n] == self.__arg_str_mask[n]:
             return 1
         else:
             return 0
@@ -171,11 +170,11 @@ class Syscall:
             max_len = self.str_max_1
             string = aux_str
 
-        elif self.sc.nstrargs == 1:
+        elif self.nstrargs == 1:
             max_len = self.str_max_1
             string = aux_str
 
-        elif self.sc.nstrargs == 2:
+        elif self.nstrargs == 2:
             max_len = self.str_max_2
             self.num_str += 1
             if self.num_str == 1:
@@ -185,7 +184,7 @@ class Syscall:
             else:
                 assert (self.num_str <= 2)
 
-        elif self.sc.nstrargs == 3:
+        elif self.nstrargs == 3:
             max_len = self.str_max_3
             self.num_str += 1
             if self.num_str == 1:
@@ -198,8 +197,8 @@ class Syscall:
                 assert (self.num_str <= 3)
 
         else:
-            self.log_parse.error("unsupported number of string arguments: {0:d}".format(self.sc.nstrargs))
-            assert (self.sc.nstrargs <= 3)
+            self.log_parse.error("unsupported number of string arguments: {0:d}".format(self.nstrargs))
+            assert (self.nstrargs <= 3)
 
         str_p = str(string.decode(errors="ignore"))
         str_p = str_p.split('\0')[0]
@@ -230,12 +229,12 @@ class Syscall:
             return
 
         if self.debug_mode and self.state not in (STATE_IN_ENTRY, STATE_ENTRY_COMPLETED, STATE_COMPLETED):
-            self.log_parse.debug("STATE = {0:s}".format(self.state))
+            self.log_parse.debug("DEBUG(print_single_record): state = {0:d}".format(self.state))
 
         if self.state == STATE_ENTRY_COMPLETED:
             self.print_entry()
         elif self.state == STATE_COMPLETED:
-            if self.sc.mask & EM_no_ret:
+            if self.mask & EM_no_ret:
                 self.print_entry()
             else:
                 self.print_exit()
@@ -247,7 +246,7 @@ class Syscall:
 
         self.print_entry()
 
-        if (self.state == STATE_COMPLETED) and (self.sc.mask & EM_no_ret == 0):
+        if (self.state == STATE_COMPLETED) and (self.mask & EM_no_ret == 0):
             self.print_exit()
 
     ####################################################################################################################
@@ -281,7 +280,7 @@ class Syscall:
 
         msg = "{0:016X} {1:016X} {2:s} {3:s}".format(self.time_start, self.pid_tid, self.__str, self.name)
 
-        for n in range(0, self.sc.nargs):
+        for n in range(0, self.nargs):
             if self.is_string(n):
                 if self.strings[self.args[n]] != "":
                     msg += " {0:s}".format(self.strings[self.args[n]])
@@ -308,24 +307,26 @@ class Syscall:
 
     ####################################################################################################################
     def print_mismatch_info(self, etype, pid_tid, sc_id, name):
-        print("ERROR: packet type mismatch: etype {0:d} while state {1:d}".format(etype, self.state))
-        print("       previous syscall: {0:016X} {1:s} (sc_id:{2:d}) state {3:d}"
-              .format(self.pid_tid, self.name, self.sc_id, self.state))
-        print("       current syscall: {0:016X} {1:s} (sc_id:{2:d}) etype {3:d}"
-              .format(pid_tid, name, sc_id, etype))
+        self.log_parse.debug("WARNING: current packet does not match the previous one:")
+        self.log_parse.debug("         previous packet: {0:016X} {1:s} (sc_id:{2:d}) state {3:d}"
+                             .format(self.pid_tid, self.name, self.sc_id, self.state))
+        self.log_parse.debug("         current packet:  {0:016X} {1:s} (sc_id:{2:d}) etype {3:d}"
+                             .format(pid_tid, name, sc_id, etype))
 
     ####################################################################################################################
-    # check_next_record -- check if the recently read data record contains correct data
+    # check_read_data -- check if the recently read data record contains correct data
     ####################################################################################################################
-    def check_next_record(self, info_all, pid_tid, sc_id, name, retval):
+    def check_read_data(self, info_all, pid_tid, sc_id, name, retval, debug_on):
         etype = info_all & 0x03
-        ret = CHECK_OK
+        arg_first = (info_all >> 2) & 0x7
 
-        if pid_tid != self.pid_tid or sc_id != self.sc_id:
-            ret = CHECK_WRONG_ID
+        if self.state == STATE_INIT and arg_first != FIRST_PACKET:
+            if debug_on:
+                self.log_parse.debug("WARNING: missed first packet of syscall: {0:016X} {1:s}".format(pid_tid, name))
+            return CHECK_NOT_FIRST_PACKET
 
         if self.state == STATE_INIT and is_exit(etype):
-            if sc_id == 0xFFFFFFFFFFFFFFFF:  # 0xFFFFFFFFFFFFFFFF = sys_exit of rt_sigreturn
+            if sc_id == RT_SIGRETURN_SYS_EXIT:  # sys_exit of rt_sigreturn
                 return CHECK_OK
 
             if retval == 0 and name in ("clone", "fork", "vfork"):
@@ -334,22 +335,38 @@ class Syscall:
             return CHECK_NO_ENTRY
 
         if self.state == STATE_IN_ENTRY and is_exit(etype):
-            self.print_mismatch_info(etype, pid_tid, sc_id, name)
+            if debug_on:
+                self.log_parse.debug("WARNING: read the exit record when in 'in-entry' state of syscall: {0:016X} {1:s}"
+                                     .format(self.pid_tid, self.name))
+                self.print_mismatch_info(etype, pid_tid, sc_id, name)
             return CHECK_SAVE_IN_ENTRY
 
+        if pid_tid == self.pid_tid and sc_id == self.sc_id:
+            wrong_id = 0
+        else:
+            wrong_id = 1
+
         if self.state == STATE_ENTRY_COMPLETED:
+            if debug_on and self.debug_mode and (is_entry(etype) or (is_exit(etype) and wrong_id)):
+                self.log_parse.debug("Notice: no exit info found for syscall: {0:016X} {1:s}"
+                                     .format(self.pid_tid, self.name))
             if is_entry(etype):
-                if self.debug_mode and self.name not in ("clone", "fork", "vfork"):
-                    self.log_parse.debug("Notice: exit info not found: {0:s}".format(self.name))
                 return CHECK_NO_EXIT
 
-            if is_exit(etype) and ret == CHECK_WRONG_ID:
+            if is_exit(etype) and wrong_id:
+                if retval == 0 and sc_id == self.sc_id and self.name in ("clone", "fork", "vfork"):
+                    # clone/fork/vfork returned 0 first
+                    return CHECK_NO_EXIT
                 return CHECK_WRONG_EXIT
 
-        if ret != CHECK_OK:
-            self.print_mismatch_info(etype, pid_tid, sc_id, name)
+        if wrong_id:
+            if debug_on:
+                self.log_parse.debug("WARNING: missing packets of syscall: {0:016X} {1:s}"
+                                     .format(self.pid_tid, self.name))
+                self.print_mismatch_info(etype, pid_tid, sc_id, name)
+            return CHECK_WRONG_ID
 
-        return ret
+        return CHECK_OK
 
     ####################################################################################################################
     # add_data -- add the read data to the syscall record
@@ -391,6 +408,8 @@ class Syscall:
             self.log_parse.error("       arg_last     : {0:d}".format(self.arg_last))
             self.log_parse.error("       will_be_cont : {0:d}".format(self.will_be_cont))
             self.log_parse.error("       is_cont      : {0:d}".format(self.is_cont))
+            self.state = STATE_CORRUPTED_ENTRY
+            return self.state
 
         # is it a continuation of a string ?
         if self.check_if_is_cont():
@@ -443,7 +462,7 @@ class Syscall:
         if self.arg_last == LAST_PACKET:
             end_of_syscall = 1
             # and set the true number of the last argument
-            self.arg_last = self.sc.nargs
+            self.arg_last = self.nargs
         else:
             end_of_syscall = 0
 
@@ -451,7 +470,7 @@ class Syscall:
         aux_str = bdata[self.size_fmt_args:]
 
         if len(data_args) < self.size_fmt_args:
-            if self.sc.nargs == 0:
+            if self.nargs == 0:
                 self.content = CNT_ENTRY
                 self.state = STATE_ENTRY_COMPLETED
             else:
@@ -478,7 +497,7 @@ class Syscall:
             self.num_str = 0  # reset counter of string arguments
             self.str_fini = 1
             self.content = CNT_ENTRY
-            if self.sc.mask & EM_no_ret:  # SyS_exit and SyS_exit_group do not return
+            if self.mask & EM_no_ret:  # SyS_exit and SyS_exit_group do not return
                 self.state = STATE_COMPLETED
             else:
                 self.state = STATE_ENTRY_COMPLETED

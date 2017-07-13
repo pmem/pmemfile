@@ -30,21 +30,67 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+EM_str_1 = 1 << 0  # syscall has string as 1. argument
+EM_str_2 = 1 << 1  # syscall has string as 2. argument
+EM_str_3 = 1 << 2  # syscall has string as 3. argument
+EM_str_4 = 1 << 3  # syscall has string as 4. argument
+EM_str_5 = 1 << 4  # syscall has string as 5. argument
+EM_str_6 = 1 << 5  # syscall has string as 6. argument
+
+EM_fd_1 = 1 << 6  # syscall has fd as a 1. arg
+EM_fd_2 = 1 << 7  # syscall has fd as a 2. arg
+EM_fd_3 = 1 << 8  # syscall has fd as a 3. arg
+EM_fd_4 = 1 << 9  # syscall has fd as a 4. arg
+EM_fd_5 = 1 << 10  # syscall has fd as a 5. arg
+EM_fd_6 = 1 << 11  # syscall has fd as a 6. arg
+
+EM_path_1 = 1 << 12  # syscall has path as 1. arg
+EM_path_2 = 1 << 13  # syscall has path as 2. arg
+EM_path_3 = 1 << 14  # syscall has path as 3. arg
+EM_path_4 = 1 << 15  # syscall has path as 4. arg
+EM_path_5 = 1 << 16  # syscall has path as 5. arg
+EM_path_6 = 1 << 17  # syscall has path as 6. arg
+
+EM_fileat = 1 << 18  # '*at' type syscall (dirfd + path)
+EM_fileat2 = 1 << 19  # double '*at' type syscall (dirfd + path)
+EM_rfd = 1 << 21  # syscall returns a file descriptor
+
+EM_fd_from_path = EM_rfd | EM_path_1
+EM_fd_from_fd = EM_rfd | EM_fd_1
+EM_fd_from_dirfd_path = EM_rfd | EM_fd_1 | EM_path_2
+
+EM_isfileat = EM_fd_1 | EM_path_2 | EM_fileat
+EM_isfileat2 = EM_fd_3 | EM_path_4 | EM_fileat2
+
+EM_str_all = EM_str_1 | EM_str_2 | EM_str_3 | EM_str_4 | EM_str_5 | EM_str_6
+EM_path_all = EM_path_1 | EM_path_2 | EM_path_3 | EM_path_4 | EM_path_5 | EM_path_6
+EM_fd_all = EM_fd_1 | EM_fd_2 | EM_fd_3 | EM_fd_4 | EM_fd_5 | EM_fd_6
+
+Arg_is_str = [EM_str_1, EM_str_2, EM_str_3, EM_str_4, EM_str_5, EM_str_6]
+Arg_is_path = [EM_path_1, EM_path_2, EM_path_3, EM_path_4, EM_path_5, EM_path_6]
+Arg_is_fd = [EM_fd_1, EM_fd_2, EM_fd_3, EM_fd_4, EM_fd_5, EM_fd_6]
+
 
 class SyscallInfo:
-    def __init__(self, num, num_str, pname, name, length, nargs, mask, avail, nstrargs, positions):
-        bname = bytes(name)
-        sname = str(bname.decode(errors="ignore"))
-        name = sname.split('\0')[0]
-        name = name[4:]
-
-        self.num = num
-        self.num_str = num_str
-        self.pname = pname
+    def __init__(self, name, mask, nargs, nstrargs):
         self.name = name
-        self.length = length
-        self.nargs = nargs
         self.mask = mask
-        self.avail = avail
+        self.nargs = nargs
         self.nstrargs = nstrargs
-        self.positions = positions
+
+        self.flags_arg = -1
+
+    ####################################################################################################################
+    # set_flags_arg -- set value of argument containing flags
+    ####################################################################################################################
+    def set_flags_arg(self, n):
+        assert(n < self.nargs)
+        self.flags_arg = n
+
+    ####################################################################################################################
+    def is_mask(self, mask):
+        return self.mask & mask == mask
+
+    ####################################################################################################################
+    def has_mask(self, mask):
+        return self.mask & mask

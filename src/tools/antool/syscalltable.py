@@ -83,7 +83,20 @@ class SyscallTable:
             try:
                 data = ut.read_fmt_data(fh, fmt)
                 num, num_str, pname, name, length, nargs, mask, avail, nstrargs, positions, _padding = data
-                syscall = SyscallInfo(num, num_str, pname, name, length, nargs, mask, avail, nstrargs, positions)
+
+                bname = bytes(name)
+                sname = str(bname.decode(errors="ignore"))
+                name = sname.split('\0')[0]
+                name = name[4:]
+
+                syscall = SyscallInfo(name, mask, nargs, nstrargs)
+
+                if syscall.is_mask(EM_isfileat):
+                    if syscall.name in ("linkat", "fchownat"):
+                        syscall.set_flags_arg(4)
+                    elif syscall.name in ("newfstatat", "fstatat"):
+                        syscall.set_flags_arg(3)
+
                 self.table.append(syscall)
 
             except EndOfFile as err:

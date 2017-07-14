@@ -33,6 +33,7 @@
 #include <errno.h>
 #include <time.h>
 
+#include "alloc.h"
 #include "pool.h"
 #include "out.h"
 #include "utils.h"
@@ -152,7 +153,7 @@ component_length(const char *path)
 char *
 pmfi_strndup(const char *c, size_t len)
 {
-	char *cp = malloc(len + 1);
+	char *cp = pf_malloc(len + 1);
 	if (!cp)
 		return NULL;
 	memcpy(cp, c, len);

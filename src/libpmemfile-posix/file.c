@@ -36,6 +36,7 @@
 
 #include <inttypes.h>
 
+#include "alloc.h"
 #include "callbacks.h"
 #include "dir.h"
 #include "file.h"
@@ -360,7 +361,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		}
 	}
 
-	file = calloc(1, sizeof(*file));
+	file = pf_calloc(1, sizeof(*file));
 	if (!file) {
 		error = errno;
 		goto end;
@@ -481,7 +482,7 @@ end:
 	if (error) {
 		if (vinode != NULL)
 			vinode_unref(pfp, vinode);
-		free(file);
+		pf_free(file);
 
 		errno = error;
 		LOG(LDBG, "!");
@@ -657,7 +658,7 @@ pmemfile_open_parent(PMEMfilepool *pfp, PMEMfile *dir, char *path,
 		}
 	} while (path_info_changed);
 
-	ret = calloc(1, sizeof(*ret));
+	ret = pf_calloc(1, sizeof(*ret));
 	if (!ret) {
 		error = errno;
 		goto end;
@@ -700,7 +701,7 @@ pmemfile_close(PMEMfilepool *pfp, PMEMfile *file)
 
 	os_mutex_destroy(&file->mutex);
 
-	free(file);
+	pf_free(file);
 }
 
 PMEMfile *

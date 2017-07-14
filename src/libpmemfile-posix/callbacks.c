@@ -36,6 +36,7 @@
 
 #include <errno.h>
 
+#include "alloc.h"
 #include "callbacks.h"
 #include "compiler_utils.h"
 #include "os_thread.h"
@@ -85,7 +86,7 @@ cb_get(void)
 	if (c)
 		return c;
 
-	c = calloc(MAX_TX_STAGE, sizeof(struct all_callbacks));
+	c = pf_calloc(MAX_TX_STAGE, sizeof(struct all_callbacks));
 	if (!c)
 		pmemfile_tx_abort(errno);
 
@@ -123,7 +124,7 @@ cb_append(struct tx_callback_array *cb, cb_basic func, void *arg)
 		if (count == 0)
 			count = 4;
 
-		void *new_arr = realloc(cb->arr, count * sizeof(cb->arr[0]));
+		void *new_arr = pf_realloc(cb->arr, count * sizeof(cb->arr[0]));
 		if (!new_arr)
 			pmemfile_tx_abort(errno);
 
@@ -177,18 +178,18 @@ cb_free(void *arg)
 	struct all_callbacks *callbacks = arg;
 
 	for (unsigned i = 0; i < MAX_TX_STAGE; ++i) {
-		free(callbacks[i].forward.arr);
+		pf_free(callbacks[i].forward.arr);
 		callbacks[i].forward.arr = NULL;
 		callbacks[i].forward.size = 0;
 		callbacks[i].forward.used = 0;
 
-		free(callbacks[i].backward.arr);
+		pf_free(callbacks[i].backward.arr);
 		callbacks[i].backward.arr = NULL;
 		callbacks[i].backward.size = 0;
 		callbacks[i].backward.used = 0;
 	}
 
-	free(callbacks);
+	pf_free(callbacks);
 
 	int ret = os_tls_set(callbacks_key, NULL);
 	if (ret) {

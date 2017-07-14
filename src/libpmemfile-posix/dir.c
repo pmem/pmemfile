@@ -39,6 +39,7 @@
 #include <limits.h>
 #include <stdio.h>
 
+#include "alloc.h"
 #include "callbacks.h"
 #include "dir.h"
 
@@ -80,14 +81,14 @@ vinode_set_debug_path_locked(PMEMfilepool *pfp,
 	}
 
 	if (strcmp(parent_vinode->path, "/") == 0) {
-		child_vinode->path = malloc(namelen + 2);
+		child_vinode->path = pf_malloc(namelen + 2);
 		if (!child_vinode->path)
 			FATAL("!path allocation failed (%d)", 2);
 		sprintf(child_vinode->path, "/%.*s", (int)namelen, name);
 		return;
 	}
 
-	char *p = malloc(strlen(parent_vinode->path) + 1 + namelen + 1);
+	char *p = pf_malloc(strlen(parent_vinode->path) + 1 + namelen + 1);
 	if (!p)
 		FATAL("!path allocation failed (%d)", 3);
 	sprintf(p, "%s/%.*s", parent_vinode->path, (int)namelen, name);
@@ -117,7 +118,7 @@ vinode_replace_debug_path_locked(PMEMfilepool *pfp,
 		size_t namelen)
 {
 #ifdef DEBUG
-	free(child_vinode->path);
+	pf_free(child_vinode->path);
 	child_vinode->path = NULL;
 
 	vinode_set_debug_path_locked(pfp, parent_vinode, child_vinode, name,
@@ -446,7 +447,7 @@ resolve_pathat_nested(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		if (PMEMFILE_S_ISLNK(child_perms.flags)) {
 			const char *symlink_target =
 					child->inode->file_data.data;
-			char *new_path = malloc(strlen(symlink_target) + 1 +
+			char *new_path = pf_malloc(strlen(symlink_target) + 1 +
 					strlen(slash + 1) + 1);
 			if (!new_path)
 				path_info->error = errno;
@@ -462,7 +463,7 @@ resolve_pathat_nested(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 						nest_level + 1);
 
 			vinode_unref(pfp, parent);
-			free(new_path);
+			pf_free(new_path);
 			return;
 		}
 
@@ -616,7 +617,7 @@ path_info_cleanup(PMEMfilepool *pfp, struct pmemfile_path_info *path_info)
 
 	if (path_info->parent)
 		vinode_unref(pfp, path_info->parent);
-	free(path_info->remaining);
+	pf_free(path_info->remaining);
 	memset(path_info, 0, sizeof(*path_info));
 }
 
@@ -872,7 +873,7 @@ _pmemfile_get_dir_path(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 
 	bool allocated = false;
 	if (!buf) {
-		buf = malloc(size);
+		buf = pf_malloc(size);
 		if (!buf) {
 			int oerrno = errno;
 			vinode_unref(pfp, child);
@@ -929,7 +930,7 @@ _pmemfile_get_dir_path(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 range_err:
 	vinode_unref(pfp, child);
 	if (allocated)
-		free(buf);
+		pf_free(buf);
 	errno = ERANGE;
 	return NULL;
 }

@@ -107,6 +107,11 @@ include_directories(include)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 11)
 
+function(join SEP OUT VALUES)
+	string(REPLACE ";" "${SEP}" JOIN_TMP "${VALUES}")
+	set(${OUT} "${JOIN_TMP}" PARENT_SCOPE)
+endfunction()
+
 # Checks whether flag is supported by current C compiler and appends
 # it to the relevant cmake variable.
 # 1st argument is a flag
@@ -247,6 +252,12 @@ if(USE_UBSAN)
 endif()
 
 if(DEVELOPER_MODE)
+	option(FAULT_INJECTION "enable fault injection testing" ON)
+else()
+	option(FAULT_INJECTION "enable fault injection testing" OFF)
+endif()
+
+if(DEVELOPER_MODE)
 	add_flag(-Werror)
 
 	check_c_compiler_flag(-Wl,--fatal-warnings LINKER_HAS_FATAL_WARNINGS)
@@ -255,6 +266,10 @@ if(DEVELOPER_MODE)
 		set(CMAKE_SHARED_LINKER_FLAGS  "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--fatal-warnings")
 	endif()
 endif(DEVELOPER_MODE)
+
+if(FAULT_INJECTION)
+	add_definitions(-DFAULT_INJECTION)
+endif()
 
 add_executable(check_license EXCLUDE_FROM_ALL utils/check_license/check-license.c)
 

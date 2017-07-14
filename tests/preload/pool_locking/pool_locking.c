@@ -30,6 +30,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <err.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -37,10 +38,7 @@
 #include <fcntl.h>
 #include <string.h>
 
-#define BUFFER_SIZE 1024 * 1024
-
 static int fd;
-static char buffer[BUFFER_SIZE];
 static char *filename;
 
 static void *
@@ -61,7 +59,6 @@ main(int argc, char **argv)
 	if (argc < 2)
 		return 1;
 
-	memset(buffer, '1', BUFFER_SIZE);
 	filename = argv[1];
 
 	fd = open(filename, O_RDWR | O_CREAT, 0777);
@@ -74,7 +71,8 @@ main(int argc, char **argv)
 		return 1;
 
 	for (int i = 0; i < 1000; i++) {
-		ssize_t r = write(fd, buffer, BUFFER_SIZE);
+		static const char buffer[1024 * 1024] = {0, };
+		ssize_t r = write(fd, buffer, sizeof(buffer));
 		(void) r;
 	}
 

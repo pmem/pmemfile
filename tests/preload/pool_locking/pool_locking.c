@@ -63,6 +63,9 @@ main(int argc, char **argv)
 
 	fd = open(filename, O_RDWR | O_CREAT, 0777);
 
+	if (fd < 0)
+		err(1, "open(\"%s\")", filename);
+
 	pthread_t t1, t2;
 	if (pthread_create(&t1, NULL, fd_close, NULL))
 		return 1;

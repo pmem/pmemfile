@@ -53,6 +53,7 @@ cmake .. -DDEVELOPER_MODE=1 \
 		-DCMAKE_BUILD_TYPE=Debug \
 		-DTEST_DIR=/tmp/pmemfile-tests \
 		-DTRACE_TESTS=1 \
+		-DANTOOL_TESTS=SAVED \
 		-DTESTS_USE_FORCED_PMEM=1
 
 make -j2
@@ -68,6 +69,7 @@ cmake .. -DCMAKE_INSTALL_PREFIX=/tmp/pmemfile \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DTEST_DIR=/tmp/pmemfile-tests \
 		-DTRACE_TESTS=1 \
+		-DANTOOL_TESTS=SAVED \
 		-DTESTS_USE_FORCED_PMEM=1
 
 make -j2

@@ -34,6 +34,8 @@
 # test-antool.sh -- test for analyzing tool
 #
 
+NAME=$(basename $0)
+
 # follow-fork option
 if [ "$1" == "-f" ]; then
 	FF="-f"
@@ -43,6 +45,7 @@ else
 fi
 
 if [ "$3" == "" ]; then
+	echo "ERROR($NAME): not enough arguments"
 	echo "Usage: $0 [-f] <path-to-vltrace> <test-app> <test-number>"
 	echo "   -f - turn on follow-fork"
 	exit 1
@@ -51,15 +54,6 @@ fi
 VLTRACE=$1
 TEST_FILE=$2
 TEST_NUM=$3
-
-[ ! -x $VLTRACE ] \
-	&& echo "Error: executable file '$VLTRACE' does not exist" \
-	&& exit 1
-
-if [ ! -x $TEST_FILE ]; then
-	echo "Error: executable file '$TEST_FILE' does not exist"
-	exit 1
-fi
 
 TEST_DIR=$(dirname $0)
 [ "$TEST_DIR" == "." ] && TEST_DIR=$(pwd)
@@ -71,10 +65,32 @@ FUNCT=$TEST_DIR/helper_functions.sh
 
 source $FUNCT
 
-OPT_VLTRACE="$FF -l bin -t -r"
-RUN_VLTRACE="ulimit -l 10240 && ulimit -n 10240 && $VLTRACE $OPT_VLTRACE"
+if [ "$VLTRACE" != "" ]; then
+	if [ ! -x $VLTRACE ]; then
+		echo "Error: file '$VLTRACE' does not exist or it is not executable"
+		exit 1
+	fi
+	if [ ! -x $TEST_FILE ]; then
+		echo "Error: executable file '$TEST_FILE' does not exist"
+		exit 1
+	fi
+	OPT_VLTRACE="$FF -l bin -t -r"
+	RUN_VLTRACE="ulimit -l 10240 && ulimit -n 10240 && $VLTRACE $OPT_VLTRACE"
+else
+	if [ ! -f $FILE_DIR_PMEM ]; then
+		echo "Error: path to vltrace is not set and the file containing"\
+			"path to pmem does not exist ($FILE_DIR_PMEM)"
+		exit 1
+	fi
+	VLTRACE_SKIP=$(cat $FILE_DIR_PMEM)
+	if [ "$VLTRACE_SKIP" == "" ]; then
+		echo "Error: path to vltrace is not set and the file containing"\
+			"path to pmem is empty ($FILE_DIR_PMEM)"
+		exit 1
+	fi
+fi
 
-ANTOOL=$TEST_DIR/../../src/tools/antool/antool.py
+ANTOOL=$(realpath $TEST_DIR/../../src/tools/antool/antool.py)
 
 PATTERN_START="close                (0x0000000012345678)"
 PATTERN_END="close                (0x0000000087654321)"
@@ -89,7 +105,7 @@ OUTfvv=output-fvv-$TEST_NUM.log
 OUT_ANTOOL=output-antool-$TEST_NUM.log
 OUTda=output-analysis-$TEST_NUM.log
 
-if [ "$VLTRACE_SKIP" != "1" ]; then
+if [ "$VLTRACE_SKIP" == "" ]; then
 	require_superuser
 
 	DIR=$(mktemp -d -p /tmp antool.XXX)
@@ -100,6 +116,7 @@ if [ "$VLTRACE_SKIP" != "1" ]; then
 	FILE_PMEM=$(echo $FILE_PMEM | cut -d"/" -f4-)
 	FILE_NONP=$(echo $FILE_NONP | cut -d"/" -f4-)
 	TEST_OPTIONS="$DIR $FILE_PMEM $FILE_NONP"
+	echo "$DIR_PMEM" > $FILE_DIR_PMEM
 
 	USER=$(stat --format=%U $TEST_FILE)
 	chown -R $USER.$USER $DIR/*
@@ -108,9 +125,9 @@ if [ "$VLTRACE_SKIP" != "1" ]; then
 	rm -f *-$TEST_NUM.log*
 	echo "$ sudo bash -c \"$RUN_VLTRACE -o $OUTBIN $TEST_FILE $TEST_NUM $TEST_OPTIONS\""
 	sudo bash -c "$RUN_VLTRACE -o $OUTBIN $TEST_FILE $TEST_NUM $TEST_OPTIONS"
+else
+	DIR_PMEM=$VLTRACE_SKIP
 fi
-
-set +e
 
 COMMON_OPTS="-t syscalls_table.dat -b $OUTBIN -s -o $OUT_ANTOOL -p $DIR_PMEM"
 ANTOOL="$ANTOOL $COMMON_OPTS"
@@ -139,10 +156,10 @@ if [ "$FF" == "" ]; then
 	echo "$ $ANTOOL -d > /dev/null"
 	$ANTOOL -d > /dev/null
 
+	set +e
 	grep -e "DEBUG(analysis):" $OUT_ANTOOL | cut -c18- | grep -v -e "DEBUG" > $OUTda
+	set -e
 	cut_part_file $OUTda "$PATTERN_START" "$PATTERN_END" > cut-$TEST_NUM.log
 fi
-
-set -e
 
 check

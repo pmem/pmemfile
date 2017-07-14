@@ -30,6 +30,12 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
+FILE_DIR_PMEM="dir_pmem.txt"
+SYSCALL_TABLE="syscalls_table.dat"
+ARCH_EXT="bz2"
+MASK_BIN="output-bin-*.log"
+ARCHIVES="*.$ARCH_EXT"
+
 #
 # require_superuser -- require superuser capabilities
 #
@@ -111,7 +117,7 @@ function split_forked_file() {
 		touch $NAME
 		set +e
 		[ "$PID" == "fork" ] \
-			&& grep "$PID" $INPUT | sort -k3 -r > $NAME \
+			&& grep "$PID" $INPUT | sort -k3 > $NAME \
 			|| grep "$PID" $INPUT > $NAME
 		grep -v "$PID" $INPUT > $GREP
 		cp $GREP $INPUT

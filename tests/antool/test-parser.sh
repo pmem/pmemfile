@@ -34,6 +34,8 @@
 # test-parser.sh -- test for antool using match and *.match files
 #
 
+NAME=$(basename $0)
+
 # follow-fork option
 if [ "$1" == "-f" ]; then
 	FF="-f"
@@ -42,7 +44,8 @@ else
 	FF=""
 fi
 
-if [ "$3" == "" ]; then
+if [ "$4" == "" ]; then
+	echo "ERROR($NAME): not enough arguments"
 	echo "Usage: $0 [-f] <vltrace-path> <max-string-length> <test-file> <test-number>"
 	echo "   -f - turn on follow-fork"
 	exit 1
@@ -50,26 +53,13 @@ fi
 
 VLTRACE=$1
 MAX_STR_LEN=$2
-
-[ ! -x $VLTRACE ] \
-	&& echo "Error: executable file '$VLTRACE' does not exist" \
-	&& exit 1
-
 TEST_FILE=$3
 TEST_NUM=$4
-
-OPT_VLTRACE="-l bin -r -s $MAX_STR_LEN"
-RUN_VLTRACE="ulimit -l 10240 && ulimit -n 10240 && $VLTRACE $OPT_VLTRACE"
-
-if [ ! -x $TEST_FILE ]; then
-	echo "Error: file '$TEST_FILE' does not exist or is not executable"
-	exit 1
-fi
 
 TEST_DIR=$(dirname $0)
 [ "$TEST_DIR" == "." ] && TEST_DIR=$(pwd)
 
-ANTOOL=$TEST_DIR/../../src/tools/antool/antool.py
+ANTOOL=$(realpath $TEST_DIR/../../src/tools/antool/antool.py)
 
 FUNCT=$TEST_DIR/helper_functions.sh
 [ ! -f $FUNCT ] \
@@ -77,6 +67,22 @@ FUNCT=$TEST_DIR/helper_functions.sh
 	&& exit 1
 
 source $FUNCT
+
+if [ "$VLTRACE" != "" ]; then
+	if [ ! -x $VLTRACE ]; then
+		echo "Error: file '$VLTRACE' does not exist or it is not executable"
+		exit 1
+	fi
+	if [ ! -x $TEST_FILE ]; then
+		echo "Error: file '$TEST_FILE' does not exist or is not executable"
+		exit 1
+	fi
+	OPT_VLTRACE="$FF -l bin -r -s $MAX_STR_LEN"
+	RUN_VLTRACE="ulimit -l 10240 && ulimit -n 10240 && $VLTRACE $OPT_VLTRACE"
+
+else
+	VLTRACE_SKIP=1
+fi
 
 PATTERN_START="---------------- close 0000000012345678"
 PATTERN_END="---------------- close 0000000087654321"
@@ -103,7 +109,7 @@ RV=$?
 [ $RV -ne 0 ] \
 	&& save_logs "*-$TEST_NUM.log" "match-$(basename $TEST_FILE)-$TEST_NUM" \
 	&& exit $RV
-grep --text -e "^0" $OUT_TXT > $OUT_BARE
+mv $OUT_TXT $OUT_BARE
 set -e
 
 [ $(cat $OUT_BARE | wc -l) -eq 0 ] \
@@ -111,14 +117,15 @@ set -e
 	&& cat $OUT_TXT \
 	&& exit 1
 
+echo "$ sort $OUT_BARE -o $OUT_SORT"
+sort $OUT_BARE -o $OUT_SORT
+
 if [ "$FF" == "" ]; then
 	# tests without fork()
-	echo "$ sort $OUT_BARE -o $OUT_SORT"
-	sort $OUT_BARE -o $OUT_SORT
 	cut_part_file $OUT_SORT "$PATTERN_START" "$PATTERN_END" > cut-$TEST_NUM.log
 else
 	# tests with fork()
-	NFILES=$(split_forked_file $OUT_BARE out $TEST_NUM.log)
+	NFILES=$(split_forked_file $OUT_SORT out $TEST_NUM.log)
 	for N in $(seq -s' ' $NFILES); do
 		echo "$ sort out-$N-$TEST_NUM.log -o out-sort-$N-$TEST_NUM.log"
 		sort out-$N-$TEST_NUM.log -o out-sort-$N-$TEST_NUM.log

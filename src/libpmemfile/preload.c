@@ -56,8 +56,10 @@
 #include <setjmp.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/un.h>
 #include <stdio.h>
 #include <limits.h>
 #include <linux/fs.h>
@@ -803,20 +805,16 @@ hook_getxattr(long arg0, long arg1, long arg2, long arg3,
 {
 	struct resolved_path where;
 
-	resolve_path(cwd_desc(), (const char *)arg0, &where, resolve_last);
+	resolve_path(cwd_desc(), (const char *)arg0, &where,
+			resolve_last | NO_AT_PATH);
 
 	if (where.error_code != 0)
 		return where.error_code;
 
-	if (is_fda_null(&where.at.pmem_fda)) {
-		if (where.at.kernel_fd == AT_FDCWD)
-			return check_errno(-ENOTSUP, SYS_getxattr); /* XXX */
+	if (!is_fda_null(&where.at.pmem_fda))
+		return check_errno(-ENOTSUP, SYS_getxattr);
 
-		return syscall_no_intercept(SYS_getxattr,
-		    where.path, arg1, arg2, arg3);
-	}
-
-	return 0;
+	return syscall_no_intercept(SYS_getxattr, where.path, arg1, arg2, arg3);
 }
 
 static long
@@ -825,16 +823,14 @@ hook_setxattr(long arg0, long arg1, long arg2, long arg3, long arg4,
 {
 	struct resolved_path where;
 
-	resolve_path(cwd_desc(), (const char *)arg0, &where, resolve_last);
+	resolve_path(cwd_desc(), (const char *)arg0, &where,
+			resolve_last | NO_AT_PATH);
 
 	if (where.error_code != 0)
 		return where.error_code;
 
 	if (!is_fda_null(&where.at.pmem_fda))
 		return check_errno(-ENOTSUP, SYS_setxattr);
-
-	if (where.at.kernel_fd == AT_FDCWD)
-		return check_errno(-ENOTSUP, SYS_setxattr); /* XXX */
 
 	return syscall_no_intercept(SYS_setxattr, where.path, arg1, arg2, arg3,
 			arg4);
@@ -1264,31 +1260,21 @@ hook_readlinkat(long fd, const char *path,
 }
 
 static long
-nosup_syscall_with_path(long syscall_number,
-			long path, int resolve_last,
-			long arg0, long arg1,
-			long arg2, long arg3,
-			long arg4, long arg5)
+nosup_syscall_with_path(long syscall_number, const char *path, int resolve_last,
+			long arg1, long arg2, long arg3, long arg4, long arg5)
 {
 	struct resolved_path where;
 
-	resolve_path(cwd_desc(), (const char *)path, &where, resolve_last);
+	resolve_path(cwd_desc(), path, &where, resolve_last | NO_AT_PATH);
 
 	if (where.error_code != 0)
 		return where.error_code;
 
-	/*
-	 * XXX only forward these to the kernel, if the path is not relative
-	 * to some fd. Normally, the _at version of the syscall would be used
-	 * here, i.e.: xxx_at(kernel_fd, path, ...), but some of these syscalls
-	 * don't have an _at version. So for now these are only handled, if the
-	 * path is relative to AT_FDCWD.
-	 */
-	if (is_fda_null(&where.at.pmem_fda) && where.at.kernel_fd == AT_FDCWD)
-		return syscall_no_intercept(syscall_number,
-		    arg0, arg1, arg2, arg3, arg4, arg5);
+	if (!is_fda_null(&where.at.pmem_fda))
+		return check_errno(-ENOTSUP, syscall_number);
 
-	return check_errno(-ENOTSUP, syscall_number);
+	return syscall_no_intercept(syscall_number, where.path, arg1, arg2,
+			arg3, arg4, arg5);
 }
 
 static long
@@ -1840,6 +1826,45 @@ hook_umask(mode_t mask)
 }
 
 static long
+hook_bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
+{
+	if (addr->sa_family != AF_UNIX ||
+			addrlen < sizeof(struct sockaddr_un)) {
+		return syscall_no_intercept(SYS_bind, sockfd, addr, addrlen);
+	}
+
+	const struct sockaddr_un *uaddr = (struct sockaddr_un *)addr;
+
+	struct resolved_path where;
+
+	struct fd_desc at = cwd_desc();
+
+	resolve_path(at, uaddr->sun_path, &where,
+			NO_RESOLVE_LAST_SLINK | NO_AT_PATH);
+
+	if (where.error_code != 0)
+		return where.error_code;
+
+	if (!is_fda_null(&where.at.pmem_fda))
+		return check_errno(-ENOTSUP, SYS_bind);
+
+	struct sockaddr_un tmp_uaddr;
+
+	tmp_uaddr.sun_family = AF_UNIX;
+
+	size_t len = strlen(where.path);
+
+	if (len >= sizeof(tmp_uaddr.sun_path))
+		return -ENAMETOOLONG;
+
+	strncpy(tmp_uaddr.sun_path, where.path, len);
+	tmp_uaddr.sun_path[len] = 0;
+
+	return syscall_no_intercept(SYS_bind, sockfd, &tmp_uaddr,
+			sizeof(tmp_uaddr));
+}
+
+static long
 dispatch_syscall(long syscall_number,
 			long arg0, long arg1,
 			long arg2, long arg3,
@@ -2021,7 +2046,7 @@ dispatch_syscall(long syscall_number,
 		return hook_umask((mode_t)arg0);
 
 	/*
-	 * Some syscalls that have a path argument, but are not ( yet ) handled
+	 * Some syscalls that have a path argument, but are not (yet) handled
 	 * by libpmemfile-posix. The argument of these are not interpreted,
 	 * except for the path itself. If the path points to something pmemfile
 	 * resident, -ENOTSUP is returned, otherwise, the call is forwarded
@@ -2031,14 +2056,14 @@ dispatch_syscall(long syscall_number,
 	case SYS_listxattr:
 	case SYS_removexattr:
 		return nosup_syscall_with_path(syscall_number,
-		    arg0, RESOLVE_LAST_SLINK,
-		    arg0, arg1, arg2, arg3, arg4, arg5);
+		    (const char *)arg0, RESOLVE_LAST_SLINK,
+		    arg1, arg2, arg3, arg4, arg5);
 
 	case SYS_llistxattr:
 	case SYS_lremovexattr:
 		return nosup_syscall_with_path(syscall_number,
-		    arg0, NO_RESOLVE_LAST_SLINK,
-		    arg0, arg1, arg2, arg3, arg4, arg5);
+		    (const char *)arg0, NO_RESOLVE_LAST_SLINK,
+		    arg1, arg2, arg3, arg4, arg5);
 
 	case SYS_readlink:
 		return hook_readlinkat(AT_FDCWD, (const char *)arg0,
@@ -2083,6 +2108,10 @@ dispatch_syscall(long syscall_number,
 	case SYS_copy_file_range:
 		return hook_copy_file_range(arg0, (loff_t *)arg1,
 		    arg2, (loff_t *)arg3, (size_t)arg4, (unsigned)arg5);
+
+	case SYS_bind:
+		return hook_bind((int)arg0, (const struct sockaddr *)arg1,
+				(socklen_t)arg2);
 
 	default:
 		/* Did we miss something? */

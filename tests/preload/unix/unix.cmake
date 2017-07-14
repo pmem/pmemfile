@@ -1,5 +1,5 @@
 #
-# Copyright 2016-2017, Intel Corporation
+# Copyright 2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,74 +29,21 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#
-# Dockerfile - a 'recipe' for Docker to build an image of fedora-based
-#              environment for building the PMEMFILE project.
-#
+include(${SRC_DIR}/../preload-helpers.cmake)
 
-# Pull base image
-FROM fedora:23
-MAINTAINER marcin.slusarz@intel.com
+setup()
 
-# Install basic tools
-RUN dnf install -y \
-	autoconf \
-	automake \
-	capstone-devel \
-	clang \
-	cmake \
-	doxygen \
-	gcc \
-	git \
-	libattr-devel \
-	libcap-devel \
-	libunwind-devel \
-	make \
-	pandoc \
-	perl-Text-Diff \
-	passwd \
-	rpm-build \
-	sqlite \
-	sudo \
-	which \
-	whois
+mkfs(${DIR}/fs 16m)
 
-# Install valgrind
-COPY install-valgrind.sh install-valgrind.sh
-RUN ./install-valgrind.sh
+execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${DIR}/mount_point)
 
-# Install nvml
-COPY install-nvml.sh install-nvml.sh
-RUN ./install-nvml.sh rpm
+set(ENV{LD_PRELOAD} ${PRELOAD_LIB})
+set(ENV{PMEMFILE_POOLS} ${DIR}/mount_point:${DIR}/fs)
+set(ENV{PMEMFILE_PRELOAD_LOG} ${BIN_DIR}/pmemfile_preload.log)
+set(ENV{INTERCEPT_LOG} ${BIN_DIR}/intercept.log)
 
-# Install syscall_intercept
-COPY install-syscall_intercept.sh install-syscall_intercept.sh
-RUN ./install-syscall_intercept.sh rpm
+execute(${MAIN_EXECUTABLE} ${DIR})
 
-RUN curl -L -o /googletest-1.8.0.zip https://github.com/google/googletest/archive/release-1.8.0.zip
+unset(ENV{LD_PRELOAD})
 
-# Add user
-ENV USER user
-ENV USERPASS pass
-RUN useradd -m $USER
-RUN echo $USERPASS | passwd $USER --stdin
-RUN gpasswd wheel -a $USER
-
-RUN dnf remove -y \
-	autoconf \
-	automake \
-	doxygen \
-	passwd \
-	which \
-	whois
-
-RUN dnf autoremove -y
-
-USER $USER
-
-# Set required environment variables
-ENV OS fedora
-ENV OS_VER 23
-ENV PACKAGE_MANAGER rpm
-ENV NOTTY 1
-
+cleanup()

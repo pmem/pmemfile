@@ -39,7 +39,7 @@ cp /googletest-1.8.0.zip .
 
 mkdir build
 cd build
-cmake .. -DCMAKE_BUILD_TYPE=Debug
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DANTOOL_TESTS=SKIP
 
 export COVERITY_SCAN_PROJECT_NAME="pmemfile"
 [[ "$TRAVIS_EVENT_TYPE" == "cron" ]] \

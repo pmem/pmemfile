@@ -1,3 +1,4 @@
+#!/bin/bash
 #
 # Copyright 2017, Intel Corporation
 #
@@ -28,26 +29,62 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
 
-option(TESTS_USE_FORCED_PMEM "let tests force enable or force disable use of optimized flush in libpmemobj (to speed them up)" OFF)
+NAME=$(basename $0)
 
-set(GLOBAL_TEST_ARGS
-	-DPERL_EXECUTABLE=${PERL_EXECUTABLE}
-	-DMATCH_SCRIPT=${PROJECT_SOURCE_DIR}/tests/match
-	-DMKFS_EXECUTABLE=$<TARGET_FILE:mkfs.pmemfile>
-	-DCAT_EXECUTABLE=$<TARGET_FILE:pmemfile-cat>
-	-DPARENT_DIR=${TEST_DIR}/
-	-DTESTS_USE_FORCED_PMEM=${TESTS_USE_FORCED_PMEM}
-	-DANTOOL_TESTS=SAVED)
+if [ "$1" == "" ]; then
+	echo "ERROR($NAME): not enough arguments"
+	echo "Usage: $NAME <path-to-test-source-directory>"
+	exit 1
+fi
 
-if(TRACE_TESTS)
-	set(GLOBAL_TEST_ARGS ${GLOBAL_TEST_ARGS} --trace-expand)
-endif()
+SRC_DIR=$1
 
-add_subdirectory(posix)
+TEST_DIR=$(dirname $0)
+[ "$TEST_DIR" == "." ] && TEST_DIR=$(pwd)
 
-if(BUILD_LIBPMEMFILE)
-	add_subdirectory(preload)
-endif()
+COMMON=$TEST_DIR/common.sh
+[ ! -f $COMMON ] \
+	&& echo "Error: missing file: $COMMON" \
+	&& exit 1
 
-add_subdirectory(antool)
+source $COMMON
+
+FILES_BIN=$(ls -1 $MASK_BIN 2>/dev/null)
+if [ "$FILES_BIN" == "" ]; then
+	echo "ERROR: no binary logs found in the test directory: $(pwd)"
+	echo "       - please rerun antool tests"
+	exit 1
+fi
+
+if [ ! -f $FILE_DIR_PMEM ]; then
+	echo "ERROR: file with pmem directory does not exist: $FILE_DIR_PMEM"
+	echo "       - please rerun antool tests"
+	exit 1
+fi
+
+if [ ! -f $SYSCALL_TABLE ]; then
+	echo "ERROR: syscall table file does not exist: $SYSCALL_TABLE"
+	echo "       - please rerun antool tests"
+	exit 1
+fi
+
+cp -f $FILE_DIR_PMEM $SRC_DIR
+
+rm -f *.$ARCH_EXT
+
+echo -n "Regenerating archives... "
+bzip2 -f -k -9 $SYSCALL_TABLE
+for file in $FILES_BIN; do
+	bzip2 -f -k -9 $file
+done
+echo "done."
+
+echo "Regenerated following archives... "
+ls -alh $ARCHIVES
+echo
+
+echo -n "Moving generated archives to the source directory... "
+mv -f $ARCHIVES $SRC_DIR
+echo "done."

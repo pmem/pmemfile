@@ -1,0 +1,144 @@
+close                (0x0000000012345678)
+open                 "/tmp/antool $(S)"
+open                 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+open                 "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+chdir                "/tmp/antool $(S)"
+INFO: current working directory changed:
+      from: $(S)/tests/antool"
+      to:   "/tmp/antool $(S)"
+fchdir               "/tmp/antool $(S)"
+INFO: current working directory changed:
+      from: "/tmp/antool $(S)"
+      to:   "/tmp/antool $(S)"
+chroot               "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+chroot               "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+chroot               "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+chroot               "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+setxattr             "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM] "any string"
+lsetxattr            "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM] "any string"
+getxattr             "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM] "any string"
+lgetxattr            "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM] "any string"
+setxattr             "/tmp/antool $(S)/nonp $(S)/tmp $(S)" "any string"
+setxattr             "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM] "any string"
+lsetxattr            "/tmp/antool $(S)/nonp $(S)/tmp $(S)" "any string"
+lsetxattr            "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM] "any string"
+fsetxattr            "/tmp/antool $(S)/nonp $(S)/tmp $(S)" "any string"
+fsetxattr            "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM] "any string"
+getxattr             "/tmp/antool $(S)/nonp $(S)/tmp $(S)" "any string"
+getxattr             "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM] "any string"
+lgetxattr            "/tmp/antool $(S)/nonp $(S)/tmp $(S)" "any string"
+lgetxattr            "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM] "any string"
+fgetxattr            "/tmp/antool $(S)/nonp $(S)/tmp $(S)" "any string"
+fgetxattr            "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM] "any string"
+listxattr            "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+listxattr            "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+llistxattr           "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+llistxattr           "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+flistxattr           "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+flistxattr           "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+removexattr          "/tmp/antool $(S)/nonp $(S)/tmp $(S)" "any string"
+removexattr          "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM] "any string"
+lremovexattr         "/tmp/antool $(S)/nonp $(S)/tmp $(S)" "any string"
+lremovexattr         "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM] "any string"
+fremovexattr         "/tmp/antool $(S)/nonp $(S)/tmp $(S)" "any string"
+fremovexattr         "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM] "any string"
+dup                  "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+dup                  "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+dup2                 "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+dup2                 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+dup3                 "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+dup3                 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+mmap                 "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+mmap                 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+execve               "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+execve               "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+execveat             "/tmp/antool $(S)" "nonp $(S)/tmp $(S)"
+execveat             "/tmp/antool $(S)" "pmem $(S)/tmp $(S)" [PMEM]
+flock                "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+flock                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+readahead            "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+readahead            "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+sendfile64           "/tmp/antool $(S)/nonp $(S)/tmp $(S)" "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+sendfile64           "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM] "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+sendfile64           "/tmp/antool $(S)/nonp $(S)/tmp $(S)" "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+sendfile64           "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM] "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+splice               "/tmp/antool $(S)/nonp $(S)/tmp $(S)" "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+splice               "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM] "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+splice               "/tmp/antool $(S)/nonp $(S)/tmp $(S)" "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+splice               "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM] "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+name_to_handle_at    "/tmp/antool $(S)" "nonp $(S)/tmp $(S)"
+name_to_handle_at    "/tmp/antool $(S)" "pmem $(S)/tmp $(S)" [PMEM]
+copy_file_range      "/tmp/antool $(S)/nonp $(S)/tmp $(S)" "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+copy_file_range      "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM] "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+copy_file_range      "/tmp/antool $(S)/nonp $(S)/tmp $(S)" "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+copy_file_range      "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM] "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+open                 "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+open                 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+open                 "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+open                 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+openat               "/tmp/antool $(S)" "nonp $(S)/tmp $(S)"
+openat               "/tmp/antool $(S)" "pmem $(S)/tmp $(S)" [PMEM]
+openat               "/tmp/antool $(S)" "nonp $(S)/tmp $(S)"
+openat               "/tmp/antool $(S)" "pmem $(S)/tmp $(S)" [PMEM]
+renameat             "/tmp/antool $(S)" "nonp $(S)/tmp $(S)" "/tmp/antool $(S)" "nonp $(S)/tmp $(S)"
+renameat             "/tmp/antool $(S)" "pmem $(S)/tmp $(S)" [PMEM] "/tmp/antool $(S)" "pmem $(S)/tmp $(S)" [PMEM]
+renameat2            "/tmp/antool $(S)" "nonp $(S)/tmp $(S)" "/tmp/antool $(S)" "nonp $(S)/tmp $(S)"
+renameat2            "/tmp/antool $(S)" "pmem $(S)/tmp $(S)" [PMEM] "/tmp/antool $(S)" "pmem $(S)/tmp $(S)" [PMEM]
+renameat2            "/tmp/antool $(S)" "nonp $(S)/tmp $(S)" "/tmp/antool $(S)" "nonp $(S)/tmp $(S)"
+renameat2            "/tmp/antool $(S)" "pmem $(S)/tmp $(S)" [PMEM] "/tmp/antool $(S)" "pmem $(S)/tmp $(S)" [PMEM]
+fallocate            "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+fallocate            "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+fallocate            "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+fallocate            "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+fallocate            "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+fallocate            "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+fcntl                "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+fcntl                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+fcntl                "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+fcntl                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+fcntl                "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+fcntl                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+fcntl                "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+fcntl                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+fcntl                "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+fcntl                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+fcntl                "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+fcntl                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+fcntl                "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+fcntl                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+fcntl                "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+fcntl                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+fcntl                "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+fcntl                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+fcntl                "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+fcntl                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+fcntl                "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+fcntl                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+fcntl                "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+fcntl                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+fcntl                "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+fcntl                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+fcntl                "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+fcntl                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+fcntl                "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+fcntl                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+fcntl                "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+fcntl                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+fcntl                "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+fcntl                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+fcntl                "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+fcntl                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+fcntl                "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+fcntl                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+mmap                 (-1)
+mmap                 (-1)
+mmap                 (-1)
+mmap                 (-1)
+mmap                 (-1)
+mmap                 (-1)
+mmap                 (-1)
+mmap                 (-1)
+mmap                 (-1)
+mmap                 (-1)
+close                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+close                (0x0000000087654321)

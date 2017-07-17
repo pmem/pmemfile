@@ -80,7 +80,8 @@ XXX
 
 %build
 mkdir build && cd build
-%cmake .. -DCMAKE_BUILD_TYPE=Release -DTESTS_USE_FORCED_PMEM=1
+%cmake .. -DCMAKE_BUILD_TYPE=Release -DTESTS_USE_FORCED_PMEM=1 -DANTOOL_TESTS=SKIP
+
 make %{?_smp_mflags}
 
 %install

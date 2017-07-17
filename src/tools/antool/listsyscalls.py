@@ -208,7 +208,7 @@ class ListSyscalls(list):
             print(" done.")
         if self.debug_mode:
             for n in range(len(self.pid_table)):
-                self.log_anls.debug("PID[{0:d}] = {1:016X}".format(n, self.pid_table[n]))
+                self.log_anls.debug("PID[{0:d}] = 0x{1:016X}".format(n, self.pid_table[n]))
 
     ####################################################################################################################
     # arg_is_pmem -- check if a path argument is located on the pmem filesystem
@@ -359,17 +359,17 @@ class ListSyscalls(list):
     ####################################################################################################################
     def log_print_path(self, is_pmem, name, path):
         if is_pmem:
-            self.log_anls.debug("{0:20s} {1:s} [PMEM]".format(name, path))
+            self.log_anls.debug("{0:20s} \"{1:s}\" [PMEM]".format(name, path))
         else:
-            self.log_anls.debug("{0:20s} {1:s}".format(name, path))
+            self.log_anls.debug("{0:20s} \"{1:s}\"".format(name, path))
 
     ####################################################################################################################
     @staticmethod
     def log_build_msg(msg, is_pmem, path):
         if is_pmem:
-            msg += " {0:s} [PMEM]".format(path)
+            msg += " \"{0:s}\" [PMEM]".format(path)
         else:
-            msg += " {0:s}".format(path)
+            msg += " \"{0:s}\"".format(path)
         return msg
 
     ####################################################################################################################
@@ -426,10 +426,10 @@ class ListSyscalls(list):
                 unknown_dirfd = 1
 
         if newpath != path:
-            msg += " {0:s} {1:s}".format(dir_str, path)
+            msg += " \"{0:s}\" \"{1:s}\"".format(dir_str, path)
             path = newpath
         else:
-            msg += " ({0:d}) {1:s}".format(dirfd, path)
+            msg += " ({0:d}) \"{1:s}\"".format(dirfd, path)
 
         is_pmem = self.check_if_path_is_pmem(path)
         str_ind = self.all_strings_append(path, is_pmem)
@@ -578,8 +578,8 @@ class ListSyscalls(list):
             new_cwd = self.all_strings[syscall.args[0]]
             self.set_cwd(new_cwd, syscall)
             self.log_anls.debug("INFO: current working directory changed:")
-            self.log_anls.debug("      from: {0:s}".format(old_cwd))
-            self.log_anls.debug("      to:   {0:s}".format(new_cwd))
+            self.log_anls.debug("      from: \"{0:s}\"".format(old_cwd))
+            self.log_anls.debug("      to:   \"{0:s}\"".format(new_cwd))
 
         if syscall.name in ("fork", "vfork", "clone"):
             if syscall.iret == 0:
@@ -646,16 +646,16 @@ class ListSyscalls(list):
         print("   {0:20s}\t\t".format(syscall.name), end='')
         if relative:
             for nstr in range(len(syscall.strings)):
-                print(" {0:s}".format(syscall.strings[nstr]), end='')
+                print(" \"{0:s}\"".format(syscall.strings[nstr]), end='')
         else:
             for narg in range(syscall.nargs):
                 if syscall.has_mask(Arg_is_str[narg] | Arg_is_fd[narg]):
                     str_ind = syscall.args[narg]
                     if str_ind != -1:
                         if self.path_is_pmem[str_ind]:
-                            print(" {0:s} [PMEM]  ".format(self.all_strings[str_ind]), end='')
+                            print(" \"{0:s}\" [PMEM]  ".format(self.all_strings[str_ind]), end='')
                         else:
-                            print(" {0:s}".format(self.all_strings[str_ind]), end='')
+                            print(" \"{0:s}\"".format(self.all_strings[str_ind]), end='')
         if end:
             print()
 
@@ -674,25 +674,25 @@ class ListSyscalls(list):
                     print("   {0:s}".format(l_names[n]))
                 for i in range(len_inds):
                     if self.path_is_pmem[list_ind[i]]:
-                        print("\t\t{0:s} [PMEM]".format(self.all_strings[list_ind[i]]))
+                        print("\t\t\"{0:s}\" [PMEM]".format(self.all_strings[list_ind[i]]))
                     else:
-                        print("\t\t{0:s}".format(self.all_strings[list_ind[i]]))
+                        print("\t\t\"{0:s}\"".format(self.all_strings[list_ind[i]]))
 
     ####################################################################################################################
     def print_unsupported_verbose2(self, msg, syscall, relative, end):
         print("{0:28s}\t{1:16s}\t".format(msg, syscall.name), end='')
         if relative:
             for nstr in range(len(syscall.strings)):
-                print(" {0:s}".format(syscall.strings[nstr]), end='')
+                print(" \"{0:s}\"".format(syscall.strings[nstr]), end='')
         else:
             for narg in range(syscall.nargs):
                 if syscall.has_mask(Arg_is_path[narg] | Arg_is_fd[narg]):
                     str_ind = syscall.args[narg]
                     if str_ind != -1:
                         if self.path_is_pmem[str_ind]:
-                            print(" {0:s} [PMEM]  ".format(self.all_strings[str_ind]), end='')
+                            print(" \"{0:s}\" [PMEM]  ".format(self.all_strings[str_ind]), end='')
                         else:
-                            print(" {0:s}".format(self.all_strings[str_ind]), end='')
+                            print(" \"{0:s}\"".format(self.all_strings[str_ind]), end='')
         if end:
             print()
 

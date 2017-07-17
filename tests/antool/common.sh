@@ -28,26 +28,10 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
 
-option(TESTS_USE_FORCED_PMEM "let tests force enable or force disable use of optimized flush in libpmemobj (to speed them up)" OFF)
-
-set(GLOBAL_TEST_ARGS
-	-DPERL_EXECUTABLE=${PERL_EXECUTABLE}
-	-DMATCH_SCRIPT=${PROJECT_SOURCE_DIR}/tests/match
-	-DMKFS_EXECUTABLE=$<TARGET_FILE:mkfs.pmemfile>
-	-DCAT_EXECUTABLE=$<TARGET_FILE:pmemfile-cat>
-	-DPARENT_DIR=${TEST_DIR}/
-	-DTESTS_USE_FORCED_PMEM=${TESTS_USE_FORCED_PMEM}
-	-DANTOOL_TESTS=SAVED)
-
-if(TRACE_TESTS)
-	set(GLOBAL_TEST_ARGS ${GLOBAL_TEST_ARGS} --trace-expand)
-endif()
-
-add_subdirectory(posix)
-
-if(BUILD_LIBPMEMFILE)
-	add_subdirectory(preload)
-endif()
-
-add_subdirectory(antool)
+FILE_DIR_PMEM="dir_pmem.txt"
+SYSCALL_TABLE="syscalls_table.dat"
+ARCH_EXT="bz2"
+MASK_BIN="output-bin-*.log"
+ARCHIVES="*.$ARCH_EXT"

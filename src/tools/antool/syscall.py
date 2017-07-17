@@ -279,16 +279,13 @@ class Syscall(SyscallInfo):
             else:
                 print("WARNING: " + warn_str)
 
-        msg = "{0:016X} {1:016X} {2:s} {3:s}".format(self.time_start, self.pid_tid, self.__str, self.name)
+        msg = "0x{0:016X} 0x{1:016X} {2:s} {3:s}".format(self.time_start, self.pid_tid, self.__str, self.name)
 
         for n in range(0, self.nargs):
             if self.is_string(n):
-                if self.strings[self.args[n]] != "":
-                    msg += " {0:s}".format(self.strings[self.args[n]])
-                else:
-                    msg += " \"\""
+                msg += " \"{0:s}\"".format(self.strings[self.args[n]])
             else:
-                msg += " {0:016X}".format(self.args[n])
+                msg += " 0x{0:016X}".format(self.args[n])
 
         self.log_print(msg)
 
@@ -300,10 +297,10 @@ class Syscall(SyscallInfo):
             return
 
         if len(self.name) > 0:
-            self.log_print("{0:016X} {1:016X} {2:016X} {3:016X} {4:s}".format(
+            self.log_print("0x{0:016X} 0x{1:016X} 0x{2:016X} 0x{3:016X} {4:s}".format(
                             self.time_end, self.pid_tid, self.err, self.ret, self.name))
         else:
-            self.log_print("{0:016X} {1:016X} {2:016X} {3:016X} sys_exit {4:016X}".format(
+            self.log_print("0x{0:016X} 0x{1:016X} 0x{2:016X} 0x{3:016X} sys_exit 0x{4:016X}".format(
                             self.time_end, self.pid_tid, self.err, self.ret, self.sc_id))
 
     ####################################################################################################################

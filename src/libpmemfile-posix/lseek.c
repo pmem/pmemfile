@@ -126,7 +126,7 @@ lseek_seek_data_or_hole(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	if (!vinode_is_regular_file(vinode))
 		return -EBADF; /* XXX directories are not supported here yet */
 
-	if (offset > fsize) {
+	if (offset < 0 || offset > fsize) {
 		/*
 		 * From GNU man page: ENXIO if
 		 * "...ENXIO  whence is SEEK_DATA or SEEK_HOLE, and the file
@@ -134,9 +134,6 @@ lseek_seek_data_or_hole(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		 */
 		return -ENXIO;
 	}
-
-	if (offset < 0) /* this seems to be allowed by POSIX and Linux */
-		offset = 0;
 
 	if (whence == PMEMFILE_SEEK_DATA) {
 		offset = lseek_seek_data(pfp, vinode, offset, fsize);

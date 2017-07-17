@@ -1108,7 +1108,14 @@ TEST_F(rw, sparse_files_using_lseek)
 
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_HOLE), 0);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_DATA), 0);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, -1, PMEMFILE_SEEK_DATA), 0);
+
+	/* Seeking to data, or to hole should fail with negative offset */
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, -1, PMEMFILE_SEEK_DATA), -1);
+	ASSERT_EQ(errno, ENXIO);
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, -1, PMEMFILE_SEEK_HOLE), -1);
+	ASSERT_EQ(errno, ENXIO);
 
 	/*
 	 * Seeking to hole, or to data should fail with offset

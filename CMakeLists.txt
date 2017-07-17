@@ -259,6 +259,7 @@ endif()
 
 if(DEVELOPER_MODE)
 	add_flag(-Werror)
+	add_flag(-Wno-unused-command-line-argument)
 
 	check_c_compiler_flag(-Wl,--fatal-warnings LINKER_HAS_FATAL_WARNINGS)
 	if(LINKER_HAS_FATAL_WARNINGS)

@@ -29,22 +29,44 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+include(CheckCSourceRuns)
+
+CHECK_C_SOURCE_RUNS("
+#include <sys/xattr.h>
+#include <fcntl.h>
+#include <err.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+int main() {
+	const char *dir_path = \"${TEST_DIR}\";
+	const char *path = \"${TEST_DIR}/dummy_file\";
+
+	(void) mkdir(dir_path, 0700);
+	if (creat(path, 0700) < 0)
+		err(2, \"creat\");
+	if (setxattr(path, \"user.attr1\", \"value\", 5, XATTR_CREATE) < 0)
+		err(3, \"setxattr\");
+	(void) unlink(path);
+
+	return 0;
+}
+" XATTR_AVAILABLE_IN_TEST_DIR)
+
 add_executable(preload_basic basic/basic.c)
 add_executable(preload_config config/config.c)
 add_executable(preload_pool_locking pool_locking/pool_locking.c)
-add_executable(preload_xattr xattr/xattr.c)
 add_executable(preload_unix unix/unix.c)
 
 add_cstyle(tests-preload-basic ${CMAKE_CURRENT_SOURCE_DIR}/basic/basic.c)
 add_cstyle(tests-preload-config ${CMAKE_CURRENT_SOURCE_DIR}/config/config.c)
 add_cstyle(tests-preload-pool-locking ${CMAKE_CURRENT_SOURCE_DIR}/pool_locking/pool_locking.c)
-add_cstyle(tests-preload-xattr ${CMAKE_CURRENT_SOURCE_DIR}/xattr/xattr.c)
 add_cstyle(tests-preload-unix ${CMAKE_CURRENT_SOURCE_DIR}/unix/unix.c)
 
 add_check_whitespace(tests-preload-basic ${CMAKE_CURRENT_SOURCE_DIR}/basic/basic.c)
 add_check_whitespace(tests-preload-config ${CMAKE_CURRENT_SOURCE_DIR}/config/config.c)
 add_check_whitespace(tests-preload-pool-locking ${CMAKE_CURRENT_SOURCE_DIR}/pool_locking/pool_locking.c)
-add_check_whitespace(tests-preload-xattr ${CMAKE_CURRENT_SOURCE_DIR}/xattr/xattr.c)
 add_check_whitespace(tests-preload-unix ${CMAKE_CURRENT_SOURCE_DIR}/unix/unix.c)
 
 add_library(setumask SHARED setumask.c)
@@ -123,5 +145,11 @@ add_test_generic(config "_outer_via_invalid" $<TARGET_FILE:preload_config> -DTES
 set_tests_properties("preload_config_outer_via_invalid"
 	PROPERTIES PASS_REGULAR_EXPRESSION "EIO")
 
-add_test_generic(xattr "" $<TARGET_FILE:preload_xattr>)
 add_test_generic(unix "" $<TARGET_FILE:preload_unix>)
+
+if(XATTR_AVAILABLE_IN_TEST_DIR)
+	add_executable(preload_xattr xattr/xattr.c)
+	add_cstyle(tests-preload-xattr ${CMAKE_CURRENT_SOURCE_DIR}/xattr/xattr.c)
+	add_check_whitespace(tests-preload-xattr ${CMAKE_CURRENT_SOURCE_DIR}/xattr/xattr.c)
+	add_test_generic(xattr "" $<TARGET_FILE:preload_xattr>)
+endif()

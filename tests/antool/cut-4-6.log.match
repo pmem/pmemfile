@@ -1,0 +1,91 @@
+$(XX) $(XX) ---------------- ---------------- close 0x0000000012345678
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF close
+$(XX) $(XX) ---------------- ---------------- chroot "111 non exist"
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF chroot
+$(XX) $(XX) ---------------- ---------------- fcntl 0x0000000000000104 0x0FFFFFFFFFFFFFFF 0x0FFFFFFFFFFFFFFF
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF fcntl
+$(XX) $(XX) ---------------- ---------------- flock 0x0000000000000108 0x0000000000000109
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF flock
+$(XX) $(XX) ---------------- ---------------- setsockopt 0x0000000000000101 0x0000000000000102 0x0000000000000103 0x0000000000000104 0x0000000000000105
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF setsockopt
+$(XX) $(XX) ---------------- ---------------- getsockopt 0x0000000000000106 0x0000000000000107 0x0000000000000108 0x0000000000000109 0x0000000000000110
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF getsockopt
+$(XX) $(XX) ---------------- ---------------- getsockname 0x0000000000000101 $(XX) $(XX)
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF getsockname
+$(XX) $(XX) ---------------- ---------------- inotify_add_watch 0x0000000000000104 "111 non exist" 0x0000000000000105
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF inotify_add_watch
+$(XX) $(XX) ---------------- ---------------- inotify_rm_watch 0x0000000000000106 0x0000000000000107
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF inotify_rm_watch
+$(XX) $(XX) ---------------- ---------------- io_cancel 0x0000000000000101 0x0000000000000102 0x0000000000000103
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF io_cancel
+$(XX) $(XX) ---------------- ---------------- io_destroy 0x0000000000000102
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF io_destroy
+$(XX) $(XX) ---------------- ---------------- io_getevents 0x0000000000000103 0x0000000000000104 0x0000000000000105 0x0000000000000106 0x0000000000000107
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF io_getevents
+$(XX) $(XX) ---------------- ---------------- io_setup 0x0000000000000104 0x0000000000000105
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF io_setup
+$(XX) $(XX) ---------------- ---------------- io_submit 0x0000000000000105 0x0000000000000106 0x0000000000000107
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF io_submit
+$(XX) $(XX) ---------------- ---------------- ioctl 0x0000000000000101 0x0000000000000102 0x0000000000000103
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF ioctl
+$(XX) $(XX) ---------------- ---------------- mknod "/etc/fstab" 0x0000000000000101 0x0000000000000102
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF mknod
+$(XX) $(XX) ---------------- ---------------- mknodat 0x0000000000000103 "/etc/fstab" 0x0000000000000104 0x0000000000000105
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF mknodat
+$(XX) $(XX) ---------------- ---------------- mmap 0x0000000000000101 0x0000000000000102 0x0000000000000103 0x000000000000FFFF 0x0000000000000105 0x0000000000000106
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF mmap
+$(XX) $(XX) ---------------- ---------------- munmap 0x0000000000000102 0x0000000000000103
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF munmap
+$(XX) $(XX) ---------------- ---------------- select 0x0000000000000000 0x0000000000000104 0x0000000000000105 0x0000000000000106 $(XX)
+$(XX) $(XX) 0x0000000000000000 0x0000000000000000 select
+$(XX) $(XX) ---------------- ---------------- pselect6 0x0000000000000000 0x0000000000000105 0x0000000000000106 0x0000000000000107 $(XX) $(XX)
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF pselect6
+$(XX) $(XX) ---------------- ---------------- swapon "111 non exist" 0x0000000000000101
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF swapon
+$(XX) $(XX) ---------------- ---------------- swapoff "222 non exist"
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF swapoff
+$(XX) $(XX) ---------------- ---------------- poll 0x0000000000000102 0x0000000000000103 0x0000000000000104
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF poll
+$(XX) $(XX) ---------------- ---------------- mount "111 non exist" "222 non exist" "ext3" 0x0000000000000101 0x0000000000000102
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF mount
+$(XX) $(XX) ---------------- ---------------- umount$(nW) "111 non exist" $(XX)
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF umount$(nW)
+$(XX) $(XX) ---------------- ---------------- umount$(nW) "222 non exist" 0x0000000000000123
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF umount$(nW)
+$(XX) $(XX) ---------------- ---------------- setxattr "111 non exist" "any string" $(XX) 0x0000000000000100 0x0000000000000001
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF setxattr
+$(XX) $(XX) ---------------- ---------------- lsetxattr "222 non exist" "any string" $(XX) 0x0000000000000100 0x0000000000000001
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF lsetxattr
+$(XX) $(XX) ---------------- ---------------- fsetxattr 0x0000000000000107 "any string" $(XX) 0x0000000000000100 0x0000000000000001
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF fsetxattr
+$(XX) $(XX) ---------------- ---------------- getxattr "111 non exist" "any string" $(XX) 0x0000000000000100
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF getxattr
+$(XX) $(XX) ---------------- ---------------- lgetxattr "222 non exist" "any string" $(XX) 0x0000000000000100
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF lgetxattr
+$(XX) $(XX) ---------------- ---------------- fgetxattr 0x0000000000000105 "any string" $(XX) 0x0000000000000100
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF fgetxattr
+$(XX) $(XX) ---------------- ---------------- listxattr "111 non exist" $(XX) 0x0000000000000101
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF listxattr
+$(XX) $(XX) ---------------- ---------------- llistxattr "222 non exist" $(XX) 0x0000000000000102
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF llistxattr
+$(XX) $(XX) ---------------- ---------------- flistxattr 0x0000000000000103 $(XX) 0x0000000000000104
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF flistxattr
+$(XX) $(XX) ---------------- ---------------- removexattr "111 non exist" "any string"
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF removexattr
+$(XX) $(XX) ---------------- ---------------- lremovexattr "222 non exist" "any string"
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF lremovexattr
+$(XX) $(XX) ---------------- ---------------- fremovexattr 0x0000000000000101 "any string"
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF fremovexattr
+$(XX) $(XX) ---------------- ---------------- ppoll 0x0000000000000101 0x0000000000000102 0x0000000000000103 0x0000000000000104 0x0000000000000105
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF ppoll
+$(XX) $(XX) ---------------- ---------------- epoll_ctl 0x0000000000000101 0x0000000000000102 0x0000000000000103 0x0000000000000104
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF epoll_ctl
+$(XX) $(XX) ---------------- ---------------- epoll_wait 0x0000000000000102 0x0000000000000103 0x0000000000000104 0x0000000000000105
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF epoll_wait
+$(XX) $(XX) ---------------- ---------------- epoll_pwait 0x0000000000000103 0x0000000000000104 0x0000000000000105 0x0000000000000106 0x0000000000000107
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF epoll_pwait
+$(XX) $(XX) ---------------- ---------------- open "222 non exist" 0x0FFFFFFFFFFFFFFF 0x0FFFFFFFFFFFFFFF
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF open
+$(XX) $(XX) ---------------- ---------------- clone 0x0FFFFFFFFFFFFFFF 0x0FFFFFFFFFFFFFFF 0x0FFFFFFFFFFFFFFF 0x0FFFFFFFFFFFFFFF 0x0FFFFFFFFFFFFFFF 0x0FFFFFFFFFFFFFFF
+$(XX) $(XX) $(XX) 0xFFFFFFFFFFFFFFFF clone
+$(XX) $(XX) ---------------- ---------------- close 0x0000000087654321

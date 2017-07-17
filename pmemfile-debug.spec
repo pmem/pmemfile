@@ -49,7 +49,7 @@ XXX
 
 %build
 mkdir dbg_build && cd dbg_build
-%cmake .. -DCMAKE_BUILD_TYPE=Debug -DTESTS_USE_FORCED_PMEM=1
+%cmake .. -DCMAKE_BUILD_TYPE=Debug -DTESTS_USE_FORCED_PMEM=1 -DANTOOL_TESTS=SKIP
 make %{?_smp_mflags}
 
 %install

@@ -126,17 +126,22 @@ lseek_seek_data_or_hole(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	if (!vinode_is_regular_file(vinode))
 		return -EBADF; /* XXX directories are not supported here yet */
 
-	if (offset > fsize) {
+	if (offset < 0 || offset > fsize) {
 		/*
+		 * offset < 0
+		 * on xfs calling lseek data or hole with negative offset
+		 * will return -1 with ENXIO errno
+		 * this also happens with proper ext4 implementation
+		 * (Linux 4.4.76 is fine, however Linux 4.9.37 has
+		 * a bug which causes EFSCORRUPTED errno)
+		 *
+		 * offset > fsize
 		 * From GNU man page: ENXIO if
 		 * "...ENXIO  whence is SEEK_DATA or SEEK_HOLE, and the file
 		 * offset is beyond the end of the file..."
 		 */
 		return -ENXIO;
 	}
-
-	if (offset < 0) /* this seems to be allowed by POSIX and Linux */
-		offset = 0;
 
 	if (whence == PMEMFILE_SEEK_DATA) {
 		offset = lseek_seek_data(pfp, vinode, offset, fsize);

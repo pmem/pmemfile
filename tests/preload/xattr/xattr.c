@@ -45,9 +45,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-/* This header file is buggy and does not include its dependencies */
-#include <attr/xattr.h>
+#include <sys/xattr.h>
 
 int
 main(int argc, char *argv[])

@@ -126,7 +126,7 @@ lseek_seek_data_or_hole(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	if (!vinode_is_regular_file(vinode))
 		return -ENXIO;
 
-	if (offset < 0 || offset > fsize) {
+	if (offset < 0 || offset >= fsize) {
 		/*
 		 * offset < 0
 		 * on xfs calling lseek data or hole with negative offset
@@ -135,7 +135,7 @@ lseek_seek_data_or_hole(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		 * (Linux 4.4.76 is fine, however Linux 4.9.37 has
 		 * a bug which causes EFSCORRUPTED errno)
 		 *
-		 * offset > fsize
+		 * offset >= fsize
 		 * From GNU man page: ENXIO if
 		 * "...ENXIO  whence is SEEK_DATA or SEEK_HOLE, and the file
 		 * offset is beyond the end of the file..."

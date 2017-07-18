@@ -124,7 +124,7 @@ lseek_seek_data_or_hole(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	pmemfile_ssize_t fsize = (pmemfile_ssize_t)vinode->inode->size;
 
 	if (!vinode_is_regular_file(vinode))
-		return -EBADF; /* XXX directories are not supported here yet */
+		return -ENXIO;
 
 	if (offset < 0 || offset > fsize) {
 		/*

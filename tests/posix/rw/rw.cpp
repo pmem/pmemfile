@@ -1091,13 +1091,13 @@ TEST_F(rw, sparse_files_using_lseek)
 	f = pmemfile_open(pfp, "/", PMEMFILE_O_DIRECTORY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
-	/* Using these two flags with direcotries is not supported (yet?) */
+	/* Using these two flags with directories is not supported */
 	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_HOLE), -1);
-	ASSERT_EQ(errno, EBADF);
+	ASSERT_EQ(errno, ENXIO);
 	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_DATA), -1);
-	ASSERT_EQ(errno, EBADF);
+	ASSERT_EQ(errno, ENXIO);
 
 	pmemfile_close(pfp, f);
 

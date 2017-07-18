@@ -237,13 +237,13 @@ TEST_F(rw, basic)
 	ASSERT_EQ(errno, EINVAL);
 	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, INT64_MAX, PMEMFILE_SEEK_CUR), -1);
-	ASSERT_EQ(errno, EOVERFLOW);
+	ASSERT_EQ(errno, EINVAL);
 	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, INT64_MAX - 1, PMEMFILE_SEEK_CUR), -1);
-	ASSERT_EQ(errno, EOVERFLOW);
+	ASSERT_EQ(errno, EINVAL);
 	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, INT64_MAX - 1, PMEMFILE_SEEK_END), -1);
-	ASSERT_EQ(errno, EOVERFLOW);
+	ASSERT_EQ(errno, EINVAL);
 	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, INT64_MIN, PMEMFILE_SEEK_END), -1);
 	ASSERT_EQ(errno, EINVAL);

@@ -202,18 +202,8 @@ pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t offset,
 		case PMEMFILE_SEEK_CUR:
 			ret = (pmemfile_off_t)file->offset + offset;
 			if (ret < 0) {
-				if (offset < 0) {
-					new_errno = EINVAL;
-				} else {
-					/*
-					 * From POSIX: EOVERFLOW if
-					 * "...The resulting file offset would
-					 * be a value which cannot be
-					 * represented correctly in an object
-					 * of type off_t..."
-					 */
-					new_errno = EOVERFLOW;
-				}
+				/* Error as in SEEK_SET */
+				new_errno = EINVAL;
 			}
 			break;
 		case PMEMFILE_SEEK_END:
@@ -221,11 +211,8 @@ pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t offset,
 			ret = (pmemfile_off_t)inode->size + offset;
 			os_rwlock_unlock(&vinode->rwlock);
 			if (ret < 0) {
-				/* Errors as in SEEK_CUR */
-				if (offset < 0)
-					new_errno = EINVAL;
-				else
-					new_errno = EOVERFLOW;
+				/* Error as in SEEK_SET */
+				new_errno = EINVAL;
 			}
 			break;
 		case PMEMFILE_SEEK_DATA:

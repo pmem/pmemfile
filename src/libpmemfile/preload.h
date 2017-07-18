@@ -39,8 +39,8 @@
 #include <pthread.h>
 #include <linux/limits.h>
 
-struct PMEMfilepool;
-struct PMEMfile;
+struct pmemfilepool;
+struct pmemfile_file;
 
 struct pool_description {
 	/*
@@ -79,7 +79,7 @@ struct pool_description {
 	 * If this is NULL, the mount point was not used by the application
 	 * before in this process. Should be initialized on first use.
 	 */
-	PMEMfilepool *pool;
+	struct pmemfilepool *pool;
 
 	/* Data about the root directory inside the pmemfile pool */
 	struct stat pmem_stat;
@@ -105,7 +105,7 @@ same_inode(const struct stat *st1, const struct stat *st2)
  */
 struct fd_association {
 	struct pool_description *pool;
-	PMEMfile *file;
+	struct pmemfile_file *file;
 };
 
 static inline bool

@@ -64,20 +64,20 @@ main(int argc, char *argv[])
 	if (size != -1)
 		err(2, "attr1 already exists");
 
-	const char *lorem =
+	static const char lorem[] =
 		"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
-	size_t lorem_len = strlen(lorem);
 
-	if (setxattr(path, "user.attr1", lorem, lorem_len, XATTR_CREATE) != 0)
+	if (setxattr(path, "user.attr1", lorem, sizeof(lorem),
+			XATTR_CREATE) != 0)
 		err(3, "setxattr failed");
 
 	size = getxattr(path, "user.attr1", value, sizeof(value));
 	if (size < 0)
 		err(4, "attr1 is empty");
-	if ((size_t)size != lorem_len)
+	if ((size_t)size != sizeof(lorem))
 		errx(5, "attr1 has unexpected value %ld", size);
 
-	if (strcmp(lorem, value) != 0)
+	if (memcmp(lorem, value, sizeof(lorem)) != 0)
 		err(6, "unexpected attr1 value: %s", value);
 
 	sprintf(path, "%s/mount_point/../file", argv[1]);
@@ -86,23 +86,23 @@ main(int argc, char *argv[])
 	size = getxattr(path, "user.attr1", value, sizeof(value));
 	if (size < 0)
 		err(7, "attr1 is empty (2)");
-	if ((size_t)size != lorem_len)
+	if ((size_t)size != sizeof(lorem))
 		errx(8, "attr1 has unexpected value %ld (2)", size);
 
-	if (strcmp(lorem, value) != 0)
+	if (memcmp(lorem, value, sizeof(lorem)) != 0)
 		err(9, "unexpected attr1 value: %s", value);
 
-	if (setxattr(path, "user.attr1", "meh", 3, XATTR_REPLACE) != 0)
+	if (setxattr(path, "user.attr1", "meh", 4, XATTR_REPLACE) != 0)
 		err(10, "setxattr failed (2)");
 
 	memset(value, 0, sizeof(value));
 	size = getxattr(path, "user.attr1", value, sizeof(value));
 	if (size < 0)
 		err(11, "attr1 is empty (3)");
-	if ((size_t)size != 3)
+	if ((size_t)size != 4)
 		errx(12, "attr1 has unexpected value %ld (3)", size);
 
-	if (strcmp("meh", value) != 0)
+	if (memcmp("meh", value, 4) != 0)
 		err(13, "unexpected attr1 value: %s (2)", value);
 
 	memset(value, 0, sizeof(value));

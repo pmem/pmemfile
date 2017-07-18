@@ -44,6 +44,7 @@ cd build
 cmake .. -DDEVELOPER_MODE=1 \
 		-DCMAKE_BUILD_TYPE=Debug \
 		-DTRACE_TESTS=1 \
+		-DANTOOL_TESTS=SKIP \
 		-DTESTS_USE_FORCED_PMEM=1 \
 		-DCMAKE_C_FLAGS=-coverage \
 		-DCMAKE_CXX_FLAGS=-coverage

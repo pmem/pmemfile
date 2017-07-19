@@ -1,5 +1,6 @@
+#!/bin/bash -ex
 #
-# Copyright 2016-2017, Intel Corporation
+# Copyright 2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -30,78 +31,49 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #
-# Dockerfile - a 'recipe' for Docker to build an image of fedora-based
-#              environment for building the PMEMFILE project.
+# run-build-sqlite.sh - builds sqlite and runs sqlite short tests set
 #
 
-# Pull base image
-FROM fedora:25
-MAINTAINER marcin.slusarz@intel.com
 
-# Install basic tools
-RUN dnf install -y \
-	autoconf \
-	automake \
-	capstone-devel \
-	clang \
-	cmake \
-	doxygen \
-	gcc \
-	git \
-	libcap-devel \
-	libunwind-devel \
-	make \
-	pandoc \
-	perl-Text-Diff \
-	passwd \
-	rpm-build \
-	sqlite \
-	sudo \
-	tcl-devel \
-	wget \
-	which \
-	whois
+if [[ -z "$WORKDIR"  ]]; then
+        echo "ERROR: The variable WORKDIR has to contain a path to " \
+        "the root of pmemfile repository."
+	exit 1
+fi
 
-# Install valgrind
-COPY install-valgrind.sh install-valgrind.sh
-RUN ./install-valgrind.sh
+PF_SQL_UTILS_DIR=$WORKDIR/utils/docker/sqlite
+SQLITE_DIR=$HOME/sqlite
+TEST_DIR=$HOME/testdir
+PF_DIR=$TEST_DIR/pf
+PF_POOL=$PF_DIR/pmemfile_pool
+MOUNTPOINT=$TEST_DIR/mountpoint
+MKFS_PMEMFILE=$WORKDIR/build/src/tools/mkfs.pmemfile
+PMEMFILE_INSTALL_DIR=$HOME/pmemfile_libs
 
-# Install nvml
-COPY install-nvml.sh install-nvml.sh
-RUN ./install-nvml.sh rpm
+mkdir $TEST_DIR
+mkdir $PF_DIR
+mkdir $MOUNTPOINT
 
-# Install syscall_intercept
-COPY install-syscall_intercept.sh install-syscall_intercept.sh
-RUN ./install-syscall_intercept.sh rpm
+# Install pmemfile
+cd $WORKDIR
+mkdir build
+cd build
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$PMEMFILE_INSTALL_DIR
+make install -j2
 
-RUN curl -L -o /googletest-1.8.0.zip https://github.com/google/googletest/archive/release-1.8.0.zip
+# Create pmemfile fs
+$MKFS_PMEMFILE $PF_POOL 3G
+export LD_LIBRARY_PATH=${PMEMFILE_INSTALL_DIR}/lib/pmemfile_debug:${LD_LIBRARY_PATH} 
 
-# Add user
-ENV USER user
-ENV USERPASS pass
-RUN useradd -m $USER
-RUN echo $USERPASS | passwd $USER --stdin
-RUN gpasswd wheel -a $USER
+# Run pmemfile testsuite short tests
+cd $PF_SQL_UTILS_DIR
 
-RUN dnf remove -y \
-	autoconf \
-	automake \
-	doxygen \
-	passwd \
-	which \
-	whois
+set +e
 
-RUN dnf autoremove -y
+./run-sqlite-testsuite.py -s $SQLITE_DIR -m $MOUNTPOINT \
+	-r $WORKDIR -p $PF_POOL -t $PF_SQL_UTILS_DIR/short_tests \
+	-f $PF_SQL_UTILS_DIR/failing_short_tests \
+	--timeout 120
 
-USER $USER
-
-# Install sqlite
-COPY install-sqlite.sh install-sqlite.sh
-RUN ./install-sqlite.sh
-
-# Set required environment variables
-ENV OS fedora
-ENV OS_VER 25
-ENV PACKAGE_MANAGER rpm
-ENV NOTTY 1
-
+cd $WORKDIR
+rm -rf build

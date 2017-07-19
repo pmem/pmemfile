@@ -61,6 +61,7 @@ RUN apt-get install -y \
 	ruby \
 	sqlite3 \
 	sudo \
+	tcl-dev \
 	wget \
 	whois
 
@@ -92,6 +93,10 @@ RUN apt-get remove -y \
 RUN apt-get autoremove -y
 
 USER $USER
+
+# Install sqlite
+COPY install-sqlite.sh install-sqlite.sh
+RUN ./install-sqlite.sh
 
 # Set required environment variables
 ENV OS ubuntu

@@ -68,6 +68,7 @@ if [[ "$command" == "" ]]; then
 	if [[ $MAKE_PKG -eq 0 ]] ; then command="./run-build.sh"; fi
 	if [[ $MAKE_PKG -eq 1 ]] ; then command="./run-build-package.sh"; fi
 	if [[ $COVERAGE -eq 1 ]] ; then command="./run-coverage.sh"; ci_env=`bash <(curl -s https://codecov.io/env)`; fi
+	if [[ $SQLITE -eq 1 ]] ; then command="sqlite/run-build-sqlite.sh"; SET_ULIMIT="--ulimit nofile=1024:1024"; fi
 fi
 
 WORKDIR=/pmemfile
@@ -78,6 +79,7 @@ WORKDIR=/pmemfile
 #  - working directory set (-w)
 sudo docker run --rm --privileged=true --name=$containerName -ti \
 	$ci_env \
+	$SET_ULIMIT \
 	--env http_proxy=$http_proxy \
 	--env https_proxy=$https_proxy \
 	--env C_COMPILER=$C_COMPILER \

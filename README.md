@@ -91,7 +91,10 @@ ls: cannot access '/tmp/mountpoint/dir_in_pmemfile': No such file or directory
 * libpmemfile[-posix].so does not support multiple processes accessing the pool
   (libpmemobj limitation)
 * libpmemfile.so supports Linux only (other UNIX-like systems could be supported)
-* libpmemfile.so supports x86\_64 only (libsyscall_intercept limitation)
+* libpmemfile.so supports x86\_64 only (libsyscall_intercept, libpmem
+  and libpmemobj limitation)
+* libpmemfile.so is not safe with remotely replicated pool (libpmemfile-posix.so
+  has no such limitation)
 
 # Debugging: #
 Environment variables:

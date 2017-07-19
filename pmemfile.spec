@@ -80,7 +80,7 @@ XXX
 
 %build
 mkdir build && cd build
-%cmake .. -DCMAKE_BUILD_TYPE=Release -DTESTS_USE_FORCED_PMEM=1
+%cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DTESTS_USE_FORCED_PMEM=1
 make %{?_smp_mflags}
 
 %install

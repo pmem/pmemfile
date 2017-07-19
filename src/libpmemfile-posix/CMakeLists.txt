@@ -194,7 +194,7 @@ if(FAULT_INJECTION)
 endif()
 
 if(PKG_CONFIG_FOUND)
-	pkg_check_modules(PMEMOBJ REQUIRED libpmemobj)
+	pkg_check_modules(PMEMOBJ REQUIRED libpmemobj>=1.3)
 else()
 	find_package(PMEMOBJ REQUIRED)
 endif()

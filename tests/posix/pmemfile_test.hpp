@@ -145,7 +145,7 @@ protected:
 	bool test_empty_dir_on_teardown;
 
 public:
-	pmemfile_test(size_t poolsize = 8 * 1024 * 1024)
+	pmemfile_test(size_t poolsize = 16 * 1024 * 1024)
 	    : path(global_path + "/poolfile"),
 	      pfp(NULL),
 	      poolsize(poolsize),

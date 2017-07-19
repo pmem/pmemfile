@@ -65,7 +65,7 @@ rm -r build
 mkdir build
 cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=/tmp/pmemfile \
-		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_BUILD_TYPE=RelWithDebInfo \
 		-DTEST_DIR=/tmp/pmemfile-tests \
 		-DTRACE_TESTS=1 \
 		-DTESTS_USE_FORCED_PMEM=1

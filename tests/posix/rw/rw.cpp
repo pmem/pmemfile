@@ -1094,10 +1094,11 @@ TEST_F(rw, sparse_files_using_lseek)
 	/* Using these two flags with directories is not supported */
 	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_HOLE), -1);
-	ASSERT_EQ(errno, ENXIO);
+	EXPECT_EQ(errno, ENXIO);
+
 	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_DATA), -1);
-	ASSERT_EQ(errno, ENXIO);
+	EXPECT_EQ(errno, ENXIO);
 
 	pmemfile_close(pfp, f);
 
@@ -1106,16 +1107,26 @@ TEST_F(rw, sparse_files_using_lseek)
 			  0644);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_HOLE), 0);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_DATA), 0);
+	/*
+	 * Seeking to data, or to hole should fail with offset
+	 * equal to file size
+	 */
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_HOLE), -1);
+	EXPECT_EQ(errno, ENXIO);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_DATA), -1);
+	EXPECT_EQ(errno, ENXIO);
 
 	/* Seeking to data, or to hole should fail with negative offset */
 	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, -1, PMEMFILE_SEEK_DATA), -1);
-	ASSERT_EQ(errno, ENXIO);
+	EXPECT_EQ(errno, ENXIO);
+
 	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, -1, PMEMFILE_SEEK_HOLE), -1);
-	ASSERT_EQ(errno, ENXIO);
+	EXPECT_EQ(errno, ENXIO);
 
 	/*
 	 * Seeking to hole, or to data should fail with offset
@@ -1123,10 +1134,11 @@ TEST_F(rw, sparse_files_using_lseek)
 	 */
 	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_HOLE), -1);
-	ASSERT_EQ(errno, ENXIO);
+	EXPECT_EQ(errno, ENXIO);
+
 	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_DATA), -1);
-	ASSERT_EQ(errno, ENXIO);
+	EXPECT_EQ(errno, ENXIO);
 
 	/* creating a sparse file using seek + write */
 	size = 4096 + 5;
@@ -1143,9 +1155,14 @@ TEST_F(rw, sparse_files_using_lseek)
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 4095, PMEMFILE_SEEK_HOLE), 4095);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 4096, PMEMFILE_SEEK_HOLE), size);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 4097, PMEMFILE_SEEK_HOLE), size);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_HOLE), size);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_HOLE), -1);
+	EXPECT_EQ(errno, ENXIO);
+
+	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, size + 1, PMEMFILE_SEEK_HOLE), -1);
-	ASSERT_EQ(errno, ENXIO);
+	EXPECT_EQ(errno, ENXIO);
 
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_DATA), 4096);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_DATA), 4096);
@@ -1154,9 +1171,14 @@ TEST_F(rw, sparse_files_using_lseek)
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 4096, PMEMFILE_SEEK_DATA), 4096);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 4097, PMEMFILE_SEEK_DATA), 4097);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 4098, PMEMFILE_SEEK_DATA), 4098);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_DATA), size);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_DATA), -1);
+	EXPECT_EQ(errno, ENXIO);
+
+	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, size + 1, PMEMFILE_SEEK_DATA), -1);
-	ASSERT_EQ(errno, ENXIO);
+	EXPECT_EQ(errno, ENXIO);
 
 	/* Read the whole file */
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_SET), 0);
@@ -1198,10 +1220,14 @@ TEST_F(rw, sparse_files_using_lseek)
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 4095, PMEMFILE_SEEK_HOLE), size);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 4096, PMEMFILE_SEEK_HOLE), size);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 4097, PMEMFILE_SEEK_HOLE), size);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_HOLE), size);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_HOLE), -1);
+	EXPECT_EQ(errno, ENXIO);
+
 	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, size + 1, PMEMFILE_SEEK_HOLE), -1);
-	ASSERT_EQ(errno, ENXIO);
+	EXPECT_EQ(errno, ENXIO);
 
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_DATA), 1);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_DATA), 0);
@@ -1210,10 +1236,14 @@ TEST_F(rw, sparse_files_using_lseek)
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 4096, PMEMFILE_SEEK_DATA), 4096);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 4097, PMEMFILE_SEEK_DATA), 4097);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 4098, PMEMFILE_SEEK_DATA), 4098);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_DATA), size);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_DATA), -1);
+	EXPECT_EQ(errno, ENXIO);
+
 	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, size + 1, PMEMFILE_SEEK_DATA), -1);
-	ASSERT_EQ(errno, ENXIO);
+	EXPECT_EQ(errno, ENXIO);
 
 	/*
 	 * The following tests would become too complicated without assuming
@@ -1246,10 +1276,14 @@ TEST_F(rw, sparse_files_using_lseek)
 		  hole + 1);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, size - 1, PMEMFILE_SEEK_HOLE),
 		  size - 1);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_HOLE), size);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_HOLE), -1);
+	EXPECT_EQ(errno, ENXIO);
+
 	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, size + 1, PMEMFILE_SEEK_HOLE), -1);
-	ASSERT_EQ(errno, ENXIO);
+	EXPECT_EQ(errno, ENXIO);
 
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_DATA), 1);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_DATA), 0);
@@ -1259,10 +1293,14 @@ TEST_F(rw, sparse_files_using_lseek)
 	ASSERT_EQ(pmemfile_lseek(pfp, f, hole, PMEMFILE_SEEK_DATA), size);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, hole + 1, PMEMFILE_SEEK_DATA), size);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, size - 1, PMEMFILE_SEEK_DATA), size);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_DATA), size);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_DATA), -1);
+	EXPECT_EQ(errno, ENXIO);
+
 	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, size + 1, PMEMFILE_SEEK_DATA), -1);
-	ASSERT_EQ(errno, ENXIO);
+	EXPECT_EQ(errno, ENXIO);
 
 	/*
 	 * Now try the same thing, but with some blocks allocated at offset
@@ -1282,10 +1320,14 @@ TEST_F(rw, sparse_files_using_lseek)
 		  hole + 1);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, size - 1, PMEMFILE_SEEK_HOLE),
 		  size - 1);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_HOLE), size);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_HOLE), -1);
+	EXPECT_EQ(errno, ENXIO);
+
 	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, size + 1, PMEMFILE_SEEK_HOLE), -1);
-	ASSERT_EQ(errno, ENXIO);
+	EXPECT_EQ(errno, ENXIO);
 
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_DATA), 1);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_DATA), 0);
@@ -1295,10 +1337,14 @@ TEST_F(rw, sparse_files_using_lseek)
 	ASSERT_EQ(pmemfile_lseek(pfp, f, hole, PMEMFILE_SEEK_DATA), size);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, hole + 1, PMEMFILE_SEEK_DATA), size);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, size - 1, PMEMFILE_SEEK_DATA), size);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_DATA), size);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_DATA), -1);
+	EXPECT_EQ(errno, ENXIO);
+
 	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, size + 1, PMEMFILE_SEEK_DATA), -1);
-	ASSERT_EQ(errno, ENXIO);
+	EXPECT_EQ(errno, ENXIO);
 
 	/*
 	 * Increasing file size, to include to new blocks previously allocated.
@@ -1318,10 +1364,15 @@ TEST_F(rw, sparse_files_using_lseek)
 	ASSERT_EQ(pmemfile_lseek(pfp, f, hole + 1, PMEMFILE_SEEK_HOLE),
 		  hole + 1);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, size - 1, PMEMFILE_SEEK_HOLE), size);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_HOLE), size);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_HOLE), -1);
+	EXPECT_EQ(errno, ENXIO);
+
 	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, size + 1, PMEMFILE_SEEK_HOLE), -1);
-	ASSERT_EQ(errno, ENXIO);
+	EXPECT_EQ(errno, ENXIO);
+
 	ASSERT_EQ(pmemfile_lseek(pfp, f, hole_end - 1, PMEMFILE_SEEK_HOLE),
 		  hole_end - 1);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, hole_end, PMEMFILE_SEEK_HOLE), size);
@@ -1344,10 +1395,14 @@ TEST_F(rw, sparse_files_using_lseek)
 		  hole_end);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, size - 1, PMEMFILE_SEEK_DATA),
 		  size - 1);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_DATA), size);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_DATA), -1);
+	EXPECT_EQ(errno, ENXIO);
+
 	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, size + 1, PMEMFILE_SEEK_DATA), -1);
-	ASSERT_EQ(errno, ENXIO);
+	EXPECT_EQ(errno, ENXIO);
 
 end:
 	pmemfile_close(pfp, f);

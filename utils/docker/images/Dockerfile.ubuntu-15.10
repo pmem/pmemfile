@@ -59,6 +59,8 @@ RUN apt-get install -y \
 	pkg-config \
 	sqlite3 \
 	sudo \
+	tcl-dev \
+	wget \
 	whois
 
 # Install valgrind
@@ -89,6 +91,10 @@ RUN apt-get remove -y \
 RUN apt-get autoremove -y
 
 USER $USER
+
+# Install sqlite
+COPY install-sqlite.sh install-sqlite.sh
+RUN ./install-sqlite.sh
 
 # Set required environment variables
 ENV OS ubuntu

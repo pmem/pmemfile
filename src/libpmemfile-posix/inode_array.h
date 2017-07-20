@@ -36,11 +36,23 @@
 #include "inode.h"
 #include "layout.h"
 
+
+void _inode_array_add(PMEMfilepool *pfp,
+		TOID(struct pmemfile_inode_array) array,
+		TOID(struct pmemfile_inode) tinode,
+		struct pmemfile_inode_array **ins,
+		unsigned *ins_idx,
+		bool lock);
 void inode_array_add(PMEMfilepool *pfp,
 		TOID(struct pmemfile_inode_array) array,
 		TOID(struct pmemfile_inode) tinode,
 		struct pmemfile_inode_array **ins,
 		unsigned *ins_idx);
+
+void _inode_array_unregister(PMEMfilepool *pfp,
+		struct pmemfile_inode_array *cur,
+		unsigned idx,
+		bool lock);
 void inode_array_unregister(PMEMfilepool *pfp,
 		struct pmemfile_inode_array *cur,
 		unsigned idx);

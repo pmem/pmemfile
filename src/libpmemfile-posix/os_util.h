@@ -47,4 +47,6 @@ const char *os_getexecname(void);
 
 #endif	/* DEBUG */
 
+int os_usleep(unsigned usec);
+
 #endif

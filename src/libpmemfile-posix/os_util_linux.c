@@ -76,3 +76,9 @@ os_getexecname(void)
 	return namepath;
 }
 #endif	/* DEBUG */
+
+int
+os_usleep(unsigned usec)
+{
+	return usleep(usec);
+}

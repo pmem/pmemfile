@@ -14,7 +14,7 @@ It consists of 2 major compoments:
 
 Requirements:
 - cmake >= 3.3
-- libpmemobj-dev(el) >= 1.2 (http://pmem.io/nvml/)
+- libpmemobj-dev(el) >= 1.3 (http://pmem.io/nvml/)
 - libsyscall_intercept-dev(el) (https://github.com/pmem/syscall_intercept)
 
 ```sh

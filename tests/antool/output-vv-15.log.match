@@ -1,0 +1,55 @@
+unsupported syscall:        	chroot          	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall:        	chroot          	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall:        	setxattr        	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall:        	lsetxattr       	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall:        	setxattr        	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall:        	lsetxattr       	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall:        	fsetxattr       	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall:        	listxattr       	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall:        	llistxattr      	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall:        	flistxattr      	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall:        	removexattr     	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall:        	lremovexattr    	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall:        	fremovexattr    	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall yet:    	mmap            	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall:        	execve          	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall:        	execveat        	 "/tmp/antool $(S)" "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall yet:    	flock           	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall:        	readahead       	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall yet:    	sendfile64      	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+unsupported syscall yet:    	sendfile64      	 "/tmp/antool $(S)/nonp $(S)/tmp $(S)" "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall yet:    	sendfile64      	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall yet:    	splice          	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+unsupported syscall yet:    	splice          	 "/tmp/antool $(S)/nonp $(S)/tmp $(S)" "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall yet:    	splice          	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall:        	name_to_handle_at	 "/tmp/antool $(S)" "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall yet:    	copy_file_range 	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+unsupported syscall yet:    	copy_file_range 	 "/tmp/antool $(S)/nonp $(S)/tmp $(S)" "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported syscall yet:    	copy_file_range 	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]  
+unsupported flag:           	open            	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] O_ASYNC
+unsupported flag:           	openat          	 "/tmp/antool $(S)" "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] O_ASYNC
+unsupported flag:           	renameat2       	 "/tmp/antool $(S)" "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   "/tmp/antool $(S)" "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] RENAME_WHITEOUT
+unsupported flag:           	fallocate       	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] FALLOC_FL_COLLAPSE_RANGE
+unsupported flag:           	fallocate       	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] FALLOC_FL_ZERO_RANGE
+unsupported flag:           	fallocate       	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] FALLOC_FL_INSERT_RANGE
+unsupported flag:           	fcntl           	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] F_SETFD: not possible to clear FD_CLOEXEC flag
+unsupported flag:           	fcntl           	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] F_GETLK
+unsupported flag:           	fcntl           	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] F_SETLK
+unsupported flag:           	fcntl           	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] F_SETLKW
+unsupported flag:           	fcntl           	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] F_SETOWN
+unsupported flag:           	fcntl           	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] F_GETOWN_EX
+unsupported flag:           	fcntl           	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] F_SETSIG
+unsupported flag:           	fcntl           	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] F_GETSIG
+unsupported flag:           	fcntl           	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] F_SETOWN_EX
+unsupported flag:           	fcntl           	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] F_GETOWN_EX
+unsupported flag:           	fcntl           	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] F_OFD_GETLK
+unsupported flag:           	fcntl           	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] F_OFD_SETLK
+unsupported flag:           	fcntl           	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] F_OFD_SETLKW
+unsupported flag:           	fcntl           	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] F_SETLEASE
+unsupported flag:           	fcntl           	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] F_GETLEASE
+unsupported flag:           	fcntl           	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] F_NOTIFY
+unsupported flag:           	fcntl           	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] F_ADD_SEALS
+unsupported flag:           	fcntl           	 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]   [unsupported flag:] F_GET_SEALS
+unsupported flag:           	clone           	 [unsupported flag:] flags other than set by pthread_create()
+unsupported syscall:        	fork            	
+unsupported syscall:        	vfork           	

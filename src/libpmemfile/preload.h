@@ -81,6 +81,10 @@ struct pool_description {
 	 */
 	struct pmemfilepool *pool;
 
+	pthread_mutex_t process_switching_lock;
+	int ref_cnt;
+	bool suspended;
+
 	/* Data about the root directory inside the pmemfile pool */
 	struct stat pmem_stat;
 };
@@ -132,5 +136,8 @@ void resolve_path(struct fd_desc at,
 			const char *path,
 			struct resolved_path *result,
 			int flags);
+
+void pool_get(struct pool_description *pool);
+void pool_put(struct pool_description *pool);
 
 #endif

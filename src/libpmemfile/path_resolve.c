@@ -70,11 +70,14 @@ get_stat(struct resolved_path *result, struct stat *buf)
 			return -1;
 		}
 	} else {
-		int r = pmemfile_fstatat(result->at.pmem_fda.pool->pool,
-			result->at.pmem_fda.file,
-			result->path,
-			(pmemfile_stat_t *)buf,
+		struct pool_description *pool = result->at.pmem_fda.pool;
+		pool_get(pool);
+
+		int r = pmemfile_fstatat(pool->pool, result->at.pmem_fda.file,
+			result->path, (pmemfile_stat_t *)buf,
 			AT_SYMLINK_NOFOLLOW);
+
+		pool_put(pool);
 
 		if (r == 0) {
 			return 0;
@@ -115,11 +118,16 @@ resolve_symlink(struct resolved_path *result,
 			return;
 		}
 	} else {
-		link_len = pmemfile_readlinkat(result->at.pmem_fda.pool->pool,
+		struct pool_description *pool = result->at.pmem_fda.pool;
+		pool_get(pool);
+
+		link_len = pmemfile_readlinkat(pool->pool,
 				result->at.pmem_fda.file,
 				result->path,
 				link_buf,
 				sizeof(link_buf) - 1);
+
+		pool_put(pool);
 
 		if (link_len < 0) {
 			assert(errno != 0);

@@ -77,6 +77,7 @@
 #include "syscall_early_filter.h"
 
 static long log_fd = -1;
+static bool process_switching;
 
 static void
 log_init(const char *path, const char *trunc)
@@ -132,6 +133,46 @@ static bool is_memfd_syscall_available;
 #define RWF_SYNC 0x00000004
 #endif
 
+void
+pool_get(struct pool_description *pool)
+{
+	if (!process_switching)
+		return;
+
+	util_mutex_lock(&pool->process_switching_lock);
+	pool->ref_cnt++;
+
+	if (pool->ref_cnt == 1 && pool->suspended) {
+		if (pmemfile_pool_restore(pool->pool, pool->poolfile_path))
+			FATAL("could not restore pmemfile pool");
+		pool->suspended = false;
+	}
+
+	util_mutex_unlock(&pool->process_switching_lock);
+}
+
+void
+pool_put(struct pool_description *pool)
+{
+	if (!process_switching)
+		return;
+
+	int oerrno = errno;
+
+	util_mutex_lock(&pool->process_switching_lock);
+	pool->ref_cnt--;
+
+	if (pool->ref_cnt == 0 && !pool->suspended) {
+		if (pmemfile_pool_suspend(pool->pool))
+			FATAL("could not suspend pmemfile pool");
+		pool->suspended = true;
+	}
+
+	util_mutex_unlock(&pool->process_switching_lock);
+
+	errno = oerrno;
+}
+
 struct pmemfile_entry {
 	struct fd_association pmemfile;
 	int ref_count;
@@ -174,10 +215,14 @@ fd_unref(long fd, struct fd_association *file)
 	if (__sync_sub_and_fetch(&fd_table[fd].ref_count, 1) == 0) {
 		(void) syscall_no_intercept(SYS_close, fd);
 
-		log_write("pmemfile_close(%p, %p) = 0",
-		    (void *)file->pool->pool, (void *)file->file);
+		struct pool_description *pool = file->pool;
+		pool_get(pool);
 
-		pmemfile_close(file->pool->pool, file->file);
+		log_write("pmemfile_close(%p, %p)", pool->pool, file->file);
+
+		pmemfile_close(pool->pool, file->file);
+
+		pool_put(pool);
 	}
 }
 
@@ -346,6 +391,7 @@ hook_close(long fd)
 static long
 hook_write(struct fd_association *file, const char *buffer, size_t count)
 {
+	assert(!file->pool->suspended);
 	long r = pmemfile_write(file->pool->pool, file->file, buffer, count);
 
 	if (r < 0)
@@ -361,6 +407,7 @@ hook_write(struct fd_association *file, const char *buffer, size_t count)
 static long
 hook_writev(struct fd_association *file, const struct iovec *iov, int iovcnt)
 {
+	assert(!file->pool->suspended);
 	long r = pmemfile_writev(file->pool->pool, file->file, iov, iovcnt);
 
 	if (r < 0)
@@ -376,6 +423,7 @@ hook_writev(struct fd_association *file, const struct iovec *iov, int iovcnt)
 static long
 hook_read(struct fd_association *file, char *buffer, size_t count)
 {
+	assert(!file->pool->suspended);
 	long r = pmemfile_read(file->pool->pool, file->file, buffer, count);
 
 	if (r < 0)
@@ -391,6 +439,7 @@ hook_read(struct fd_association *file, char *buffer, size_t count)
 static long
 hook_readv(struct fd_association *file, const struct iovec *iov, int iovcnt)
 {
+	assert(!file->pool->suspended);
 	long r = pmemfile_readv(file->pool->pool, file->file, iov, iovcnt);
 
 	if (r < 0)
@@ -406,6 +455,7 @@ hook_readv(struct fd_association *file, const struct iovec *iov, int iovcnt)
 static long
 hook_lseek(struct fd_association *file, long offset, int whence)
 {
+	assert(!file->pool->suspended);
 	long r = pmemfile_lseek(file->pool->pool, file->file, offset, whence);
 
 	log_write("pmemfile_lseek(%p, %p, %lu, %d) = %ld",
@@ -443,7 +493,9 @@ hook_linkat(long fd0, long arg0, long fd1, long arg1, long flags)
 		    where_old.at.kernel_fd, where_old.path,
 		    where_new.at.kernel_fd, where_new.path, flags);
 	} else {
-		int r = pmemfile_linkat(where_old.at.pmem_fda.pool->pool,
+		struct pool_description *pool = where_old.at.pmem_fda.pool;
+		pool_get(pool);
+		int r = pmemfile_linkat(pool->pool,
 			    where_old.at.pmem_fda.file, where_old.path,
 			    where_new.at.pmem_fda.file, where_new.path,
 				(int)flags);
@@ -452,10 +504,10 @@ hook_linkat(long fd0, long arg0, long fd1, long arg1, long flags)
 			r = -errno;
 
 		log_write("pmemfile_link(%p, \"%s\", \"%s\", %ld) = %d",
-		    (void *)where_old.at.pmem_fda.pool->pool,
-		    where_old.path, where_new.path, flags, r);
+		    pool->pool, where_old.path, where_new.path, flags, r);
 
 		ret = check_errno(r, SYS_linkat);
+		pool_put(pool);
 	}
 
 	fd_release(&at0);
@@ -482,16 +534,20 @@ hook_unlinkat(long fd, long path_arg, long flags)
 		ret = syscall_no_intercept(SYS_unlinkat,
 				where.at.kernel_fd, where.path, flags);
 	} else {
-		int r = pmemfile_unlinkat(where.at.pmem_fda.pool->pool,
-			where.at.pmem_fda.file, where.path, (int)flags);
+		struct pool_description *pool = where.at.pmem_fda.pool;
+		pool_get(pool);
+
+		int r = pmemfile_unlinkat(pool->pool, where.at.pmem_fda.file,
+				where.path, (int)flags);
 
 		if (r != 0)
 			r = -errno;
 
-		log_write("pmemfile_unlink(%p, \"%s\") = %d",
-			(void *)where.at.pmem_fda.pool->pool, where.path, r);
+		log_write("pmemfile_unlink(%p, \"%s\") = %d", pool->pool,
+				where.path, r);
 
 		ret = check_errno(r, SYS_unlinkat);
+		pool_put(pool);
 	}
 
 	fd_release(&at);
@@ -525,6 +581,7 @@ hook_chdir(const char *path)
 			syscall_no_intercept(SYS_chdir, cwd_pool->mount_point);
 		}
 
+		pool_get(cwd_pool);
 		if (pmemfile_chdir(cwd_pool->pool, where.path) == 0)
 			result = 0;
 		else
@@ -534,6 +591,7 @@ hook_chdir(const char *path)
 		    cwd_pool->pool, where.path, result);
 
 		check_errno(result, SYS_chdir);
+		pool_put(cwd_pool);
 	}
 
 	util_rwlock_unlock(&pmem_cwd_lock);
@@ -556,17 +614,21 @@ hook_fchdir(long fd)
 	util_rwlock_wrlock(&pmem_cwd_lock);
 
 	if (!is_fda_null(&file)) {
-		if (pmemfile_fchdir(file.pool->pool, file.file) == 0) {
+		struct pool_description *pool = file.pool;
+		pool_get(pool);
+
+		if (pmemfile_fchdir(pool->pool, file.file) == 0) {
 			cwd_pool = file.pool;
 			result = 0;
 		} else {
 			result = -errno;
 		}
 
-		log_write("pmemfile_fchdir(%p, %p) = %ld",
-			file.pool->pool, file.file, result);
+		log_write("pmemfile_fchdir(%p, %p) = %ld", pool->pool,
+				file.file, result);
 
 		check_errno(result, SYS_fchdir);
+		pool_put(pool);
 	} else {
 		result = syscall_no_intercept(SYS_fchdir, fd);
 		if (result == 0)
@@ -592,10 +654,15 @@ hook_getcwd(char *buf, size_t size)
 
 	strcpy(buf, cwd_pool->mount_point);
 
+	long ret;
+	pool_get(cwd_pool);
 	if (pmemfile_getcwd(cwd_pool->pool, buf + mlen, size - mlen) == NULL)
-		return check_errno(-errno, SYS_getcwd);
+		ret = check_errno(-errno, SYS_getcwd);
+	else
+		ret = 0;
+	pool_put(cwd_pool);
 
-	return 0;
+	return ret;
 }
 
 static long
@@ -616,7 +683,10 @@ hook_newfstatat(long fd, long arg0, long arg1, long arg2)
 		ret = syscall_no_intercept(SYS_newfstatat,
 		    where.at.kernel_fd, where.path, arg1, arg2);
 	} else {
-		int r = pmemfile_fstatat(where.at.pmem_fda.pool->pool,
+		struct pool_description *pool = where.at.pmem_fda.pool;
+		pool_get(pool);
+
+		int r = pmemfile_fstatat(pool->pool,
 			where.at.pmem_fda.file,
 			where.path,
 			(pmemfile_stat_t *)arg1, (int)arg2);
@@ -625,6 +695,7 @@ hook_newfstatat(long fd, long arg0, long arg1, long arg2)
 			r = -errno;
 
 		ret = check_errno(r, SYS_newfstatat);
+		pool_put(pool);
 	}
 
 	fd_release(&at);
@@ -635,6 +706,7 @@ hook_newfstatat(long fd, long arg0, long arg1, long arg2)
 static long
 hook_fstat(struct fd_association *file, long buf_addr)
 {
+	assert(!file->pool->suspended);
 	long r = pmemfile_fstat(file->pool->pool, file->file,
 			(pmemfile_stat_t *)buf_addr);
 
@@ -651,6 +723,7 @@ hook_fstat(struct fd_association *file, long buf_addr)
 static long
 hook_pread64(struct fd_association *file, char *buf, size_t count, off_t pos)
 {
+	assert(!file->pool->suspended);
 	long r = pmemfile_pread(file->pool->pool, file->file, buf, count, pos);
 
 	if (r < 0)
@@ -667,6 +740,7 @@ static long
 hook_preadv(struct fd_association *file, const struct iovec *iov, int iovcnt,
 		off_t pos)
 {
+	assert(!file->pool->suspended);
 	long r = pmemfile_preadv(file->pool->pool, file->file, iov, iovcnt,
 			pos);
 
@@ -684,6 +758,7 @@ static long
 hook_preadv2(struct fd_association *file, const struct iovec *iov, int iovcnt,
 		off_t pos, int flags)
 {
+	assert(!file->pool->suspended);
 	if (flags & ~(RWF_DSYNC | RWF_HIPRI | RWF_SYNC))
 		return -EINVAL;
 
@@ -694,6 +769,7 @@ static long
 hook_pwrite64(struct fd_association *file, const char *buf, size_t count,
 		off_t pos)
 {
+	assert(!file->pool->suspended);
 	long r = pmemfile_pwrite(file->pool->pool, file->file, buf, count, pos);
 
 	if (r < 0)
@@ -710,6 +786,7 @@ static long
 hook_pwritev(struct fd_association *file, const struct iovec *iov, int iovcnt,
 		off_t pos)
 {
+	assert(!file->pool->suspended);
 	long r = pmemfile_pwritev(file->pool->pool, file->file, iov, iovcnt,
 			pos);
 
@@ -727,6 +804,7 @@ static long
 hook_pwritev2(struct fd_association *file, const struct iovec *iov, int iovcnt,
 		off_t pos, int flags)
 {
+	assert(!file->pool->suspended);
 	if (flags & ~(RWF_DSYNC | RWF_HIPRI | RWF_SYNC))
 		return -EINVAL;
 
@@ -749,17 +827,21 @@ hook_faccessat(long fd, long path_arg, long mode)
 		ret = syscall_no_intercept(SYS_faccessat,
 		    where.at.kernel_fd, where.path, mode);
 	} else {
-		long r = pmemfile_faccessat(where.at.pmem_fda.pool->pool,
-			where.at.pmem_fda.file, where.path, (int)mode, 0);
+		struct pool_description *pool = where.at.pmem_fda.pool;
+		pool_get(pool);
+
+		long r = pmemfile_faccessat(pool->pool, where.at.pmem_fda.file,
+				where.path, (int)mode, 0);
 
 		log_write("pmemfile_faccessat(%p, %p, \"%s\", %ld, 0) = %ld",
-			(void *)where.at.pmem_fda.pool->pool,
-			where.at.pmem_fda.file, where.path, mode, r);
+			pool->pool, where.at.pmem_fda.file, where.path, mode,
+			r);
 
 		if (r)
 			ret = check_errno(-errno, SYS_faccessat);
 		else
 			ret = 0;
+		pool_put(pool);
 	}
 
 	fd_release(&at);
@@ -770,6 +852,7 @@ hook_faccessat(long fd, long path_arg, long mode)
 static long
 hook_getdents(struct fd_association *dir, long dirp, unsigned count)
 {
+	assert(!dir->pool->suspended);
 	long r = pmemfile_getdents(dir->pool->pool, dir->file,
 	    (struct linux_dirent *)dirp, count);
 
@@ -786,6 +869,7 @@ hook_getdents(struct fd_association *dir, long dirp, unsigned count)
 static long
 hook_getdents64(struct fd_association *dir, long dirp, unsigned count)
 {
+	assert(!dir->pool->suspended);
 	long r = pmemfile_getdents64(dir->pool->pool, dir->file,
 	    (struct linux_dirent64 *)dirp, count);
 
@@ -852,17 +936,21 @@ hook_mkdirat(long fd, long path_arg, long mode)
 		ret = syscall_no_intercept(SYS_mkdirat,
 		    where.at.kernel_fd, where.path, mode);
 	} else {
-		long r = pmemfile_mkdirat(where.at.pmem_fda.pool->pool,
-			where.at.pmem_fda.file, where.path, (mode_t)mode);
+		struct pool_description *pool = where.at.pmem_fda.pool;
+		pool_get(pool);
+
+		long r = pmemfile_mkdirat(pool->pool, where.at.pmem_fda.file,
+				where.path, (mode_t)mode);
 
 		log_write("pmemfile_mkdirat(%p, \"%s\", 0%lo) = %ld",
-			(void *)where.at.pmem_fda.pool->pool, where.path,
-			mode, r);
+			pool->pool, where.path, mode, r);
 
 		if (r)
 			ret = check_errno(-errno, SYS_mkdirat);
 		else
 			ret = 0;
+
+		pool_put(pool);
 	}
 
 	fd_release(&at);
@@ -873,19 +961,23 @@ hook_mkdirat(long fd, long path_arg, long mode)
 static long
 openat_helper(long fd, struct resolved_path *where, long flags, long mode)
 {
-	PMEMfile *file = pmemfile_openat(where->at.pmem_fda.pool->pool,
+	struct pool_description *pool = where->at.pmem_fda.pool;
+	pool_get(pool);
+
+	PMEMfile *file = pmemfile_openat(pool->pool,
 					where->at.pmem_fda.file,
 					where->path,
 					((int)flags) & ~O_NONBLOCK,
 					(mode_t)mode);
 
 	log_write("pmemfile_openat(%p, %p, \"%s\", 0x%x, %u) = %p",
-					(void *)where->at.pmem_fda.pool->pool,
-					(void *)where->at.pmem_fda.file,
+					pool->pool,
+					where->at.pmem_fda.file,
 					where->path,
 					((int)flags) & ~O_NONBLOCK,
 					(mode_t)mode,
 					file);
+	pool_put(pool);
 
 	if (file == NULL) {
 		(void) syscall_no_intercept(SYS_close, fd);
@@ -953,6 +1045,7 @@ hook_openat(long fd_at, long arg0, long flags, long mode)
 static long
 hook_fcntl(struct fd_association *file, int cmd, long arg)
 {
+	assert(!file->pool->suspended);
 	int r = pmemfile_fcntl(file->pool->pool, file->file, cmd, arg);
 
 	if (r < 0)
@@ -967,6 +1060,7 @@ hook_fcntl(struct fd_association *file, int cmd, long arg)
 static long
 hook_flock(struct fd_association *file, int operation)
 {
+	assert(!file->pool->suspended);
 	int r = pmemfile_flock(file->pool->pool, file->file, operation);
 
 	if (r < 0)
@@ -1010,7 +1104,10 @@ hook_renameat2(long fd_old, const char *path_old, long fd_new,
 			    where_new.at.kernel_fd, where_new.path, flags);
 		}
 	} else {
-		int r = pmemfile_renameat2(where_old.at.pmem_fda.pool->pool,
+		struct pool_description *pool = where_old.at.pmem_fda.pool;
+		pool_get(pool);
+
+		int r = pmemfile_renameat2(pool->pool,
 				where_old.at.pmem_fda.file, where_old.path,
 				where_new.at.pmem_fda.file, where_new.path,
 				flags);
@@ -1019,10 +1116,10 @@ hook_renameat2(long fd_old, const char *path_old, long fd_new,
 			r = -errno;
 
 		log_write("pmemfile_renameat2(%p, \"%s\", \"%s\", %u) = %d",
-			(void *)where_old.at.pmem_fda.pool->pool,
-			where_old.path, where_new.path, flags, r);
+			pool->pool, where_old.path, where_new.path, flags, r);
 
 		ret = check_errno(r, SYS_renameat2);
+		pool_put(pool);
 	}
 
 	fd_release(&at_old);
@@ -1044,15 +1141,18 @@ hook_truncate(const char *path, off_t length)
 		return syscall_no_intercept(SYS_truncate,
 		    where.at.kernel_fd, where.path, length);
 
-	int r = pmemfile_truncate(where.at.pmem_fda.pool->pool,
-					where.path, length);
+	struct pool_description *pool = where.at.pmem_fda.pool;
+	pool_get(pool);
+
+	int r = pmemfile_truncate(pool->pool, where.path, length);
 
 	if (r != 0)
 		r = -errno;
 
-	log_write("pmemfile_truncate(%p, \"%s\", %lu) = %d",
-	    (void *)where.at.pmem_fda.pool->pool,
-	    where.path, length, r);
+	log_write("pmemfile_truncate(%p, \"%s\", %lu) = %d", pool->pool,
+			where.path, length, r);
+
+	pool_put(pool);
 
 	return check_errno(r, SYS_truncate);
 }
@@ -1060,6 +1160,7 @@ hook_truncate(const char *path, off_t length)
 static long
 hook_ftruncate(struct fd_association *file, off_t length)
 {
+	assert(!file->pool->suspended);
 	int r = pmemfile_ftruncate(file->pool->pool, file->file, length);
 
 	if (r < 0)
@@ -1086,17 +1187,21 @@ hook_symlinkat(const char *target, long fd, const char *linkpath)
 		ret = syscall_no_intercept(SYS_symlinkat, target,
 		    where.at.kernel_fd, where.path);
 	} else {
-		int r = pmemfile_symlinkat(where.at.pmem_fda.pool->pool, target,
+		struct pool_description *pool = where.at.pmem_fda.pool;
+		pool_get(pool);
+
+		int r = pmemfile_symlinkat(pool->pool, target,
 				where.at.pmem_fda.file, where.path);
 
 		if (r != 0)
 			r = -errno;
 
 		log_write("pmemfile_symlinkat(%p, \"%s\", %p, \"%s\") = %d",
-			(void *)where.at.pmem_fda.pool->pool, target,
-			(void *)where.at.pmem_fda.file, where.path, r);
+			pool->pool, target, where.at.pmem_fda.file, where.path,
+			r);
 
 		ret = check_errno(r, SYS_symlinkat);
+		pool_put(pool);
 	}
 
 	fd_release(&at);
@@ -1107,6 +1212,7 @@ hook_symlinkat(const char *target, long fd, const char *linkpath)
 static long
 hook_fchmod(struct fd_association *file, mode_t mode)
 {
+	assert(!file->pool->suspended);
 	int r = pmemfile_fchmod(file->pool->pool, file->file, mode);
 
 	if (r < 0)
@@ -1134,18 +1240,21 @@ hook_fchmodat(long fd, const char *path, mode_t mode)
 		ret = syscall_no_intercept(SYS_fchmodat,
 		    where.at.kernel_fd, where.path, mode);
 	} else {
-		int r = pmemfile_fchmodat(where.at.pmem_fda.pool->pool,
-				where.at.pmem_fda.file, where.path, mode, 0);
+		struct pool_description *pool = where.at.pmem_fda.pool;
+		pool_get(pool);
+
+		int r = pmemfile_fchmodat(pool->pool, where.at.pmem_fda.file,
+				where.path, mode, 0);
 
 		if (r != 0)
 			r = -errno;
 
 		log_write("pmemfile_fchmodat(%p, %p, \"%s\", 0%o, 0) = %d",
-			(void *)where.at.pmem_fda.pool->pool,
-			(void *)where.at.pmem_fda.file,
-			where.path, mode, r);
+			pool->pool, where.at.pmem_fda.file, where.path, mode,
+			r);
 
 		ret = check_errno(r, SYS_fchmodat);
+		pool_put(pool);
 	}
 
 	fd_release(&at);
@@ -1156,6 +1265,7 @@ hook_fchmodat(long fd, const char *path, mode_t mode)
 static long
 hook_fchown(struct fd_association *file, uid_t owner, gid_t group)
 {
+	assert(!file->pool->suspended);
 	int r = pmemfile_fchown(file->pool->pool, file->file, owner, group);
 
 	if (r < 0)
@@ -1186,19 +1296,21 @@ hook_fchownat(long fd, const char *path,
 		ret = syscall_no_intercept(SYS_fchownat,
 		    where.at.kernel_fd, where.path, owner, group, flags);
 	} else {
-		int r = pmemfile_fchownat(where.at.pmem_fda.pool->pool,
-				where.at.pmem_fda.file, where.path, owner,
-				group, flags);
+		struct pool_description *pool = where.at.pmem_fda.pool;
+		pool_get(pool);
+
+		int r = pmemfile_fchownat(pool->pool, where.at.pmem_fda.file,
+				where.path, owner, group, flags);
 
 		if (r != 0)
 			r = -errno;
 
 		log_write("pmemfile_fchownat(%p, %p, \"%s\", %d, %d, %d) = %d",
-			(void *)where.at.pmem_fda.pool->pool,
-			(void *)where.at.pmem_fda.file,
-			where.path, owner, group, flags, r);
+			pool->pool, where.at.pmem_fda.file, where.path, owner,
+			group, flags, r);
 
 		ret = check_errno(r, SYS_fchownat);
+		pool_put(pool);
 	}
 
 	fd_release(&at);
@@ -1235,7 +1347,10 @@ hook_readlinkat(long fd, const char *path,
 		ret = syscall_no_intercept(SYS_readlinkat,
 		    where.at.kernel_fd, where.path, buf, bufsiz);
 	} else {
-		ssize_t r = pmemfile_readlinkat(where.at.pmem_fda.pool->pool,
+		struct pool_description *pool = where.at.pmem_fda.pool;
+		pool_get(pool);
+
+		ssize_t r = pmemfile_readlinkat(pool->pool,
 				where.at.pmem_fda.file, where.path, buf,
 				bufsiz);
 
@@ -1244,14 +1359,13 @@ hook_readlinkat(long fd, const char *path,
 		else
 			assert(r < INT_MAX);
 
-		log_write("pmemfile_readlinkat(%p, %p, \"%s\", \"%.*s\", %zu) "
-				"= %zd",
-			(void *)where.at.pmem_fda.pool->pool,
-			(void *)where.at.pmem_fda.file,
-			where.path, r >= 0 ? (int)r : 0, r >= 0 ? buf : "",
-			bufsiz, r);
+		log_write(
+			"pmemfile_readlinkat(%p, %p, \"%s\", \"%.*s\", %zu) = %zd",
+			pool->pool, where.at.pmem_fda.file, where.path,
+			r >= 0 ? (int)r : 0, r >= 0 ? buf : "", bufsiz, r);
 
 		ret = check_errno(r, SYS_readlinkat);
+		pool_put(pool);
 	}
 
 	fd_release(&at);
@@ -1308,8 +1422,11 @@ hook_futimesat(long fd, const char *path,
 		ret = syscall_no_intercept(SYS_futimesat,
 				where.at.kernel_fd, where.path, times);
 	} else {
-		int r = pmemfile_futimesat(where.at.pmem_fda.pool->pool,
-				where.at.pmem_fda.file, where.path, times);
+		struct pool_description *pool = where.at.pmem_fda.pool;
+		pool_get(pool);
+
+		int r = pmemfile_futimesat(pool->pool, where.at.pmem_fda.file,
+				where.path, times);
 
 		if (r != 0)
 			r = -errno;
@@ -1317,18 +1434,17 @@ hook_futimesat(long fd, const char *path,
 		if (times) {
 			log_write(
 				"pmemfile_futimesat(%p, %p, \"%s\", [%ld,%ld,%ld,%ld]) = %d",
-			    (void *) where.at.pmem_fda.pool->pool,
-			    (void *) where.at.pmem_fda.file, where.path,
+			    pool->pool, where.at.pmem_fda.file, where.path,
 			    times[0].tv_sec, times[0].tv_usec, times[1].tv_sec,
 			    times[1].tv_usec, r);
 		} else {
 			log_write(
 				"pmemfile_futimesat(%p, %p, \"%s\", NULL) = %d",
-			    (void *) where.at.pmem_fda.pool->pool,
-			    (void *) where.at.pmem_fda.file, where.path, r);
+			    pool->pool, where.at.pmem_fda.file, where.path, r);
 		}
 
 		ret = check_errno(r, SYS_futimesat);
+		pool_put(pool);
 	}
 
 	fd_release(&at);
@@ -1367,6 +1483,9 @@ utimensat_helper(int sc, long fd, const char *path,
 			 */
 			ret = -EINVAL;
 		} else if (path == NULL) {
+			struct pool_description *pool = where.at.pmem_fda.pool;
+			pool_get(pool);
+
 			/*
 			 * Linux nonstandard syscall-level feature. Glibc
 			 * behaves differently, but we have to emulate kernel
@@ -1375,7 +1494,7 @@ utimensat_helper(int sc, long fd, const char *path,
 			 * See "C library/ kernel ABI differences"
 			 * section in man utimensat.
 			 */
-			r = pmemfile_futimens(where.at.pmem_fda.pool->pool,
+			r = pmemfile_futimens(pool->pool,
 					where.at.pmem_fda.file, times);
 
 			if (r != 0)
@@ -1384,46 +1503,46 @@ utimensat_helper(int sc, long fd, const char *path,
 			if (times) {
 				log_write(
 					"pmemfile_futimens(%p, %p, [%ld,%ld,%ld,%ld]) = %d",
-					(void *) where.at.pmem_fda.pool->pool,
-					(void *) where.at.pmem_fda.file,
+					pool->pool, where.at.pmem_fda.file,
 					times[0].tv_sec, times[0].tv_nsec,
 					times[1].tv_sec, times[1].tv_nsec, r);
 			} else {
 				log_write(
 					"pmemfile_futimens(%p, %p, NULL) = %d",
-					(void *) where.at.pmem_fda.pool->pool,
-					(void *) where.at.pmem_fda.file, r);
+					pool->pool, where.at.pmem_fda.file, r);
 
 			}
 
 			ret = check_errno(r, sc);
+			pool_put(pool);
 
 		} else {
-			r = pmemfile_utimensat(where.at.pmem_fda.pool->pool,
-			    where.at.pmem_fda.file, where.path, times,
-			    flags);
+			struct pool_description *pool = where.at.pmem_fda.pool;
+			pool_get(pool);
+
+			r = pmemfile_utimensat(pool->pool,
+				where.at.pmem_fda.file, where.path, times,
+				flags);
 
 			if (r != 0)
 				r = -errno;
 
 			if (times) {
 				log_write(
-				    "pmemfile_utimensat(%p, %p, \"%s\", [%ld,%ld,%ld,%ld], %d)"
-				    " = %d",
-				    (void *) where.at.pmem_fda.pool->pool,
-				    (void *) where.at.pmem_fda.file, where.path,
-				    times[0].tv_sec, times[0].tv_nsec,
-				    times[1].tv_sec, times[1].tv_nsec, flags,
-					r);
+				    "pmemfile_utimensat(%p, %p, \"%s\", [%ld,%ld,%ld,%ld], %d) = %d",
+				    pool->pool, where.at.pmem_fda.file,
+				    where.path, times[0].tv_sec,
+				    times[0].tv_nsec, times[1].tv_sec,
+				    times[1].tv_nsec, flags, r);
 			} else {
 				log_write(
 				    "pmemfile_utimensat(%p, %p, \"%s\", NULL, %d) = %d",
-				    (void *) where.at.pmem_fda.pool->pool,
-				    (void *) where.at.pmem_fda.file,
+				    pool->pool, where.at.pmem_fda.file,
 				    where.path, flags, r);
 			}
 
 			ret = check_errno(r, sc);
+			pool_put(pool);
 		}
 	}
 
@@ -1537,6 +1656,7 @@ hook_copy_file_range(long fd_in, loff_t *off_in, long fd_out,
 static long
 hook_fallocate(struct fd_association *file, int mode, off_t offset, off_t len)
 {
+	assert(!file->pool->suspended);
 	int r = pmemfile_fallocate(file->pool->pool, file->file, mode,
 					offset, len);
 
@@ -1578,18 +1698,21 @@ hook_mknodat(long fd, const char *path, mode_t mode, dev_t dev)
 		ret = syscall_no_intercept(SYS_mknodat,
 		    where.at.kernel_fd, where.path, mode, dev);
 	} else {
-		long r = pmemfile_mknodat(where.at.pmem_fda.pool->pool,
-		    where.at.pmem_fda.file, where.path, (mode_t) mode,
-		    (dev_t) dev);
+		struct pool_description *pool = where.at.pmem_fda.pool;
+		pool_get(pool);
+
+		long r = pmemfile_mknodat(pool->pool, where.at.pmem_fda.file,
+				where.path, (mode_t) mode, (dev_t) dev);
 
 		log_write("pmemfile_mknodat(%p, %p, \"%s\", 0%o, %ld) = %ld",
-		    (void *) where.at.pmem_fda.pool->pool,
-		    (void *) where.at.pmem_fda.file, where.path, mode, dev, r);
+		    pool->pool, where.at.pmem_fda.file, where.path, mode, dev,
+		    r);
 
 		if (r)
 			ret = check_errno(-errno, SYS_mknodat);
 		else
 			ret = 0;
+		pool_put(pool);
 	}
 
 	fd_release(&at);
@@ -2127,83 +2250,110 @@ dispatch_syscall_fd_first(long syscall_number,
 			long arg2, long arg3,
 			long arg4, long arg5)
 {
+	pool_get(arg0->pool);
+	long ret;
+
 	switch (syscall_number) {
 
 	case SYS_write:
-		return hook_write(arg0, (const char *)arg1,
+		ret = hook_write(arg0, (const char *)arg1,
 			(size_t)arg2);
+		break;
 
 	case SYS_writev:
-		return hook_writev(arg0, (struct iovec *)arg1, (int)arg2);
+		ret = hook_writev(arg0, (struct iovec *)arg1, (int)arg2);
+		break;
 
 	case SYS_read:
-		return hook_read(arg0, (char *)arg1, (size_t)arg2);
+		ret = hook_read(arg0, (char *)arg1, (size_t)arg2);
+		break;
 
 	case SYS_readv:
-		return hook_readv(arg0, (struct iovec *)arg1, (int)arg2);
+		ret = hook_readv(arg0, (struct iovec *)arg1, (int)arg2);
+		break;
 
 	case SYS_lseek:
-		return hook_lseek(arg0, arg1, (int)arg2);
+		ret = hook_lseek(arg0, arg1, (int)arg2);
+		break;
 
 	case SYS_pread64:
-		return hook_pread64(arg0, (char *)arg1,
+		ret = hook_pread64(arg0, (char *)arg1,
 			(size_t)arg2, (off_t)arg3);
+		break;
 
 	case SYS_pwrite64:
-		return hook_pwrite64(arg0, (const char *)arg1,
+		ret = hook_pwrite64(arg0, (const char *)arg1,
 			(size_t)arg2, (off_t)arg3);
+		break;
 
 	case SYS_preadv:
-		return hook_preadv(arg0, (struct iovec *)arg1, (int)arg2,
+		ret = hook_preadv(arg0, (struct iovec *)arg1, (int)arg2,
 		    (off_t)arg3);
+		break;
 
 	case SYS_preadv2:
-		return hook_preadv2(arg0, (struct iovec *)arg1, (int)arg2,
+		ret = hook_preadv2(arg0, (struct iovec *)arg1, (int)arg2,
 		    (off_t)arg3, (int)arg4);
+		break;
 
 	case SYS_pwritev:
-		return hook_pwritev(arg0, (struct iovec *)arg1, (int)arg2,
+		ret = hook_pwritev(arg0, (struct iovec *)arg1, (int)arg2,
 		    (off_t)arg3);
+		break;
 
 	case SYS_pwritev2:
-		return hook_pwritev2(arg0, (struct iovec *)arg1, (int)arg2,
+		ret = hook_pwritev2(arg0, (struct iovec *)arg1, (int)arg2,
 		    (off_t)arg3, (int)arg4);
+		break;
 
 	case SYS_getdents:
-		return hook_getdents(arg0, arg1, (unsigned)arg2);
+		ret = hook_getdents(arg0, arg1, (unsigned)arg2);
+		break;
 
 	case SYS_getdents64:
-		return hook_getdents64(arg0, arg1, (unsigned)arg2);
+		ret = hook_getdents64(arg0, arg1, (unsigned)arg2);
+		break;
 
 	case SYS_fcntl:
-		return hook_fcntl(arg0, (int)arg1, arg2);
+		ret = hook_fcntl(arg0, (int)arg1, arg2);
+		break;
 
 	case SYS_flock:
-		return hook_flock(arg0, (int)arg1);
+		ret = hook_flock(arg0, (int)arg1);
+		break;
 
 	case SYS_ftruncate:
-		return hook_ftruncate(arg0, arg1);
+		ret = hook_ftruncate(arg0, arg1);
+		break;
 
 	case SYS_fchmod:
-		return hook_fchmod(arg0, (mode_t)arg1);
+		ret = hook_fchmod(arg0, (mode_t)arg1);
+		break;
 
 	case SYS_fchown:
-		return hook_fchown(arg0, (uid_t)arg1, (gid_t)arg2);
+		ret = hook_fchown(arg0, (uid_t)arg1, (gid_t)arg2);
+		break;
 
 	case SYS_fallocate:
-		return hook_fallocate(arg0, (int)arg1,
+		ret = hook_fallocate(arg0, (int)arg1,
 			(off_t)arg2, (off_t)arg3);
+		break;
 
 	case SYS_fstat:
-		return hook_fstat(arg0, arg1);
+		ret = hook_fstat(arg0, arg1);
+		break;
 
 	default:
 		/* Did we miss something? */
 		assert(false);
-		return syscall_no_intercept(syscall_number,
+		ret = syscall_no_intercept(syscall_number,
 		    arg0, arg1, arg2, arg3, arg4, arg5);
+		break;
 
 	}
+	pool_put(arg0->pool);
+
+	return ret;
 }
 
 /*
@@ -2227,7 +2377,11 @@ open_new_pool_under_lock(struct pool_description *p)
 	if (p->pool != NULL)
 		return; /* already open */
 
-	if ((pfp = pmemfile_pool_open(p->poolfile_path)) == NULL)
+	do {
+		pfp = pmemfile_pool_open(p->poolfile_path);
+	} while (pfp == NULL && process_switching && errno == EAGAIN);
+
+	if (pfp == NULL)
 		return; /* failed to open */
 
 	if (pmemfile_setreuid(pfp, getuid(), geteuid()))
@@ -2598,6 +2752,7 @@ establish_mount_points(const char *config)
 		pool_desc->pool = NULL;
 
 		util_mutex_init(&pool_desc->pool_open_lock);
+		util_mutex_init(&pool_desc->process_switching_lock);
 
 		++pool_count;
 
@@ -2635,6 +2790,9 @@ pmemfile_preload_constructor(void)
 
 	const char *env_str = getenv("PMEMFILE_EXIT_ON_NOT_SUPPORTED");
 	exit_on_ENOTSUP = env_str ? env_str[0] == '1' : 0;
+
+	env_str = getenv("PMEMFILE_PRELOAD_PROCESS_SWITCHING");
+	process_switching = env_str ? env_str[0] == '1' : 0;
 
 	establish_mount_points(getenv("PMEMFILE_POOLS"));
 

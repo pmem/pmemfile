@@ -34,6 +34,10 @@ include(${SRC_DIR}/../../helpers.cmake)
 function(setup)
 	common_setup()
 
+	if (TEST_PROCESS_SWITCHING)
+		set(ENV{PMEMFILE_PRELOAD_PROCESS_SWITCHING} 1)
+	endif()
+
 	if(TESTS_USE_FORCED_PMEM)
 		set(ENV{PMEM_IS_PMEM_FORCE} 1)
 	endif()

@@ -77,6 +77,12 @@ struct pmemfile_vinode {
 		uint32_t idx;
 	} first_free_block;
 
+	/* pointer to the array of suspended inodes */
+	struct inode_suspend_info {
+		struct pmemfile_inode_array *arr;
+		unsigned idx;
+	} suspended;
+
 	/* first used block */
 	struct pmemfile_block_desc *first_block;
 
@@ -166,5 +172,11 @@ blockp_as_oid(struct pmemfile_block_desc *block)
 {
 	return (TOID(struct pmemfile_block_desc))pmemobj_oid(block);
 }
+
+void vinode_suspend(PMEMfilepool *pfp, struct pmemfile_vinode *vinode);
+void inode_restore(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+		PMEMobjpool *old_pop);
+void vinode_restore(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+		PMEMobjpool *old_pop);
 
 #endif

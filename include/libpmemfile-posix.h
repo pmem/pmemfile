@@ -383,6 +383,9 @@ PMEMfile *pmemfile_open_parent(PMEMfilepool *pfp, PMEMfile *at,
 
 const char *pmemfile_errormsg(void);
 
+int pmemfile_pool_resume(PMEMfilepool *pfp, const char *pathname);
+int pmemfile_pool_suspend(PMEMfilepool *pfp);
+
 #include "libpmemfile-posix-stubs.h"
 
 #ifdef FAULT_INJECTION

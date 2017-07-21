@@ -549,7 +549,7 @@ hook_fchdir(long fd)
 
 	long result;
 
-	log_write("%s(\"%ld\")", __func__, fd);
+	log_write("%s(%ld)", __func__, fd);
 
 	struct fd_association file = fd_ref(fd);
 

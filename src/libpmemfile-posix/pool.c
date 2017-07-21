@@ -47,6 +47,7 @@
 #include "locks.h"
 #include "mkdir.h"
 #include "os_thread.h"
+#include "os_util.h"
 #include "out.h"
 #include "pool.h"
 #include "utils.h"
@@ -101,6 +102,7 @@ initialize_super_block(PMEMfilepool *pfp)
 
 			super->version = PMEMFILE_CUR_VERSION;
 			super->orphaned_inodes = inode_array_alloc();
+			super->suspended_inodes = inode_array_alloc();
 		} TX_ONABORT {
 			error = errno;
 		} TX_END
@@ -290,4 +292,110 @@ pmemfile_pool_close(PMEMfilepool *pfp)
 	memset(pfp, 0, sizeof(*pfp));
 
 	pf_free(pfp);
+}
+
+struct restore_info {
+	PMEMfilepool *pfp;
+	PMEMobjpool *old_pop;
+};
+
+static void
+vinode_suspend_cb(uint64_t off, void *vinode, void *arg)
+{
+	vinode_suspend(arg, vinode);
+}
+
+static void
+inode_restore_cb(uint64_t off, void *vinode, void *arg)
+{
+	struct restore_info *info = arg;
+	inode_restore(info->pfp, vinode, info->old_pop);
+}
+
+static void
+vinode_restore_cb(uint64_t off, void *vinode, void *arg)
+{
+	struct restore_info *info = arg;
+	vinode_restore(info->pfp, vinode, info->old_pop);
+}
+
+/*
+ * pmemfile_pool_restore -- notifies pmemfile that pool is now going to be used
+ *
+ * Can be called only after pmemfile_pool_suspend.
+ */
+int
+pmemfile_pool_restore(PMEMfilepool *pfp, const char *pathname)
+{
+	PMEMobjpool *new_pop = NULL;
+
+	while (new_pop == NULL) {
+		new_pop = pmemobj_open(pathname, POBJ_LAYOUT_NAME(pmemfile));
+		if (new_pop == NULL)
+			// XXX
+			os_usleep(1000);
+	}
+
+	if (!new_pop) {
+		int error = errno;
+		ERR("pmemobj_open failed: %s", pmemobj_errormsg());
+		errno = error;
+		return -1;
+	}
+
+	int error = 0;
+	PMEMobjpool *old_pop = pfp->pop;
+	struct pmemfile_super *old_super = pfp->super;
+
+	if (new_pop != pfp->pop) {
+		pfp->pop = new_pop;
+		pfp->super = pmemobj_direct(pmemobj_root(pfp->pop, 0));
+	}
+	struct restore_info arg = {pfp, old_pop};
+
+	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
+		hash_map_traverse(pfp->inode_map, inode_restore_cb, &arg);
+	} TX_ONABORT {
+		error = -1;
+	} TX_END
+
+	if (error) {
+		int oerrno = errno;
+		pmemobj_close(new_pop);
+		errno = oerrno;
+
+		pfp->pop = old_pop;
+		pfp->super = old_super;
+		return -1;
+	}
+
+	hash_map_traverse(pfp->inode_map, vinode_restore_cb, &arg);
+
+	return 0;
+}
+
+/*
+ * pmemfile_pool_suspend -- notifies pmemfile that pool is not going to be used
+ *                          until pmemfile_pool_restore
+ *
+ * This function CAN NOT be called while any pmemfile function (including this
+ * one) is in progress (even for other pools, because of pmemobj_close/open
+ * not being safe)!
+ */
+int
+pmemfile_pool_suspend(PMEMfilepool *pfp)
+{
+	int error = 0;
+
+	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
+		hash_map_traverse(pfp->inode_map, vinode_suspend_cb, pfp);
+	} TX_ONABORT {
+		error = -1;
+	} TX_END
+
+	if (error)
+		return -1;
+
+	pmemobj_close(pfp->pop);
+	return 0;
 }

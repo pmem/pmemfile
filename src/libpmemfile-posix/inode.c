@@ -218,7 +218,8 @@ vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 
 		if (__sync_sub_and_fetch(&vinode->ref, 1) == 0) {
 			uint64_t nlink = vinode->inode->nlink;
-			if (nlink == 0)
+			if (vinode->inode->suspended_references == 0 &&
+					nlink == 0)
 				vinode_free_pmem(pfp, vinode);
 
 			to_unregister = vinode;
@@ -330,6 +331,9 @@ vinode_orphan_unlocked(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 
 	ASSERT_IN_TX();
 	ASSERTeq(vinode->orphaned.arr, NULL);
+
+	if (vinode->inode->suspended_references > 0)
+		return;
 
 	TOID(struct pmemfile_inode_array) orphaned =
 			pfp->super->orphaned_inodes;
@@ -692,4 +696,100 @@ vinode_rdlock_with_block_tree(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 	}
 
 	return 0;
+}
+
+/*
+ * vinode_suspend -- prepares vinode for pool suspend
+ */
+void
+vinode_suspend(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
+{
+	TX_ADD_DIRECT(&vinode->inode->suspended_references);
+	vinode->inode->suspended_references++;
+
+	_inode_array_add(pfp, pfp->super->suspended_inodes, vinode->tinode,
+			&vinode->suspended.arr, &vinode->suspended.idx, false);
+
+	if (vinode->blocks) {
+		ctree_delete(vinode->blocks);
+		vinode->blocks = NULL;
+	}
+
+	vinode->first_free_block.arr = NULL;
+	vinode->first_free_block.idx = 0;
+
+	vinode->first_block = NULL;
+}
+
+static inline void *
+add_off(void *ptr, uintptr_t off)
+{
+	return (void *)((uintptr_t)ptr + off);
+}
+
+static inline void *
+sub_off(void *ptr, uintptr_t off)
+{
+	return (void *)((uintptr_t)ptr - off);
+}
+
+/*
+ * inode_restore -- restores persistent part of inode after suspend
+ */
+void
+inode_restore(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+		PMEMobjpool *old_pop)
+{
+	struct inode_suspend_info suspended = vinode->suspended;
+	struct pmemfile_inode *inode = vinode->inode;
+
+	ASSERT(vinode->suspended.arr != NULL);
+
+	if (pfp->pop > old_pop) {
+		uintptr_t diff = (uintptr_t)pfp->pop - (uintptr_t)old_pop;
+
+		suspended.arr = add_off(suspended.arr, diff);
+		inode = add_off(inode, diff);
+	} else if (pfp->pop < old_pop) {
+		uintptr_t diff = (uintptr_t)old_pop - (uintptr_t)pfp->pop;
+
+		suspended.arr = sub_off(suspended.arr, diff);
+		inode = sub_off(inode, diff);
+	}
+
+	ASSERT(inode->suspended_references > 0);
+
+	TX_ADD_DIRECT(&inode->suspended_references);
+	inode->suspended_references--;
+
+	_inode_array_unregister(pfp, suspended.arr, suspended.idx, false);
+}
+
+/*
+ * vinode_restore -- restores runtime part of inode after suspend
+ */
+void
+vinode_restore(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+		PMEMobjpool *old_pop)
+{
+	vinode->suspended.arr = NULL;
+	vinode->suspended.idx = 0;
+
+	if (pfp->pop > old_pop) {
+		uintptr_t diff = (uintptr_t)pfp->pop - (uintptr_t)old_pop;
+
+		vinode->inode = add_off(vinode->inode, diff);
+
+		if (vinode->orphaned.arr)
+			vinode->orphaned.arr =
+					add_off(vinode->orphaned.arr, diff);
+	} else if (pfp->pop < old_pop) {
+		uintptr_t diff = (uintptr_t)old_pop - (uintptr_t)pfp->pop;
+
+		vinode->inode = sub_off(vinode->inode, diff);
+
+		if (vinode->orphaned.arr)
+			vinode->orphaned.arr =
+					sub_off(vinode->orphaned.arr, diff);
+	}
 }

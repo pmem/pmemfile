@@ -1872,6 +1872,43 @@ wrapper_pmemfile_errormsg(void)
 }
 
 static inline int
+wrapper_pmemfile_pool_restore(PMEMfilepool *pfp,
+		const char *pathname)
+{
+	int ret;
+
+	ret = pmemfile_pool_restore(pfp,
+		pathname);
+	if (ret < 0)
+		ret = -errno;
+
+	log_write(
+	    "pmemfile_pool_restore(%p, \"%s\") = %d",
+		pfp,
+		pathname,
+		ret);
+
+	return ret;
+}
+
+static inline int
+wrapper_pmemfile_pool_suspend(PMEMfilepool *pfp)
+{
+	int ret;
+
+	ret = pmemfile_pool_suspend(pfp);
+	if (ret < 0)
+		ret = -errno;
+
+	log_write(
+	    "pmemfile_pool_suspend(%p) = %d",
+		pfp,
+		ret);
+
+	return ret;
+}
+
+static inline int
 wrapper_pmemfile_flock(PMEMfilepool *pfp,
 		PMEMfile *file,
 		int operation)

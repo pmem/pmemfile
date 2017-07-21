@@ -131,7 +131,7 @@ print_prototype(const struct func_desc *desc, FILE *f)
 
 /*
  * print_forward_args -- prints the list of variables to be passed as arguments
- * to the orignal function. E.g.:
+ * to the original function. E.g.:
  *
  * +------------------------------------+
  * | file->pool->pool, file->file,      |
@@ -184,6 +184,7 @@ print_wrapper(struct func_desc *desc, FILE *f)
 {
 	print_prototype(desc, f);
 	fputs("{\n", f);
+	fputs("\tassert(!file->pool->suspended);\n", f);
 	print_forward_call(desc, f);
 	fputs("}\n\n", f);
 }

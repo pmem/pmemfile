@@ -151,8 +151,11 @@ struct pmemfile_inode {
 	/* group */
 	uint32_t gid;
 
-	/* unused / padding */
-	uint32_t reserved;
+	/*
+	 * Number of references from processes that called
+	 * pmemfile_pool_suspend.
+	 */
+	uint32_t suspended_references;
 
 	/* time of last access */
 	struct pmemfile_time atime;
@@ -232,8 +235,12 @@ struct pmemfile_super {
 	/* list of arrays of inodes that were deleted, but are still opened */
 	TOID(struct pmemfile_inode_array) orphaned_inodes;
 
+	/* list of arrays of inodes that are suspended */
+	TOID(struct pmemfile_inode_array) suspended_inodes;
+
 	char padding[PMEMFILE_SUPER_SIZE
 			- 8  /* version */
+			- 16 /* toid */
 			- 16 /* toid */
 			- 16 /* toid */];
 };

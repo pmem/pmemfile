@@ -40,6 +40,7 @@
 #include "inode.h"
 #include "libpmemfile-posix.h"
 #include "out.h"
+#include "pool.h"
 #include "utils.h"
 
 /*
@@ -67,7 +68,7 @@ vinode_stat(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		return EFAULT;
 
 	memset(buf, 0, sizeof(*buf));
-	buf->st_dev = vinode->tinode.oid.pool_uuid_lo;
+	buf->st_dev = pfp->dev;
 	buf->st_ino = vinode->tinode.oid.off;
 	buf->st_mode = inode->flags & (PMEMFILE_S_IFMT | PMEMFILE_ALLPERMS);
 	buf->st_nlink = inode->nlink;

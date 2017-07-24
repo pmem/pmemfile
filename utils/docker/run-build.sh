@@ -51,6 +51,7 @@ cd build
 cmake .. -DDEVELOPER_MODE=1 \
 		-DCMAKE_INSTALL_PREFIX=/tmp/pmemfile \
 		-DCMAKE_BUILD_TYPE=Debug \
+		-DAUTO_GENERATE_SOURCES=$AUTOGENSOURCES \
 		-DTEST_DIR=/tmp/pmemfile-tests \
 		-DTRACE_TESTS=1 \
 		-DTESTS_USE_FORCED_PMEM=1
@@ -59,6 +60,7 @@ make -j2
 ctest -j2 --output-on-failure
 make install
 cd ..
+git diff --exit-code || ( echo "Did you forget to commit generated source file?" && exit 1 )
 rm -r build
 
 
@@ -67,6 +69,7 @@ cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=/tmp/pmemfile \
 		-DCMAKE_BUILD_TYPE=RelWithDebInfo \
 		-DTEST_DIR=/tmp/pmemfile-tests \
+		-DAUTO_GENERATE_SOURCES=$AUTOGENSOURCES \
 		-DTRACE_TESTS=1 \
 		-DTESTS_USE_FORCED_PMEM=1
 
@@ -74,4 +77,5 @@ make -j2
 ctest -j2 --output-on-failure
 make install
 cd ..
+git diff --exit-code || ( echo "Did you forget to commit generated source file?" && exit 1 )
 rm -r build

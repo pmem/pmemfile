@@ -54,6 +54,7 @@ RUN apt-get install -y \
 	libcap-dev \
 	libcapstone-dev \
 	libc6-dbg \
+	libclang-dev \
 	libtext-diff-perl \
 	libunwind-dev \
 	pandoc \

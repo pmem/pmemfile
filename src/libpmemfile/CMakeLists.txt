@@ -56,6 +56,10 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # XXX OBJECT library type is not supported on some old cmake versions
 add_library(pmemfile_o OBJECT ${SOURCES})
 
+if(AUTO_GENERATE_SOURCES)
+	add_dependencies(pmemfile_o regenerate_libpmemfile-posix-fd_first)
+endif()
+
 include_directories(${SYSCALL_INTERCEPT_INCLUDE_DIRS} ..)
 link_directories(${SYSCALL_INTERCEPT_LIBRARY_DIRS})
 

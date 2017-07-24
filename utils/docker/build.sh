@@ -93,6 +93,7 @@ sudo docker run --rm --privileged=true --name=$containerName -ti \
 	--env TRAVIS_EVENT_TYPE=$TRAVIS_EVENT_TYPE \
 	--env COVERITY_SCAN_TOKEN=$COVERITY_SCAN_TOKEN \
 	--env COVERITY_SCAN_NOTIFICATION_EMAIL=$COVERITY_SCAN_NOTIFICATION_EMAIL \
+	--env AUTOGENSOURCES=$AUTOGENSOURCES \
 	-v $HOST_WORKDIR:$WORKDIR \
 	-w $WORKDIR/utils/docker \
 	$imageName $command

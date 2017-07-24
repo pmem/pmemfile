@@ -51,6 +51,16 @@ public:
 	mt() : pmemfile_test(256 << 20)
 	{
 		ncpus = std::thread::hardware_concurrency();
+
+		/*
+		 * Pmemobj requires some pmem space for each thread, but it's
+		 * not possible to get the information how much exactly.
+		 * As there's not much point in testing more than a couple
+		 * of threads we can limit the number of threads to some
+		 * arbitrary (but big enough to entertain most cases) number.
+		 */
+		if (ncpus > 16)
+			ncpus = 16;
 	}
 
 	void

@@ -182,7 +182,20 @@ vinode_free_pmem(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 
 		inode_free(pfp, vinode->tinode);
 	} TX_ONABORT {
-		FATAL("!vinode_unref");
+		/*
+		 * Sometimes even with inode_trim it's not possible to get
+		 * enough space for transaction to succeed.
+		 * However, if user wants that, we can ignore transaction error
+		 * and temporarily leak this inode. It will be freed the next
+		 * time pmemfile_pool_open is called.
+		 */
+		const char *env = getenv("PMEMFILE_IGNORE_INODE_FREE_ERRORS");
+
+		if (env && env[0] == '1')
+			LOG(LINF, "Freeing inode %lu failed!",
+				vinode->tinode.oid.off);
+		else
+			FATAL("!vinode_unref");
 	} TX_END
 }
 

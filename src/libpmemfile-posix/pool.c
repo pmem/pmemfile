@@ -128,6 +128,7 @@ initialize_super_block(PMEMfilepool *pfp)
 #endif
 
 	pfp->cwd = vinode_ref(pfp, pfp->root);
+	pfp->dev = pfp->root->tinode.oid.pool_uuid_lo;
 	cred_release(&cred);
 
 	return 0;
@@ -267,6 +268,12 @@ pool_open:
 	pf_free(pfp);
 	errno = error;
 	return NULL;
+}
+
+void
+pmemfile_pool_set_device(PMEMfilepool *pfp, pmemfile_dev_t dev)
+{
+	pfp->dev = dev;
 }
 
 /*

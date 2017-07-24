@@ -71,6 +71,7 @@ XXX
 %files -n pmemfile-tools
 %defattr(-,root,root,-)
 %{_bindir}/mkfs.pmemfile
+%{_bindir}/pmemfile-mount
 %{_mandir}/man1/mkfs.pmemfile.1.gz
 %license LICENSE
 %doc

@@ -2427,6 +2427,8 @@ open_new_pool_under_lock(struct pool_description *p)
 
 	update_capabilities(pfp);
 
+	pmemfile_pool_set_device(pfp, p->stat.st_dev);
+
 	if (pmemfile_stat(pfp, "/", &p->pmem_stat) != 0)
 		goto err;
 
@@ -2600,6 +2602,23 @@ config_error(const char *msg)
 	exit_with_msg(PMEMFILE_PRELOAD_EXIT_CONFIG_ERROR, msg);
 }
 
+static void
+set_mount_point(struct pool_description *pool, const char *path, size_t len)
+{
+	memcpy(pool->mount_point, path, len);
+	pool->mount_point[len] = '\0';
+
+	memcpy(pool->mount_point_parent, path, len);
+	pool->len_mount_point_parent = len;
+
+	while (pool->len_mount_point_parent > 1 &&
+	    pool->mount_point_parent[pool->len_mount_point_parent] != '/')
+		pool->len_mount_point_parent--;
+
+	pool->mount_point_parent[pool->len_mount_point_parent] = '\0';
+
+}
+
 static const char *
 parse_mount_point(struct pool_description *pool, const char *conf)
 {
@@ -2621,17 +2640,7 @@ parse_mount_point(struct pool_description *pool, const char *conf)
 			"invalid pmemfile config: too long mount point path");
 	}
 
-	memcpy(pool->mount_point, conf, (size_t)(colon - conf));
-	pool->mount_point[colon - conf] = '\0';
-
-	memcpy(pool->mount_point_parent, conf, (size_t)(colon - conf));
-	pool->len_mount_point_parent = (size_t)(colon - conf);
-
-	while (pool->len_mount_point_parent > 1 &&
-	    pool->mount_point_parent[pool->len_mount_point_parent] != '/')
-		pool->len_mount_point_parent--;
-
-	pool->mount_point_parent[pool->len_mount_point_parent] = '\0';
+	set_mount_point(pool, conf, (size_t)(colon - conf));
 
 	/* Return a pointer to the char following the colon */
 	return colon + 1;
@@ -2700,17 +2709,8 @@ open_mount_point(struct pool_description *pool)
 	}
 }
 
-/*
- * establish_mount_points - parse the configuration, which is expected to be a
- * semicolon separated list of path-pairs:
- * mount_point_path:pool_file_path
- * Mount point path is where the application is meant to observe a pmemfile
- * pool mounted -- this should be an actual directory accessible by the
- * application. The pool file path should point to the path of the actual
- * pmemfile pool.
- */
 static void
-establish_mount_points(const char *config)
+stat_cwd(struct stat *kernel_cwd_stat)
 {
 	char cwd[0x400];
 
@@ -2721,16 +2721,133 @@ establish_mount_points(const char *config)
 	if (getcwd(cwd, sizeof(cwd)) == NULL)
 		exit_with_msg(PMEMFILE_PRELOAD_EXIT_GETCWD_FAILED, "!getcwd");
 
-	struct stat kernel_cwd_stat;
-	if (stat(cwd, &kernel_cwd_stat) != 0) {
+	if (stat(cwd, kernel_cwd_stat) != 0) {
 		exit_with_msg(PMEMFILE_PRELOAD_EXIT_CWD_STAT_FAILED,
 				"!fstat cwd");
 	}
+}
 
-	assert(pool_count == 0);
+static void
+init_pool(struct pool_description *pool_desc, struct stat *kernel_cwd_stat)
+{
+	/* fetch pool_desc-fd, pool_desc->stat */
+	open_mount_point(pool_desc);
 
+	pool_desc->pool = NULL;
+
+	util_mutex_init(&pool_desc->pool_open_lock);
+	util_mutex_init(&pool_desc->process_switching_lock);
+
+	++pool_count;
+
+	/*
+	 * If the current working directory is a mount point, then
+	 * the corresponding pmemfile pool must opened at startup.
+	 * Normally, a pool is only opened the first time it is
+	 * accessed, but without doing this, the first access would
+	 * never be noticed.
+	 */
+	if (same_inode(&pool_desc->stat, kernel_cwd_stat)) {
+		open_new_pool(pool_desc);
+		if (pool_desc->pool == NULL) {
+			exit_with_msg(PMEMFILE_PRELOAD_EXIT_POOL_OPEN_FAILED,
+				"!opening pmemfile_pool");
+		}
+		cwd_pool = pool_desc;
+	}
+}
+
+static void
+detect_mount_points(struct stat *kernel_cwd_stat)
+{
+	FILE *file = fopen("/proc/self/mountinfo", "r");
+
+	if (!file)
+		return;
+
+	unsigned mount_id, parent_id, major, minor;
+	char root[PATH_MAX];
+	char mount_point[PATH_MAX];
+	char mount_options[4096];
+	char f[9][4096];
+	int matched = 0;
+	size_t len = PATH_MAX;
+	char *line = malloc(len);
+	if (!line) {
+		fclose(file);
+		return;
+	}
+
+	while (getline(&line, &len, file) > 0) {
+		matched = sscanf(line,
+			"%u %u %u:%u %s %s %s %[^\n ] %[^\n ] %[^\n ] %[^\n ] %[^\n ] %[^\n ] %[^\n ] %[^\n ] %[^\n ]",
+			&mount_id, &parent_id, &major, &minor, root,
+			mount_point, mount_options, f[0], f[1], f[2], f[3],
+			f[4], f[5], f[6], f[7], f[8]);
+
+		if (matched <= 0)
+			break;
+
+		int i;
+		for (i = 7; i < matched; ++i) {
+			if (strcmp(f[i - 7], "-") == 0) {
+				i++;
+				break;
+			}
+		}
+		if (i == matched)
+			continue;
+		const char *fstype = f[i - 7];
+		const char *mount_source = f[i - 7 + 1];
+
+		if (strcmp(fstype, "tmpfs") != 0)
+			continue;
+		if (strncmp(mount_source, "pmemfile:", 9) != 0)
+			continue;
+
+		log_write(
+			"matched:%d mount_id:%u parent_id:%u major:%u minor:%u root:%s mount_point:%s mount_options:%s",
+			matched, mount_id, parent_id, major, minor, root,
+			mount_point, mount_options);
+		for (int i = 7; i < matched; ++i)
+			log_write("f[%d]:%s", i - 7, f[i - 7]);
+		log_write("EOR");
+
+		size_t ret = strlen(mount_source + 9);
+		strcpy(line, mount_source + 9);
+
+		log_write("Using pool from '%s' to mount at '%s'.", line,
+				mount_point);
+
+		struct pool_description *pool = pools + pool_count;
+
+		set_mount_point(pool, mount_point, strlen(mount_point));
+
+		memcpy(pool->poolfile_path, line, (size_t)ret);
+		pool->poolfile_path[ret] = 0;
+
+		init_pool(pool, kernel_cwd_stat);
+	}
+
+	free(line);
+
+	fclose(file);
+}
+
+/*
+ * establish_mount_points - parse the configuration, which is expected to be a
+ * semicolon separated list of path-pairs:
+ * mount_point_path:pool_file_path
+ * Mount point path is where the application is meant to observe a pmemfile
+ * pool mounted -- this should be an actual directory accessible by the
+ * application. The pool file path should point to the path of the actual
+ * pmemfile pool.
+ */
+static void
+establish_mount_points(const char *config, struct stat *kernel_cwd_stat)
+{
 	if (config == NULL || config[0] == '\0') {
-		log_write("No mount point");
+		log_write("No mount information in PMEMFILE_POOLS.");
 		return;
 	}
 
@@ -2746,32 +2863,7 @@ establish_mount_points(const char *config)
 		/* fetch pool_desc->poolfile_path */
 		config = parse_pool_path(pool_desc, config);
 
-		/* fetch pool_desc-fd, pool_desc->stat */
-		open_mount_point(pool_desc);
-
-		pool_desc->pool = NULL;
-
-		util_mutex_init(&pool_desc->pool_open_lock);
-		util_mutex_init(&pool_desc->process_switching_lock);
-
-		++pool_count;
-
-		/*
-		 * If the current working directory is a mount point, then
-		 * the corresponding pmemfile pool must opened at startup.
-		 * Normally, a pool is only opened the first time it is
-		 * accessed, but without doing this, the first access would
-		 * never be noticed.
-		 */
-		if (same_inode(&pool_desc->stat, &kernel_cwd_stat)) {
-			open_new_pool(pool_desc);
-			if (pool_desc->pool == NULL) {
-				exit_with_msg(
-					PMEMFILE_PRELOAD_EXIT_POOL_OPEN_FAILED,
-					"!opening pmemfile_pool");
-			}
-			cwd_pool = pool_desc;
-		}
+		init_pool(pool_desc, kernel_cwd_stat);
 	} while (config != NULL);
 }
 
@@ -2794,7 +2886,12 @@ pmemfile_preload_constructor(void)
 	env_str = getenv("PMEMFILE_PRELOAD_PROCESS_SWITCHING");
 	process_switching = env_str ? env_str[0] == '1' : 0;
 
-	establish_mount_points(getenv("PMEMFILE_POOLS"));
+	assert(pool_count == 0);
+	struct stat kernel_cwd_stat;
+	stat_cwd(&kernel_cwd_stat);
+
+	detect_mount_points(&kernel_cwd_stat);
+	establish_mount_points(getenv("PMEMFILE_POOLS"), &kernel_cwd_stat);
 
 	if (pool_count == 0)
 		/* No pools mounted. XXX prevent syscall interception */

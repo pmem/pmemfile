@@ -162,6 +162,30 @@ vinode_ref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 	return vinode;
 }
 
+static void
+vinode_free_pmem(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
+{
+	/*
+	 * Undo log space in transaction is limited, so when it's exhausted
+	 * pmemobj needs to allocate more to extend it.
+	 * If all space is used by user data pmemobj is not able to do that,
+	 * which means frees fail.
+	 *
+	 * To fix this, do as many frees outside of transaction as possible,
+	 * while still maintaining consistency.
+	 */
+	inode_trim(pfp, vinode->tinode);
+
+	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
+		inode_array_unregister(pfp, vinode->orphaned.arr,
+				vinode->orphaned.idx);
+
+		inode_free(pfp, vinode->tinode);
+	} TX_ONABORT {
+		FATAL("!vinode_unref");
+	} TX_END
+}
+
 /*
  * vinode_unref -- decreases inode reference counter
  *
@@ -180,31 +204,8 @@ vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 
 		if (__sync_sub_and_fetch(&vinode->ref, 1) == 0) {
 			uint64_t nlink = vinode->inode->nlink;
-			if (nlink == 0) {
-				/*
-				 * Undo log space in transaction is limitted, so
-				 * when it's exhausted pmemobj needs to allocate
-				 * more to extend it.
-				 * If all space is used by user data pmemobj
-				 * is not able to do that, which means frees
-				 * fail.
-				 *
-				 * To fix this, do as many frees outside of
-				 * transaction as possible, while still
-				 * maintaining consistency.
-				 */
-				inode_trim(pfp, vinode->tinode);
-
-				TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-					inode_array_unregister(pfp,
-							vinode->orphaned.arr,
-							vinode->orphaned.idx);
-
-					inode_free(pfp, vinode->tinode);
-				} TX_ONABORT {
-					FATAL("!vinode_unref");
-				} TX_END
-			}
+			if (nlink == 0)
+				vinode_free_pmem(pfp, vinode);
 
 			to_unregister = vinode;
 			/*

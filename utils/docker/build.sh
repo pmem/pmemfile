@@ -67,7 +67,7 @@ containerName=pmemfile-${OS}-${OS_VER}
 if [[ "$command" == "" ]]; then
 	if [[ $MAKE_PKG -eq 0 ]] ; then command="./run-build.sh"; fi
 	if [[ $MAKE_PKG -eq 1 ]] ; then command="./run-build-package.sh"; fi
-	if [[ $COVERAGE -eq 1 ]] ; then command="./run-coverage.sh"; ci_env=`bash <(curl -s https://codecov.io/env)`; fi
+	if [[ $COVERAGE_PLUS_AUTOGENSOURCES -eq 1 ]] ; then command="./run-coverage-autogensources.sh"; ci_env=`bash <(curl -s https://codecov.io/env)`; fi
 	if [[ $SQLITE -eq 1 ]] ; then command="sqlite/run-build-sqlite.sh"; SET_ULIMIT="--ulimit nofile=1024:1024"; fi
 fi
 

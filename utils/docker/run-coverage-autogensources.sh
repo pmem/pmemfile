@@ -45,11 +45,13 @@ cmake .. -DDEVELOPER_MODE=1 \
 		-DCMAKE_BUILD_TYPE=Debug \
 		-DTRACE_TESTS=1 \
 		-DTESTS_USE_FORCED_PMEM=1 \
+		-DAUTO_GENERATE_SOURCES=1 \
 		-DCMAKE_C_FLAGS=-coverage \
 		-DCMAKE_CXX_FLAGS=-coverage
 
 make -j2
 ctest -E "_memcheck|_drd|_helgrind|_pmemcheck" -j2 --output-on-failure
+git diff --exit-code || ( echo "Did you forget to commit generated source file?" && exit 1 )
 bash <(curl -s https://codecov.io/bash)
 cd ..
 rm -r build

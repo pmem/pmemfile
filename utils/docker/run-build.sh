@@ -59,6 +59,7 @@ make -j2
 ctest -j2 --output-on-failure
 make install
 cd ..
+git diff --exit-code || ( echo "Did you forget to commit generated source file?" && exit 1 )
 rm -r build
 
 
@@ -74,4 +75,5 @@ make -j2
 ctest -j2 --output-on-failure
 make install
 cd ..
+git diff --exit-code || ( echo "Did you forget to commit generated source file?" && exit 1 )
 rm -r build

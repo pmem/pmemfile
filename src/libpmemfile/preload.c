@@ -76,6 +76,8 @@
 #include "preload.h"
 #include "syscall_early_filter.h"
 
+#include "libpmemfile-posix-wrappers2.h"
+
 static long log_fd = -1;
 
 static void
@@ -90,7 +92,7 @@ log_init(const char *path, const char *trunc)
 	}
 }
 
-static  pf_printf_like(1, 2) void
+void
 log_write(const char *fmt, ...)
 {
 	if (log_fd < 0)

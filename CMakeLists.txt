@@ -32,7 +32,6 @@
 cmake_minimum_required(VERSION 3.3)
 project(pmemfile C CXX)
 
-set(CMAKE_DISABLE_SOURCE_CHANGES ON)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
 set(VERSION_MAJOR 0)
@@ -51,6 +50,9 @@ option(TRACE_TESTS
 	"more verbose test outputs" OFF)
 
 option(LONG_TESTS "build long running tests as well" OFF)
+
+option(AUTO_GENERATE_SOURCES
+	"Use libclang to (re)generate certain source files -- this is required for the modification of some sources (e.g. libpmemfile-posix-wrappers.h must be regenerated each time libpmemfile-posix.h is modified" OFF)
 
 set(TEST_DIR ${CMAKE_CURRENT_BINARY_DIR}/test
 	CACHE STRING "working directory for tests")
@@ -456,6 +458,10 @@ if(TEST_DIR)
 	enable_testing()
 else()
 	message(WARNING "TEST_DIR is empty - 'make test' will not work")
+endif()
+
+if(AUTO_GENERATE_SOURCES)
+	add_subdirectory(utils/transform)
 endif()
 
 add_subdirectory(src/libpmemfile-posix)

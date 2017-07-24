@@ -47,6 +47,8 @@ struct pmemfilepool {
 	/* pmemobj pool pointer */
 	PMEMobjpool *pop;
 
+	pmemfile_dev_t dev;
+
 	/* root directory */
 	struct pmemfile_vinode *root;
 	mode_t umask;

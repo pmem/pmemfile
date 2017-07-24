@@ -85,6 +85,19 @@ wrapper_pmemfile_pool_close(PMEMfilepool *pfp)
 	pmemfile_pool_close(pfp);
 }
 
+static inline void
+wrapper_pmemfile_pool_set_device(PMEMfilepool *pfp,
+		pmemfile_dev_t dev)
+{
+	log_write(
+	    "pmemfile_pool_set_device(%p, %jx)",
+		pfp,
+		(uintmax_t)dev);
+
+	pmemfile_pool_set_device(pfp,
+		dev);
+}
+
 static inline PMEMfile *
 wrapper_pmemfile_create(PMEMfilepool *pfp,
 		const char *pathname,

@@ -1,2 +1,3 @@
 usr/bin/mkfs.pmemfile
+usr/bin/pmemfile-mount
 usr/share/man/man1/mkfs.pmemfile.1

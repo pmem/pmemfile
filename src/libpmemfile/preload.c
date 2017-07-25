@@ -2530,6 +2530,12 @@ pmemfile_preload_constructor(void)
 	if (env_str)
 		process_switching = env_str[0] == '1';
 
+	if (getenv("PMEMFILE_PRELOAD_PAUSE_AT_START")) {
+		pause_at_start = 1;
+		while (pause_at_start)
+			;
+	}
+
 	assert(pool_count == 0);
 	struct stat kernel_cwd_stat;
 	stat_cwd(&kernel_cwd_stat);
@@ -2540,12 +2546,6 @@ pmemfile_preload_constructor(void)
 	if (pool_count == 0)
 		/* No pools mounted. XXX prevent syscall interception */
 		return;
-
-	if (getenv("PMEMFILE_PRELOAD_PAUSE_AT_START")) {
-		pause_at_start = 1;
-		while (pause_at_start)
-			;
-	}
 
 	/*
 	 * Must be the last step, the callback can be called anytime

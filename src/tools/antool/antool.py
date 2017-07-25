@@ -97,7 +97,7 @@ class AnalyzingTool(ListSyscalls):
     ####################################################################################################################
     def read_syscall_table(self, path_to_syscalls_table_dat):
         if self.syscall_table.read_syscall_table(path_to_syscalls_table_dat):
-            self.log_main.critical("error while reading syscalls table")
+            print("ERROR: error while reading syscalls table", file=stderr)
             exit(-1)
 
     ####################################################################################################################
@@ -239,11 +239,11 @@ class AnalyzingTool(ListSyscalls):
             file_size = statinfo.st_size
 
         except FileNotFoundError:
-            self.log_main.critical("file not found: {0:s}".format(path_to_trace_log))
+            print("ERROR: file not found: {0:s}".format(path_to_trace_log), file=stderr)
             exit(-1)
 
         except:
-            self.log_main.critical("unexpected error")
+            print("ERROR: unexpected error", file=stderr)
             raise
 
         ut = Utils()
@@ -277,11 +277,11 @@ class AnalyzingTool(ListSyscalls):
             argv = argv.replace('\0', ' ')
 
         except EndOfFile:
-            self.log_main.critical("log file is truncated: {0:s}".format(path_to_trace_log))
+            print("ERROR: log file is truncated: {0:s}".format(path_to_trace_log), file=stderr)
             exit(-1)
 
         except CriticalError as err:
-            self.log_main.critical("{0:s}".format(err.message))
+            print("ERROR: {0:s}".format(err.message), file=stderr)
             exit(-1)
 
         except:
@@ -336,14 +336,14 @@ class AnalyzingTool(ListSyscalls):
                     self.syscall.log_parse.error("string argument is truncated: {0:s}".format(string))
 
             except CriticalError as err:
-                self.log_main.critical("{0:s}".format(err.message))
+                print("ERROR: {0:s}".format(err.message), file=stderr)
                 exit(-1)
 
             except EndOfFile:
                 break
 
             except:
-                self.log_main.critical("unexpected error")
+                print("ERROR: unexpected error", file=stderr)
                 raise
 
         fh.close()

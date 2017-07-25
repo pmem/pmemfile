@@ -60,14 +60,15 @@ class Utils:
     ####################################################################################################################
     # open_file -- open file with error handling
     ####################################################################################################################
-    def open_file(self, path, flags):
+    @staticmethod
+    def open_file(path, flags):
         try:
             fh = open(path, flags)
         except FileNotFoundError:
-            self.log_ut.critical("file not found: {0:s}".format(path))
+            print("ERROR: file not found: {0:s}".format(path), file=stderr)
             exit(-1)
         except:
-            self.log_ut.critical("unexpected error")
+            print("ERROR: unexpected error", file=stderr)
             raise
         # noinspection PyUnboundLocalVariable
         return fh

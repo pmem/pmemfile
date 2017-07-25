@@ -96,11 +96,11 @@ class SyscallTable:
                 break
 
             except CriticalError as err:
-                self.log_sctbl.critical("{0:s}".format(err.message))
+                print("ERROR: {0:s}".format(err.message), file=stderr)
                 exit(-1)
 
             except:
-                self.log_sctbl.critical("unexpected error")
+                print("ERROR: unexpected error", file=stderr)
                 raise
 
         fh.close()

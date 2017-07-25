@@ -184,7 +184,7 @@ class AnalyzingTool(ListSyscalls):
     # analyse_if_supported - check if the syscall is supported by pmemfile
     ####################################################################################################################
     def analyse_if_supported(self, syscall):
-        syscall.pid_ind = self.set_pid_index(syscall.pid_tid)
+        self.set_pid_index(syscall)
         if self.has_entry_content(syscall):
             self.match_fd_with_path(syscall)
             syscall.unsupported = self.is_supported(syscall)
@@ -358,8 +358,7 @@ class AnalyzingTool(ListSyscalls):
         self.list_ok.sort()
 
         if not self.convert_mode and not self.offline_mode:
-            for n in range(len(self.list_ok)):
-                self.list_ok[n] = self.analyse_if_supported(self.list_ok[n])
+            self.list_ok = [self.analyse_if_supported(syscall) for syscall in self.list_ok]
             self.print_unsupported_syscalls()
 
     ####################################################################################################################

@@ -1631,12 +1631,53 @@ hook_execveat(long fd, const char *path, char *const argv[],
 	if (where.error_code != 0)
 		return where.error_code;
 
-	if (is_fda_null(&where.at.pmem_fda))
-		return syscall_no_intercept(SYS_execveat,
-		    where.at.kernel_fd, where.path, argv, envp, flags);
+	if (!is_fda_null(&where.at.pmem_fda))
+		/* The expectation is that pmemfile will never support this. */
+		return check_errno(-ENOTSUP, SYS_execveat);
 
-	/* The expectation is that pmemfile will never support this. */
-	return check_errno(-ENOTSUP, SYS_execveat);
+	char **new_envp = NULL;
+	char *cwd = NULL;
+	if (process_switching && cwd_pool) {
+		unsigned envs = 0;
+		while (envp[envs] != 0)
+			envs++;
+
+		new_envp = malloc((envs + 2) * sizeof(char *));
+		if (!new_envp)
+			return -errno;
+
+		unsigned idx = 0;
+		/* Copy all environment variables, but skip PMEMFILE_CD. */
+		for (unsigned i = 0; i < envs; ++i) {
+			if (strncmp(envp[i], "PMEMFILE_CD=", 12) == 0)
+				continue;
+			new_envp[idx++] = envp[i];
+		}
+
+		pool_get(cwd_pool);
+		char *cwd = pmemfile_getcwd(cwd_pool->pool, NULL, 0);
+		pool_put(cwd_pool);
+		if (!cwd) {
+			int oerrno = errno;
+			free(new_envp);
+			return -oerrno;
+		}
+
+		asprintf(&new_envp[idx++], "PMEMFILE_CD=%s/%s",
+				cwd_pool->mount_point, cwd);
+		new_envp[idx++] = NULL;
+		envp = new_envp;
+	}
+
+	long ret = syscall_no_intercept(SYS_execveat, where.at.kernel_fd,
+			where.path, argv, envp, flags);
+
+	if (process_switching && cwd_pool) {
+		free(new_envp);
+		free(cwd);
+	}
+
+	return ret;
 }
 
 static long

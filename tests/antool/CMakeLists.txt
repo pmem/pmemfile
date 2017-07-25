@@ -42,6 +42,7 @@ else()
 	# check if bzip2 is installed
 	execute_process(COMMAND bzip2 -h
 			RESULT_VARIABLE BZIP2_FOUND
+			OUTPUT_QUIET
 			ERROR_QUIET)
 
 	if(${ANTOOL_TESTS} STREQUAL SAVED)
@@ -55,15 +56,20 @@ else()
 		endif()
 
 	else()
+		if(PMEMFILE_VLTRACE_BIN)
+			set(VLTRACE_BIN ${PMEMFILE_VLTRACE_BIN})
+		else()
+			set(VLTRACE_BIN "vltrace")
+		endif()
+
 		# check if vltrace is installed
 		execute_process(COMMAND vltrace -h
 				RESULT_VARIABLE VLTRACE_FOUND
+				OUTPUT_QUIET
 				ERROR_QUIET)
 
 		if(${VLTRACE_FOUND} EQUAL 0)
 			# vltrace found
-			set(VLTRACE_BIN "vltrace")
-
 			add_executable(test_syscalls test_syscalls.c)
 			target_link_libraries(test_syscalls ${CMAKE_THREAD_LIBS_INIT})
 			set(TEST_APP $<TARGET_FILE:test_syscalls>)
@@ -78,8 +84,10 @@ else()
 			endif()
 
 		else()
-			message(FATAL_ERROR "vltrace not found, antool tests cannot be performed. "
-				"Rerun cmake with one of the following options:\n"
+			message(FATAL_ERROR "vltrace not found or not in the PATH, "
+				"antool tests cannot be performed.\n"
+				"Pass the path to vltrace in the PMEMFILE_VLTRACE_BIN variable or "
+				"rerun cmake with one of the following options:\n"
 				"   -DANTOOL_TESTS=SAVED - if you want to test antool using\n"
 				"                          saved vltrace's binary logs or\n"
 				"   -DANTOOL_TESTS=SKIP  - if you want to skip antool's tests")

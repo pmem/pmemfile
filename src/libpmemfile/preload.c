@@ -174,10 +174,10 @@ fd_unref(long fd, struct fd_association *file)
 	if (__sync_sub_and_fetch(&fd_table[fd].ref_count, 1) == 0) {
 		(void) syscall_no_intercept(SYS_close, fd);
 
-		pmemfile_close(file->pool->pool, file->file);
-
 		log_write("pmemfile_close(%p, %p) = 0",
 		    (void *)file->pool->pool, (void *)file->file);
+
+		pmemfile_close(file->pool->pool, file->file);
 	}
 }
 

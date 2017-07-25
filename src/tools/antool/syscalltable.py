@@ -30,6 +30,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import logging
+
 from utils import *
 from syscallinfo import *
 
@@ -68,11 +70,9 @@ class SyscallTable:
         fmt = 'I4sP32sIIIiI6s6s'
         size_fmt = struct.calcsize(fmt)
 
-        ut = Utils()
+        fh = open_file(path_to_syscalls_table_dat, 'rb')
 
-        fh = ut.open_file(path_to_syscalls_table_dat, 'rb')
-
-        size_check, = ut.read_fmt_data(fh, 'i')
+        size_check, = read_fmt_data(fh, 'i')
         if size_check != size_fmt:
             self.log_sctbl.error("wrong format of syscalls table file: {0:s}".format(path_to_syscalls_table_dat))
             self.log_sctbl.error("      format size : {0:d}".format(size_fmt))
@@ -81,7 +81,7 @@ class SyscallTable:
 
         while True:
             try:
-                data = ut.read_fmt_data(fh, fmt)
+                data = read_fmt_data(fh, fmt)
                 num, num_str, pname, name, length, nargs, mask, avail, nstrargs, positions, _padding = data
 
                 bname = bytes(name)

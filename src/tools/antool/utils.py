@@ -31,7 +31,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import struct
-import logging
 import inspect
 
 from sys import stderr
@@ -53,43 +52,39 @@ def assert_msg(cond, message):
     raise CriticalError(message)
 
 
-class Utils:
-    def __init__(self):
-        self.log_ut = logging.getLogger("utils")
+####################################################################################################################
+# open_file -- open file with error handling
+####################################################################################################################
+def open_file(path, flags):
+    try:
+        fh = open(path, flags)
+    except FileNotFoundError:
+        print("ERROR: file not found: {0:s}".format(path), file=stderr)
+        exit(-1)
+    except:
+        print("ERROR: unexpected error", file=stderr)
+        raise
+    # noinspection PyUnboundLocalVariable
+    return fh
 
-    ####################################################################################################################
-    # open_file -- open file with error handling
-    ####################################################################################################################
-    @staticmethod
-    def open_file(path, flags):
-        try:
-            fh = open(path, flags)
-        except FileNotFoundError:
-            print("ERROR: file not found: {0:s}".format(path), file=stderr)
-            exit(-1)
-        except:
-            print("ERROR: unexpected error", file=stderr)
-            raise
-        # noinspection PyUnboundLocalVariable
-        return fh
 
-    ####################################################################################################################
-    # read_bdata - read binary data from file
-    ####################################################################################################################
-    @staticmethod
-    def read_bdata(fh, size):
-        assert_msg(size >= 0, "attempt to read data of negative size, input file can be corrupted")
-        bdata = fh.read(size)
-        length = len(bdata)
-        if length == 0:
-            raise EndOfFile()
-        assert_msg(length == size, "input file is truncated")
-        return bdata
+####################################################################################################################
+# read_bdata - read binary data from file
+####################################################################################################################
+def read_bdata(fh, size):
+    assert_msg(size >= 0, "attempt to read data of negative size, input file can be corrupted")
+    bdata = fh.read(size)
+    length = len(bdata)
+    if length == 0:
+        raise EndOfFile()
+    assert_msg(length == size, "input file is truncated")
+    return bdata
 
-    ####################################################################################################################
-    # read_fmt_data -- read formatted data from file fh
-    ####################################################################################################################
-    def read_fmt_data(self, fh, fmt):
-        size = struct.calcsize(fmt)
-        bdata = self.read_bdata(fh, size)
-        return struct.unpack(fmt, bdata)
+
+####################################################################################################################
+# read_fmt_data -- read formatted data from file fh
+####################################################################################################################
+def read_fmt_data(fh, fmt):
+    size = struct.calcsize(fmt)
+    bdata = read_bdata(fh, size)
+    return struct.unpack(fmt, bdata)

@@ -126,7 +126,6 @@ class ListSyscalls(list):
         list.__init__(self)
 
         self.log_anls = logging.getLogger("analysis")
-        self.ut = Utils()
 
         self.script_mode = script_mode
         self.debug_mode = debug_mode

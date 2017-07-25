@@ -57,6 +57,8 @@ RUN dnf install -y \
 	rpm-build \
 	sqlite \
 	sudo \
+	tcl-devel \
+	wget \
 	which \
 	whois
 
@@ -92,6 +94,10 @@ RUN dnf remove -y \
 RUN dnf autoremove -y
 
 USER $USER
+
+# Install sqlite
+COPY install-sqlite.sh install-sqlite.sh
+RUN ./install-sqlite.sh
 
 # Set required environment variables
 ENV OS fedora

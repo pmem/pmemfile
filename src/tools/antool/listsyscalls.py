@@ -30,6 +30,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import os
+
 from syscall import *
 from utils import *
 
@@ -81,43 +83,6 @@ MAX_DEC_FD = 0x10000000
 
 
 ########################################################################################################################
-# realpath -- get the resolved path (it does not resolve links YET)
-########################################################################################################################
-def realpath(path):
-    newpath = ""
-    newdirs = []
-
-    len_path = len(path)
-    if len_path == 0:
-        return ""
-
-    if path[0] == '/':
-        newpath = "/"
-
-    dirs = path.split('/')
-    len_dirs = len(dirs)
-
-    for i in range(len_dirs):
-        if dirs[i] in ("", "."):
-            continue
-
-        if dirs[i] == ".." and i > 0:
-            len_newdirs = len(newdirs)
-            if len_newdirs > 0:
-                del newdirs[len_newdirs - 1]
-            continue
-
-        newdirs.append(dirs[i])
-
-    newpath += "/".join(newdirs)
-
-    if path[len_path - 1] == '/':
-        newpath += "/"
-
-    return newpath
-
-
-########################################################################################################################
 # ListSyscalls
 ########################################################################################################################
 class ListSyscalls(list):
@@ -149,11 +114,8 @@ class ListSyscalls(list):
 
         paths = str(pmem_paths)
         self.pmem_paths = paths.split(':')
-        for n in range(len(self.pmem_paths)):
-            path = realpath(self.pmem_paths[n])
-            if path[len(path) - 1] != '/':
-                path += "/"
-            self.pmem_paths[n] = path
+        # normalize and add slash at the end of paths
+        self.pmem_paths = [os.path.join(os.path.normpath(path), '') for path in self.pmem_paths]
 
         self.unsupported = 0
         self.unsupported_yet = 0
@@ -173,8 +135,8 @@ class ListSyscalls(list):
     ####################################################################################################################
     def is_path_pmem(self, string):
         string = str(string)
-        for n in range(len(self.pmem_paths)):
-            if string.find(self.pmem_paths[n]) == 0:
+        for path in self.pmem_paths:
+            if string.find(path) == 0:
                 return 1
         return 0
 
@@ -204,31 +166,30 @@ class ListSyscalls(list):
 
     ####################################################################################################################
     def print(self):
-        for n in range(len(self)):
-            self[n].print()
+        for syscall in self:
+            syscall.print()
 
     ####################################################################################################################
     def print_always(self):
-        for n in range(len(self)):
-            self[n].print_always()
+        for syscall in self:
+            syscall.print_always()
 
     ####################################################################################################################
     # look_for_matching_record -- look for matching record in a list of incomplete syscalls
     ####################################################################################################################
     def look_for_matching_record(self, info_all, pid_tid, sc_id, name, retval):
-        for n in range(len(self)):
-            syscall = self[n]
+        for syscall in self:
             check = syscall.check_read_data(info_all, pid_tid, sc_id, name, retval, DEBUG_OFF)
             if check == CHECK_OK:
-                del self[n]
+                self.__delitem__(self.index(syscall))
                 return syscall
         return -1
 
     ####################################################################################################################
     # set_pid_index -- set PID index and create a new FD table for each PID
     ####################################################################################################################
-    def set_pid_index(self, pid_tid):
-        pid = pid_tid >> 32
+    def set_pid_index(self, syscall):
+        pid = syscall.pid_tid >> 32
         if pid != self.last_pid:
             self.last_pid = pid
 
@@ -246,7 +207,7 @@ class ListSyscalls(list):
             else:
                 self.last_pid_ind = self.pid_table.index(pid)
 
-        return self.last_pid_ind
+        syscall.pid_ind = self.last_pid_ind
 
     ####################################################################################################################
     def set_pid_index_offline(self):
@@ -255,17 +216,18 @@ class ListSyscalls(list):
         if not self.script_mode:
             print("\nCounting PIDs:")
 
-        for n in range(length):
+        for syscall in self:
             if self.print_progress:
-                print("\r{0:d} of {1:d} ({2:d}%) ".format(n + 1, length, int((100 * (n + 1)) / length)), end='')
-            self[n].pid_ind = self.set_pid_index(self[n].pid_tid)
+                n = self.index(syscall) + 1
+                print("\r{0:d} of {1:d} ({2:d}%) ".format(n, length, int((100 * n) / length)), end='')
+            self.set_pid_index(syscall)
 
         if self.print_progress:
             print(" done.")
 
         if self.debug_mode:
-            for n in range(len(self.pid_table)):
-                self.log_anls.debug("PID[{0:d}] = 0x{1:016X}".format(n, self.pid_table[n]))
+            for pid in self.pid_table:
+                self.log_anls.debug("PID[{0:d}] = 0x{1:016X}".format(self.pid_table.index(pid), pid))
 
     ####################################################################################################################
     # arg_is_pmem -- check if a path argument is located on the pmem filesystem
@@ -483,7 +445,7 @@ class ListSyscalls(list):
            (syscall.has_mask(EM_aep_arg_5) and (syscall.args[4] & AT_EMPTY_PATH)):
             path = ""
         else:
-            path = realpath(syscall.strings[syscall.args[arg2]])
+            path = os.path.normpath(syscall.strings[syscall.args[arg2]])
 
         dir_str = ""
         newpath = path
@@ -537,7 +499,7 @@ class ListSyscalls(list):
     # handle_one_path -- helper function of match_fd_with_path() - handles one path argument of number n
     ####################################################################################################################
     def handle_one_path(self, syscall, n):
-        path = realpath(syscall.strings[syscall.args[n]])
+        path = os.path.normpath(syscall.strings[syscall.args[n]])
 
         # handle relative paths
         if (len(path) == 0 or path[0] != '/') and not syscall.read_error:
@@ -642,7 +604,7 @@ class ListSyscalls(list):
                 # check if the argument is a string
                 if syscall.has_mask(Arg_is_str[narg]):
                     is_pmem = 0
-                    path = realpath(syscall.strings[syscall.args[narg]])
+                    path = os.path.normpath(syscall.strings[syscall.args[narg]])
 
                     # check if the argument is a path
                     if syscall.has_mask(Arg_is_path[narg]):
@@ -773,15 +735,16 @@ class ListSyscalls(list):
             print("\nAnalyzing:")
 
         length = len(self)
-        for n in range(length):
+        for syscall in self:
             if self.print_progress:
-                print("\r{0:d} of {1:d} ({2:d}%) ".format(n + 1, length, int((100 * (n + 1)) / length)), end='')
+                n = self.index(syscall) + 1
+                print("\r{0:d} of {1:d} ({2:d}%) ".format(n, length, int((100 * n) / length)), end='')
 
-            if not self.has_entry_content(self[n]):
+            if not self.has_entry_content(syscall):
                 continue
 
-            self.match_fd_with_path(self[n])
-            self[n].unsupported = self.is_supported(self[n])
+            self.match_fd_with_path(syscall)
+            syscall.unsupported = self.is_supported(syscall)
 
         if self.print_progress:
             print(" done.\n")
@@ -800,8 +763,8 @@ class ListSyscalls(list):
         print("   {0:20s}\t\t".format(syscall.name), end='')
 
         if relative:
-            for nstr in range(len(syscall.strings)):
-                print(" \"{0:s}\"".format(syscall.strings[nstr]), end='')
+            for path in syscall.strings:
+                print(" \"{0:s}\"".format(path), end='')
         else:
             for narg in range(syscall.nargs):
                 if syscall.has_mask(Arg_is_str[narg] | Arg_is_fd[narg]):
@@ -817,31 +780,29 @@ class ListSyscalls(list):
 
     ####################################################################################################################
     def print_unsupported(self, l_names, l_inds):
-        len_names = len(l_names)
-        for n in range(len_names):
+        for name in l_names:
             if not self.verbose_mode:
-                print("   {0:s}".format(l_names[n]))
+                print("   {0:s}".format(name))
             else:
-                list_ind = l_inds[n]
-                len_inds = len(list_ind)
+                list_ind = l_inds[l_names.index(name)]
 
-                if len_inds:
-                    print("   {0:s}:".format(l_names[n]))
+                if len(list_ind):
+                    print("   {0:s}:".format(name))
                 else:
-                    print("   {0:s}".format(l_names[n]))
+                    print("   {0:s}".format(name))
 
-                for i in range(len_inds):
-                    if self.path_is_pmem[list_ind[i]]:
-                        print("\t\t\"{0:s}\" [PMEM]".format(self.all_strings[list_ind[i]]))
+                for str_ind in list_ind:
+                    if self.path_is_pmem[str_ind]:
+                        print("\t\t\"{0:s}\" [PMEM]".format(self.all_strings[str_ind]))
                     else:
-                        print("\t\t\"{0:s}\"".format(self.all_strings[list_ind[i]]))
+                        print("\t\t\"{0:s}\"".format(self.all_strings[str_ind]))
 
     ####################################################################################################################
     def print_unsupported_verbose2(self, msg, syscall, relative, end):
         print("{0:28s}\t{1:16s}\t".format(msg, syscall.name), end='')
         if relative:
-            for nstr in range(len(syscall.strings)):
-                print(" \"{0:s}\"".format(syscall.strings[nstr]), end='')
+            for path in syscall.strings:
+                print(" \"{0:s}\"".format(path), end='')
         else:
             for narg in range(syscall.nargs):
                 if syscall.has_mask(Arg_is_path[narg] | Arg_is_fd[narg]):
@@ -949,6 +910,6 @@ class ListSyscalls(list):
 
     ####################################################################################################################
     def print_unsupported_syscalls_offline(self):
-        for n in range(len(self)):
-            self.add_to_unsupported_lists_or_print(self[n])
+        for syscall in self:
+            self.add_to_unsupported_lists_or_print(syscall)
         self.print_unsupported_syscalls()

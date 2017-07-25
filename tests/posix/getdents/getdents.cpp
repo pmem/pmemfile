@@ -148,9 +148,10 @@ TEST_F(getdents, 1)
 				    PMEMFILE_O_DIRECTORY | PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
-	errno = 0;
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_END), -1);
-	EXPECT_EQ(errno, EINVAL);
+	/* 4 entries in directory and '.' '..' */
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_END), 6);
+
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_SET), 0);
 
 	char buf[32758];
 	struct linux_dirent *dirents = (struct linux_dirent *)buf;

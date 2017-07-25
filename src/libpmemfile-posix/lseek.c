@@ -171,10 +171,7 @@ pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t offset,
 	}
 
 	if (vinode_is_dir(file->vinode)) {
-		if (whence == PMEMFILE_SEEK_END) {
-			errno = EINVAL;
-			return -1;
-		}
+		/* Nothing to do for now */
 	} else if (vinode_is_regular_file(file->vinode)) {
 		/* Nothing to do for now */
 	} else {
@@ -220,9 +217,18 @@ pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t offset,
 			}
 			break;
 		case PMEMFILE_SEEK_END:
-			os_rwlock_rdlock(&vinode->rwlock);
-			ret = (pmemfile_off_t)inode->size + offset;
-			os_rwlock_unlock(&vinode->rwlock);
+			/*
+			 * Inspired by ext4 - when seeking to end on directory
+			 * INT64_MAX + offset is returned, if offset is bigger
+			 * than 0, then EINVAL is returned - as in SEEK_SET
+			 */
+			if (vinode_is_dir(vinode))
+				ret = (pmemfile_off_t)INT64_MAX + offset;
+			else {
+				os_rwlock_rdlock(&vinode->rwlock);
+				ret = (pmemfile_off_t)inode->size + offset;
+				os_rwlock_unlock(&vinode->rwlock);
+			}
 			if (ret < 0) {
 				/* Error as in SEEK_SET */
 				new_errno = EINVAL;

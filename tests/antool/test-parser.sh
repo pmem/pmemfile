@@ -104,16 +104,12 @@ mkdir -p $DIR_NAME
 cd $DIR_NAME
 
 if [ "$VLTRACE" -a ! "$VLTRACE_SKIP" ]; then
-	if [ ! -x $VLTRACE ]; then
-		echo "Error: file '$VLTRACE' does not exist or it is not executable"
-		exit 1
-	fi
 	if [ ! -x $TEST_FILE ]; then
 		echo "Error: file '$TEST_FILE' does not exist or is not executable"
 		exit 1
 	fi
 	OPT_VLTRACE="$FF -l bin -r -s $MAX_STR_LEN"
-	RUN_VLTRACE="ulimit -l 10240 && ulimit -n 10240 && $VLTRACE $OPT_VLTRACE"
+	RUN_VLTRACE="ulimit -l 10240 && ulimit -n 10240 && PATH=\"$PATH\" $VLTRACE $OPT_VLTRACE"
 
 else
 	VLTRACE_SKIP=1

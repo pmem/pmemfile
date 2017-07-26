@@ -31,9 +31,10 @@
 
 set(ANTOOL_SRC_DIR ${CMAKE_SOURCE_DIR}/tests/antool)
 
-if(NOT ANTOOL_TESTS)
-	set(ANTOOL_TESTS SAVED)
-endif()
+set(ANTOOL_TESTS "SAVED"
+	CACHE STRING "run antool tests basing on saved vltrace logs (SAVED - default) or skip antool tests at all (SKIP)")
+
+set(VLTRACE_BIN "vltrace" CACHE FILEPATH "path to vltrace binary")
 
 if(${ANTOOL_TESTS} STREQUAL SKIP)
 	message(STATUS "skipping antool tests")
@@ -42,6 +43,7 @@ else()
 	# check if bzip2 is installed
 	execute_process(COMMAND bzip2 -h
 			RESULT_VARIABLE BZIP2_FOUND
+			OUTPUT_QUIET
 			ERROR_QUIET)
 
 	if(${ANTOOL_TESTS} STREQUAL SAVED)
@@ -58,12 +60,11 @@ else()
 		# check if vltrace is installed
 		execute_process(COMMAND vltrace -h
 				RESULT_VARIABLE VLTRACE_FOUND
+				OUTPUT_QUIET
 				ERROR_QUIET)
 
 		if(${VLTRACE_FOUND} EQUAL 0)
 			# vltrace found
-			set(VLTRACE_BIN "vltrace")
-
 			add_executable(test_syscalls test_syscalls.c)
 			target_link_libraries(test_syscalls ${CMAKE_THREAD_LIBS_INIT})
 			set(TEST_APP $<TARGET_FILE:test_syscalls>)
@@ -78,8 +79,9 @@ else()
 			endif()
 
 		else()
-			message(FATAL_ERROR "vltrace not found, antool tests cannot be performed. "
-				"Rerun cmake with one of the following options:\n"
+			message(FATAL_ERROR "vltrace not found, antool tests cannot be performed.\n"
+				"Pass the path to vltrace in the VLTRACE_BIN cmake variable "
+				"or rerun cmake with one of the following options:\n"
 				"   -DANTOOL_TESTS=SAVED - if you want to test antool using\n"
 				"                          saved vltrace's binary logs or\n"
 				"   -DANTOOL_TESTS=SKIP  - if you want to skip antool's tests")

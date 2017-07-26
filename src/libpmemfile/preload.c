@@ -66,6 +66,7 @@
 #include <utime.h>
 #include <sys/fsuid.h>
 #include <sys/capability.h>
+#include <dlfcn.h>
 
 #include <asm-generic/errno.h>
 
@@ -2594,6 +2595,8 @@ hook(long syscall_number,
 	return is_hooked;
 }
 
+static __thread bool guard_flag;
+
 /*
  * hook_reentrance_guard_wrapper -- a wrapper which can notice reentrance.
  *
@@ -2613,8 +2616,6 @@ hook_reentrance_guard_wrapper(long syscall_number,
 				long arg4, long arg5,
 				long *syscall_return_value)
 {
-	static __thread bool guard_flag = false;
-
 	if (guard_flag)
 		return NOT_HOOKED;
 
@@ -2908,6 +2909,72 @@ establish_mount_points(const char *config, struct stat *kernel_cwd_stat)
 	} while (config != NULL);
 }
 
+static int (*libc__xpg_strerror_r)(int __errnum, char *__buf, size_t __buflen);
+static char *(*libc_strerror_r)(int __errnum, char *__buf, size_t __buflen);
+static char *(*libc_strerror)(int __errnum);
+
+int __xpg_strerror_r(int __errnum, char *__buf, size_t __buflen);
+
+/*
+ * XSI-compliant version of strerror_r. We have to override it to handle
+ * possible deadlock/infinite recursion when pmemfile is called from inside of
+ * strerror_r implementation and we call back into libc because of some failure
+ * (notably: pool opening failed when process switching is enabled).
+ */
+int
+__xpg_strerror_r(int __errnum, char *__buf, size_t __buflen)
+{
+	if (!guard_flag && libc__xpg_strerror_r)
+		return libc__xpg_strerror_r(__errnum, __buf, __buflen);
+
+	if (__errnum == EAGAIN) {
+		const char *str =
+			"Resource temporary unavailable (pmemfile wrapper)";
+		if (__buflen < strlen(str) + 1)
+			return ERANGE;
+		strcpy(__buf, str);
+		return 0;
+	}
+
+	const char *str = "Error code %d (pmemfile wrapper)";
+	if (__buflen < strlen(str) + 10)
+		return ERANGE;
+	sprintf(__buf, str, __errnum);
+
+	return 0;
+}
+
+/*
+ * GNU-compliant version of strerror_r. See __xpg_strerror_r description.
+ */
+char *
+strerror_r(int __errnum, char *__buf, size_t __buflen)
+{
+	if (!guard_flag && libc_strerror_r)
+		return libc_strerror_r(__errnum, __buf, __buflen);
+
+	const char *str = "Error code %d (pmemfile wrapper)";
+	if (__buflen < strlen(str) + 10)
+		return NULL;
+
+	sprintf(__buf, str, __errnum);
+	return __buf;
+}
+
+/*
+ * See __xpg_strerror_r description.
+ */
+char *
+strerror(int __errnum)
+{
+	static char buf[100];
+	if (!guard_flag && libc_strerror)
+		return libc_strerror(__errnum);
+
+	sprintf(buf, "Error code %d (pmemfile wrapper)", __errnum);
+	return buf;
+}
+
 static volatile int pause_at_start;
 
 pf_constructor void
@@ -2943,6 +3010,18 @@ pmemfile_preload_constructor(void)
 	if (pool_count == 0)
 		/* No pools mounted. XXX prevent syscall interception */
 		return;
+
+	libc__xpg_strerror_r = dlsym(RTLD_NEXT, "__xpg_strerror_r");
+	if (!libc__xpg_strerror_r)
+		FATAL("!can't find __xpg_strerror_r");
+
+	libc_strerror_r = dlsym(RTLD_NEXT, "strerror_r");
+	if (!libc_strerror_r)
+		FATAL("!can't find strerror_r");
+
+	libc_strerror = dlsym(RTLD_NEXT, "strerror");
+	if (!libc_strerror)
+		FATAL("!can't find strerror");
 
 	/*
 	 * Must be the last step, the callback can be called anytime

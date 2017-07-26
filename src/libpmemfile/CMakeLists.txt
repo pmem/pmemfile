@@ -65,6 +65,7 @@ add_library(pmemfile_static_unscoped STATIC $<TARGET_OBJECTS:pmemfile_o>)
 target_link_libraries(pmemfile_shared PRIVATE ${SYSCALL_INTERCEPT_LIBRARIES})
 target_link_libraries(pmemfile_shared PRIVATE ${CAP_LIBRARIES})
 target_link_libraries(pmemfile_shared PRIVATE ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(pmemfile_shared PRIVATE ${CMAKE_DL_LIBS})
 target_link_libraries(pmemfile_shared PRIVATE pmemfile-posix_shared)
 target_link_libraries(pmemfile_shared PRIVATE -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/libpmemfile.map)
 

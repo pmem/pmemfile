@@ -83,10 +83,14 @@ struct pmemfile_vinode {
 	/* tree mapping offsets to blocks */
 	struct ctree *blocks;
 
+	/* cache of number of blocks in inode */
+	size_t stat_block_cache;
+
 	/* space for volatile snapshots */
 	struct {
 		struct block_info first_free_block;
 		struct pmemfile_block_desc *first_block;
+		size_t stat_block_cache;
 	} snapshot;
 };
 

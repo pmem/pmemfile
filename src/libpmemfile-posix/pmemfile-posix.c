@@ -44,6 +44,7 @@
 #include "locks.h"
 #include "out.h"
 #include "valgrind_internal.h"
+#include "cache.h"
 
 #include "verify_consts.h"
 
@@ -76,6 +77,7 @@ libpmemfile_posix_init(void)
 			PMEMFILE_MINOR_VERSION);
 	LOG(LDBG, NULL);
 	cb_init();
+	cache_init();
 
 	char *tmp = getenv("PMEMFILE_BLOCK_SIZE");
 	if (tmp) {

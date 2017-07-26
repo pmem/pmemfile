@@ -49,6 +49,7 @@
 #include "os_thread.h"
 #include "out.h"
 #include "utils.h"
+#include "cache.h"
 
 static void
 log_leak(uint64_t key, void *value)
@@ -129,6 +130,10 @@ inode_ref(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 		os_rwlock_init(&vinode->rwlock);
 		vinode->tinode = inode;
 		vinode->inode = PF_RW(pfp, inode);
+
+		void *key = (void *) vinode->inode;
+		vinode->stat_block_cache = cache_get(key);
+
 		if (inode_is_dir(vinode->inode) && parent)
 			vinode->parent = vinode_ref(pfp, parent);
 
@@ -208,6 +213,8 @@ void
 vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
 	ASSERT_NOT_IN_TX();
+
+	cache_set((void *) vinode->inode, vinode->stat_block_cache);
 
 	os_rwlock_wrlock(&pfp->inode_map_rwlock);
 
@@ -630,6 +637,7 @@ vinode_snapshot(struct pmemfile_vinode *vinode)
 {
 	vinode->snapshot.first_free_block = vinode->first_free_block;
 	vinode->snapshot.first_block = vinode->first_block;
+	vinode->snapshot.stat_block_cache = vinode->stat_block_cache;
 }
 
 /*
@@ -642,6 +650,7 @@ vinode_restore_on_abort(struct pmemfile_vinode *vinode)
 {
 	vinode->first_free_block = vinode->snapshot.first_free_block;
 	vinode->first_block = vinode->snapshot.first_block;
+	vinode->stat_block_cache = vinode->snapshot.stat_block_cache;
 
 	/*
 	 * The ctree is not restored here. It is rebuilt the next

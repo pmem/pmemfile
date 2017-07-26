@@ -33,6 +33,7 @@ set(SOURCES
 	access.c
 	block_array.c
 	callbacks.c
+	cache.c
 	chdir.c
 	chmod.c
 	chown.c
@@ -75,6 +76,7 @@ set(SOURCES
 )
 
 set(HEADERS
+	cache.h
 	callbacks.h
 	creds.h
 	ctree.h

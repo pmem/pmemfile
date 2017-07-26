@@ -532,6 +532,7 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			block->offset = offset;
 			file_allocate_block_data(pfp, block, size, over);
 			block_cache_insert_block_in_tx(vinode->blocks, block);
+			vinode->stat_block_cache += block->size;
 		} else if (block == NULL && vinode->first_block != NULL) {
 			/* case 4) */
 			/* In a hole before the first block */
@@ -546,6 +547,7 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			block->offset = offset;
 			file_allocate_block_data(pfp, block, count, false);
 			block_cache_insert_block_in_tx(vinode->blocks, block);
+			vinode->stat_block_cache += block->size;
 		} else if (TOID_IS_NULL(block->next)) {
 			/* case 2) */
 			/* After the last allocated block */
@@ -554,6 +556,7 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			block->offset = offset;
 			file_allocate_block_data(pfp, block, size, over);
 			block_cache_insert_block_in_tx(vinode->blocks, block);
+			vinode->stat_block_cache += block->size;
 		} else {
 			/* case 2) */
 			/* between two allocated blocks */
@@ -577,6 +580,7 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 				    false);
 				block_cache_insert_block_in_tx(vinode->blocks,
 						block);
+				vinode->stat_block_cache += block->size;
 
 				if (block->size > hole_count)
 					block->size = (uint32_t)hole_count;
@@ -894,6 +898,8 @@ vinode_remove_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			 * --+-------+-------+----------------+-----
 			 *           | block |
 			 */
+			vinode->stat_block_cache -= block->size;
+
 			ctree_remove(vinode->blocks, block->offset, 1);
 			block = block_list_remove(pfp, vinode, block);
 

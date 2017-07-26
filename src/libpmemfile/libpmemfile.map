@@ -36,6 +36,10 @@
 # intentionally not exposing any symbols
 #
 {
+	global:
+		__xpg_strerror_r;
+		strerror_r;
+		strerror;
 	local:
 		*;
 };

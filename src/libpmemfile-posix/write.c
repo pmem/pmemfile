@@ -153,8 +153,11 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 				break;
 		}
 
-		if (sum_len > 0)
-			vinode_allocate_interval(pfp, vinode, offset, sum_len);
+		size_t allocated_space = inode->allocated_space;
+		if (sum_len > 0) {
+			allocated_space += vinode_allocate_interval(pfp,
+				vinode, offset, sum_len);
+		}
 
 		for (int i = 0; i < iovcnt; ++i) {
 			size_t len = iov[i].iov_len;
@@ -192,6 +195,11 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 				inode->size = offset;
 
 				TX_SET_DIRECT(inode, ctime, tm);
+			}
+
+			if (inode->allocated_space != allocated_space) {
+				TX_ADD_FIELD_DIRECT(inode, allocated_space);
+				inode->allocated_space = allocated_space;
 			}
 
 			TX_SET_DIRECT(inode, mtime, tm);

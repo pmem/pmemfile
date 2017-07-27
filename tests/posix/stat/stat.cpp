@@ -155,7 +155,7 @@ test_fstatat(PMEMfilepool *pfp, PMEMfile *dir, const char *path, int flags,
 
 TEST_F(stat_test, basic)
 {
-	EXPECT_EQ(test_stat(pfp, "/", 040777, 2, 4008, 1, 0), 0);
+	EXPECT_EQ(test_stat(pfp, "/", 040777, 2, 4000, 1, 0), 0);
 
 	errno = 0;
 	EXPECT_EQ(test_stat(pfp, "/file1"), -1);
@@ -226,7 +226,7 @@ TEST_F(stat_test, stat_file_in_dir)
 {
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", 0755), 0);
 
-	EXPECT_EQ(test_stat(pfp, "/dir", 040755, 2, 4008, 1, 0), 0);
+	EXPECT_EQ(test_stat(pfp, "/dir", 040755, 2, 4000, 1, 0), 0);
 
 	ASSERT_TRUE(
 		test_pmemfile_create(pfp, "/dir/file1", PMEMFILE_O_EXCL, 0644));
@@ -284,7 +284,7 @@ TEST_F(stat_test, fstatat)
 	EXPECT_EQ(errno, ENOENT);
 
 	EXPECT_EQ(test_fstatat(pfp, dir, "", PMEMFILE_AT_EMPTY_PATH, 040755, 2,
-			       4008, 1, 0),
+			       4000, 1, 0),
 		  0);
 
 	pmemfile_close(pfp, dir);

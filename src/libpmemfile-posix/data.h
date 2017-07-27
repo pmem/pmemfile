@@ -39,10 +39,10 @@ extern bool pmemfile_overallocate_on_append;
 
 int vinode_rebuild_block_tree(PMEMfilepool *pfp,
 			struct pmemfile_vinode *vinode);
-void vinode_remove_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
-			uint64_t offset, uint64_t len);
-void vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
-		uint64_t offset, uint64_t size);
+size_t vinode_remove_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+		uint64_t offset, uint64_t len);
+size_t vinode_allocate_interval(PMEMfilepool *pfp,
+		struct pmemfile_vinode *vinode, uint64_t offset, uint64_t size);
 
 struct pmemfile_block_desc *find_closest_block(struct pmemfile_vinode *vinode,
 		uint64_t off);

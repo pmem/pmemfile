@@ -297,7 +297,7 @@ test_empty_dir(PMEMfilepool *pfp, const char *path)
 	return test_compare_dirs(
 		files,
 		std::vector<pmemfile_ls>{
-			{040777, 2, 4008, "."}, {040777, 2, 4008, ".."},
+			{040777, 2, 4000, "."}, {040777, 2, 4000, ".."},
 		},
 		false, false);
 }

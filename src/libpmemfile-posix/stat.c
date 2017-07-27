@@ -83,28 +83,14 @@ vinode_stat(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 
 	pmemfile_blkcnt_t blks = 0;
 	if (inode_is_regular_file(inode)) {
-		const struct pmemfile_block_array *arr =
-				&inode->file_data.blocks;
-		size_t sz = 0;
-		while (arr) {
-			for (uint32_t i = 0; i < arr->length; ++i)
-				sz += arr->blocks[i].size;
-			arr = PF_RO(pfp, arr->next);
-		}
-
+		size_t sz = inode->allocated_space;
 		/*
 		 * XXX This doesn't match reality. It will match once we start
 		 * getting 4k-aligned blocks from pmemobj allocator.
 		 */
 		blks = (pmemfile_blkcnt_t)((sz + 511) / 512);
 	} else if (inode_is_dir(inode)) {
-		const struct pmemfile_dir *arr = &inode->file_data.dir;
-		size_t sz = 0;
-		while (arr) {
-			sz += pmemfile_dir_size(arr->next);
-			arr = PF_RO(pfp, arr->next);
-		}
-
+		size_t sz = inode->size - sizeof(inode->file_data);
 		/*
 		 * XXX This doesn't match reality. It will match once we start
 		 * getting 4k-aligned blocks from pmemobj allocator.

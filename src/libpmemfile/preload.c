@@ -1148,6 +1148,16 @@ utimensat_helper(int sc, long fd, const char *path,
 
 	struct fd_desc at = fd_fetch(fd);
 
+	/*
+	 * Handle non-pmem file descriptor with NULL path earlier. resolve_path
+	 * does not handle empty paths in a way we want here.
+	 */
+	if (is_fda_null(&at.pmem_fda) && path == NULL) {
+		ret = syscall_no_intercept(SYS_utimensat, at.kernel_fd,
+				NULL, times, flags);
+		goto end;
+	}
+
 	int follow = (flags & AT_SYMLINK_NOFOLLOW) ?
 			NO_RESOLVE_LAST_SLINK : RESOLVE_LAST_SLINK;
 	resolve_path(at, path, &where, follow);
@@ -1236,6 +1246,7 @@ utimensat_helper(int sc, long fd, const char *path,
 		}
 	}
 
+end:
 	fd_release(&at);
 
 	return ret;

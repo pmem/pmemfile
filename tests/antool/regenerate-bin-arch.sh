@@ -31,6 +31,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
+LOG_OFFSET=80036
+
 NAME=$(basename $0)
 
 if [ "$1" == "" ]; then
@@ -64,21 +66,32 @@ if [ ! -f $FILE_DIR_PMEM ]; then
 	exit 1
 fi
 
-if [ ! -f $SYSCALL_TABLE ]; then
-	echo "ERROR: syscall table file does not exist: $SYSCALL_TABLE"
-	echo "       - please rerun antool tests"
-	exit 1
-fi
-
 cp -f $FILE_DIR_PMEM $SRC_DIR
 
 rm -f *.$ARCH_EXT
 
 echo -n "Regenerating archives... "
-bzip2 -f -k -9 $SYSCALL_TABLE
+TEMP_FILE=$(mktemp)
+rm -f $SYSCALL_TABLE
+
 for file in $FILES_BIN; do
+	# cut the syscall table out of the first log file
+	[ ! -f $SYSCALL_TABLE ] \
+		&& dd if=$file of=$SYSCALL_TABLE iflag=count_bytes count=$LOG_OFFSET status=none
+
+	mv $file $TEMP_FILE
+
+	# cut off the syscall table at the beginning of the log file
+	dd if=$TEMP_FILE of=$file iflag=skip_bytes skip=$LOG_OFFSET status=none
+
+	# compress the cut log file
 	bzip2 -f -k -9 $file
+
+	mv $TEMP_FILE $file
 done
+
+bzip2 -f -k -9 $SYSCALL_TABLE
+rm -f $SYSCALL_TABLE
 echo "done."
 
 echo "Regenerated following archives... "

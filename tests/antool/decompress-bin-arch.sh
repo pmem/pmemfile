@@ -59,13 +59,26 @@ if [ "$FILES_ARCH" == "" ]; then
 fi
 
 echo -n "Decompressing vltrace's binary logs... "
+
 for file in $FILES_ARCH; do
 	bzip2 -d -f -k $file
 done
+
+TEMP_FILE=$(mktemp)
+
+# concatenate log files with syscall table
+for file in $SRC_DIR/$MASK_BIN; do
+	cp $file $TEMP_FILE
+	cp $SRC_DIR/$SYSCALL_TABLE $file
+	cat $TEMP_FILE >> $file
+done
+
+rm -f $TEMP_FILE
+
 echo "done."
 
 echo "Moving binary logs to the test directory... "
 mv -f -v $SRC_DIR/$MASK_BIN $DEST_DIR
-mv -f -v $SRC_DIR/$SYSCALL_TABLE $DEST_DIR
 cp -f -v $SRC_DIR/$FILE_DIR_PMEM $DEST_DIR
+rm -f $SRC_DIR/$SYSCALL_TABLE
 echo "done."

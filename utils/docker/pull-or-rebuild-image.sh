@@ -104,7 +104,7 @@ for file in $files; do
 		if [[ $TRAVIS_REPO_SLUG == "${GITHUB_REPO}" \
 			&& $TRAVIS_BRANCH == "master" \
 			&& $TRAVIS_EVENT_TYPE != "pull_request"
-			&& $MAKE_PKG == "1" ]]
+			&& $PUSH_IMAGE == "1" ]]
 		then
 			echo "The image will be pushed to Docker Hub"
 			touch push_image_to_repo_flag

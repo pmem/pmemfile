@@ -9,13 +9,13 @@ language: c
 
 env:
   matrix:
-    - MAKE_PKG=1 OS=ubuntu OS_VER=16.04
-    - MAKE_PKG=1 OS=fedora OS_VER=25
+    - PUSH_IMAGE=1 MAKE_PKG=1 OS=ubuntu OS_VER=16.04
+    - PUSH_IMAGE=1 MAKE_PKG=1 OS=fedora OS_VER=25
     - MAKE_PKG=0 OS=ubuntu OS_VER=16.04 C_COMPILER=clang CPP_COMPILER=clang++
     - MAKE_PKG=0 OS=fedora OS_VER=25    C_COMPILER=clang CPP_COMPILER=clang++
     - MAKE_PKG=0 OS=ubuntu OS_VER=16.04
     - MAKE_PKG=0 OS=fedora OS_VER=25
-    - COVERAGE=1 OS=ubuntu OS_VER=17.04
+    - PUSH_IMAGE=1 COVERAGE=1 OS=ubuntu OS_VER=17.04
     - COVERITY=1 OS=ubuntu OS_VER=16.04
     - SQLITE=1 OS=ubuntu OS_VER=16.04
 

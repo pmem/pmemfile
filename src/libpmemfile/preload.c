@@ -139,10 +139,7 @@ struct pmemfile_entry {
 
 /*
  * The associations between user visible fd numbers and
- * pmemfile pointers. This is a global table, with a single
- * global lock -- thus reading one fd blocks other threads from
- * writing to other fds.
- * XXX - improve this situation
+ * pmemfile pointers. Each pmemfile fd has it's own reference counter.
  */
 static struct pmemfile_entry fd_table[PMEMFILE_MAX_FD + 1];
 

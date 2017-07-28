@@ -61,7 +61,11 @@ RUN apt-get install -y \
 	sudo \
 	tcl-dev \
 	wget \
+	python-pip \
 	whois
+
+# Install codecov
+RUN pip install codecov
 
 # Install valgrind
 COPY install-valgrind.sh install-valgrind.sh

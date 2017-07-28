@@ -60,7 +60,11 @@ RUN dnf install -y \
 	tcl-devel \
 	wget \
 	which \
+	python-pip \
 	whois
+
+# Install codecov
+RUN pip install codecov
 
 # Install valgrind
 COPY install-valgrind.sh install-valgrind.sh

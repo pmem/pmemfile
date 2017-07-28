@@ -137,6 +137,7 @@ struct pmemfile_time {
 				- 16 /* mtime */ \
 				- 8  /* nlink */ \
 				- 8  /* size */ \
+				- 8  /* allocated space */ \
 				- 8  /* flags */)
 
 /* Inode */
@@ -167,6 +168,9 @@ struct pmemfile_inode {
 
 	/* size of file */
 	uint64_t size;
+
+	/* allocated space in file (for regular files) */
+	uint64_t allocated_space;
 
 	/* file flags */
 	uint64_t flags;

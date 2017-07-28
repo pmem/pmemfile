@@ -423,7 +423,7 @@ overallocate_size(uint64_t size)
  *
  * The remaining interval has zero size, ending the loop.
  */
-void
+size_t
 vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		uint64_t offset, uint64_t size)
 {
@@ -432,6 +432,8 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	ASSERT(offset + size > offset);
 
 	struct pmemfile_inode *inode = vinode->inode;
+
+	size_t allocated_space = 0;
 
 	bool over = pmemfile_overallocate_on_append &&
 	    is_append(vinode, inode, offset, size);
@@ -520,7 +522,7 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			available -= offset - block->offset;
 
 			if (available >= size)
-				return;
+				break;
 
 			offset += available;
 			size -= available;
@@ -532,6 +534,7 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			block->offset = offset;
 			file_allocate_block_data(pfp, block, size, over);
 			block_cache_insert_block_in_tx(vinode->blocks, block);
+			allocated_space += block->size;
 		} else if (block == NULL && vinode->first_block != NULL) {
 			/* case 4) */
 			/* In a hole before the first block */
@@ -546,6 +549,7 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			block->offset = offset;
 			file_allocate_block_data(pfp, block, count, false);
 			block_cache_insert_block_in_tx(vinode->blocks, block);
+			allocated_space += block->size;
 		} else if (TOID_IS_NULL(block->next)) {
 			/* case 2) */
 			/* After the last allocated block */
@@ -554,6 +558,7 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			block->offset = offset;
 			file_allocate_block_data(pfp, block, size, over);
 			block_cache_insert_block_in_tx(vinode->blocks, block);
+			allocated_space += block->size;
 		} else {
 			/* case 2) */
 			/* between two allocated blocks */
@@ -577,6 +582,7 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 				    false);
 				block_cache_insert_block_in_tx(vinode->blocks,
 						block);
+				allocated_space += block->size;
 
 				if (block->size > hole_count)
 					block->size = (uint32_t)hole_count;
@@ -585,6 +591,8 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			}
 		}
 	} while (size > 0);
+
+	return allocated_space;
 }
 
 /*
@@ -873,12 +881,14 @@ is_block_at_right_edge(struct pmemfile_block_desc *block,
  * At this point, the file size is not changed, but the corresponding file
  * contents would remain zero bytes, if they were not snapshotted.
  */
-void
+size_t
 vinode_remove_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			uint64_t offset, uint64_t len)
 {
 	ASSERT_IN_TX();
 	ASSERT(len > 0);
+
+	size_t deallocated_space = 0;
 
 	struct pmemfile_block_desc *block =
 			find_closest_block(vinode, offset + len - 1);
@@ -894,6 +904,7 @@ vinode_remove_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			 * --+-------+-------+----------------+-----
 			 *           | block |
 			 */
+			deallocated_space += block->size;
 			ctree_remove(vinode->blocks, block->offset, 1);
 			block = block_list_remove(pfp, vinode, block);
 
@@ -961,4 +972,6 @@ vinode_remove_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			block = PF_RW(pfp, block->prev);
 		}
 	}
+
+	return deallocated_space;
 }

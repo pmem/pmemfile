@@ -97,7 +97,7 @@ inode_ref(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 
 	ASSERT_NOT_IN_TX();
 
-	if (PF_RO(pfp, inode)->version != PMEMFILE_INODE_VERSION(1)) {
+	if (PF_RO(pfp, inode)->version != PMEMFILE_INODE_VERSION(2)) {
 		ERR("unknown inode version 0x%x for inode 0x%" PRIx64,
 				PF_RO(pfp, inode)->version, inode.oid.off);
 		errno = EINVAL;
@@ -289,7 +289,7 @@ inode_alloc(PMEMfilepool *pfp, struct pmemfile_cred *cred, uint64_t flags)
 	struct pmemfile_time t;
 	tx_get_current_time(&t);
 
-	inode->version = PMEMFILE_INODE_VERSION(1);
+	inode->version = PMEMFILE_INODE_VERSION(2);
 	inode->flags = flags;
 	inode->ctime = t;
 	inode->mtime = t;

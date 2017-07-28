@@ -239,8 +239,8 @@ TEST_F(getdents, 2)
 
 	auto files = test_list_files(pfp, f, buf, (unsigned)r);
 	ASSERT_TRUE(test_compare_dirs(files, std::vector<pmemfile_ls>{
-						     {040755, 2, 4008, "."},
-						     {040777, 3, 4008, ".."},
+						     {040755, 2, 4000, "."},
+						     {040777, 3, 4000, ".."},
 						     {0100644, 1, 0, "file1"},
 						     {0100644, 1, 0, "file2"},
 						     {0100644, 1, 0, "file3"},

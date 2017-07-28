@@ -30,6 +30,20 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+ * transform_pmemfile_posix_fd_first.c
+ *
+ * Print wrappers around functions declared (and defined) in the
+ * pmemfile-posix-wrappers.h header file.
+ * These wrappers merely make it easier to call some of these functions,
+ * by casting `long` arguments from libsyscall_intercept to the appropirate
+ * types. It also forwards a struct fd_association pointer argument
+ * as a pool pointer + a file pointer argument.
+ * This is only meant to apply to some pmemfile_* functions which
+ * accept a file as their second argument -- corresponding to libc
+ * functions which accept an fd as their first argument.
+ */
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>

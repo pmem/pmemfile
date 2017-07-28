@@ -30,6 +30,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+ * transform_pmemfile_posix.c - transforms the function declarations in
+ * pmemfile_posix.h to definitions of wrapper functions.
+ *
+ *
+ */
+
 #include <stdio.h>
 #include <string.h>
 
@@ -54,6 +61,9 @@ static const char *epilogue =
 
 static const char prefix[] = "wrapper_";
 
+/*
+ * print_type_and_name -- prints "type name" or "type *name"
+ */
 static void
 print_type_and_name(const char *type, const char *name)
 {
@@ -63,6 +73,21 @@ print_type_and_name(const char *type, const char *name)
 		printf("%s %s", type, name);
 }
 
+/*
+ * print_prototype -- prints the function prototype.
+ * The return type is the same as the original function's return type.
+ * The name gets a prefix attached to it.
+ * The argument list is the same as the orig_prefix function's argument
+ * list, except for making sure all arguments have names (see fix_args).
+ *
+ * Example output:
+ * +------------------------------------------+
+ * | static inline int                        |
+ * | wrapper_pmemfile_link(PMEMfilepool *pfp, |
+ * |            const char *oldpath,          |
+ * |            const char *newpath)          |
+ * +------------------------------------------+
+ */
 static void
 print_prototype(const struct func_desc *desc)
 {
@@ -81,6 +106,17 @@ print_prototype(const struct func_desc *desc)
 	puts(")");
 }
 
+/*
+ * print_forward_call -- prints a call to the original function.
+ *
+ *
+ * Example output:
+ * +-------------------------+
+ * | pmemfile_link(pfp,      |
+ * |            oldpath,     |
+ * |            newpath);    |
+ * +-------------------------+
+ */
 static void
 print_forward_call(const struct func_desc *desc)
 {
@@ -171,12 +207,26 @@ print_format_argument(const struct type_desc *type, const char *name)
 		printf("(uintmax_t)%s", name);
 }
 
+/*
+ * print_log_write -- prints a call to log_write.
+ *
+ * Example output:
+ * +----------------------------------------------------+
+ * | log_write(                                         |
+ * |        "pmemfile_link(%p, \"%s\", \"%s\") = %jd",  |
+ * |            (void *)pfp,                            |
+ * |            oldpath,                                |
+ * |            newpath, (intmax_t)ret);                |
+ * +----------------------------------------------------+
+ */
 static void
 print_log_write(const struct func_desc *desc)
 {
 
-	printf("\tlog_write(\n\t    \"%s(", desc->name);
+	printf("\tlog_write(\n\t    ");
 
+	/* printing the format string e.g.: "%p, \"%s\", \"%s\") = %jd" */
+	printf("\"%s(", desc->name);
 	for (int i = 0; i < desc->arg_count; ++i) {
 		if (i > 0)
 			printf(", ");
@@ -191,7 +241,7 @@ print_log_write(const struct func_desc *desc)
 	}
 	printf("\"");
 
-
+	/* printing format string arguments, with appropriate casts */
 	for (int i = 0; i < desc->arg_count; ++i) {
 		printf(",\n\t\t");
 		print_format_argument(&desc->args[i].type, desc->args[i].name);
@@ -206,46 +256,90 @@ print_log_write(const struct func_desc *desc)
 	puts(");");
 }
 
+/*
+ * handle_errno
+ *
+ * Some functions return signed integers, where -1 means an error
+ * has happened. In such cases, pmemfile-posix stores an error code
+ * in libc provided errno, while a syscall would return that error
+ * in the return value. This routine prints the code to perform
+ * this translation when needed.
+ *
+ * prints (optionally):
+ * +-------------------+
+ * | if (ret < 0)      |
+ * |     ret = -errno; |
+ * +-------------------+
+ */
 static void
-print_errno_handler(void)
+handle_errno(const struct func_desc *desc)
 {
-	puts("\tif (ret < 0)");
-	puts("\t\tret = -errno;");
+	if (strcmp(desc->return_type.name, "int") == 0 ||
+	    strcmp(desc->return_type.name, "pmemfile_ssize_t") == 0) {
+		puts("\tif (ret < 0)");
+		puts("\t\tret = -errno;");
+	}
 }
 
+/*
+ * print_return_value_assignment -- assigns the return value
+ * from the original function to a local variable (that is if
+ * the original function returns any value).
+ */
+static void
+print_return_value_assignment(const struct func_desc *desc)
+{
+	if (desc->return_type.is_void) {
+		printf("\t");
+	} else {
+		/*
+		 * prints:
+		 *
+		 * +---------------+
+		 * | type ret;     |
+		 * | ret =         |
+		 * +---------------+
+		 *
+		 * This is expected to be followed by print_forward_call.
+		 */
+		putchar('\t');
+		print_type_and_name(desc->return_type.name, "ret");
+		printf(";\n\n\tret = ");
+	}
+}
+
+static void
+print_function_prologue(const struct func_desc *desc)
+{
+	if (!desc->return_type.is_void) {
+		puts("");
+		puts("\treturn ret;");
+	}
+}
+
+/*
+ * print_wrapper -- prints a wrapper function.
+ */
 static void
 print_wrapper(struct func_desc *desc)
 {
 	print_prototype(desc);
 	puts("{");
-
-	if (desc->return_type.is_void) {
-		printf("\t");
-	} else {
-		putchar('\t');
-		print_type_and_name(desc->return_type.name, "ret");
-		printf(";\n\n\tret = ");
-	}
-
+	print_return_value_assignment(desc);
 	print_forward_call(desc);
-
-	if (strcmp(desc->return_type.name, "int") == 0 ||
-	    strcmp(desc->return_type.name, "pmemfile_ssize_t") == 0)
-		print_errno_handler();
-
-	putchar('\n');
+	handle_errno(desc);
+	puts("");
 	print_log_write(desc);
-	putchar('\n');
-
-	if (!desc->return_type.is_void) {
-		puts("");
-		puts("\treturn ret;");
-	}
-
+	puts("");
+	print_function_prologue(desc);
 	puts("}");
 	puts("");
 }
 
+/*
+ * has_arg_name -- is the given string used as a name of any of
+ * the function arguments?
+ */
 static bool
 has_arg_name(const struct func_desc *desc, const char *name)
 {
@@ -257,6 +351,16 @@ has_arg_name(const struct func_desc *desc, const char *name)
 	return false;
 }
 
+/*
+ * fill_arg_name -- assign names to some function arguments, which
+ * don't have a name in the orignal header file.
+ *
+ * E.g treat the following declaration:
+ * int pmemfile_fchmod(PMEMfilepool *, PMEMfile *, pmemfile_mode_t mode);
+ *
+ * as:
+ * int pmemfile_fchmod(PMEMfilepool *pfp, PMEMfile *file, pmemfile_mode_t mode);
+ */
 static int
 fill_arg_name(struct func_desc *desc, struct arg_desc *arg)
 {

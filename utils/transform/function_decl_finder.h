@@ -30,11 +30,25 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+ * function_decl_finder.h - interface for a library that interacts with
+ * libclang. This is created to make processing the source files relevant
+ * to pmemfile easier. Using this interface provides less flexibility
+ * than using libclang directly, but in return, one does not need to
+ * worry about clang_getCString, clang_disposeString, etc...
+ */
+
 #ifndef PMEMFILE_UTILS_FUNCTION_DECL_FINDER_H
 #define PMEMFILE_UTILS_FUNCTION_DECL_FINDER_H
 
 #include <stdbool.h>
 
+/*
+ * The fields in the following struct should be self explanatory (well,
+ * that is the intention). The choice of what information is provided
+ * in these structs can appear to be quite arbitrary, they are only influenced
+ * influenced by what one happens to need in libpmemfile.
+ */
 struct type_desc {
 	bool is_void;
 	bool is_pointer;
@@ -55,9 +69,20 @@ struct func_desc {
 	struct type_desc return_type;
 	bool is_variadic;
 	int arg_count;
-	struct arg_desc args[0x20];
+	struct arg_desc *args;
 };
 
+/*
+ * visit_function_decls - iterate over all function declarations in the source
+ * file at `path`. The callback provided is called with each declaration as
+ * argument. The argc and argv arguments are forwarded to libclang, thus one can
+ * use clang command line arguments to control parsing of the source file.
+ *
+ * The callback function can modify anything not const qualified in the
+ * func_desc it receives - it just can't free() any of the pointers in it.
+ *
+ * Returns zero on success, non-zero on failure.
+ */
 int visit_function_decls(const char *path, int (*callback)(struct func_desc *),
 		int argc, char **argv);
 

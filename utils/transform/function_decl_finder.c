@@ -40,6 +40,15 @@
 
 #include "function_decl_finder.h"
 
+/*
+ * The full_func_desc structure holds references to C strings
+ * from clang (which one gets via clang_getCString and must dispose of
+ * using clang_disposeString. It also holds references to some strings
+ * malloc'd by this translation unit.
+ * A pointer to the member desc is passed to the client of this library,
+ * that holds pointers to the same strings - but the client is allowed
+ * to modify anything in desc, so those pointers can't be relied on.
+ */
 struct full_func_desc {
 	struct func_desc desc;
 
@@ -52,6 +61,7 @@ struct full_func_desc {
 	size_t alloc_count;
 	size_t max_alloc_count;
 	char **allocated_strings;
+	void *client_args;
 };
 
 static void *
@@ -201,7 +211,14 @@ static void
 describe_arg_count(CXCursor func_decl, struct full_func_desc *full_desc)
 {
 	full_desc->desc.is_variadic = (clang_Cursor_isVariadic(func_decl) != 0);
-	full_desc->desc.arg_count = clang_Cursor_getNumArguments(func_decl);
+	int count = clang_Cursor_getNumArguments(func_decl);
+	full_desc->desc.arg_count = count;
+	if (count > 0) {
+		full_desc->desc.args = full_desc->client_args =
+		    xmalloc((size_t)count * sizeof(full_desc->desc.args[0]));
+	} else {
+		full_desc->desc.args = full_desc->client_args = NULL;
+	}
 }
 
 static void
@@ -237,6 +254,8 @@ dispose_function_desc(struct full_func_desc *desc)
 
 	for (size_t i = 0; i < desc->alloc_count; ++i)
 		free(desc->allocated_strings[i]);
+
+	free(desc->client_args);
 }
 
 static enum CXChildVisitResult

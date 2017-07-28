@@ -51,7 +51,18 @@ else()
 			set(VLTRACE_FOUND -1)
 			set(VLTRACE_BIN "")
 			set(DECOMPRESSOR ${ANTOOL_SRC_DIR}/decompress-bin-arch.sh)
-			execute_process(COMMAND ${DECOMPRESSOR} ${ANTOOL_SRC_DIR} ${CMAKE_CURRENT_BINARY_DIR})
+
+			execute_process(COMMAND ${DECOMPRESSOR} ${ANTOOL_SRC_DIR} ${CMAKE_CURRENT_BINARY_DIR}
+					RESULT_VARIABLE RESULT_DECOMPRESSOR
+					OUTPUT_VARIABLE OUTPUT_DECOMPRESSOR
+					OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+			message(STATUS ${OUTPUT_DECOMPRESSOR})
+
+			if(NOT(${RESULT_DECOMPRESSOR} EQUAL 0))
+				message(FATAL_ERROR "cannot decompress vltrace logs, antool tests cannot be performed.")
+			endif()
+
 		else()
 			message(FATAL_ERROR "bzip2 compressor not found, antool tests cannot be performed.")
 		endif()

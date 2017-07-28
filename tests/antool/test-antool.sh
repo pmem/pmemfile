@@ -137,11 +137,10 @@ if [ ! "$VLTRACE_SKIP" ]; then
 	sudo bash -c "$RUN_VLTRACE -o $OUTBIN $TEST_FILE $TEST_NUM $TEST_OPTIONS"
 else
 	DIR_PMEM=$VLTRACE_SKIP
-	cp ../syscalls_table.dat .
 	cp ../$OUTBIN .
 fi
 
-COMMON_OPTS="-t syscalls_table.dat -b $OUTBIN -s -o $OUT_ANTOOL"
+COMMON_OPTS="-b $OUTBIN -s -o $OUT_ANTOOL"
 ANTOOL="$ANTOOL $COMMON_OPTS"
 
 echo "$ $ANTOOL -p "$DIR_PMEM" > $OUT"
@@ -174,6 +173,11 @@ fi
 
 check
 
-# test succeeded - remove the temporary test directory
+# test succeeded
+# copy vltrace binary log for regeneration
+cp $OUTBIN ..
+cp $FILE_DIR_PMEM ..
+
+# remove the temporary test directory
 cd ..
 rm -rf $DIR_NAME

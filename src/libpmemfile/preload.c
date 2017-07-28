@@ -76,7 +76,7 @@
 #include "preload.h"
 #include "syscall_early_filter.h"
 
-#include "libpmemfile-posix-wrappers2.h"
+#include "libpmemfile-posix-fd_first.h"
 
 static long log_fd = -1;
 
@@ -173,7 +173,7 @@ fd_unref(long fd, struct fd_association *file)
 	if (__sync_sub_and_fetch(&fd_table[fd].ref_count, 1) == 0) {
 		(void) syscall_no_intercept(SYS_close, fd);
 
-		cast_wrapper_pmemfile_close(file);
+		fd_first_pmemfile_close(file);
 	}
 }
 
@@ -1766,66 +1766,66 @@ dispatch_syscall_fd_first(long syscall_number,
 	switch (syscall_number) {
 
 	case SYS_write:
-		return cast_wrapper_pmemfile_write(arg0, arg1, arg2);
+		return fd_first_pmemfile_write(arg0, arg1, arg2);
 
 	case SYS_writev:
-		return cast_wrapper_pmemfile_write(arg0, arg1, arg2);
+		return fd_first_pmemfile_write(arg0, arg1, arg2);
 
 	case SYS_read:
-		return cast_wrapper_pmemfile_read(arg0, arg1, arg2);
+		return fd_first_pmemfile_read(arg0, arg1, arg2);
 
 	case SYS_readv:
-		return cast_wrapper_pmemfile_readv(arg0, arg1, arg2);
+		return fd_first_pmemfile_readv(arg0, arg1, arg2);
 
 	case SYS_lseek:
-		return cast_wrapper_pmemfile_lseek(arg0, arg1, arg2);
+		return fd_first_pmemfile_lseek(arg0, arg1, arg2);
 
 	case SYS_pread64:
-		return cast_wrapper_pmemfile_pread(arg0, arg1, arg2, arg3);
+		return fd_first_pmemfile_pread(arg0, arg1, arg2, arg3);
 
 	case SYS_pwrite64:
-		return cast_wrapper_pmemfile_pwrite(arg0, arg1, arg2, arg3);
+		return fd_first_pmemfile_pwrite(arg0, arg1, arg2, arg3);
 
 	case SYS_preadv2:
 		if (arg4 & ~(RWF_DSYNC | RWF_HIPRI | RWF_SYNC))
 			return -EINVAL;
 		/* fallthrough */
 	case SYS_preadv:
-		return cast_wrapper_pmemfile_preadv(arg0, arg1, arg2, arg3);
+		return fd_first_pmemfile_preadv(arg0, arg1, arg2, arg3);
 
 	case SYS_pwritev2:
 		if (arg4 & ~(RWF_DSYNC | RWF_HIPRI | RWF_SYNC))
 			return -EINVAL;
 		/* fallthrough */
 	case SYS_pwritev:
-		return cast_wrapper_pmemfile_pwritev(arg0, arg1, arg2, arg3);
+		return fd_first_pmemfile_pwritev(arg0, arg1, arg2, arg3);
 
 	case SYS_getdents:
-		return cast_wrapper_pmemfile_getdents(arg0, arg1, arg2);
+		return fd_first_pmemfile_getdents(arg0, arg1, arg2);
 
 	case SYS_getdents64:
-		return cast_wrapper_pmemfile_getdents64(arg0, arg1, arg2);
+		return fd_first_pmemfile_getdents64(arg0, arg1, arg2);
 
 	case SYS_fcntl:
 		return hook_fcntl(arg0, (int)arg1, arg2);
 
 	case SYS_flock:
-		return cast_wrapper_pmemfile_flock(arg0, arg1);
+		return fd_first_pmemfile_flock(arg0, arg1);
 
 	case SYS_ftruncate:
-		return cast_wrapper_pmemfile_ftruncate(arg0, arg1);
+		return fd_first_pmemfile_ftruncate(arg0, arg1);
 
 	case SYS_fchmod:
-		return cast_wrapper_pmemfile_fchmod(arg0, arg1);
+		return fd_first_pmemfile_fchmod(arg0, arg1);
 
 	case SYS_fchown:
-		return cast_wrapper_pmemfile_fchown(arg0, arg1, arg2);
+		return fd_first_pmemfile_fchown(arg0, arg1, arg2);
 
 	case SYS_fallocate:
-		return cast_wrapper_pmemfile_fallocate(arg0, arg1, arg2, arg3);
+		return fd_first_pmemfile_fallocate(arg0, arg1, arg2, arg3);
 
 	case SYS_fstat:
-		return cast_wrapper_pmemfile_fstat(arg0, arg1);
+		return fd_first_pmemfile_fstat(arg0, arg1);
 
 	default:
 		/* Did we miss something? */

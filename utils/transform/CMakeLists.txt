@@ -71,20 +71,20 @@ add_custom_command(OUTPUT ${pmemfile_SOURCE_DIR}/src/libpmemfile/libpmemfile-pos
 add_custom_target(regenerate_libpmemfile-posix-wrappers
 		DEPENDS ${pmemfile_SOURCE_DIR}/src/libpmemfile/libpmemfile-posix-wrappers.h)
 
-add_executable(transform_pmemfile_posix2 transform_pmemfile_posix_level2.c)
-target_link_libraries(transform_pmemfile_posix2 PRIVATE function_decl_finder)
+add_executable(transform_pmemfile_posix_fd_first transform_pmemfile_posix_fd_first.c)
+target_link_libraries(transform_pmemfile_posix_fd_first PRIVATE function_decl_finder)
 
-add_custom_command(OUTPUT ${pmemfile_SOURCE_DIR}/src/libpmemfile/libpmemfile-posix-wrappers2.h
-		COMMAND $<TARGET_FILE:transform_pmemfile_posix2>
+add_custom_command(OUTPUT ${pmemfile_SOURCE_DIR}/src/libpmemfile/libpmemfile-posix-fd_first.h
+		COMMAND $<TARGET_FILE:transform_pmemfile_posix_fd_first>
 			${pmemfile_SOURCE_DIR}/src/libpmemfile/libpmemfile-posix-wrappers.h
-			${pmemfile_SOURCE_DIR}/src/libpmemfile/libpmemfile-posix-wrappers2.h
+			${pmemfile_SOURCE_DIR}/src/libpmemfile/libpmemfile-posix-fd_first.h
 			-xc
 			-std=gnu99
 			-D_LARGEFILE64_SOURCE
 			-I${pmemfile_SOURCE_DIR}/include
 		DEPENDS ${pmemfile_SOURCE_DIR}/src/libpmemfile/libpmemfile-posix-wrappers.h
-			transform_pmemfile_posix2
+			transform_pmemfile_posix_fd_first
 		WORKING_DIRECTORY "${LLVM_TOOLS_BINARY_DIR}")
 
-add_custom_target(regenerate_libpmemfile-posix-wrappers2
-		DEPENDS ${pmemfile_SOURCE_DIR}/src/libpmemfile/libpmemfile-posix-wrappers2.h)
+add_custom_target(regenerate_libpmemfile-posix-fd_first
+		DEPENDS ${pmemfile_SOURCE_DIR}/src/libpmemfile/libpmemfile-posix-fd_first.h)

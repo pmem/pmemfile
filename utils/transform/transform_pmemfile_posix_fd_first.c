@@ -37,9 +37,10 @@
 
 #include "function_decl_finder.h"
 
-#include "level2_relevant_functions.h"
+#include "fd_first_relevant_functions.h"
 
-static const char prefix[] = "cast_";
+static const char prefix[] = "fd_first_";
+static const char original_prefix[] = "wrapper_";
 
 static const char *prologue =
 	"/* Generated source file, do not edit manually! */\n"
@@ -85,7 +86,8 @@ print_prototype(const struct func_desc *desc)
 {
 	printf("static inline %s\n", desc->return_type.name);
 	printf("%s%s(struct fd_association *%s",
-		prefix, desc->name, desc->args[1].name);
+		prefix, desc->name + strlen(original_prefix),
+		desc->args[1].name);
 
 	for (int i = 2; i < desc->arg_count; ++i)
 		printf(",\n\t\tlong %s", desc->args[i].name);
@@ -165,7 +167,6 @@ process_function(struct func_desc *desc)
 
 	return 0;
 }
-
 
 int
 main(int argc, char **argv)

@@ -6,13 +6,13 @@
 #include "libpmemfile-posix-wrappers.h"
 
 static inline void
-cast_wrapper_pmemfile_close(struct fd_association *file)
+fd_first_pmemfile_close(struct fd_association *file)
 {
 	wrapper_pmemfile_close(file->pool->pool, file->file);
 }
 
 static inline pmemfile_ssize_t
-cast_wrapper_pmemfile_read(struct fd_association *file,
+fd_first_pmemfile_read(struct fd_association *file,
 		long buf,
 		long count)
 {
@@ -22,7 +22,7 @@ cast_wrapper_pmemfile_read(struct fd_association *file,
 }
 
 static inline pmemfile_ssize_t
-cast_wrapper_pmemfile_pread(struct fd_association *file,
+fd_first_pmemfile_pread(struct fd_association *file,
 		long buf,
 		long count,
 		long offset)
@@ -34,7 +34,7 @@ cast_wrapper_pmemfile_pread(struct fd_association *file,
 }
 
 static inline pmemfile_ssize_t
-cast_wrapper_pmemfile_readv(struct fd_association *file,
+fd_first_pmemfile_readv(struct fd_association *file,
 		long iov,
 		long iovcnt)
 {
@@ -44,7 +44,7 @@ cast_wrapper_pmemfile_readv(struct fd_association *file,
 }
 
 static inline pmemfile_ssize_t
-cast_wrapper_pmemfile_preadv(struct fd_association *file,
+fd_first_pmemfile_preadv(struct fd_association *file,
 		long iov,
 		long iovcnt,
 		long offset)
@@ -56,7 +56,7 @@ cast_wrapper_pmemfile_preadv(struct fd_association *file,
 }
 
 static inline pmemfile_ssize_t
-cast_wrapper_pmemfile_write(struct fd_association *file,
+fd_first_pmemfile_write(struct fd_association *file,
 		long buf,
 		long count)
 {
@@ -66,7 +66,7 @@ cast_wrapper_pmemfile_write(struct fd_association *file,
 }
 
 static inline pmemfile_ssize_t
-cast_wrapper_pmemfile_pwrite(struct fd_association *file,
+fd_first_pmemfile_pwrite(struct fd_association *file,
 		long buf,
 		long count,
 		long offset)
@@ -78,7 +78,7 @@ cast_wrapper_pmemfile_pwrite(struct fd_association *file,
 }
 
 static inline pmemfile_ssize_t
-cast_wrapper_pmemfile_writev(struct fd_association *file,
+fd_first_pmemfile_writev(struct fd_association *file,
 		long iov,
 		long iovcnt)
 {
@@ -88,7 +88,7 @@ cast_wrapper_pmemfile_writev(struct fd_association *file,
 }
 
 static inline pmemfile_ssize_t
-cast_wrapper_pmemfile_pwritev(struct fd_association *file,
+fd_first_pmemfile_pwritev(struct fd_association *file,
 		long iov,
 		long iovcnt,
 		long offset)
@@ -100,7 +100,7 @@ cast_wrapper_pmemfile_pwritev(struct fd_association *file,
 }
 
 static inline pmemfile_off_t
-cast_wrapper_pmemfile_lseek(struct fd_association *file,
+fd_first_pmemfile_lseek(struct fd_association *file,
 		long offset,
 		long whence)
 {
@@ -110,7 +110,7 @@ cast_wrapper_pmemfile_lseek(struct fd_association *file,
 }
 
 static inline int
-cast_wrapper_pmemfile_fstat(struct fd_association *file,
+fd_first_pmemfile_fstat(struct fd_association *file,
 		long buf)
 {
 	return wrapper_pmemfile_fstat(file->pool->pool, file->file,
@@ -118,7 +118,7 @@ cast_wrapper_pmemfile_fstat(struct fd_association *file,
 }
 
 static inline int
-cast_wrapper_pmemfile_getdents(struct fd_association *file,
+fd_first_pmemfile_getdents(struct fd_association *file,
 		long dirp,
 		long count)
 {
@@ -128,7 +128,7 @@ cast_wrapper_pmemfile_getdents(struct fd_association *file,
 }
 
 static inline int
-cast_wrapper_pmemfile_getdents64(struct fd_association *file,
+fd_first_pmemfile_getdents64(struct fd_association *file,
 		long dirp,
 		long count)
 {
@@ -138,7 +138,7 @@ cast_wrapper_pmemfile_getdents64(struct fd_association *file,
 }
 
 static inline int
-cast_wrapper_pmemfile_fchmod(struct fd_association *file,
+fd_first_pmemfile_fchmod(struct fd_association *file,
 		long mode)
 {
 	return wrapper_pmemfile_fchmod(file->pool->pool, file->file,
@@ -146,7 +146,7 @@ cast_wrapper_pmemfile_fchmod(struct fd_association *file,
 }
 
 static inline int
-cast_wrapper_pmemfile_fchown(struct fd_association *file,
+fd_first_pmemfile_fchown(struct fd_association *file,
 		long owner,
 		long group)
 {
@@ -156,7 +156,7 @@ cast_wrapper_pmemfile_fchown(struct fd_association *file,
 }
 
 static inline int
-cast_wrapper_pmemfile_ftruncate(struct fd_association *file,
+fd_first_pmemfile_ftruncate(struct fd_association *file,
 		long length)
 {
 	return wrapper_pmemfile_ftruncate(file->pool->pool, file->file,
@@ -164,7 +164,7 @@ cast_wrapper_pmemfile_ftruncate(struct fd_association *file,
 }
 
 static inline int
-cast_wrapper_pmemfile_fallocate(struct fd_association *file,
+fd_first_pmemfile_fallocate(struct fd_association *file,
 		long mode,
 		long offset,
 		long length)
@@ -176,7 +176,7 @@ cast_wrapper_pmemfile_fallocate(struct fd_association *file,
 }
 
 static inline int
-cast_wrapper_pmemfile_flock(struct fd_association *file,
+fd_first_pmemfile_flock(struct fd_association *file,
 		long operation)
 {
 	return wrapper_pmemfile_flock(file->pool->pool, file->file,

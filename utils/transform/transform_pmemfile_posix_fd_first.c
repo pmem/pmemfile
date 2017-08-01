@@ -49,7 +49,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "function_decl_finder.h"
+#include "generator.h"
 
 static bool
 is_relevant_function(const char *name)
@@ -116,17 +116,17 @@ is_file_pointer(const struct arg_desc *arg)
  * These generated functions take care of those casts.
  */
 static void
-print_prototype(const struct func_desc *desc)
+print_prototype(const struct func_desc *desc, FILE *f)
 {
-	printf("static inline %s\n", desc->return_type.name);
-	printf("fd_first_%s(struct fd_association *%s",
+	fprintf(f, "static inline %s\n", desc->return_type.name);
+	fprintf(f, "fd_first_%s(struct fd_association *%s",
 		desc->name + strlen("wrapper_"),
 		desc->args[1].name);
 
 	for (int i = 2; i < desc->arg_count; ++i)
-		printf(",\n\t\tlong %s", desc->args[i].name);
+		fprintf(f, ",\n\t\tlong %s", desc->args[i].name);
 
-	puts(")");
+	fputs(")\n", f);
 }
 
 /*
@@ -143,34 +143,32 @@ print_prototype(const struct func_desc *desc)
  * so they all can be supplied as long (see print_prototype above).
  */
 static void
-print_forward_args(const struct func_desc *desc)
+print_forward_args(const struct func_desc *desc, FILE *f)
 {
-	printf("%s->pool->pool, %s->file",
+	fprintf(f, "%s->pool->pool, %s->file",
 		desc->args[1].name, desc->args[1].name);
 
 	for (int i = 2; i < desc->arg_count; ++i) {
 		const struct arg_desc *arg = desc->args + i;
 
-		printf(",\n\t\t(%s)%s", arg->type.name, arg->name);
+		fprintf(f, ",\n\t\t(%s)%s", arg->type.name, arg->name);
 	}
 }
 
 static void
-print_wrapper(struct func_desc *desc)
+print_wrapper(struct func_desc *desc, FILE *f)
 {
-	print_prototype(desc);
-	printf("{\n\t");
+	print_prototype(desc, f);
+	fputs("{\n\t", f);
 
 	if (!desc->return_type.is_void)
-		printf("return ");
+		fputs("return ", f);
 
-	printf("%s(", desc->name);
+	fprintf(f, "%s(", desc->name);
 
-	print_forward_args(desc);
+	print_forward_args(desc, f);
 
-	puts(");");
-	puts("}");
-	puts("");
+	fputs(");\n}\n\n", f);
 }
 
 /*
@@ -213,32 +211,14 @@ check_args(const struct func_desc *desc)
 }
 
 static int
-process_function(struct func_desc *desc)
+process_function(struct func_desc *desc, FILE *output)
 {
 	if (is_relevant_function(desc->name)) {
 		check_args(desc);
-		print_wrapper(desc);
+		print_wrapper(desc, output);
 	}
 
 	return 0;
-}
-
-static void
-write_prologue(void)
-{
-	puts("/* Generated source file, do not edit manually! */");
-	puts("");
-	puts("#ifndef LIBPMEMFILE_POSIX_FD_FIRST_H");
-	puts("#define LIBPMEMFILE_POSIX_FD_FIRST_H");
-	puts("");
-	puts("#include \"libpmemfile-posix-wrappers.h\"");
-	puts("");
-}
-
-static void
-write_epilogue(void)
-{
-	puts("#endif");
 }
 
 int
@@ -247,20 +227,18 @@ main(int argc, char **argv)
 	if (argc < 3)
 		return 1;
 
-	char *input = argv[1];
-	char *output = argv[2];
-
-	if (freopen(output, "w", stdout) == NULL)
-		return 1;
-
-	write_prologue();
-
-	argc -= 3;
-	argv += 3;
-	if (visit_function_decls(input, process_function, argc, argv) != 0)
-		return 1;
-
-	write_epilogue();
-
-	return 0;
+	generate_source((struct generator_parameters) {
+		.copyrights = (const char *[]){
+				"Copyright 2017, Intel Corporation",
+				NULL},
+		.include_guard_macro = "LIBPMEMFILE_POSIX_FD_FIRST_H",
+		.includes = (const char *[]){
+				"\"libpmemfile-posix-wrappers.h\"",
+				NULL},
+		.input_path = argv[1],
+		.output_path = argv[2],
+		.callback = process_function,
+		.clang_argc = argc - 3,
+		.clang_argv = argv + 3,
+		});
 }

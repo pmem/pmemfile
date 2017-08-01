@@ -48,13 +48,13 @@ set_target_properties(clang PROPERTIES
 	IMPORTED_LOCATION "${LIBCLANG_PATH}"
 	INTERFACE_INCLUDE_DIRECTORIES "${LLVM_INCLUDE_DIRS}")
 
-# The function_decl_finder library is a little wrapper library around
+# The generator library is a little wrapper library around
 # libclang, to make it easier to use in this scenario.
-add_library(function_decl_finder function_decl_finder.c)
-target_link_libraries(function_decl_finder PRIVATE clang)
+add_library(generator function_decl_finder.c generator.c)
+target_link_libraries(generator PRIVATE clang)
 
 add_executable(transform_pmemfile_posix transform_pmemfile_posix.c)
-target_link_libraries(transform_pmemfile_posix PRIVATE function_decl_finder)
+target_link_libraries(transform_pmemfile_posix PRIVATE generator)
 
 add_custom_command(OUTPUT ${pmemfile_SOURCE_DIR}/src/libpmemfile/libpmemfile-posix-wrappers.h
 		COMMAND $<TARGET_FILE:transform_pmemfile_posix>
@@ -72,7 +72,7 @@ add_custom_target(regenerate_libpmemfile-posix-wrappers
 		DEPENDS ${pmemfile_SOURCE_DIR}/src/libpmemfile/libpmemfile-posix-wrappers.h)
 
 add_executable(transform_pmemfile_posix_fd_first transform_pmemfile_posix_fd_first.c)
-target_link_libraries(transform_pmemfile_posix_fd_first PRIVATE function_decl_finder)
+target_link_libraries(transform_pmemfile_posix_fd_first PRIVATE generator)
 
 add_custom_command(OUTPUT ${pmemfile_SOURCE_DIR}/src/libpmemfile/libpmemfile-posix-fd_first.h
 		COMMAND $<TARGET_FILE:transform_pmemfile_posix_fd_first>

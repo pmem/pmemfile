@@ -42,6 +42,7 @@
 #define PMEMFILE_UTILS_FUNCTION_DECL_FINDER_H
 
 #include <stdbool.h>
+#include <stdio.h>
 
 /*
  * The fields in the following struct should be self explanatory (well,
@@ -83,7 +84,8 @@ struct func_desc {
  *
  * Returns zero on success, non-zero on failure.
  */
-int visit_function_decls(const char *path, int (*callback)(struct func_desc *),
-		int argc, char **argv);
+int visit_function_decls(const char *path,
+		int (*callback)(struct func_desc *, FILE *),
+		FILE *, int argc, char **argv);
 
 #endif

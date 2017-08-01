@@ -322,15 +322,23 @@ dispose_function_desc(struct full_func_desc *desc)
 	free(desc->client_args);
 }
 
+struct callback_desc {
+	int (* callback)(struct func_desc *, FILE *);
+	FILE *output;
+};
+
 static enum CXChildVisitResult
 visitor(CXCursor cursor, CXCursor parent, CXClientData client_data)
 {
 	if (clang_getCursorKind(cursor) != CXCursor_FunctionDecl)
 		return CXChildVisit_Recurse;
 
+	const struct callback_desc *cb =
+		(const struct callback_desc *)client_data;
+
 	struct full_func_desc full_desc;
 	describe_function(cursor, &full_desc);
-	int r = ((int (*)(struct func_desc *))client_data)(&full_desc.desc);
+	int r = cb->callback(&full_desc.desc, cb->output);
 	dispose_function_desc(&full_desc);
 
 	if (r == 0)
@@ -340,8 +348,9 @@ visitor(CXCursor cursor, CXCursor parent, CXClientData client_data)
 }
 
 int
-visit_function_decls(const char *path, int (* callback)(struct func_desc *),
-		int argc, char **argv)
+visit_function_decls(const char *path,
+		int (* callback)(struct func_desc *, FILE *),
+		FILE *output, int argc, char **argv)
 {
 	CXIndex index = clang_createIndex(0, 0);
 	CXTranslationUnit unit;
@@ -359,7 +368,9 @@ visit_function_decls(const char *path, int (* callback)(struct func_desc *),
 
 	CXCursor cursor = clang_getTranslationUnitCursor(unit);
 
-	clang_visitChildren(cursor, visitor, (CXClientData)callback);
+	struct callback_desc cb = {.callback = callback, .output = output};
+
+	clang_visitChildren(cursor, visitor, (CXClientData)&cb);
 
 	clang_disposeTranslationUnit(unit);
 	clang_disposeIndex(index);

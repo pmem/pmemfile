@@ -39,7 +39,7 @@
 #include <string.h>
 #include <limits.h>
 
-#include "function_decl_finder.h"
+#include "generator.h"
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
@@ -47,12 +47,12 @@
  * print_type_and_name -- prints "type name" or "type *name"
  */
 static void
-print_type_and_name(const char *type, const char *name)
+print_type_and_name(const char *type, const char *name, FILE *f)
 {
 	if (type[strlen(type) - 1] == '*')
-		printf("%s%s", type, name);
+		fprintf(f, "%s%s", type, name);
 	else
-		printf("%s %s", type, name);
+		fprintf(f, "%s %s", type, name);
 }
 
 /*
@@ -71,21 +71,21 @@ print_type_and_name(const char *type, const char *name)
  * +------------------------------------------+
  */
 static void
-print_prototype(const struct func_desc *desc)
+print_prototype(const struct func_desc *desc, FILE *f)
 {
-	printf("static inline %s\n", desc->return_type.name);
-	printf("wrapper_%s(", desc->name);
+	fprintf(f, "static inline %s\n", desc->return_type.name);
+	fprintf(f, "wrapper_%s(", desc->name);
 
 	if (desc->arg_count == 0)
-		printf("void");
+		fputs("void", f);
 
 	for (int i = 0; i < desc->arg_count; ++i) {
 		if (i > 0)
-			printf(",\n\t\t");
+			fputs(",\n\t\t", f);
 		print_type_and_name(desc->args[i].type.name,
-					desc->args[i].name);
+					desc->args[i].name, f);
 	}
-	puts(")");
+	fputs(")\n", f);
 }
 
 /*
@@ -100,15 +100,15 @@ print_prototype(const struct func_desc *desc)
  * +-------------------------+
  */
 static void
-print_forward_call(const struct func_desc *desc)
+print_forward_call(const struct func_desc *desc, FILE *f)
 {
-	printf("%s(", desc->name);
+	fprintf(f, "%s(", desc->name);
 	for (int i = 0; i < desc->arg_count; ++i) {
 		if (i > 0)
-			printf(",\n\t\t");
-		printf("%s", desc->args[i].name);
+			fputs(",\n\t\t", f);
+		fprintf(f, "%s", desc->args[i].name);
 	}
-	puts(");");
+	fputs(");\n", f);
 }
 
 static bool
@@ -152,106 +152,106 @@ is_arg_printable_cstr(const char *type_name, const char *name)
 }
 
 static void
-print_format(const struct type_desc *type, const char *name)
+print_format(const struct type_desc *type, const char *name, FILE *f)
 {
 	if (is_arg_printable_cstr(type->name, name))
-		fputs("\\\"%s\\\"", stdout);
+		fputs("\\\"%s\\\"", f);
 	else if (strcmp(type->name, "size_t") == 0)
-		fputs("%zu", stdout);
+		fputs("%zu", f);
 	else if (strcmp(type->name, "ptrdiff_t") == 0)
-		fputs("%td", stdout);
+		fputs("%td", f);
 	else if (strcmp(type->name, "pmemfile_ssize_t") == 0)
-		fputs("%zd", stdout); /* assuming it is the same as ssize_t */
+		fputs("%zd", f); /* assuming it is the same as ssize_t */
 	else if (strcmp(type->name, "pmemfile_mode_t") == 0)
-		fputs("%3jo", stdout);
+		fputs("%3jo", f);
 	else if (type->is_pointer)
-		fputs("%p", stdout);
+		fputs("%p", f);
 	else if (strcmp(type->name, "char") == 0)
-		fputs((CHAR_MIN == 0) ? "%hhu" : "%hhd", stdout);
+		fputs((CHAR_MIN == 0) ? "%hhu" : "%hhd", f);
 	else if (strcmp(type->name, "signed char") == 0)
-		fputs("%hhd", stdout);
+		fputs("%hhd", f);
 	else if (strcmp(type->name, "unsigned char") == 0)
-		fputs("%hhu", stdout);
+		fputs("%hhu", f);
 	else if (strcmp(type->name, "int") == 0)
-		fputs("%d", stdout);
+		fputs("%d", f);
 	else if (strcmp(type->name, "unsigned") == 0)
-		fputs("%u", stdout);
+		fputs("%u", f);
 	else if (strcmp(type->name, "short") == 0)
-		fputs("%hd", stdout);
+		fputs("%hd", f);
 	else if (strcmp(type->name, "unsigned short") == 0)
-		fputs("%hu", stdout);
+		fputs("%hu", f);
 	else if (strcmp(type->name, "long") == 0)
-		fputs("%ld", stdout);
+		fputs("%ld", f);
 	else if (strcmp(type->name, "unsigned long") == 0)
-		fputs("%lu", stdout);
+		fputs("%lu", f);
 	else if (strcmp(type->name, "long long") == 0)
-		fputs("%lld", stdout);
+		fputs("%lld", f);
 	else if (strcmp(type->name, "unsigned long long") == 0)
-		fputs("%llu", stdout);
+		fputs("%llu", f);
 	else if (strcmp(type->name, "intmax_t") == 0)
-		fputs("%jd", stdout);
+		fputs("%jd", f);
 	else if (strcmp(type->name, "uintmax_t") == 0)
-		fputs("%ju", stdout);
+		fputs("%ju", f);
 	else if (strcmp(type->name, "int8_t") == 0)
-		fputs("%\" PRIi8 \"", stdout);
+		fputs("%\" PRIi8 \"", f);
 	else if (strcmp(type->name, "uint8_t") == 0)
-		fputs("%\" PRIu8 \"", stdout);
+		fputs("%\" PRIu8 \"", f);
 	else if (strcmp(type->name, "int16_t") == 0)
-		fputs("%\" PRIi16 \"", stdout);
+		fputs("%\" PRIi16 \"", f);
 	else if (strcmp(type->name, "uint16_t") == 0)
-		fputs("%\" PRIu16 \"", stdout);
+		fputs("%\" PRIu16 \"", f);
 	else if (strcmp(type->name, "int32_t") == 0)
-		fputs("%\" PRIi32 \"", stdout);
+		fputs("%\" PRIi32 \"", f);
 	else if (strcmp(type->name, "uint32_t") == 0)
-		fputs("%\" PRIu32 \"", stdout);
+		fputs("%\" PRIu32 \"", f);
 	else if (strcmp(type->name, "int64_t") == 0)
-		fputs("%\" PRIi64 \"", stdout);
+		fputs("%\" PRIi64 \"", f);
 	else if (strcmp(type->name, "uint64_t") == 0)
-		fputs("%\" PRIu64 \"", stdout);
+		fputs("%\" PRIu64 \"", f);
 	else if (strcmp(type->name, "intptr_t") == 0)
-		fputs("%\" PRIiptr \"", stdout);
+		fputs("%\" PRIiptr \"", f);
 	else if (strcmp(type->name, "uintptr_t") == 0)
-		fputs("%\" PRIuptr \"", stdout);
+		fputs("%\" PRIuptr \"", f);
 	else if (strcmp(type->name, "int_least8_t") == 0)
-		fputs("%\" PRIiLEAST8 \"", stdout);
+		fputs("%\" PRIiLEAST8 \"", f);
 	else if (strcmp(type->name, "uint_least8_t") == 0)
-		fputs("%\" PRIuLEAST8 \"", stdout);
+		fputs("%\" PRIuLEAST8 \"", f);
 	else if (strcmp(type->name, "int_least16_t") == 0)
-		fputs("%\" PRIiLEAST16 \"", stdout);
+		fputs("%\" PRIiLEAST16 \"", f);
 	else if (strcmp(type->name, "uint_least16_t") == 0)
-		fputs("%\" PRIuLEAST16 \"", stdout);
+		fputs("%\" PRIuLEAST16 \"", f);
 	else if (strcmp(type->name, "int_least32_t") == 0)
-		fputs("%\" PRIiLEAST32 \"", stdout);
+		fputs("%\" PRIiLEAST32 \"", f);
 	else if (strcmp(type->name, "uint_least32_t") == 0)
-		fputs("%\" PRIuLEAST32 \"", stdout);
+		fputs("%\" PRIuLEAST32 \"", f);
 	else if (strcmp(type->name, "int_least64_t") == 0)
-		fputs("%\" PRIiLEAST64 \"", stdout);
+		fputs("%\" PRIiLEAST64 \"", f);
 	else if (strcmp(type->name, "uint_least64_t") == 0)
-		fputs("%\" PRIuLEAST64 \"", stdout);
+		fputs("%\" PRIuLEAST64 \"", f);
 	else if (strcmp(type->name, "int_fast8_t") == 0)
-		fputs("%\" PRIiFAST8 \"", stdout);
+		fputs("%\" PRIiFAST8 \"", f);
 	else if (strcmp(type->name, "uint_fast8_t") == 0)
-		fputs("%\" PRIuFAST8 \"", stdout);
+		fputs("%\" PRIuFAST8 \"", f);
 	else if (strcmp(type->name, "int_fast16_t") == 0)
-		fputs("%\" PRIiFAST16 \"", stdout);
+		fputs("%\" PRIiFAST16 \"", f);
 	else if (strcmp(type->name, "uint_fast16_t") == 0)
-		fputs("%\" PRIuFAST16 \"", stdout);
+		fputs("%\" PRIuFAST16 \"", f);
 	else if (strcmp(type->name, "int_fast32_t") == 0)
-		fputs("%\" PRIiFAST32 \"", stdout);
+		fputs("%\" PRIiFAST32 \"", f);
 	else if (strcmp(type->name, "uint_fast32_t") == 0)
-		fputs("%\" PRIuFAST32 \"", stdout);
+		fputs("%\" PRIuFAST32 \"", f);
 	else if (strcmp(type->name, "int_fast64_t") == 0)
-		fputs("%\" PRIiFAST64 \"", stdout);
+		fputs("%\" PRIiFAST64 \"", f);
 	else if (strcmp(type->name, "uint_fast64_t") == 0)
-		fputs("%\" PRIuFAST64 \"", stdout);
+		fputs("%\" PRIuFAST64 \"", f);
 	else if (type->is_signed_integral)
-		fputs("%jd", stdout);
+		fputs("%jd", f);
 	else /* treating it as an unsigned integral type */
-		fputs("%jx", stdout);
+		fputs("%jx", f);
 }
 
 static void
-print_format_argument(const struct type_desc *type, const char *name)
+print_format_argument(const struct type_desc *type, const char *name, FILE *f)
 {
 	if (is_arg_printable_cstr(type->name, name) ||
 		type->is_pointer ||
@@ -299,11 +299,11 @@ print_format_argument(const struct type_desc *type, const char *name)
 		(strcmp(type->name, "uintptr_t") == 0) ||
 		(strcmp(type->name, "intmax_t") == 0) ||
 		(strcmp(type->name, "uintmax_t") == 0))
-		fputs(name, stdout);
+		fputs(name, f);
 	else if (type->is_signed_integral)
-		printf("(intmax_t)%s", name);
+		fprintf(f, "(intmax_t)%s", name);
 	else
-		printf("(uintmax_t)%s", name);
+		fprintf(f, "(uintmax_t)%s", name);
 }
 
 /*
@@ -319,40 +319,41 @@ print_format_argument(const struct type_desc *type, const char *name)
  * +----------------------------------------------------+
  */
 static void
-print_log_write(const struct func_desc *desc)
+print_log_write(const struct func_desc *desc, FILE *f)
 {
 
-	printf("\tlog_write(\n\t    ");
+	fputs("\tlog_write(\n\t    ", f);
 
 	/* printing the format string e.g.: "%p, \"%s\", \"%s\") = %jd" */
-	printf("\"%s(", desc->name);
+	fprintf(f, "\"%s(", desc->name);
 	for (int i = 0; i < desc->arg_count; ++i) {
 		if (i > 0)
-			printf(", ");
+			fputs(", ", f);
 
-		print_format(&desc->args[i].type, desc->args[i].name);
+		print_format(&desc->args[i].type, desc->args[i].name, f);
 	}
-	printf(")");
+	fputc(')', f);
 
 	if (!desc->return_type.is_void) {
-		printf(" = ");
-		print_format(&desc->return_type, "");
+		fputs(" = ", f);
+		print_format(&desc->return_type, "", f);
 	}
-	printf("\"");
+	fputc('\"', f);
 
 	/* printing format string arguments, with appropriate casts */
 	for (int i = 0; i < desc->arg_count; ++i) {
-		printf(",\n\t\t");
-		print_format_argument(&desc->args[i].type, desc->args[i].name);
+		fputs(",\n\t\t", f);
+		print_format_argument(&desc->args[i].type,
+					desc->args[i].name, f);
 	}
 
 	if (!desc->return_type.is_void) {
-		printf(",\n\t\t");
-		print_format_argument(&desc->return_type, "");
-		printf("ret");
+		fputs(",\n\t\t", f);
+		print_format_argument(&desc->return_type, "", f);
+		fputs("ret", f);
 	}
 
-	puts(");");
+	fputs(");\n", f);
 }
 
 /*
@@ -371,12 +372,12 @@ print_log_write(const struct func_desc *desc)
  * +-------------------+
  */
 static void
-handle_errno(const struct func_desc *desc)
+handle_errno(const struct func_desc *desc, FILE *f)
 {
 	if (strcmp(desc->return_type.name, "int") == 0 ||
 	    strcmp(desc->return_type.name, "pmemfile_ssize_t") == 0) {
-		puts("\tif (ret < 0)");
-		puts("\t\tret = -errno;");
+		fputs("\tif (ret < 0)\n", f);
+		fputs("\t\tret = -errno;\n", f);
 	}
 }
 
@@ -386,10 +387,10 @@ handle_errno(const struct func_desc *desc)
  * the original function returns any value).
  */
 static void
-print_return_value_assignment(const struct func_desc *desc)
+print_return_value_assignment(const struct func_desc *desc, FILE *f)
 {
 	if (desc->return_type.is_void) {
-		printf("\t");
+		fputc('\t', f);
 	} else {
 		/*
 		 * prints:
@@ -401,37 +402,35 @@ print_return_value_assignment(const struct func_desc *desc)
 		 *
 		 * This is expected to be followed by print_forward_call.
 		 */
-		putchar('\t');
-		print_type_and_name(desc->return_type.name, "ret");
-		printf(";\n\n\tret = ");
+		fputc('\t', f);
+		print_type_and_name(desc->return_type.name, "ret", f);
+		fputs(";\n\n\tret = ", f);
 	}
 }
 
 static void
-print_function_epilogue(const struct func_desc *desc)
+print_function_epilogue(const struct func_desc *desc, FILE *f)
 {
-	if (!desc->return_type.is_void) {
-		puts("");
-		puts("\treturn ret;");
-	}
+	if (!desc->return_type.is_void)
+		fputs("\n\treturn ret;\n", f);
 }
 
 /*
  * print_wrapper -- prints a wrapper function.
  */
 static void
-print_wrapper(struct func_desc *desc)
+print_wrapper(struct func_desc *desc, FILE *f)
 {
-	print_prototype(desc);
-	puts("{");
-	print_return_value_assignment(desc);
-	print_forward_call(desc);
-	handle_errno(desc);
-	puts("");
-	print_log_write(desc);
-	print_function_epilogue(desc);
-	puts("}");
-	puts("");
+	print_prototype(desc, f);
+	fputs("{\n", f);
+	print_return_value_assignment(desc, f);
+	print_forward_call(desc, f);
+	handle_errno(desc, f);
+	fputs("\n", f);
+	print_log_write(desc, f);
+	print_function_epilogue(desc, f);
+	fputs("}\n", f);
+	fputs("\n", f);
 }
 
 /*
@@ -502,7 +501,7 @@ fix_args(struct func_desc *desc)
 }
 
 static int
-process_function(struct func_desc *desc)
+process_function(struct func_desc *desc, FILE *output)
 {
 	static const char orig_prefix[] = "pmemfile_";
 
@@ -515,30 +514,9 @@ process_function(struct func_desc *desc)
 	if (fix_args(desc) != 0)
 		return -1;
 
-	print_wrapper(desc);
+	print_wrapper(desc, output);
 
 	return 0;
-}
-
-static void
-write_prologue(void)
-{
-	puts("/* Generated source file, do not edit manually! */");
-	puts("");
-	puts("#ifndef LIBPMEMFILE_POSIX_WRAPPERS_H");
-	puts("#define LIBPMEMFILE_POSIX_WRAPPERS_H");
-	puts("");
-	puts("#include \"libpmemfile-posix.h\"");
-	puts("#include \"preload.h\"");
-	puts("#include <inttypes.h>");
-	puts("");
-}
-
-static void
-write_epilogue(void)
-{
-	puts("");
-	puts("#endif");
 }
 
 int
@@ -547,20 +525,20 @@ main(int argc, char **argv)
 	if (argc < 3)
 		return 1;
 
-	char *input = argv[1];
-	char *output = argv[2];
-
-	if (freopen(output, "w", stdout) == NULL)
-		return 1;
-
-	write_prologue();
-
-	argc -= 3;
-	argv += 3;
-	if (visit_function_decls(input, process_function, argc, argv) != 0)
-		return 1;
-
-	write_epilogue();
-
-	return 0;
+	generate_source((struct generator_parameters) {
+		.copyrights = (const char *[]) {
+				"Copyright 2017, Intel Corporation",
+				NULL},
+		.include_guard_macro = "LIBPMEMFILE_POSIX_WRAPPERS_H",
+		.includes = (const char *[]) {
+				"\"libpmemfile-posix.h\"",
+				"\"preload.h\"",
+				"<inttypes.h>",
+				NULL},
+		.input_path = argv[1],
+		.output_path = argv[2],
+		.callback = process_function,
+		.clang_argc = argc - 3,
+		.clang_argv = argv + 3,
+		});
 }

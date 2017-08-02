@@ -38,14 +38,14 @@
 #include "libpmemfile-posix-wrappers.h"
 
 static inline void
-fd_first_pmemfile_close(struct fd_association *file)
+fd_first_pmemfile_close(struct vfd_reference *file)
 {
 	assert(!file->pool->suspended);
 	wrapper_pmemfile_close(file->pool->pool, file->file);
 }
 
 static inline pmemfile_ssize_t
-fd_first_pmemfile_read(struct fd_association *file,
+fd_first_pmemfile_read(struct vfd_reference *file,
 		long buf,
 		long count)
 {
@@ -56,7 +56,7 @@ fd_first_pmemfile_read(struct fd_association *file,
 }
 
 static inline pmemfile_ssize_t
-fd_first_pmemfile_pread(struct fd_association *file,
+fd_first_pmemfile_pread(struct vfd_reference *file,
 		long buf,
 		long count,
 		long offset)
@@ -69,7 +69,7 @@ fd_first_pmemfile_pread(struct fd_association *file,
 }
 
 static inline pmemfile_ssize_t
-fd_first_pmemfile_readv(struct fd_association *file,
+fd_first_pmemfile_readv(struct vfd_reference *file,
 		long iov,
 		long iovcnt)
 {
@@ -80,7 +80,7 @@ fd_first_pmemfile_readv(struct fd_association *file,
 }
 
 static inline pmemfile_ssize_t
-fd_first_pmemfile_preadv(struct fd_association *file,
+fd_first_pmemfile_preadv(struct vfd_reference *file,
 		long iov,
 		long iovcnt,
 		long offset)
@@ -93,7 +93,7 @@ fd_first_pmemfile_preadv(struct fd_association *file,
 }
 
 static inline pmemfile_ssize_t
-fd_first_pmemfile_write(struct fd_association *file,
+fd_first_pmemfile_write(struct vfd_reference *file,
 		long buf,
 		long count)
 {
@@ -104,7 +104,7 @@ fd_first_pmemfile_write(struct fd_association *file,
 }
 
 static inline pmemfile_ssize_t
-fd_first_pmemfile_pwrite(struct fd_association *file,
+fd_first_pmemfile_pwrite(struct vfd_reference *file,
 		long buf,
 		long count,
 		long offset)
@@ -117,7 +117,7 @@ fd_first_pmemfile_pwrite(struct fd_association *file,
 }
 
 static inline pmemfile_ssize_t
-fd_first_pmemfile_writev(struct fd_association *file,
+fd_first_pmemfile_writev(struct vfd_reference *file,
 		long iov,
 		long iovcnt)
 {
@@ -128,7 +128,7 @@ fd_first_pmemfile_writev(struct fd_association *file,
 }
 
 static inline pmemfile_ssize_t
-fd_first_pmemfile_pwritev(struct fd_association *file,
+fd_first_pmemfile_pwritev(struct vfd_reference *file,
 		long iov,
 		long iovcnt,
 		long offset)
@@ -141,7 +141,7 @@ fd_first_pmemfile_pwritev(struct fd_association *file,
 }
 
 static inline pmemfile_off_t
-fd_first_pmemfile_lseek(struct fd_association *file,
+fd_first_pmemfile_lseek(struct vfd_reference *file,
 		long offset,
 		long whence)
 {
@@ -152,7 +152,7 @@ fd_first_pmemfile_lseek(struct fd_association *file,
 }
 
 static inline int
-fd_first_pmemfile_fstat(struct fd_association *file,
+fd_first_pmemfile_fstat(struct vfd_reference *file,
 		long buf)
 {
 	assert(!file->pool->suspended);
@@ -161,7 +161,7 @@ fd_first_pmemfile_fstat(struct fd_association *file,
 }
 
 static inline int
-fd_first_pmemfile_getdents(struct fd_association *file,
+fd_first_pmemfile_getdents(struct vfd_reference *file,
 		long dirp,
 		long count)
 {
@@ -172,7 +172,7 @@ fd_first_pmemfile_getdents(struct fd_association *file,
 }
 
 static inline int
-fd_first_pmemfile_getdents64(struct fd_association *file,
+fd_first_pmemfile_getdents64(struct vfd_reference *file,
 		long dirp,
 		long count)
 {
@@ -183,7 +183,7 @@ fd_first_pmemfile_getdents64(struct fd_association *file,
 }
 
 static inline int
-fd_first_pmemfile_fchmod(struct fd_association *file,
+fd_first_pmemfile_fchmod(struct vfd_reference *file,
 		long mode)
 {
 	assert(!file->pool->suspended);
@@ -192,7 +192,7 @@ fd_first_pmemfile_fchmod(struct fd_association *file,
 }
 
 static inline int
-fd_first_pmemfile_fchown(struct fd_association *file,
+fd_first_pmemfile_fchown(struct vfd_reference *file,
 		long owner,
 		long group)
 {
@@ -203,7 +203,7 @@ fd_first_pmemfile_fchown(struct fd_association *file,
 }
 
 static inline int
-fd_first_pmemfile_ftruncate(struct fd_association *file,
+fd_first_pmemfile_ftruncate(struct vfd_reference *file,
 		long length)
 {
 	assert(!file->pool->suspended);
@@ -212,7 +212,7 @@ fd_first_pmemfile_ftruncate(struct fd_association *file,
 }
 
 static inline int
-fd_first_pmemfile_fallocate(struct fd_association *file,
+fd_first_pmemfile_fallocate(struct vfd_reference *file,
 		long mode,
 		long offset,
 		long length)
@@ -225,7 +225,7 @@ fd_first_pmemfile_fallocate(struct fd_association *file,
 }
 
 static inline int
-fd_first_pmemfile_flock(struct fd_association *file,
+fd_first_pmemfile_flock(struct vfd_reference *file,
 		long operation)
 {
 	assert(!file->pool->suspended);

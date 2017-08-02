@@ -119,7 +119,7 @@ static void
 print_prototype(const struct func_desc *desc, FILE *f)
 {
 	fprintf(f, "static inline %s\n", desc->return_type.name);
-	fprintf(f, "fd_first_%s(struct fd_association *%s",
+	fprintf(f, "fd_first_%s(struct vfd_reference *%s",
 		desc->name + strlen("wrapper_"),
 		desc->args[1].name);
 

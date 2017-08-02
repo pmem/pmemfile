@@ -55,16 +55,20 @@ int main() {
 " XATTR_AVAILABLE_IN_TEST_DIR)
 
 add_executable(preload_basic basic/basic.c)
+add_executable(preload_dup dup/dup.c)
+set_target_properties(preload_dup PROPERTIES INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR}/src)
 add_executable(preload_config config/config.c)
 add_executable(preload_pool_locking pool_locking/pool_locking.c)
 add_executable(preload_unix unix/unix.c)
 
 add_cstyle(tests-preload-basic ${CMAKE_CURRENT_SOURCE_DIR}/basic/basic.c)
+add_cstyle(tests-preload-dup ${CMAKE_CURRENT_SOURCE_DIR}/dup/dup.c)
 add_cstyle(tests-preload-config ${CMAKE_CURRENT_SOURCE_DIR}/config/config.c)
 add_cstyle(tests-preload-pool-locking ${CMAKE_CURRENT_SOURCE_DIR}/pool_locking/pool_locking.c)
 add_cstyle(tests-preload-unix ${CMAKE_CURRENT_SOURCE_DIR}/unix/unix.c)
 
 add_check_whitespace(tests-preload-basic ${CMAKE_CURRENT_SOURCE_DIR}/basic/basic.c)
+add_check_whitespace(tests-preload-dup ${CMAKE_CURRENT_SOURCE_DIR}/dup/dup.c)
 add_check_whitespace(tests-preload-config ${CMAKE_CURRENT_SOURCE_DIR}/config/config.c)
 add_check_whitespace(tests-preload-pool-locking ${CMAKE_CURRENT_SOURCE_DIR}/pool_locking/pool_locking.c)
 add_check_whitespace(tests-preload-unix ${CMAKE_CURRENT_SOURCE_DIR}/unix/unix.c)
@@ -113,6 +117,7 @@ else()
 endif()
 
 add_test_generic(basic "" $<TARGET_FILE:preload_basic>)
+add_test_generic(dup "" $<TARGET_FILE:preload_dup>)
 add_test_generic(basic_commands "" none)
 add_test_generic(nested_dirs "" none)
 add_test_generic(pool_locking "" $<TARGET_FILE:preload_pool_locking>)

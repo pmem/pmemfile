@@ -255,6 +255,131 @@ TEST_F(getdents, 2)
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
 }
 
+struct linux_dirent {
+	long ino;
+	off_t off;
+	unsigned short reclen;
+	char name[];
+};
+
+ssize_t
+count_getdents_entries(PMEMfilepool *pfp, PMEMfile *dir)
+{
+	char buf[32768];
+	int nread = -1;
+	linux_dirent *d;
+
+	ssize_t entries_found = 0;
+	while (nread != 0) {
+		nread = pmemfile_getdents(pfp, dir, (linux_dirent *)buf,
+					  sizeof(buf));
+		if (nread == -1)
+			return -1;
+
+		for (int pos = 0; pos < nread;) {
+			d = (linux_dirent *)(buf + pos);
+			entries_found++;
+			pos += d->reclen;
+		}
+	}
+
+	return entries_found;
+}
+
+TEST_F(getdents, offset)
+{
+	/* Create 50 files and 50 directories */
+	ssize_t file_dir_count = 50;
+	char path[1001];
+	PMEMfile *f = NULL;
+
+	ASSERT_TRUE(test_empty_dir(pfp, "/"));
+	memset(path, 0xff, sizeof(path));
+
+	for (ssize_t i = 0; i < file_dir_count; ++i) {
+		sprintf(path, "/file%04zu", i);
+		f = pmemfile_open(pfp, path, PMEMFILE_O_CREAT |
+					  PMEMFILE_O_EXCL | PMEMFILE_O_WRONLY,
+				  0644);
+		ASSERT_NE(f, nullptr) << strerror(errno);
+		pmemfile_close(pfp, f);
+
+		sprintf(path, "/dir%04zu", i);
+		ASSERT_EQ(pmemfile_mkdir(pfp, path, 0755), 0);
+	}
+
+	/* Open main directory */
+	f = pmemfile_open(pfp, "/", PMEMFILE_O_DIRECTORY | PMEMFILE_O_RDONLY);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+
+	/*
+	 * Verify that, when offset is different than 0, getdents will return
+	 * some entries
+	 */
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_SET), 1);
+	ASSERT_GT(count_getdents_entries(pfp, f), 0);
+
+	/* Reset offset for getdents */
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_SET), 0);
+
+	/* Fill offsets vector */
+	std::vector<pmemfile_off_t> offsets;
+	offsets.push_back(0);
+
+	char buf[32768];
+	int nread = -1;
+	linux_dirent *d;
+
+	nread = -1;
+	while (nread != 0) {
+		nread = pmemfile_getdents(pfp, f, (linux_dirent *)buf,
+					  sizeof(buf));
+
+		ASSERT_NE(nread, -1);
+
+		for (int pos = 0; pos < nread;) {
+			d = (linux_dirent *)(buf + pos);
+			offsets.push_back(d->off);
+			pos += d->reclen;
+		}
+	}
+
+	/*
+	 * Check if lseek to end returned value is equal to
+	 * last offset returned by getdents
+	 */
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_END), offsets.back());
+
+	offsets.push_back(INT64_MAX);
+
+	/*
+	 * Run getdents with bigger offset and check if seeking with offset
+	 * affects output from getdents - each getdents call should return
+	 * one less entry, than previous one
+	 */
+	for (size_t i = 0; i < (size_t)file_dir_count * 2 + 3; i++) {
+		pmemfile_off_t offset =
+			pmemfile_lseek(pfp, f, offsets[i], PMEMFILE_SEEK_SET);
+		ASSERT_EQ(offset, offsets[i]);
+
+		ssize_t tofind = file_dir_count * 2 + 2 - (ssize_t)i;
+		ASSERT_EQ(count_getdents_entries(pfp, f), tofind);
+	}
+
+	/* Cleanup */
+	pmemfile_close(pfp, f);
+
+	for (ssize_t i = 0; i < file_dir_count; ++i) {
+		sprintf(path, "/file%04zu", i);
+
+		int ret = pmemfile_unlink(pfp, path);
+		ASSERT_EQ(ret, 0) << strerror(errno);
+
+		sprintf(path, "/dir%04zu", i);
+		ASSERT_EQ(pmemfile_rmdir(pfp, path), 0);
+	}
+}
+
 TEST_F(getdents, short_buffer)
 {
 	PMEMfile *f = pmemfile_open(pfp, "/",

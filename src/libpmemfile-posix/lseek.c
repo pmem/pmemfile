@@ -156,6 +156,50 @@ lseek_seek_data_or_hole(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	return offset;
 }
 
+static pmemfile_off_t
+lseek_end_directory(PMEMfilepool *pfp, PMEMfile *file,
+			pmemfile_off_t offset)
+{
+	pmemfile_off_t ret = 0;
+	pmemfile_off_t ret_dir_num = 0;
+	pmemfile_off_t dir_num = 0;
+	struct pmemfile_dir *dir =
+		&file->vinode->inode->file_data.dir;
+
+	while (true) {
+		struct pmemfile_dir *next = NULL;
+
+		if (!TOID_IS_NULL(dir->next)) {
+			next = PF_RW(pfp, dir->next);
+			if (next->dirents[0].name[0] != '\0') {
+				dir = next;
+				dir_num++;
+				continue;
+			}
+		}
+
+		for (pmemfile_off_t i = 0; i < dir->num_elements; i++) {
+			if (dir->dirents[i].name[0] != '\0') {
+				if (i == dir->num_elements - 1) {
+					ret = 0;
+					ret_dir_num = dir_num + 1;
+				} else {
+					ret = i + 1;
+					ret_dir_num = dir_num;
+				}
+
+			}
+		}
+
+		if (!next)
+			break;
+		dir = next;
+		dir_num++;
+	}
+
+	return (ret_dir_num << 32) + ret + offset;
+}
+
 /*
  * pmemfile_lseek_locked -- changes file current offset
  */
@@ -171,10 +215,7 @@ pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t offset,
 	}
 
 	if (vinode_is_dir(file->vinode)) {
-		if (whence == PMEMFILE_SEEK_END) {
-			errno = EINVAL;
-			return -1;
-		}
+		/* Nothing to do for now */
 	} else if (vinode_is_regular_file(file->vinode)) {
 		/* Nothing to do for now */
 	} else {
@@ -220,9 +261,14 @@ pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t offset,
 			}
 			break;
 		case PMEMFILE_SEEK_END:
-			os_rwlock_rdlock(&vinode->rwlock);
-			ret = (pmemfile_off_t)inode->size + offset;
-			os_rwlock_unlock(&vinode->rwlock);
+			if (vinode_is_dir(vinode)) {
+				ret = lseek_end_directory(pfp, file,
+							    offset);
+			} else {
+				os_rwlock_rdlock(&vinode->rwlock);
+				ret = (pmemfile_off_t)inode->size + offset;
+				os_rwlock_unlock(&vinode->rwlock);
+			}
 			if (ret < 0) {
 				/* Error as in SEEK_SET */
 				new_errno = EINVAL;

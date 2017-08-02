@@ -132,12 +132,11 @@ if [ ! "$VLTRACE_SKIP" ]; then
 	echo "$ sudo bash -c \"$RUN_VLTRACE $FF -o $OUT_VLT $TEST_FILE $TEST_NUM\""
 	sudo bash -c "$RUN_VLTRACE $FF -o $OUT_VLT $TEST_FILE $TEST_NUM"
 else
-	cp ../syscalls_table.dat .
 	cp ../$OUT_VLT .
 fi
 
-echo "$ $ANTOOL -c -s -t syscalls_table.dat -b $OUT_VLT > $OUT_TXT"
-$ANTOOL -c -s -t syscalls_table.dat -b $OUT_VLT > $OUT_TXT
+echo "$ $ANTOOL -c -s -b $OUT_VLT > $OUT_TXT"
+$ANTOOL -c -s -b $OUT_VLT > $OUT_TXT
 
 mv $OUT_TXT $OUT_BARE
 [ $(cat $OUT_BARE | wc -l) -eq 0 ] \
@@ -163,6 +162,10 @@ fi
 
 check
 
-# test succeeded - remove the temporary test directory
+# test succeeded
+# copy vltrace binary log for regeneration
+cp $OUT_VLT ..
+
+# remove the temporary test directory
 cd ..
 rm -rf $DIR_NAME

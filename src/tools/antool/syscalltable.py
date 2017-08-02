@@ -66,20 +66,21 @@ class SyscallTable:
     ####################################################################################################################
     # read_syscall_table -- read the syscall table from the file
     ####################################################################################################################
-    def read_syscall_table(self, path_to_syscalls_table_dat):
+    def read_syscall_table(self, fh):
         fmt = 'I4sP32sIIIiI6s6s'
         size_fmt = struct.calcsize(fmt)
 
-        fh = open_file(path_to_syscalls_table_dat, 'rb')
-
         size_check, = read_fmt_data(fh, 'i')
         if size_check != size_fmt:
-            self.log_sctbl.error("wrong format of syscalls table file: {0:s}".format(path_to_syscalls_table_dat))
+            self.log_sctbl.error("wrong format of syscalls table:")
             self.log_sctbl.error("      format size : {0:d}".format(size_fmt))
             self.log_sctbl.error("      data size   : {0:d}".format(size_check))
             return -1
 
-        while True:
+        count, = read_fmt_data(fh, 'i')
+        self.log_sctbl.debug("format of syscall table OK, reading {0:d} records...".format(count))
+
+        for i in range(count):
             try:
                 data = read_fmt_data(fh, fmt)
                 num, num_str, pname, name, length, nargs, mask, avail, nstrargs, positions, _padding = data
@@ -103,6 +104,6 @@ class SyscallTable:
                 print("ERROR: unexpected error", file=stderr)
                 raise
 
-        fh.close()
+        self.log_sctbl.debug("read {0:d} records of syscall table.".format(count))
 
         return 0

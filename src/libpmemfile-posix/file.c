@@ -474,6 +474,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto end;
 
 	file->vinode = vinode;
+	file->dir_pos.dir = &vinode->inode->file_data.dir;
 
 end:
 	path_info_cleanup(pfp, &info);

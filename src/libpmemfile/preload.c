@@ -1825,6 +1825,12 @@ dispatch_syscall(long syscall_number,
 		return hook_bind((int)arg0, (const struct sockaddr *)arg1,
 				(socklen_t)arg2);
 
+	case SYS_dup:
+		return pmemfile_vfd_dup((int)arg0);
+
+	case SYS_dup2:
+		return pmemfile_vfd_dup2((int)arg0, (int)arg1);
+
 	default:
 		/* Did we miss something? */
 		assert(false);

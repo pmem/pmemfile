@@ -1216,8 +1216,7 @@ hook_sendfile(long out_fd, long in_fd, off_t *offset, size_t count)
 }
 
 static long
-hook_readlinkat(long fd, const char *path,
-				char *buf, size_t bufsiz)
+hook_readlinkat(long fd, const char *path, char *buf, size_t bufsiz)
 {
 	long ret;
 	struct resolved_path where;
@@ -2067,8 +2066,8 @@ dispatch_syscall(long syscall_number,
 		    (char *)arg1, (size_t)arg2);
 
 	case SYS_readlinkat:
-		return hook_readlinkat(AT_FDCWD, (const char *)arg0,
-		    (char *)arg1, (size_t)arg2);
+		return hook_readlinkat(arg0, (const char *)arg1,
+		    (char *)arg2, (size_t)arg3);
 
 	case SYS_splice:
 		return hook_splice(arg0, (loff_t *)arg1, arg2,

@@ -313,8 +313,6 @@ static struct syscall_early_filter_entry filter_table[] = {
 	},
 	[SYS_dup2] = {
 		.must_handle = true,
-		.fd_first_arg = true,
-		.returns_ENOTSUP = true,
 	},
 	[SYS_dup3] = {
 		.must_handle = true,
@@ -323,8 +321,6 @@ static struct syscall_early_filter_entry filter_table[] = {
 	},
 	[SYS_dup] = {
 		.must_handle = true,
-		.fd_first_arg = true,
-		.returns_ENOTSUP = true,
 	},
 	[SYS_execveat] = {
 		.must_handle = true,

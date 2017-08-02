@@ -41,6 +41,8 @@
 
 #include "compiler_utils.h"
 
+#include "vfd_table.h"
+
 struct pmemfilepool;
 struct pmemfile_file;
 
@@ -100,37 +102,18 @@ same_inode(const struct stat *st1, const struct stat *st2)
 	return st1->st_ino == st2->st_ino && st1->st_dev == st2->st_dev;
 }
 
-/*
- * The array fd_table is used to look up file descriptors, and find a pool, and
- * PMEM file open in that pool. When the 'file' member is NULL, the fd is
- * not used ( but might still be in the fd_pool ).
- */
-struct fd_association {
-	struct pool_description *pool;
-	struct pmemfile_file *file;
-};
-
-static inline bool
-is_fda_null(const struct fd_association *fda)
-{
-	return fda->pool == NULL;
-}
-
-struct fd_desc {
-	long kernel_fd;
-	struct fd_association pmem_fda;
-};
-
 struct resolved_path {
 	long error_code;
 
-	struct fd_desc at;
+	long at_kernel;
+	struct pool_description *at_pool;
+	struct pmemfile_file *at_dir;
 
 	char path[PATH_MAX];
 	size_t path_len;
 };
 
-void resolve_path(struct fd_desc at,
+void resolve_path(struct vfd_reference at,
 			const char *path,
 			struct resolved_path *result,
 			int flags);

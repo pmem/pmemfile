@@ -57,9 +57,9 @@
 static int
 get_stat(struct resolved_path *result, struct stat *buf)
 {
-	if (is_fda_null(&result->at.pmem_fda)) {
+	if (result->at_pool == NULL) {
 		long error_code = syscall_no_intercept(SYS_newfstatat,
-			result->at.kernel_fd,
+			result->at_kernel,
 			result->path,
 			buf,
 			AT_SYMLINK_NOFOLLOW);
@@ -70,8 +70,8 @@ get_stat(struct resolved_path *result, struct stat *buf)
 			return -1;
 		}
 	} else {
-		int r = pmemfile_fstatat(result->at.pmem_fda.pool->pool,
-			result->at.pmem_fda.file,
+		int r = pmemfile_fstatat(result->at_pool->pool,
+			result->at_dir,
 			result->path,
 			(pmemfile_stat_t *)buf,
 			AT_SYMLINK_NOFOLLOW);
@@ -103,9 +103,9 @@ resolve_symlink(struct resolved_path *result,
 
 	result->path[*end] = '\0';
 
-	if (is_fda_null(&result->at.pmem_fda)) {
+	if (result->at_pool == NULL) {
 		link_len = syscall_no_intercept(SYS_readlinkat,
-			result->at.kernel_fd,
+			result->at_kernel,
 			result->path,
 			link_buf,
 			sizeof(link_buf) - 1);
@@ -115,8 +115,8 @@ resolve_symlink(struct resolved_path *result,
 			return;
 		}
 	} else {
-		link_len = pmemfile_readlinkat(result->at.pmem_fda.pool->pool,
-				result->at.pmem_fda.file,
+		link_len = pmemfile_readlinkat(result->at_pool->pool,
+				result->at_dir,
 				result->path,
 				link_buf,
 				sizeof(link_buf) - 1);
@@ -214,7 +214,7 @@ resolve_symlink(struct resolved_path *result,
 	*resolved = link_insert;
 
 	if (link_buf[0] == '/')
-		result->at.pmem_fda.pool = NULL;
+		result->at_pool = NULL;
 }
 
 /*
@@ -228,8 +228,14 @@ enter_pool(struct resolved_path *result, struct pool_description *pool,
 {
 	memmove(result->path, result->path + end, *size - end);
 	result->path[0] = '/';
-	result->at.pmem_fda.pool = pool;
-	result->at.pmem_fda.file = PMEMFILE_AT_CWD;
+	result->at_pool = pool;
+
+	/*
+	 * The at_dir field doesn't matter here, since result->path
+	 * refers to an absolute path.
+	 */
+	result->at_dir = PMEMFILE_AT_CWD;
+
 	*resolved = 1;
 	*size -= end;
 	if (*size == 0)
@@ -245,8 +251,8 @@ enter_pool(struct resolved_path *result, struct pool_description *pool,
 static void
 exit_pool(struct resolved_path *result, size_t resolved, size_t *size)
 {
-	result->at.kernel_fd = result->at.pmem_fda.pool->fd;
-	result->at.pmem_fda.pool = NULL;
+	result->at_kernel = result->at_pool->fd;
+	result->at_pool = NULL;
 	memmove(result->path, result->path + resolved, *size - resolved + 1);
 	*size -= resolved;
 }
@@ -260,7 +266,7 @@ exit_pool(struct resolved_path *result, size_t resolved, size_t *size)
  * via the kernel.
  */
 void
-resolve_path(struct fd_desc at,
+resolve_path(struct vfd_reference at,
 			const char *path,
 			struct resolved_path *result,
 			int flags)
@@ -270,7 +276,9 @@ resolve_path(struct fd_desc at,
 		return;
 	}
 
-	result->at = at;
+	result->at_kernel = at.kernel_fd;
+	result->at_pool = at.pool;
+	result->at_dir = at.file;
 	result->error_code = 0;
 
 	size_t resolved; /* How many chars are resolved already? */
@@ -284,10 +292,8 @@ resolve_path(struct fd_desc at,
 	if (get_stat(result, &stat_buf) != 0)
 		return;
 
-	const struct fd_association *pmem_fda = &result->at.pmem_fda;
-
-	bool at_pmem_root = pmem_fda->pool &&
-			same_inode(&stat_buf, &pmem_fda->pool->pmem_stat);
+	bool at_pmem_root = at.pool &&
+			same_inode(&stat_buf, &at.pool->pmem_stat);
 
 	for (size = 0; path[size] != '\0'; ++size) {
 		/* leave one more byte for the null terminator */
@@ -312,7 +318,7 @@ resolve_path(struct fd_desc at,
 	result->path[size] = '\0';
 
 	if (path[0] == '/')
-		result->at.pmem_fda.pool = NULL;
+		result->at_pool = NULL;
 
 	int num_symlinks = 0;
 	struct pool_description *last_pool = NULL;
@@ -351,8 +357,6 @@ resolve_path(struct fd_desc at,
 		if (get_stat(result, &stat_buf) != 0)
 			break;
 
-		pmem_fda = &result->at.pmem_fda;
-
 		if (!is_last_component)
 			result->path[end] = '/';
 
@@ -363,7 +367,7 @@ resolve_path(struct fd_desc at,
 		 */
 		if (at_pmem_root && (end - resolved) == 2 &&
 				memcmp(&result->path[resolved], "..", 2) == 0) {
-			last_pool = result->at.pmem_fda.pool;
+			last_pool = result->at_pool;
 			exit_pool(result, resolved, &size);
 			at_pmem_root = false;
 			continue;
@@ -390,7 +394,7 @@ resolve_path(struct fd_desc at,
 				result->error_code = -ENOTDIR;
 
 			break;
-		} else if (is_fda_null(pmem_fda)) {
+		} else if (result->at_pool == NULL) {
 			struct pool_description *pool;
 
 			pool = lookup_pd_by_inode(&stat_buf);
@@ -404,7 +408,7 @@ resolve_path(struct fd_desc at,
 				continue;
 			}
 		} else {
-			if (same_inode(&stat_buf, &pmem_fda->pool->pmem_stat))
+			if (same_inode(&stat_buf, &result->at_pool->pmem_stat))
 				at_pmem_root = true;
 		}
 
@@ -424,8 +428,10 @@ resolve_path(struct fd_desc at,
 	 * interfaces that do not have *at variant, then prepend the path with
 	 * the mount point path.
 	 */
-	if (result->error_code == 0 && is_fda_null(&result->at.pmem_fda) &&
-			(flags & NO_AT_PATH) && last_pool) {
+	if (result->error_code == 0 &&
+			result->at_pool == NULL &&
+			(flags & NO_AT_PATH) &&
+			last_pool) {
 		size_t rem_len = strlen(result->path);
 		size_t mnt_len = strlen(last_pool->mount_point);
 

@@ -57,19 +57,6 @@ struct syscall_early_filter_entry {
 	bool must_handle;
 
 	/*
-	 * In the case some syscalls, an argument containing a path must
-	 * be parsed. The cwd_rlock flag signals the need for locking (for
-	 * reading) the reference to the current working directory for reading,
-	 * which should not be modified while doing a path resolution.
-	 *
-	 * This of course isn't really needed when parsing an absolute path,
-	 * as the CWD is not relevant in that case.
-	 *
-	 * XXX lock the CWD only while parsing a relative path.
-	 */
-	bool cwd_rlock;
-
-	/*
 	 * The fd_first_arg flag marks syscalls, which accept a file descriptor
 	 * as their first argument. This allows libpmemfile to easily isolate
 	 * the process of checking the first argument, and making a decision

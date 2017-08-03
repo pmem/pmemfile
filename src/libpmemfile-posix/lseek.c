@@ -157,17 +157,17 @@ lseek_seek_data_or_hole(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 }
 
 static pmemfile_off_t
-lseek_end_directory(PMEMfilepool *pfp, PMEMfile *file,
+lseek_end_directory(PMEMfilepool *pfp, struct pmemfile_inode *inode,
 			pmemfile_off_t offset)
 {
 	pmemfile_off_t ret = 0;
 	pmemfile_off_t ret_dir_num = 0;
 	pmemfile_off_t dir_num = 0;
-	struct pmemfile_dir *dir =
-		&file->vinode->inode->file_data.dir;
+	struct pmemfile_dir *dir = &inode->file_data.dir;
 
-	while (true) {
-		struct pmemfile_dir *next = NULL;
+	struct pmemfile_dir *next = NULL;
+	do {
+		next = NULL;
 
 		if (!TOID_IS_NULL(dir->next)) {
 			next = PF_RW(pfp, dir->next);
@@ -180,22 +180,20 @@ lseek_end_directory(PMEMfilepool *pfp, PMEMfile *file,
 
 		for (pmemfile_off_t i = 0; i < dir->num_elements; i++) {
 			if (dir->dirents[i].name[0] != '\0') {
-				if (i == dir->num_elements - 1) {
+				ret = i + 1;
+				ret_dir_num = dir_num;
+
+				if (ret == dir->num_elements) {
 					ret = 0;
 					ret_dir_num = dir_num + 1;
-				} else {
-					ret = i + 1;
-					ret_dir_num = dir_num;
 				}
 
 			}
 		}
 
-		if (!next)
-			break;
 		dir = next;
 		dir_num++;
-	}
+	} while (next);
 
 	return (ret_dir_num << 32) + ret + offset;
 }
@@ -261,14 +259,13 @@ pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t offset,
 			}
 			break;
 		case PMEMFILE_SEEK_END:
-			if (vinode_is_dir(vinode)) {
-				ret = lseek_end_directory(pfp, file,
-							    offset);
-			} else {
-				os_rwlock_rdlock(&vinode->rwlock);
+			os_rwlock_rdlock(&vinode->rwlock);
+			if (vinode_is_dir(vinode))
+				ret = lseek_end_directory(pfp, inode, offset);
+			else
 				ret = (pmemfile_off_t)inode->size + offset;
-				os_rwlock_unlock(&vinode->rwlock);
-			}
+			os_rwlock_unlock(&vinode->rwlock);
+
 			if (ret < 0) {
 				/* Error as in SEEK_SET */
 				new_errno = EINVAL;

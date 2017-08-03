@@ -287,6 +287,19 @@ TEST_F(stat_test, fstatat)
 			       4000, 1, 0),
 		  0);
 
+#ifdef FAULT_INJECTION
+	pmemfile_gid_t groups[1] = {1002};
+	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	pmemfile_stat_t st;
+	memset(&st, 0, sizeof(st));
+	errno = 0;
+	EXPECT_EQ(pmemfile_fstatat(pfp, dir, "../file2", &st,
+				   PMEMFILE_AT_SYMLINK_NOFOLLOW),
+		  -1);
+	EXPECT_EQ(errno, ENOMEM);
+#endif
+
 	pmemfile_close(pfp, dir);
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file2"), 0);

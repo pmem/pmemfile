@@ -45,26 +45,21 @@
 static struct syscall_early_filter_entry filter_table[] = {
 	[SYS_access] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_chmod] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_chown] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_close] = {
 		.must_handle = true,
 	},
 	[SYS_creat] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_faccessat] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_fadvise64] = {
 		.must_handle = true,
@@ -77,7 +72,6 @@ static struct syscall_early_filter_entry filter_table[] = {
 	},
 	[SYS_fchmodat] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_fchmod] = {
 		.must_handle = true,
@@ -85,7 +79,6 @@ static struct syscall_early_filter_entry filter_table[] = {
 	},
 	[SYS_fchownat] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_fchown] = {
 		.must_handle = true,
@@ -129,7 +122,6 @@ static struct syscall_early_filter_entry filter_table[] = {
 	},
 	[SYS_futimesat] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_getdents64] = {
 		.must_handle = true,
@@ -141,23 +133,18 @@ static struct syscall_early_filter_entry filter_table[] = {
 	},
 	[SYS_getxattr] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_lchown] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_lgetxattr] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_linkat] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_link] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_lseek] = {
 		.must_handle = true,
@@ -165,39 +152,30 @@ static struct syscall_early_filter_entry filter_table[] = {
 	},
 	[SYS_lsetxattr] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_lstat] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_mkdirat] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_mkdir] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_mknod] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_mknodat] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_newfstatat] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_openat] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_open] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_pread64] = {
 		.must_handle = true,
@@ -229,11 +207,9 @@ static struct syscall_early_filter_entry filter_table[] = {
 	},
 	[SYS_readlinkat] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_readlink] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_readv] = {
 		.must_handle = true,
@@ -241,23 +217,18 @@ static struct syscall_early_filter_entry filter_table[] = {
 	},
 	[SYS_renameat2] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_renameat] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_rename] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_rmdir] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_setxattr] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_setfsuid] = {
 		.must_handle = true,
@@ -288,48 +259,38 @@ static struct syscall_early_filter_entry filter_table[] = {
 	},
 	[SYS_stat] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_symlinkat] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_symlink] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_syncfs] = {
 		.must_handle = true,
 		.fd_first_arg = true,
-		.cwd_rlock = true,
 		.returns_zero = true,
 	},
 	[SYS_truncate] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_umask] = {
 		.must_handle = true,
 	},
 	[SYS_unlinkat] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_unlink] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_utime] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_utimensat] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_utimes] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_write] = {
 		.must_handle = true,
@@ -343,11 +304,9 @@ static struct syscall_early_filter_entry filter_table[] = {
 	/* Syscalls not handled yet */
 	[SYS_bind] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_chroot] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_copy_file_range] = {
 		.must_handle = true,
@@ -369,11 +328,9 @@ static struct syscall_early_filter_entry filter_table[] = {
 	},
 	[SYS_execveat] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_execve] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_flistxattr] = {
 		.must_handle = true,
@@ -387,15 +344,12 @@ static struct syscall_early_filter_entry filter_table[] = {
 	},
 	[SYS_listxattr] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_llistxattr] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_lremovexattr] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_mmap] = {
 		.must_handle = true,
@@ -410,7 +364,6 @@ static struct syscall_early_filter_entry filter_table[] = {
 	},
 	[SYS_removexattr] = {
 		.must_handle = true,
-		.cwd_rlock = true,
 	},
 	[SYS_sendfile] = {
 		.must_handle = true,

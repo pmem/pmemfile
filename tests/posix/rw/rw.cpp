@@ -697,7 +697,17 @@ TEST_F(rw, truncate)
 	EXPECT_TRUE(test_pmemfile_stats_match(
 		pfp, 2, 0, 0, (env_block_size == 4096) ? 8 : 1));
 
+#ifdef FAULT_INJECTION
+	pmemfile_gid_t groups[1] = {1002};
+	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	errno = 0;
+	ASSERT_EQ(pmemfile_truncate(pfp, "/file1", large + 4), -1);
+	EXPECT_EQ(errno, ENOMEM);
+#endif
+
 	r = pmemfile_truncate(pfp, "/file1", large + 4);
+
 	ASSERT_EQ(r, 0) << COND_ERROR(r);
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), large + 4);
 

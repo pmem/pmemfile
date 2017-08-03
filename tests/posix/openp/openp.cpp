@@ -181,6 +181,27 @@ TEST_F(openp, 0)
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir2"), 0);
 }
 
+#ifdef FAULT_INJECTION
+TEST_F(openp, copy_cred)
+{
+	pmemfile_gid_t groups[1] = {1002};
+	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", 0777), 0);
+
+	char path[PMEMFILE_PATH_MAX];
+	strncpy(path, "dir", PMEMFILE_PATH_MAX);
+	path[PMEMFILE_PATH_MAX - 1] = 0;
+
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	errno = 0;
+	pmemfile_open_parent(pfp, PMEMFILE_AT_CWD, path, PMEMFILE_PATH_MAX,
+			     0 ? PMEMFILE_OPEN_PARENT_STOP_AT_ROOT : 0);
+	EXPECT_EQ(errno, ENOMEM);
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
+}
+#endif
+
 int
 main(int argc, char *argv[])
 {

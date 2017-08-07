@@ -2075,6 +2075,19 @@ hook(long syscall_number,
 		return HOOKED;
 	}
 
+	if (syscall_number == SYS_fcntl &&
+	    ((int)arg1 == F_DUPFD || (int)arg1 == F_DUPFD_CLOEXEC)) {
+		/*
+		 * Other fcntl commands on pmemfile resident files are handled
+		 * via dispatch_syscall_fd_first.
+		 *
+		 * XXX: close-on-exec flag is not handled correctly yet.
+		 */
+		*syscall_return_value =
+		    pmemfile_vfd_fcntl_dup((int)arg0, (int)arg2);
+		return HOOKED;
+	}
+
 	struct syscall_early_filter_entry filter_entry;
 	filter_entry = get_early_filter_entry(syscall_number);
 

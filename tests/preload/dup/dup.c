@@ -203,6 +203,21 @@ test(const char *path, const char *extra_path)
 	}
 }
 
+static void
+test_fcntl_dup(const char *path)
+{
+	int min_new_fd = 177;
+
+	int fd = xcreate(path);
+	int fd2 = fcntl(fd, F_DUPFD, min_new_fd);
+	if (fd2 < 0)
+		err(1, "fcntl");
+
+	assert(fd2 >= min_new_fd);
+
+	seek_and_destroy(fd, fd2);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -222,6 +237,12 @@ main(int argc, char **argv)
 
 	fputs("Testing with pmemfile handled files\n", stderr);
 	test(path_in_pmemf, path_in_kernel);
+
+	fputs("Testing fcntl with cmd=F_DUPFD, with kernel\n", stderr);
+	test_fcntl_dup(path_in_kernel);
+
+	fputs("Testing fcntl with cmd=F_DUPFD, with pmemfile\n", stderr);
+	test_fcntl_dup(path_in_pmemf);
 
 	return 0;
 }

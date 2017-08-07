@@ -277,6 +277,50 @@ pmemfile_vfd_unref(struct vfd_reference ref)
 }
 
 /*
+ * vfd_dup2_under_mutex -- perform dup2
+ * If the old_vfd refers to entry, increase the corresponding ref_count.
+ * If the new_vfd refers to entry, decrease the corresponding ref_count.
+ * Overwrite the entry pointer in the vfd_table.
+ * The order of the three operations does not matter, as long as the entries
+ * as different, and all three happen while holding the vfd_table_mutex.
+ *
+ * Important: dup2 must be atomic from the user's point of view.
+ */
+static int
+vfd_dup2_under_mutex(int old_vfd, int new_vfd)
+{
+	if (new_vfd < 0)
+		return new_vfd;
+
+	/*
+	 * "If oldfd is a valid file descriptor, and newfd has the same value
+	 * as oldfd, then dup2() does nothing, and returns newfd."
+	 *
+	 * It is easily verified if the old vfd is valid or not, by asking
+	 * the kernel to dup2 the underlying (possible) memfd -- see the
+	 * function calling this function.
+	 */
+	if (old_vfd == new_vfd)
+		return new_vfd;
+
+	if (!is_in_vfd_table_range(new_vfd)) {
+		/* new_vfd can't be used to index the vfd_table */
+		syscall_no_intercept(SYS_close, new_vfd);
+		return -ENOMEM;
+	}
+
+	if (vfd_table[old_vfd] == vfd_table[new_vfd])
+		return new_vfd;
+
+	ref_entry(vfd_table[old_vfd]);
+	unref_entry(vfd_table[new_vfd]);
+	__atomic_store_n(vfd_table + new_vfd, vfd_table[old_vfd],
+			__ATOMIC_RELEASE);
+
+	return new_vfd;
+}
+
+/*
  * pmemfile_vfd_dup -- creates a new reference to a vfile_description entry,
  * if the vfd refers to one.
  */
@@ -289,62 +333,33 @@ pmemfile_vfd_dup(int vfd)
 	int new_vfd;
 	util_mutex_lock(&vfd_table_mutex);
 
-	/*
-	 * First acquire the underlying fd from the kernel. This can
-	 * be the duplicate of a memfd.
-	 */
 	new_vfd = (int)syscall_no_intercept(SYS_dup, vfd);
 
-	if (new_vfd >= 0 && vfd_table[vfd] != NULL) {
-		if (is_in_vfd_table_range(new_vfd)) {
-			assert(vfd_table[new_vfd] == NULL);
-
-			vf_ref_count_inc(vfd_table[vfd]);
-			__atomic_store_n(vfd_table + new_vfd,
-					vfd_table[vfd], __ATOMIC_RELEASE);
-		} else {
-			/* new_vfd can't be used to index the vfd_table */
-			syscall_no_intercept(SYS_close, new_vfd);
-			new_vfd = -ENOMEM;
-		}
-	}
+	new_vfd = vfd_dup2_under_mutex(vfd, new_vfd);
 
 	util_mutex_unlock(&vfd_table_mutex);
 
 	return new_vfd;
 }
 
-/*
- * vfd_dup2_under_mutex -- perform dup2
- * If the old_vfd refers to entry, increase the corresponding ref_count.
- * If the new_vfd refers to entry, decrease the corresponding ref_count.
- * Overwrite the entry pointer in the vfd_table.
- * The order of the three operations does not matter, as long as the entries
- * as different, and all three happen while holding the vfd_table_mutex.
- *
- * Important: dup2 must be atomic from the user's point of view.
- */
-static void
-vfd_dup2_under_mutex(int old_vfd, int new_vfd)
+int
+pmemfile_vfd_fcntl_dup(int vfd, int min_new_vfd)
 {
-	/*
-	 * "If oldfd is a valid file descriptor, and newfd has the same value
-	 * as oldfd, then dup2() does nothing, and returns newfd."
-	 *
-	 * It is easily verified if the old vfd is valid or not, by asking
-	 * the kernel to dup2 the underlying (possible) memfd -- see the
-	 * function calling this function.
-	 */
-	if (old_vfd == new_vfd)
-		return;
+	if (!can_be_in_vfd_table(vfd))
+		return (int)syscall_no_intercept(SYS_fcntl,
+				vfd, F_DUPFD, min_new_vfd);
 
-	if (vfd_table[old_vfd] == vfd_table[new_vfd])
-		return;
+	int new_vfd;
+	util_mutex_lock(&vfd_table_mutex);
 
-	ref_entry(vfd_table[old_vfd]);
-	unref_entry(vfd_table[new_vfd]);
-	__atomic_store_n(vfd_table + new_vfd, vfd_table[old_vfd],
-			__ATOMIC_RELEASE);
+	new_vfd = (int)syscall_no_intercept(SYS_fcntl,
+				vfd, F_DUPFD, min_new_vfd);
+
+	new_vfd = vfd_dup2_under_mutex(vfd, new_vfd);
+
+	util_mutex_unlock(&vfd_table_mutex);
+
+	return new_vfd;
 }
 
 /*
@@ -363,10 +378,8 @@ pmemfile_vfd_dup2(int old_vfd, int new_vfd)
 
 	result = (int)syscall_no_intercept(SYS_dup2, old_vfd, new_vfd);
 
-	if (result >= 0) {
-		assert(result == new_vfd);
-		vfd_dup2_under_mutex(old_vfd, new_vfd);
-	}
+	assert(result == new_vfd);
+	vfd_dup2_under_mutex(old_vfd, new_vfd);
 
 	util_mutex_unlock(&vfd_table_mutex);
 

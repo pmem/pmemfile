@@ -36,13 +36,14 @@
 #include "inode.h"
 #include "layout.h"
 
+enum inode_array_lock { INODE_ARRAY_LOCK, INODE_ARRAY_NOLOCK };
 
 void _inode_array_add(PMEMfilepool *pfp,
 		TOID(struct pmemfile_inode_array) array,
 		TOID(struct pmemfile_inode) tinode,
 		struct pmemfile_inode_array **ins,
 		unsigned *ins_idx,
-		bool lock);
+		enum inode_array_lock lock);
 void inode_array_add(PMEMfilepool *pfp,
 		TOID(struct pmemfile_inode_array) array,
 		TOID(struct pmemfile_inode) tinode,
@@ -52,7 +53,7 @@ void inode_array_add(PMEMfilepool *pfp,
 void _inode_array_unregister(PMEMfilepool *pfp,
 		struct pmemfile_inode_array *cur,
 		unsigned idx,
-		bool lock);
+		enum inode_array_lock lock);
 void inode_array_unregister(PMEMfilepool *pfp,
 		struct pmemfile_inode_array *cur,
 		unsigned idx);

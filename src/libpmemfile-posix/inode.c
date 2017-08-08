@@ -708,7 +708,8 @@ vinode_suspend(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 	vinode->inode->suspended_references++;
 
 	_inode_array_add(pfp, pfp->super->suspended_inodes, vinode->tinode,
-			&vinode->suspended.arr, &vinode->suspended.idx, false);
+			&vinode->suspended.arr, &vinode->suspended.idx,
+			INODE_ARRAY_NOLOCK);
 
 	if (vinode->blocks) {
 		ctree_delete(vinode->blocks);
@@ -751,7 +752,8 @@ inode_resume(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	TX_ADD_DIRECT(&inode->suspended_references);
 	inode->suspended_references--;
 
-	_inode_array_unregister(pfp, suspended.arr, suspended.idx, false);
+	_inode_array_unregister(pfp, suspended.arr, suspended.idx,
+			INODE_ARRAY_NOLOCK);
 }
 
 /*

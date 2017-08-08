@@ -82,7 +82,7 @@ _inode_array_add(PMEMfilepool *pfp,
 		TOID(struct pmemfile_inode) tinode,
 		struct pmemfile_inode_array **ins,
 		unsigned *ins_idx,
-		bool lock)
+		enum inode_array_lock lock)
 {
 	bool found = false;
 	ASSERT_IN_TX();
@@ -90,7 +90,7 @@ _inode_array_add(PMEMfilepool *pfp,
 	do {
 		struct pmemfile_inode_array *cur = PF_RW(pfp, array);
 
-		if (lock)
+		if (lock == INODE_ARRAY_LOCK)
 			pmemobj_mutex_lock_nofail(pfp->pop, &cur->mtx);
 
 		if (cur->used < NUMINODES_PER_ENTRY)
@@ -112,7 +112,7 @@ _inode_array_add(PMEMfilepool *pfp,
 			array = cur->next;
 		}
 
-		if (lock) {
+		if (lock == INODE_ARRAY_LOCK) {
 			if (found || modified)
 				mutex_tx_unlock_on_commit(&cur->mtx);
 			else
@@ -135,18 +135,18 @@ inode_array_add(PMEMfilepool *pfp,
 		struct pmemfile_inode_array **ins,
 		unsigned *ins_idx)
 {
-	_inode_array_add(pfp, array, tinode, ins, ins_idx, true);
+	_inode_array_add(pfp, array, tinode, ins, ins_idx, INODE_ARRAY_LOCK);
 }
 
 void
 _inode_array_unregister(PMEMfilepool *pfp,
 		struct pmemfile_inode_array *cur,
 		unsigned idx,
-		bool lock)
+		enum inode_array_lock lock)
 {
 	ASSERT_IN_TX();
 
-	if (lock)
+	if (lock == INODE_ARRAY_LOCK)
 		mutex_tx_lock(pfp, &cur->mtx);
 
 	ASSERT(cur->used > 0);
@@ -157,7 +157,7 @@ _inode_array_unregister(PMEMfilepool *pfp,
 	TX_ADD_DIRECT(&cur->used);
 	cur->used--;
 
-	if (lock)
+	if (lock == INODE_ARRAY_LOCK)
 		mutex_tx_unlock_on_commit(&cur->mtx);
 }
 
@@ -172,7 +172,7 @@ inode_array_unregister(PMEMfilepool *pfp,
 		struct pmemfile_inode_array *cur,
 		unsigned idx)
 {
-	_inode_array_unregister(pfp, cur, idx, true);
+	_inode_array_unregister(pfp, cur, idx, INODE_ARRAY_LOCK);
 }
 /*
  * inode_array_traverse -- traverses whole inode array and calls specified

@@ -58,9 +58,7 @@ vinode_fallocate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, int mode,
 
 	uint64_t off_plus_len = offset + length;
 
-	if (mode & PMEMFILE_FALLOC_FL_PUNCH_HOLE)
-		narrow_to_full_pages(&offset, &length);
-	else
+	if (!(mode & PMEMFILE_FALLOC_FL_PUNCH_HOLE))
 		expand_to_full_pages(&offset, &length);
 
 	if (length == 0)

@@ -875,8 +875,9 @@ TEST_F(rw, fallocate)
 	ASSERT_EQ(memcmp(buf + 1 + l0, buf00, sizeof(buf) - 1 - l0), 0);
 
 	/*
-	 * Punch a hole at [0x1fff, 0x4777) interval, which should be
+	 * Punch a hole at [0x1fff, 0x4fff) interval, which should be
 	 * internally translated to the [0x2000, 0x4000) interval.
+	 * Bytes at 0x1fff and [0x4000, 0x4fff) should be zeroed.
 	 * With fix 4K blocksize, this should remove one of the previously
 	 * allocated blocks.
 	 */
@@ -892,16 +893,17 @@ TEST_F(rw, fallocate)
 		pfp, 2, 0, 0, (env_block_size == 4096) ? 13 + 1 : 1));
 
 	/*
-	 * Try to read the test data, there should be only the first two
-	 * characters left at 0x1ffe and 0x1fff - the hole is expected to start
-	 * at the 0x2000 offset.
+	 * Try to read the test data, there should be only the first character
+	 * left at 0x1ffe - the hole is expected to start at the 0x2000 offset
+	 * and 0x1fff is set to 0.
 	 */
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0x1ffd, PMEMFILE_SEEK_SET), 0x1ffd);
 	memset(buf, 0xff, sizeof(buf));
 	r = pmemfile_read(pfp, f, buf, sizeof(buf));
 	ASSERT_EQ(r, (pmemfile_ssize_t)sizeof(buf)) << COND_ERROR(r);
 	ASSERT_EQ(buf[0], '\0');
-	ASSERT_EQ(memcmp(buf + 1, data0, 2), 0);
+	ASSERT_EQ(buf[1], data0[0]);
+	ASSERT_EQ(buf[2], '\0');
 	ASSERT_EQ(memcmp(buf + 1 + 2, buf00, sizeof(buf) - 1 - 2), 0);
 
 	/*

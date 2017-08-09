@@ -39,6 +39,8 @@
 #include <pthread.h>
 #include <linux/limits.h>
 
+#include "compiler_utils.h"
+
 struct pmemfilepool;
 struct pmemfile_file;
 
@@ -132,5 +134,7 @@ void resolve_path(struct fd_desc at,
 			const char *path,
 			struct resolved_path *result,
 			int flags);
+
+pf_printf_like(1, 2) void log_write(const char *fmt, ...);
 
 #endif

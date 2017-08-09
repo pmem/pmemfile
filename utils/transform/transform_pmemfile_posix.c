@@ -423,11 +423,17 @@ print_wrapper(struct func_desc *desc, FILE *f)
 {
 	print_prototype(desc, f);
 	fputs("{\n", f);
+	if (desc->return_type.is_void) {
+		print_log_write(desc, f);
+		fputc('\n', f);
+	}
 	print_return_value_assignment(desc, f);
 	print_forward_call(desc, f);
 	handle_errno(desc, f);
-	fputs("\n", f);
-	print_log_write(desc, f);
+	if (!desc->return_type.is_void) {
+		fputc('\n', f);
+		print_log_write(desc, f);
+	}
 	print_function_epilogue(desc, f);
 	fputs("}\n", f);
 	fputs("\n", f);

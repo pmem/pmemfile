@@ -78,11 +78,11 @@ wrapper_pmemfile_pool_open(const char *pathname)
 static inline void
 wrapper_pmemfile_pool_close(PMEMfilepool *pfp)
 {
-	pmemfile_pool_close(pfp);
-
 	log_write(
 	    "pmemfile_pool_close(%p)",
 		pfp);
+
+	pmemfile_pool_close(pfp);
 }
 
 static inline PMEMfile *
@@ -110,12 +110,12 @@ static inline void
 wrapper_pmemfile_close(PMEMfilepool *pfp,
 		PMEMfile *file)
 {
-	pmemfile_close(pfp,
-		file);
-
 	log_write(
 	    "pmemfile_close(%p, %p)",
 		pfp,
+		file);
+
+	pmemfile_close(pfp,
 		file);
 }
 
@@ -1696,12 +1696,12 @@ static inline void
 wrapper_pmemfile_stats(PMEMfilepool *pfp,
 		struct pmemfile_stats *stats)
 {
-	pmemfile_stats(pfp,
-		stats);
-
 	log_write(
 	    "pmemfile_stats(%p, %p)",
 		pfp,
+		stats);
+
+	pmemfile_stats(pfp,
 		stats);
 }
 

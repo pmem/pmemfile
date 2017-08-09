@@ -196,25 +196,6 @@ expand_to_full_pages(uint64_t *offset, uint64_t *length)
 	*length = block_roundup(*length);
 }
 
-/*
- * narrow_to_full_pages
- * Alters two file offsets to be pmemfile-page aligned. This is not
- * necessarily the same as memory page alignment!
- * The resulting offset refer to an interval that is contained by the original
- * interval. This new interval can end up being empty, i.e. *length can become
- * zero.
- */
-void
-narrow_to_full_pages(uint64_t *offset, uint64_t *length)
-{
-	uint64_t end = block_rounddown(*offset + *length);
-	*offset = block_roundup(*offset);
-	if (end > *offset)
-		*length = end - *offset;
-	else
-		*length = 0;
-}
-
 void *
 pmemfile_direct(PMEMfilepool *pfp, PMEMoid oid)
 {

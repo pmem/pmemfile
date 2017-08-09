@@ -119,6 +119,15 @@ TEST_F(basic, open_create_close)
 
 	pmemfile_close(pfp, f1);
 
+#ifdef FAULT_INJECTION
+	pmemfile_gid_t groups[1] = {1002};
+	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
+	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+	errno = 0;
+	ASSERT_EQ(pmemfile_create(pfp, "/fileXXX", 0644), nullptr);
+	EXPECT_EQ(errno, ENOMEM);
+#endif
+
 	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
 							{040777, 2, 4000, "."},
 							{040777, 2, 4000, ".."},

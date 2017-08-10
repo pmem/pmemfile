@@ -71,7 +71,7 @@ if [[ "$command" == "" ]]; then
 	if [[ $SQLITE -eq 1 ]] ; then command="sqlite/run-build-sqlite.sh"; SET_ULIMIT="--ulimit nofile=1024:1024"; fi
 fi
 
-WORKDIR=/pmemfile
+WORKDIR=/pmemfile-${OS}-${OS_VER}
 
 # Run a container with
 #  - environment variables set (--env)

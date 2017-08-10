@@ -77,7 +77,7 @@ WORKDIR=/pmemfile-${OS}-${OS_VER}
 #  - environment variables set (--env)
 #  - host directory containing pmemfile source mounted (-v)
 #  - working directory set (-w)
-sudo docker run --rm --privileged=true --name=$containerName -ti \
+sudo docker run --rm --privileged=true --name=$containerName $EXTRA_DOCKER_ARGS -i \
 	$ci_env \
 	$SET_ULIMIT \
 	--env http_proxy=$http_proxy \

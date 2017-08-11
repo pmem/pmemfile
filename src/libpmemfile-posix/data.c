@@ -888,6 +888,8 @@ vinode_remove_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	ASSERT_IN_TX();
 	ASSERT(len > 0);
 
+	vinode->block_pointer_invalidation_counter++;
+
 	size_t deallocated_space = 0;
 
 	struct pmemfile_block_desc *block =

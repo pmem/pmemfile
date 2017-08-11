@@ -49,11 +49,7 @@ static pmemfile_off_t
 lseek_seek_data(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		pmemfile_off_t offset, pmemfile_off_t fsize)
 {
-	if (vinode->blocks == NULL) {
-		int err = vinode_rebuild_block_tree(pfp, vinode);
-		if (err)
-			return err;
-	}
+	ASSERT(vinode->blocks != NULL);
 
 	struct pmemfile_block_desc *block =
 			find_closest_block(vinode, (uint64_t)offset);
@@ -84,11 +80,7 @@ static pmemfile_off_t
 lseek_seek_hole(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		pmemfile_off_t offset, pmemfile_off_t fsize)
 {
-	if (vinode->blocks == NULL) {
-		int err = vinode_rebuild_block_tree(pfp, vinode);
-		if (err)
-			return err;
-	}
+	ASSERT(vinode->blocks != NULL);
 
 	struct pmemfile_block_desc *block =
 			find_closest_block(vinode, (uint64_t)offset);
@@ -143,12 +135,18 @@ lseek_seek_data_or_hole(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		return -ENXIO;
 	}
 
+	int r = vinode_rdlock_with_block_tree(pfp, vinode);
+	if (r != 0)
+		return r;
+
 	if (whence == PMEMFILE_SEEK_DATA) {
 		offset = lseek_seek_data(pfp, vinode, offset, fsize);
 	} else {
 		ASSERT(whence == PMEMFILE_SEEK_HOLE);
 		offset = lseek_seek_hole(pfp, vinode, offset, fsize);
 	}
+
+	os_rwlock_unlock(&vinode->rwlock);
 
 	if (offset > fsize)
 		offset = fsize;
@@ -274,18 +272,12 @@ pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t offset,
 			break;
 		case PMEMFILE_SEEK_DATA:
 		case PMEMFILE_SEEK_HOLE:
-			/*
-			 * We may need to rebuild the block tree, so we have to
-			 * take vinode lock in write mode.
-			 */
-			os_rwlock_wrlock(&vinode->rwlock);
 			ret = lseek_seek_data_or_hole(pfp, vinode, offset,
 				whence);
 			if (ret < 0) {
 				new_errno = (int)-ret;
 				ret = -1;
 			}
-			os_rwlock_unlock(&vinode->rwlock);
 			break;
 		default:
 			ret = -1;

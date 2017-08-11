@@ -228,7 +228,6 @@ pmemfile_fallocate(PMEMfilepool *pfp, PMEMfile *file, int mode,
 
 	os_rwlock_unlock(&vinode->rwlock);
 
-
 end:
 	if (error != 0) {
 		errno = error;

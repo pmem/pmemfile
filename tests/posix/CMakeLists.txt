@@ -104,6 +104,7 @@ function(build_test name srcs)
 endfunction()
 
 build_test(file_basic basic/basic.cpp)
+build_test(file_pointer_caching pointer_caching/pointer_caching.cpp)
 build_test(file_crash crash/crash.cpp)
 build_test(file_dirs dirs/dirs.cpp)
 build_test(file_getdents getdents/getdents.cpp)
@@ -171,6 +172,13 @@ add_test_generic(basic none)
 add_test_generic(basic memcheck)
 add_test_generic(basic helgrind)
 add_test_generic(basic pmemcheck)
+
+# Reproducing pointer caching issues can be rather tricky, one
+# would need to rely on very specific details of pmemfile-posix
+# and pmemobj to do it without valgrind.
+add_test_generic(pointer_caching memcheck)
+add_test_generic(pointer_caching helgrind)
+add_test_generic(pointer_caching pmemcheck)
 
 add_test_generic(crash none)
 

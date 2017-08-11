@@ -68,6 +68,9 @@ vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	int error = 0;
 
 	vinode_snapshot(vinode);
+	vinode->data_modification_counter++;
+	vinode->metadata_modification_counter++;
+	memory_barrier();
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		/*

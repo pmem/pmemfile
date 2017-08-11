@@ -86,6 +86,9 @@ vinode_chown(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 				offsetof(struct pmemfile_inode, uid) +
 				sizeof(inode->uid));
 
+		vinode->metadata_modification_counter++;
+		memory_barrier();
+
 		pmemobj_tx_add_range_direct(&inode->uid,
 				sizeof(inode->uid) + sizeof(inode->gid));
 

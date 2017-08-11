@@ -65,6 +65,9 @@ vinode_fallocate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, int mode,
 		return 0;
 
 	vinode_snapshot(vinode);
+	vinode->data_modification_counter++;
+	vinode->metadata_modification_counter++;
+	memory_barrier();
 
 	if (vinode->blocks == NULL) {
 		error = vinode_rebuild_block_tree(pfp, vinode);
@@ -227,7 +230,6 @@ pmemfile_fallocate(PMEMfilepool *pfp, PMEMfile *file, int mode,
 			(uint64_t)length);
 
 	os_rwlock_unlock(&vinode->rwlock);
-
 
 end:
 	if (error != 0) {

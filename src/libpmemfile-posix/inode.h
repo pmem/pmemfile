@@ -48,6 +48,13 @@ struct pmemfile_vinode {
 	/* read-write lock, also protects inode read/writes */
 	os_rwlock_t rwlock;
 
+	/*
+	 * Counters to keep indicate modifications. Should be incremented
+	 * right before each modification of the underlying file.
+	 */
+	uint64_t data_modification_counter;
+	uint64_t metadata_modification_counter;
+
 	/* persistent inode */
 	struct pmemfile_inode *inode;
 

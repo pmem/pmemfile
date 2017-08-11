@@ -177,6 +177,7 @@ pmemfile_preadv_internal(PMEMfilepool *pfp,
 		os_rwlock_wrlock(&vinode->rwlock);
 
 		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
+			vinode->metadata_modification_counter++;
 			TX_SET_DIRECT(inode, atime, tm);
 		} TX_ONABORT {
 			LOG(LINF, "can not update inode atime");

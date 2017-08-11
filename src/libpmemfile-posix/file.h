@@ -36,6 +36,7 @@
  * Runtime state structures.
  */
 
+#include <stdbool.h>
 #include <stddef.h>
 #include "inode.h"
 #include "layout.h"
@@ -58,6 +59,17 @@ struct pmemfile_file {
 	 */
 	os_mutex_t mutex;
 
+	/*
+	 * Counters corresponding to the modification counters in the vinode
+	 * associated with this pmemfile_file. They help in the detection of
+	 * vinode modifications since the last time the vinode's rwlock was held
+	 * via a particular pmemfile_file instance.
+	 *
+	 * Only used for regular files.
+	 */
+	uint64_t last_data_modification_observed;
+	uint64_t last_metadata_modification_observed;
+
 	/* flags */
 	uint64_t flags;
 
@@ -76,5 +88,30 @@ struct pmemfile_file {
 		unsigned dir_id;
 	} dir_pos;
 };
+
+static inline bool
+is_data_modification_indicated(const struct pmemfile_file *file)
+{
+	return file->last_data_modification_observed !=
+		file->vinode->data_modification_counter;
+}
+
+static inline bool
+is_metadata_modification_indicated(const struct pmemfile_file *file)
+{
+	return file->last_metadata_modification_observed !=
+		file->vinode->metadata_modification_counter;
+}
+
+static inline bool
+is_modification_indicated(const struct pmemfile_file *file)
+{
+	/*
+	 * As of now, there is no data modification without metadata
+	 * modification, thus checking the metadata modification counter
+	 * is enough to detect any modification.
+	 */
+	return is_metadata_modification_indicated(file);
+}
 
 #endif

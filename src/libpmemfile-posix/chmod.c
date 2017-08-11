@@ -71,6 +71,8 @@ vinode_chmod(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		struct pmemfile_time tm;
 		tx_get_current_time(&tm);
 
+		vinode->metadata_modification_counter++;
+
 		TX_ADD_DIRECT(&inode->ctime);
 		inode->ctime = tm;
 

@@ -119,6 +119,15 @@ inode_ref(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 		return NULL;
 	}
 
+	/*
+	 * Initialize the modification_counters to 1. This is intended to
+	 * assure, that any counter tracking these (in pmemfile_file),
+	 * which is initialized to zero, is going to trigger a setup of
+	 * any cached data on first access.
+	 */
+	vinode->data_modification_counter = 1;
+	vinode->metadata_modification_counter = 1;
+
 	os_rwlock_wrlock(&pfp->inode_map_rwlock);
 
 	struct pmemfile_vinode *put =

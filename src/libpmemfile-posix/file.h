@@ -66,6 +66,7 @@ struct pmemfile_file {
 
 	/* current position cache, the latest block used */
 	struct pmemfile_block_desc *block_pointer_cache;
+	uint64_t last_block_pointer_invalidation_observed;
 
 	/* current position cache if directory */
 	struct pmemfile_dir_pos {

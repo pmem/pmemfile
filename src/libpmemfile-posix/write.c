@@ -75,31 +75,30 @@ vinode_write(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, size_t offset,
 		*last_block = block;
 }
 
+/*
+ * pmemfile_pwritev_args_check - checks some write arguments
+ * The arguments here can be examined while holding the mutex for the
+ * PMEMfile instance, while there is no need to hold the lock for the
+ * corresponding vinode instance.
+ */
 static pmemfile_ssize_t
-pmemfile_pwritev_internal(PMEMfilepool *pfp,
-		struct pmemfile_vinode *vinode,
-		struct pmemfile_block_desc **last_block,
-		uint64_t file_flags,
-		size_t offset,
+pmemfile_pwritev_args_check(struct pmemfile_file *file,
 		const pmemfile_iovec_t *iov,
 		int iovcnt)
 {
-	LOG(LDBG, "vinode %p iov %p iovcnt %d", vinode, iov, iovcnt);
+	LOG(LDBG, "vinode %p iov %p iovcnt %d", file->vinode, iov, iovcnt);
 
-	if (!vinode_is_regular_file(vinode)) {
+	if (!vinode_is_regular_file(file->vinode)) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	if (!(file_flags & PFILE_WRITE)) {
+	if (!(file->flags & PFILE_WRITE)) {
 		errno = EBADF;
 		return -1;
 	}
 
-	if (iovcnt == 0)
-		return 0;
-
-	if (iov == NULL) {
+	if (iovcnt > 0 && iov == NULL) {
 		errno = EFAULT;
 		return -1;
 	}
@@ -111,11 +110,21 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 		}
 	}
 
+	return 0;
+}
+
+static pmemfile_ssize_t
+pmemfile_pwritev_internal(PMEMfilepool *pfp,
+		struct pmemfile_vinode *vinode,
+		struct pmemfile_block_desc **last_block,
+		uint64_t file_flags,
+		size_t offset,
+		const pmemfile_iovec_t *iov,
+		int iovcnt)
+{
 	int error = 0;
 
 	struct pmemfile_inode *inode = vinode->inode;
-
-	os_rwlock_wrlock(&vinode->rwlock);
 
 	size_t ret = 0;
 
@@ -212,8 +221,6 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 	} TX_END
 
 end:
-	os_rwlock_unlock(&vinode->rwlock);
-
 	if (error) {
 		errno = error;
 		return -1;
@@ -223,7 +230,7 @@ end:
 }
 
 /*
- * pmemfile_write -- writes to file
+ * pmemfile_write - same as pmemfile_writev with a single iov buffer
  */
 pmemfile_ssize_t
 pmemfile_write(PMEMfilepool *pfp, PMEMfile *file, const void *buf, size_t count)
@@ -232,6 +239,63 @@ pmemfile_write(PMEMfilepool *pfp, PMEMfile *file, const void *buf, size_t count)
 	return pmemfile_writev(pfp, file, &element, 1);
 }
 
+/*
+ * pmemfile_writev_under_filelock - write to a file
+ * This function expects the PMEMfile instance to be locked while being called.
+ * Since the offset field is used to determine where to read from, and is also
+ * updated after a successful read operation, the PMEMfile instance can not be
+ * accessed by others while this is happening.
+ *
+ */
+static pmemfile_ssize_t
+pmemfile_writev_under_filelock(PMEMfilepool *pfp, PMEMfile *file,
+		const pmemfile_iovec_t *iov, int iovcnt)
+{
+	pmemfile_ssize_t ret;
+
+	struct pmemfile_block_desc *last_block;
+
+	ret = pmemfile_pwritev_args_check(file, iov, iovcnt);
+	if (ret != 0)
+		return ret;
+
+	if (iovcnt == 0)
+		return 0;
+
+	os_rwlock_wrlock(&file->vinode->rwlock);
+
+	if (file->last_block_pointer_invalidation_observed !=
+			file->vinode->block_pointer_invalidation_counter) {
+		file->block_pointer_cache = NULL;
+		file->last_block_pointer_invalidation_observed =
+			file->vinode->block_pointer_invalidation_counter;
+	}
+
+	last_block = file->block_pointer_cache;
+
+	ret = pmemfile_pwritev_internal(pfp,
+					file->vinode,
+					&last_block,
+					file->flags,
+					file->offset, iov, iovcnt);
+
+
+	os_rwlock_unlock(&file->vinode->rwlock);
+
+	if (ret > 0) {
+		file->offset += (size_t)ret;
+		file->block_pointer_cache = last_block;
+	} else {
+		file->block_pointer_cache = NULL;
+	}
+
+	return ret;
+}
+
+/*
+ * pmemfile_writev - write to a file while holding the locks both for the
+ * PMEMfile instance, and the vinode instance.
+ */
 pmemfile_ssize_t
 pmemfile_writev(PMEMfilepool *pfp, PMEMfile *file, const pmemfile_iovec_t *iov,
 		int iovcnt)
@@ -250,20 +314,17 @@ pmemfile_writev(PMEMfilepool *pfp, PMEMfile *file, const pmemfile_iovec_t *iov,
 
 	os_mutex_lock(&file->mutex);
 
-	struct pmemfile_block_desc *last_block = file->block_pointer_cache;
-
-	pmemfile_ssize_t ret = pmemfile_pwritev_internal(pfp, file->vinode,
-			&last_block, file->flags, file->offset, iov, iovcnt);
-	if (ret >= 0) {
-		file->offset += (size_t)ret;
-		file->block_pointer_cache = last_block;
-	}
+	pmemfile_ssize_t ret =
+		pmemfile_writev_under_filelock(pfp, file, iov, iovcnt);
 
 	os_mutex_unlock(&file->mutex);
 
 	return ret;
 }
 
+/*
+ * pmemfile_pwrite - same as pmemfile_pwritev with a single iov buffer
+ */
 pmemfile_ssize_t
 pmemfile_pwrite(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 		size_t count, pmemfile_off_t offset)
@@ -271,7 +332,68 @@ pmemfile_pwrite(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 	pmemfile_iovec_t element = {.iov_base = (void *)buf, .iov_len = count};
 	return pmemfile_pwritev(pfp, file, &element, 1, offset);
 }
-
+/*
+ * pmemfile_pwritev - writes to a file starting at a position supplied as
+ * argument.
+ * Since this does not require making any modification to the PMEMfile instance,
+ * the corresponding lock is held only for reading some fields from it. There is
+ * no point in time where this function holds locks of both the PMEMfile
+ * instance, and the vinode instance it points to.
+ *
+ * +----------------------------------------------
+ * | Erroneous scenario:
+ * +----------------------------------------------
+ * | lock(file);
+ * |  Make a local copy of the PMEMfile instance's necessary fields.
+ * | unlock(file);
+ * | lock(vinode);
+ * |  Write to the underlying file, using the a state of PMEMfile instance
+ * |   that was observable previously, using the local copy.
+ * | unlock(vinode);
+ * +----------------------------------------------
+ * The modification counters can not be directly checked while holding only
+ * either one of the locks:
+ *
+ * +-------------------------------------------------------------------------+
+ * | Erroneous scenario:                                                     |
+ * | checking for modification while the vinode is not locked                |
+ * +-------------------------------------------------------------------------+
+ * | lock(file);                                                             |
+ * |                                                                         |
+ * |  if (is_data_modification_indicated(file)) {  ---+                      |
+ * |     block_pointer_cache = NULL;                  |                      |
+ * |  }                                               |                      |
+ * |  Make a local copy of block_pointer_cache.       | The underlying file  |
+ * |                                                  | can be modified here,|
+ * | unlock(file);                                    | invalidating the     |
+ * |                                                  | block_pointer_cache. |
+ * | lock(vinode);                                    |                      |
+ * |   Write to the file, using the local copy     ---+                      |
+ * |    of block_pointer_cache.                                              |
+ * | unlock(vinode);                                                         |
+ * |                                                                         |
+ * +-------------------------------------------------------------------------+
+ *
+ * +-------------------------------------------------------------------------+
+ * | Other erroneous scenario:                                               |
+ * | checking for modification while the file is not locked                  |
+ * +-------------------------------------------------------------------------+
+ * | lock(file);                                                             |
+ * |                                                                         |
+ * | unlock(file);                                                           |
+ * |                                                                         |
+ * | lock(vinode);                                                           |
+ * |   if (is_data_modification_indicated(file)) { ---+                      |
+ * |     block_pointer_cache = NULL;                  | block_pointer_cache  |
+ * |  }                                               | can be modified here |
+ * |                                                  |                      |
+ * |   Write to the file, using the local copy     ---+                      |
+ * |    of block_pointer_cache.                                              |
+ * | unlock(vinode);                                                         |
+ * |                                                                         |
+ * +-------------------------------------------------------------------------+
+ *
+ */
 pmemfile_ssize_t
 pmemfile_pwritev(PMEMfilepool *pfp, PMEMfile *file, const pmemfile_iovec_t *iov,
 		int iovcnt, pmemfile_off_t offset)
@@ -293,14 +415,42 @@ pmemfile_pwritev(PMEMfilepool *pfp, PMEMfile *file, const pmemfile_iovec_t *iov,
 		return -1;
 	}
 
+	pmemfile_ssize_t ret;
+
 	os_mutex_lock(&file->mutex);
 
+	ret = pmemfile_pwritev_args_check(file, iov, iovcnt);
+
+	uint64_t last_bp_iv_obs =
+			file->last_block_pointer_invalidation_observed;
 	struct pmemfile_block_desc *last_block = file->block_pointer_cache;
-	struct pmemfile_vinode *vinode = file->vinode;
 	uint64_t flags = file->flags;
 
 	os_mutex_unlock(&file->mutex);
 
-	return pmemfile_pwritev_internal(pfp, vinode, &last_block, flags,
-			(size_t)offset, iov, iovcnt);
+	if (ret != 0)
+		return ret;
+
+	if (iovcnt == 0)
+		return 0;
+
+	os_rwlock_wrlock(&file->vinode->rwlock);
+	/*
+	 * Using the variables last_bp_iv_obs, last_block, and flags, which
+	 * serve to represent the state in which the PMEMfile instance was
+	 * observable while the corresponding lock was held.
+	 * Note: the file->vinode pointer can not be modified during the
+	 * lifetime of the instance, so there is no need to work with a copy of
+	 * that field.
+	 */
+
+	if (last_bp_iv_obs != file->vinode->block_pointer_invalidation_counter)
+		last_block = NULL;
+
+	ret = pmemfile_pwritev_internal(pfp, file->vinode, &last_block, flags,
+		(size_t)offset, iov, iovcnt);
+
+	os_rwlock_unlock(&file->vinode->rwlock);
+
+	return ret;
 }

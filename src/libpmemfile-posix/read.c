@@ -130,45 +130,22 @@ pmemfile_preadv_internal(PMEMfilepool *pfp,
 
 	struct pmemfile_inode *inode = vinode->inode;
 
-	/*
-	 * We want read to be performed under read lock, but we need the block
-	 * tree to exist. If it doesn't exist we have to drop the lock we hold,
-	 * take it in write mode (because other thread may want to do the same),
-	 * check that it doesn't exist (another thread may already did that),
-	 * drop the lock again, take it in read mode and check AGAIN (because
-	 * another thread may have destroyed the block tree while we weren't
-	 * holding the lock).
-	 */
-	os_rwlock_rdlock(&vinode->rwlock);
-	while (!vinode->blocks) {
-		os_rwlock_unlock(&vinode->rwlock);
-		os_rwlock_wrlock(&vinode->rwlock);
+	pmemfile_ssize_t ret;
 
-		int err = 0;
-		if (!vinode->blocks)
-			err = vinode_rebuild_block_tree(pfp, vinode);
-		os_rwlock_unlock(&vinode->rwlock);
-
-		if (err) {
-			errno = err;
-			return -1;
-		}
-
-		os_rwlock_rdlock(&vinode->rwlock);
-	}
-
-	size_t ret = 0;
+	ret = vinode_rdlock_with_block_tree(pfp, vinode);
+	if (ret != 0)
+		return ret;
 
 	for (int i = 0; i < iovcnt; ++i) {
 		size_t len = iov[i].iov_len;
-		if ((pmemfile_ssize_t)(ret + len) < 0)
-			len = SSIZE_MAX - ret;
-		ASSERT((pmemfile_ssize_t)(ret + len) >= 0);
+		if ((pmemfile_ssize_t)((size_t)ret + len) < 0)
+			len = (size_t)(SSIZE_MAX - ret);
+		ASSERT((pmemfile_ssize_t)((size_t)ret + len) >= 0);
 
 		size_t bytes_read = vinode_read(pfp, vinode, offset, last_block,
 				iov[i].iov_base, len);
 
-		ret += bytes_read;
+		ret += (pmemfile_ssize_t)bytes_read;
 		offset += bytes_read;
 		if (bytes_read != len)
 			break;
@@ -208,7 +185,7 @@ pmemfile_preadv_internal(PMEMfilepool *pfp,
 		os_rwlock_unlock(&vinode->rwlock);
 	}
 
-	return (pmemfile_ssize_t)ret;
+	return ret;
 }
 
 /*

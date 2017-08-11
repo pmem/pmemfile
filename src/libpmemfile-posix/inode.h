@@ -167,4 +167,6 @@ blockp_as_oid(struct pmemfile_block_desc *block)
 	return (TOID(struct pmemfile_block_desc))pmemobj_oid(block);
 }
 
+int vinode_rdlock_with_block_tree(PMEMfilepool *, struct pmemfile_vinode *);
+
 #endif

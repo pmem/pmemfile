@@ -652,3 +652,43 @@ vinode_restore_on_abort(struct pmemfile_vinode *vinode)
 		vinode->blocks = NULL;
 	}
 }
+
+/*
+ * vinode_rdlock_with_block_tree - acquire read lock on a vinode instance,
+ * and rebuild the block_tree if needed.
+ *
+ * There are certain operations (e.g. read, lseek), which require the block
+ * tree to be valid, but do not modify the underlying file at all.
+ *
+ * If the block_tree doesn't exist we have to drop the lock we hold,
+ * take it in write mode (because other thread may want to do the same),
+ * check that it doesn't exist (another thread may already did that),
+ * drop the lock again, take it in read mode and check AGAIN (because
+ * another thread may have destroyed the block tree while we weren't
+ * holding the lock).
+ *
+ * On failure, returns a negative integer (the vinode->rwlock is not held).
+ * Returns zero on success (the caller can assume a read lock is held, and the
+ * block tree is valid).
+ */
+int
+vinode_rdlock_with_block_tree(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
+{
+	os_rwlock_rdlock(&vinode->rwlock);
+	while (!vinode->blocks) {
+		os_rwlock_unlock(&vinode->rwlock);
+		os_rwlock_wrlock(&vinode->rwlock);
+
+		int err = 0;
+		if (!vinode->blocks)
+			err = vinode_rebuild_block_tree(pfp, vinode);
+		os_rwlock_unlock(&vinode->rwlock);
+
+		if (err != 0)
+			return -err;
+
+		os_rwlock_rdlock(&vinode->rwlock);
+	}
+
+	return 0;
+}

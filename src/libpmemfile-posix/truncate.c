@@ -68,6 +68,7 @@ vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	int error = 0;
 
 	vinode_snapshot(vinode);
+	vinode->block_pointer_invalidation_counter++;
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		/*

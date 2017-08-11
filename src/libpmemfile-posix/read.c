@@ -92,31 +92,30 @@ time_cmp(const struct pmemfile_time *t1, const struct pmemfile_time *t2)
 	return 0;
 }
 
+/*
+ * pmemfile_preadv_args_check - checks some read arguments
+ * The arguments here can be examined while holding the mutex for the
+ * PMEMfile instance, while there is no need to hold the lock for the
+ * corresponding vinode instance.
+ */
 static pmemfile_ssize_t
-pmemfile_preadv_internal(PMEMfilepool *pfp,
-		struct pmemfile_vinode *vinode,
-		struct pmemfile_block_desc **last_block,
-		uint64_t file_flags,
-		size_t offset,
+pmemfile_preadv_args_check(PMEMfile *file,
 		const pmemfile_iovec_t *iov,
 		int iovcnt)
 {
-	LOG(LDBG, "vinode %p iov %p iovcnt %d", vinode, iov, iovcnt);
+	LOG(LDBG, "vinode %p iov %p iovcnt %d", file->vinode, iov, iovcnt);
 
-	if (!vinode_is_regular_file(vinode)) {
+	if (!vinode_is_regular_file(file->vinode)) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	if (!(file_flags & PFILE_READ)) {
+	if (!(file->flags & PFILE_READ)) {
 		errno = EBADF;
 		return -1;
 	}
 
-	if (iovcnt == 0)
-		return 0;
-
-	if (iov == NULL) {
+	if (iovcnt > 0 && iov == NULL) {
 		errno = EFAULT;
 		return -1;
 	}
@@ -128,13 +127,18 @@ pmemfile_preadv_internal(PMEMfilepool *pfp,
 		}
 	}
 
-	struct pmemfile_inode *inode = vinode->inode;
+	return 0;
+}
 
-	pmemfile_ssize_t ret;
-
-	ret = vinode_rdlock_with_block_tree(pfp, vinode);
-	if (ret != 0)
-		return ret;
+static pmemfile_ssize_t
+pmemfile_preadv_internal(PMEMfilepool *pfp,
+		struct pmemfile_vinode *vinode,
+		struct pmemfile_block_desc **last_block,
+		size_t offset,
+		const pmemfile_iovec_t *iov,
+		int iovcnt)
+{
+	pmemfile_ssize_t ret = 0;
 
 	for (int i = 0; i < iovcnt; ++i) {
 		size_t len = iov[i].iov_len;
@@ -151,41 +155,50 @@ pmemfile_preadv_internal(PMEMfilepool *pfp,
 			break;
 	}
 
-	bool update_atime = !(file_flags & PFILE_NOATIME);
+	return ret;
+}
+
+/*
+ * handle_atime -
+ * Updates the atime field following a read operation, if necessary.
+ * The vinode must not be locked when calling this function.
+ */
+static void
+handle_atime(PMEMfilepool *pfp,
+		struct pmemfile_vinode *vinode,
+		uint64_t file_flags)
+{
+	if (file_flags & PFILE_NOATIME)
+		return;
+
+	struct pmemfile_inode *inode = vinode->inode;
 	struct pmemfile_time tm;
 
-	if (update_atime) {
-		struct pmemfile_time tm1d;
-		if (get_current_time(&tm)) {
-			LOG(LINF, "can not get current time");
-			update_atime = false;
-		} else {
-			tm1d.nsec = tm.nsec;
-			tm1d.sec = tm.sec - 86400;
-
-			/* relatime */
-			update_atime =	time_cmp(&inode->atime, &tm1d) < 0 ||
-				time_cmp(&inode->atime, &inode->ctime) < 0 ||
-				time_cmp(&inode->atime, &inode->mtime) < 0;
-		}
+	if (get_current_time(&tm)) {
+		LOG(LINF, "can not get current time");
+		return;
 	}
 
-	os_rwlock_unlock(&vinode->rwlock);
+	struct pmemfile_time tm1d = tm;
+	tm1d.sec -= 86400;
+
+	/* relatime */
+	if ((time_cmp(&inode->atime, &tm1d) >= 0) &&
+	    (time_cmp(&inode->atime, &inode->ctime) >= 0) &&
+	    (time_cmp(&inode->atime, &inode->mtime) >= 0))
+		return;
 
 	ASSERT_NOT_IN_TX();
-	if (update_atime) {
-		os_rwlock_wrlock(&vinode->rwlock);
 
-		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-			TX_SET_DIRECT(inode, atime, tm);
-		} TX_ONABORT {
-			LOG(LINF, "can not update inode atime");
-		} TX_END
+	os_rwlock_wrlock(&vinode->rwlock);
 
-		os_rwlock_unlock(&vinode->rwlock);
-	}
+	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
+		TX_SET_DIRECT(inode, atime, tm);
+	} TX_ONABORT {
+		LOG(LINF, "can not update inode atime");
+	} TX_END
 
-	return ret;
+	os_rwlock_unlock(&vinode->rwlock);
 }
 
 /*
@@ -198,6 +211,56 @@ pmemfile_read(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count)
 	return pmemfile_readv(pfp, file, &element, 1);
 }
 
+static pmemfile_ssize_t
+pmemfile_readv_under_filelock(PMEMfilepool *pfp, PMEMfile *file,
+		const pmemfile_iovec_t *iov, int iovcnt)
+{
+	pmemfile_ssize_t ret;
+
+	struct pmemfile_block_desc *last_block;
+
+	ret = pmemfile_preadv_args_check(file, iov, iovcnt);
+	if (ret != 0)
+		return ret;
+
+	if (iovcnt == 0)
+		return 0;
+
+	ret = vinode_rdlock_with_block_tree(pfp, file->vinode);
+	if (ret != 0)
+		return ret;
+
+	if (file->last_block_pointer_invalidation_observed !=
+			file->vinode->block_pointer_invalidation_counter)
+		file->block_pointer_cache = NULL;
+
+	uint64_t flags = file->flags;
+	last_block = file->block_pointer_cache;
+
+	ret = pmemfile_preadv_internal(pfp, file->vinode,
+		&last_block, file->offset, iov, iovcnt);
+
+	file->last_block_pointer_invalidation_observed =
+		file->vinode->block_pointer_invalidation_counter;
+
+	os_rwlock_unlock(&file->vinode->rwlock);
+
+	if (ret > 0) {
+		file->offset += (size_t)ret;
+		file->block_pointer_cache = last_block;
+	} else {
+		file->block_pointer_cache = NULL;
+	}
+
+	handle_atime(pfp, file->vinode, flags);
+
+	return ret;
+}
+
+/*
+ * pmemfile_readv - reads from a file while holding the locks both for the
+ * PMEMfile instance, and the vinode instance.
+ */
 pmemfile_ssize_t
 pmemfile_readv(PMEMfilepool *pfp, PMEMfile *file, const pmemfile_iovec_t *iov,
 		int iovcnt)
@@ -216,14 +279,8 @@ pmemfile_readv(PMEMfilepool *pfp, PMEMfile *file, const pmemfile_iovec_t *iov,
 
 	os_mutex_lock(&file->mutex);
 
-	struct pmemfile_block_desc *last_block = file->block_pointer_cache;
-
-	pmemfile_ssize_t ret = pmemfile_preadv_internal(pfp, file->vinode,
-			&last_block, file->flags, file->offset, iov, iovcnt);
-	if (ret >= 0) {
-		file->offset += (size_t)ret;
-		file->block_pointer_cache = last_block;
-	}
+	pmemfile_ssize_t ret =
+		pmemfile_readv_under_filelock(pfp, file, iov, iovcnt);
 
 	os_mutex_unlock(&file->mutex);
 
@@ -238,7 +295,13 @@ pmemfile_pread(PMEMfilepool *pfp, PMEMfile *file, void *buf, size_t count,
 	return pmemfile_preadv(pfp, file, &element, 1, offset);
 }
 
-
+/*
+ * pmemfile_preadv - reads from a file starting at a position supplied as
+ * argument.
+ * Unlocks the PMEMfile instance before locking the vinode instance - for an
+ * explanation of this, see the comments on pmemfile_pwritev in the write.c
+ * source file.
+ */
 pmemfile_ssize_t
 pmemfile_preadv(PMEMfilepool *pfp, PMEMfile *file, const pmemfile_iovec_t *iov,
 		int iovcnt, pmemfile_off_t offset)
@@ -260,14 +323,38 @@ pmemfile_preadv(PMEMfilepool *pfp, PMEMfile *file, const pmemfile_iovec_t *iov,
 		return -1;
 	}
 
+	pmemfile_ssize_t ret;
+
 	os_mutex_lock(&file->mutex);
 
+	ret = pmemfile_preadv_args_check(file, iov, iovcnt);
+
+	uint64_t data_mod_count =
+			file->last_block_pointer_invalidation_observed;
 	struct pmemfile_block_desc *last_block = file->block_pointer_cache;
-	struct pmemfile_vinode *vinode = file->vinode;
 	uint64_t flags = file->flags;
 
 	os_mutex_unlock(&file->mutex);
 
-	return pmemfile_preadv_internal(pfp, vinode, &last_block, flags,
+	if (ret != 0)
+		return ret;
+
+	if (iovcnt == 0)
+		return 0;
+
+	ret = vinode_rdlock_with_block_tree(pfp, file->vinode);
+	if (ret != 0)
+		return ret;
+
+	if (data_mod_count != file->vinode->block_pointer_invalidation_counter)
+		last_block = NULL;
+
+	ret = pmemfile_preadv_internal(pfp, file->vinode, &last_block,
 			(size_t)offset, iov, iovcnt);
+
+	os_rwlock_unlock(&file->vinode->rwlock);
+
+	handle_atime(pfp, file->vinode, flags);
+
+	return ret;
 }

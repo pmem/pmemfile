@@ -77,6 +77,7 @@ vinode_fallocate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, int mode,
 
 		if (mode & PMEMFILE_FALLOC_FL_PUNCH_HOLE) {
 			ASSERT(mode & PMEMFILE_FALLOC_FL_KEEP_SIZE);
+			vinode->block_pointer_invalidation_counter++;
 			allocated_space -= vinode_remove_interval(pfp, vinode,
 				offset, length);
 		} else {
@@ -227,7 +228,6 @@ pmemfile_fallocate(PMEMfilepool *pfp, PMEMfile *file, int mode,
 			(uint64_t)length);
 
 	os_rwlock_unlock(&vinode->rwlock);
-
 
 end:
 	if (error != 0) {

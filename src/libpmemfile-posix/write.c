@@ -228,35 +228,8 @@ end:
 pmemfile_ssize_t
 pmemfile_write(PMEMfilepool *pfp, PMEMfile *file, const void *buf, size_t count)
 {
-	if (!pfp) {
-		LOG(LUSR, "NULL pool");
-		errno = EFAULT;
-		return -1;
-	}
-
-	if (!file) {
-		LOG(LUSR, "NULL file");
-		errno = EFAULT;
-		return -1;
-	}
-
-	os_mutex_lock(&file->mutex);
-
-	struct pmemfile_block_desc *last_block = file->block_pointer_cache;
-	pmemfile_iovec_t vec;
-	vec.iov_base = (void *)buf;
-	vec.iov_len = count;
-
-	pmemfile_ssize_t ret = pmemfile_pwritev_internal(pfp, file->vinode,
-			&last_block, file->flags, file->offset, &vec, 1);
-	if (ret >= 0) {
-		file->offset += (size_t)ret;
-		file->block_pointer_cache = last_block;
-	}
-
-	os_mutex_unlock(&file->mutex);
-
-	return ret;
+	pmemfile_iovec_t element = {.iov_base = (void *)buf, .iov_len = count};
+	return pmemfile_writev(pfp, file, &element, 1);
 }
 
 pmemfile_ssize_t
@@ -295,37 +268,8 @@ pmemfile_ssize_t
 pmemfile_pwrite(PMEMfilepool *pfp, PMEMfile *file, const void *buf,
 		size_t count, pmemfile_off_t offset)
 {
-	if (!pfp) {
-		LOG(LUSR, "NULL pool");
-		errno = EFAULT;
-		return -1;
-	}
-
-	if (!file) {
-		LOG(LUSR, "NULL file");
-		errno = EFAULT;
-		return -1;
-	}
-
-	if (offset < 0) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	os_mutex_lock(&file->mutex);
-
-	struct pmemfile_block_desc *last_block = file->block_pointer_cache;
-	struct pmemfile_vinode *vinode = file->vinode;
-	uint64_t flags = file->flags;
-
-	os_mutex_unlock(&file->mutex);
-
-	pmemfile_iovec_t vec;
-	vec.iov_base = (void *)buf;
-	vec.iov_len = count;
-
-	return pmemfile_pwritev_internal(pfp, vinode, &last_block, flags,
-			(size_t)offset, &vec, 1);
+	pmemfile_iovec_t element = {.iov_base = (void *)buf, .iov_len = count};
+	return pmemfile_pwritev(pfp, file, &element, 1, offset);
 }
 
 pmemfile_ssize_t

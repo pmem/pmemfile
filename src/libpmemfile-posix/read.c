@@ -195,15 +195,11 @@ pmemfile_preadv_internal(PMEMfilepool *pfp,
 
 	os_rwlock_unlock(&vinode->rwlock);
 
-	ASSERT_NOT_IN_TX();
 	if (update_atime) {
 		os_rwlock_wrlock(&vinode->rwlock);
 
-		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-			TX_SET_DIRECT(inode, atime, tm);
-		} TX_ONABORT {
-			LOG(LINF, "can not update inode atime");
-		} TX_END
+		inode->atime = tm;
+		pmemobj_persist(pfp->pop, &inode->atime, sizeof(inode->atime));
 
 		os_rwlock_unlock(&vinode->rwlock);
 	}

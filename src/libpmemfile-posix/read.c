@@ -194,6 +194,7 @@ handle_atime(PMEMfilepool *pfp,
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		vinode->metadata_modification_counter++;
+		memory_barrier();
 		TX_SET_DIRECT(inode, atime, tm);
 	} TX_ONABORT {
 		LOG(LINF, "can not update inode atime");

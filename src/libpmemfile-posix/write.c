@@ -139,6 +139,7 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 	vinode_snapshot(vinode);
 
 	vinode->data_modification_counter++;
+	memory_barrier();
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (file_flags & PFILE_APPEND)
@@ -199,6 +200,7 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 		 */
 		if (ret > 0) {
 			vinode->metadata_modification_counter++;
+			memory_barrier();
 
 			struct pmemfile_time tm;
 			tx_get_current_time(&tm);

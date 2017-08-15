@@ -91,6 +91,7 @@ vinode_file_time_set(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		if (utm == UTIME_MACROS_DISABLED ||
 				tm[0].nsec != PMEMFILE_UTIME_OMIT) {
 			vinode->metadata_modification_counter++;
+			memory_barrier();
 			TX_ADD_DIRECT(&inode->atime);
 			inode->atime = tm[0];
 		}
@@ -98,6 +99,7 @@ vinode_file_time_set(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		if (utm == UTIME_MACROS_DISABLED ||
 				tm[1].nsec != PMEMFILE_UTIME_OMIT) {
 			vinode->metadata_modification_counter++;
+			memory_barrier();
 			TX_ADD_DIRECT(&inode->mtime);
 			inode->mtime = tm[1];
 		}

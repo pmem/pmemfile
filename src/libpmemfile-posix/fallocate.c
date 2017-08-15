@@ -225,6 +225,7 @@ pmemfile_fallocate(PMEMfilepool *pfp, PMEMfile *file, int mode,
 
 	vinode->data_modification_counter++;
 	vinode->metadata_modification_counter++;
+	memory_barrier();
 
 	error = vinode_fallocate(pfp, vinode, mode, (uint64_t)offset,
 			(uint64_t)length);

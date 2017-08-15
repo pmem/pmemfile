@@ -121,6 +121,7 @@ _pmemfile_ftruncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 
 	vinode->data_modification_counter++;
 	vinode->metadata_modification_counter++;
+	memory_barrier();
 	int error = vinode_truncate(pfp, vinode, length);
 
 	os_rwlock_unlock(&vinode->rwlock);

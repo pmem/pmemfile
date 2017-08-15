@@ -446,6 +446,8 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 			vinode->data_modification_counter++;
 			vinode->metadata_modification_counter++;
+			memory_barrier();
+
 			error = vinode_truncate(pfp, vinode, 0);
 
 			os_rwlock_unlock(&vinode->rwlock);

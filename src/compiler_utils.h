@@ -53,9 +53,11 @@ extern "C" {
 #if defined(__GNUC__)
 #define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
+#define memory_barrier __sync_synchronize
 #else
 #define likely(x) (!!(x))
 #define unlikely(x) (!!(x))
+#error implement mbarrier
 #endif
 #endif
 

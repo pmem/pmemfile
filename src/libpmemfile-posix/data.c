@@ -31,6 +31,7 @@
  */
 
 #include "block_array.h"
+#include "blocks.h"
 #include "ctree.h"
 #include "data.h"
 #include "out.h"
@@ -169,47 +170,25 @@ find_closest_block_with_hint(struct pmemfile_vinode *vinode, uint64_t offset,
 static void
 file_allocate_block_data(PMEMfilepool *pfp,
 		struct pmemfile_block_desc *block,
-		size_t count,
-		bool use_usable_size)
+		const struct pmem_block_info *info)
 {
 	ASSERT_IN_TX();
-	ASSERT(count >= MIN_BLOCK_SIZE);
-	ASSERT(count % BLOCK_ALIGNMENT == 0);
+	ASSERT(info->size >= MIN_BLOCK_SIZE);
+	ASSERT(info->size % block_alignment == 0);
 
-	uint32_t size;
-
-	if (pmemfile_posix_block_size != 0) {
-		ASSERT(pmemfile_posix_block_size <= MAX_BLOCK_SIZE);
-		ASSERT(pmemfile_posix_block_size % BLOCK_ALIGNMENT == 0);
-
-		size = (uint32_t)pmemfile_posix_block_size;
-	} else {
-		if (count <= MAX_BLOCK_SIZE)
-			size = (uint32_t)count;
-		else
-			size = (uint32_t)MAX_BLOCK_SIZE;
-	}
-
-	block->data = TX_XALLOC(char, size, POBJ_XALLOC_NO_FLUSH);
-	if (use_usable_size) {
-		size_t usable = pmemobj_alloc_usable_size(block->data.oid);
-		ASSERT(usable >= size);
-		if (usable > MAX_BLOCK_SIZE)
-			size = MAX_BLOCK_SIZE;
-		else
-			size = (uint32_t)block_rounddown(usable);
-	}
+	block->data = TX_XALLOC(char, info->size,
+		POBJ_XALLOC_NO_FLUSH | info->class_id);
 
 #ifdef DEBUG
 	/* poison block data */
 	void *data = PF_RW(pfp, block->data);
-	VALGRIND_ADD_TO_TX(data, size);
-	pmemobj_memset_persist(pfp->pop, data, 0x66, size);
-	VALGRIND_REMOVE_FROM_TX(data, size);
-	VALGRIND_DO_MAKE_MEM_UNDEFINED(data, size);
+	VALGRIND_ADD_TO_TX(data, info->size);
+	pmemobj_memset_persist(pfp->pop, data, 0x66, info->size);
+	VALGRIND_REMOVE_FROM_TX(data, info->size);
+	VALGRIND_DO_MAKE_MEM_UNDEFINED(data, info->size);
 #endif
 
-	block->size = size;
+	block->size = (uint32_t) info->size;
 
 	block->flags = 0;
 }
@@ -530,9 +509,12 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			/* case 3) */
 			/* File size is zero, no blocks in the file so far */
 
+			const struct pmem_block_info *info =
+				data_block_info(size, MAX_BLOCK_SIZE);
+
 			block = block_list_insert_after(pfp, vinode, NULL);
 			block->offset = offset;
-			file_allocate_block_data(pfp, block, size, over);
+			file_allocate_block_data(pfp, block, info);
 			block_cache_insert_block_in_tx(vinode->blocks, block);
 			allocated_space += block->size;
 		} else if (block == NULL && vinode->first_block != NULL) {
@@ -545,18 +527,24 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			if (offset + count > first_offset)
 				count = (uint32_t)(first_offset - offset);
 
+			const struct pmem_block_info *info =
+				data_block_info(size, count);
+
 			block = block_list_insert_after(pfp, vinode, NULL);
 			block->offset = offset;
-			file_allocate_block_data(pfp, block, count, false);
+			file_allocate_block_data(pfp, block, info);
 			block_cache_insert_block_in_tx(vinode->blocks, block);
 			allocated_space += block->size;
 		} else if (TOID_IS_NULL(block->next)) {
 			/* case 2) */
 			/* After the last allocated block */
 
+			const struct pmem_block_info *info =
+				data_block_info(size, MAX_BLOCK_SIZE);
+
 			block = block_list_insert_after(pfp, vinode, block);
 			block->offset = offset;
-			file_allocate_block_data(pfp, block, size, over);
+			file_allocate_block_data(pfp, block, info);
 			block_cache_insert_block_in_tx(vinode->blocks, block);
 			allocated_space += block->size;
 		} else {
@@ -570,22 +558,17 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			/* How many bytes in this hole can be used? */
 			uint64_t hole_count = next->offset - offset;
 
-			/* Are all those bytes needed? */
-			if (hole_count > size)
-				hole_count = size;
-
 			if (hole_count > 0) { /* Is there any hole at all? */
+				const struct pmem_block_info *info =
+					data_block_info(size, hole_count);
+
 				block = block_list_insert_after(pfp, vinode,
 						block);
 				block->offset = offset;
-				file_allocate_block_data(pfp, block, hole_count,
-				    false);
+				file_allocate_block_data(pfp, block, info);
 				block_cache_insert_block_in_tx(vinode->blocks,
 						block);
 				allocated_space += block->size;
-
-				if (block->size > hole_count)
-					block->size = (uint32_t)hole_count;
 			} else {
 				block = next;
 			}

@@ -248,7 +248,7 @@ add_test_generic(permissions memcheck)
 add_test_generic(permissions pmemcheck)
 
 add_test_generic(rw none)
-add_test_generic(rw none_blk4096 '' PMEMFILE_BLOCK_SIZE=4096)
+add_test_generic(rw none_blk16384 '' PMEMFILE_BLOCK_SIZE=16384)
 add_test_generic(rw memcheck)
 add_test_generic(rw pmemcheck)
 

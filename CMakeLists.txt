@@ -54,6 +54,8 @@ option(LONG_TESTS "build long running tests as well" OFF)
 option(AUTO_GENERATE_SOURCES
 	"Use libclang to (re)generate certain source files -- this is required for the modification of some sources (e.g. libpmemfile-posix-wrappers.h must be regenerated each time libpmemfile-posix.h is modified" OFF)
 
+option(LIBPMEMFILE_POP "use libpmemfile_pop (libpmemfile_posix_over_posix) library" OFF)
+
 set(TEST_DIR ${CMAKE_CURRENT_BINARY_DIR}/test
 	CACHE STRING "working directory for tests")
 
@@ -253,7 +255,7 @@ if(USE_UBSAN)
 	add_sanitizer_flag(undefined)
 endif()
 
-if(DEVELOPER_MODE)
+if(DEVELOPER_MODE AND NOT LIBPMEMFILE_POP)
 	option(FAULT_INJECTION "enable fault injection testing" ON)
 else()
 	option(FAULT_INJECTION "enable fault injection testing" OFF)
@@ -464,7 +466,17 @@ if(AUTO_GENERATE_SOURCES)
 	add_subdirectory(utils/transform)
 endif()
 
-add_subdirectory(src/libpmemfile-posix)
+if (LIBPMEMFILE_POP AND BUILD_LIBPMEMFILE)
+	message(FATAL_ERROR "libpmemfile-pop is currently incompatible with libpmemfile"
+		"\nPlease set BUILD_LIBPMEMFILE to 0")
+endif()
+
+if (LIBPMEMFILE_POP)
+	add_subdirectory(tests/libpmemfile-pop)
+else()
+	add_subdirectory(src/libpmemfile-posix)
+endif()
+
 if(BUILD_LIBPMEMFILE)
 	add_subdirectory(src/libpmemfile)
 endif()

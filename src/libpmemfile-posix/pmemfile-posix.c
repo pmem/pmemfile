@@ -38,6 +38,7 @@
 
 #include <limits.h>
 
+#include "blocks.h"
 #include "callbacks.h"
 #include "compiler_utils.h"
 #include "data.h"
@@ -51,7 +52,6 @@
 #define PMEMFILE_POSIX_LOG_LEVEL_VAR "PMEMFILE_POSIX_LOG_LEVEL"
 #define PMEMFILE_POSIX_LOG_FILE_VAR "PMEMFILE_POSIX_LOG_FILE"
 
-size_t pmemfile_posix_block_size = 0;
 bool pmemfile_overallocate_on_append = true;
 
 #ifdef ANY_VG_TOOL_ENABLED
@@ -77,31 +77,35 @@ libpmemfile_posix_init(void)
 	LOG(LDBG, NULL);
 	cb_init();
 
-	char *tmp = getenv("PMEMFILE_BLOCK_SIZE");
-	if (tmp) {
+	size_t pmemfile_posix_block_size = 0;
+
+	char *env = getenv("PMEMFILE_BLOCK_SIZE");
+	if (env) {
 		char *end;
-		unsigned long long tmpll = strtoull(tmp, &end, 0);
-		if (tmp[0] == '\0' || tmpll == ULLONG_MAX || end[0] != '\0') {
+		unsigned long long blk_size = strtoull(env, &end, 0);
+		if (env[0] == '\0' || blk_size == ULLONG_MAX ||
+				end[0] != '\0' || blk_size < MIN_BLOCK_SIZE) {
 			LOG(LUSR, "Invalid value of PMEMFILE_BLOCK_SIZE");
 			pmemfile_posix_block_size = 0;
-		} else if (pmemfile_posix_block_size > MAX_BLOCK_SIZE) {
+		} else if (blk_size > MAX_BLOCK_SIZE) {
 			pmemfile_posix_block_size = MAX_BLOCK_SIZE;
 		} else {
 			pmemfile_posix_block_size =
-					block_roundup((size_t)tmpll);
+					block_roundup((size_t)blk_size);
 		}
 	}
 	LOG(LINF, "block size %zu", pmemfile_posix_block_size);
 
 	if (pmemfile_posix_block_size == 0) {
-		tmp = getenv("PMEMFILE_OVERALLOCATE_ON_APPEND");
-		if (tmp && tmp[0] == '0')
+		env = getenv("PMEMFILE_OVERALLOCATE_ON_APPEND");
+		if (env && env[0] == '0')
 			pmemfile_overallocate_on_append = false;
 	} else {
 		pmemfile_overallocate_on_append = false;
+		set_block_size(pmemfile_posix_block_size);
 	}
 	LOG(LINF, "overallocate_on_append flag is %s",
-	    (pmemfile_overallocate_on_append ? "set" : "not set"));
+		(pmemfile_overallocate_on_append ? "set" : "not set"));
 }
 
 /*

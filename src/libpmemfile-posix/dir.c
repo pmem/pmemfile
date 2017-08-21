@@ -40,6 +40,7 @@
 #include <stdio.h>
 
 #include "alloc.h"
+#include "blocks.h"
 #include "callbacks.h"
 #include "dir.h"
 
@@ -187,10 +188,16 @@ inode_add_dirent(PMEMfilepool *pfp,
 		}
 
 		if (!found && TOID_IS_NULL(dir->next)) {
-			TX_SET_DIRECT(dir, next,
-				TX_ZALLOC(struct pmemfile_dir, MIN_BLOCK_SIZE));
+			struct alloc_class_info info = metadata_block_info();
 
-			size_t sz = pmemfile_dir_size(dir->next);
+			dir->next = TX_XALLOC(struct pmemfile_dir, info.size,
+				POBJ_XALLOC_ZERO |
+				POBJ_CLASS_ID(info.class_id));
+
+			PF_RW(pfp, dir->next)->version =
+				PMEMFILE_DIR_VERSION(1);
+
+			size_t sz = METADATA_BLOCK_SIZE;
 
 			TX_ADD_DIRECT(&parent->size);
 			parent->size += sz;
@@ -970,10 +977,4 @@ pmemfile_getcwd(PMEMfilepool *pfp, char *buf, size_t size)
 	}
 
 	return _pmemfile_get_dir_path(pfp, pool_get_cwd(pfp), buf, size);
-}
-
-size_t
-pmemfile_dir_size(TOID(struct pmemfile_dir) dir)
-{
-	return block_rounddown(pmemobj_alloc_usable_size(dir.oid));
 }

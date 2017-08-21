@@ -30,6 +30,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "blocks.h"
 #include "ctree.h"
 #include "layout.h"
 #include "inode.h"
@@ -155,13 +156,22 @@ allocate_new_block_array(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 
 	ASSERT(!has_free_block_entry(vinode));
 
+	struct alloc_class_info info = metadata_block_info();
+
 	TOID(struct pmemfile_block_array) new =
-			TX_ZALLOC(struct pmemfile_block_array, MIN_BLOCK_SIZE);
-	COMPILE_ERROR_ON(MIN_BLOCK_SIZE < sizeof(struct pmemfile_block_array));
+			TX_XALLOC(struct pmemfile_block_array, info.size,
+			POBJ_XALLOC_ZERO | POBJ_CLASS_ID(info.class_id));
+
+	COMPILE_ERROR_ON(METADATA_BLOCK_SIZE <
+		sizeof(struct pmemfile_block_array));
+
+	ASSERT(pmemobj_alloc_usable_size(new.oid) == info.size);
+
 	PF_RW(pfp, new)->length = (uint32_t)
-			((block_rounddown(pmemobj_alloc_usable_size(new.oid)) -
-			sizeof(struct pmemfile_block_array)) /
+			((info.size - sizeof(struct pmemfile_block_array)) /
 			sizeof(struct pmemfile_block_desc));
+
+	PF_RW(pfp, new)->version = PMEMFILE_BLOCK_ARRAY_VERSION(1);
 
 	PF_RW(pfp, new)->next = vinode->inode->file_data.blocks.next;
 	TX_SET_DIRECT(&vinode->inode->file_data.blocks, next, new);

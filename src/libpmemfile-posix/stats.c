@@ -34,9 +34,19 @@
  * stats.c -- pmemfile_stats implementation
  */
 
+#include "blocks.h"
 #include "libpmemfile-posix.h"
 #include "out.h"
 #include "pool.h"
+#include "layout.h"
+#include "utils.h"
+
+static bool
+cmp(uint32_t version, uint32_t requested_version)
+{
+	/* only compare 24 least significant bits - discard version number */
+	return (version & 0xFFFFFF) == (requested_version & 0xFFFFFF);
+}
 
 /*
  * pmemfile_stats -- get pool statistics
@@ -49,21 +59,26 @@ pmemfile_stats(PMEMfilepool *pfp, struct pmemfile_stats *stats)
 			blocks = 0;
 
 	POBJ_FOREACH(pfp->pop, oid) {
-		unsigned t = (unsigned)pmemobj_type_num(oid);
+		size_t size = pmemobj_alloc_usable_size(oid);
 
-		if (t == TOID_TYPE_NUM(struct pmemfile_inode))
-			inodes++;
-		else if (t == TOID_TYPE_NUM(struct pmemfile_dir))
-			dirs++;
-		else if (t == TOID_TYPE_NUM(struct pmemfile_block_array))
-			block_arrays++;
-		else if (t == TOID_TYPE_NUM(struct pmemfile_inode_array))
-			inode_arrays++;
-		else if (t == TOID_TYPE_NUM(char))
+		if (size == METADATA_BLOCK_SIZE) {
+			uint32_t v = *((uint32_t *) pmemfile_direct(pfp, oid));
+
+			if (cmp(v, PMEMFILE_INODE_VERSION(0)))
+				inodes++;
+			else if (cmp(v, PMEMFILE_DIR_VERSION(0)))
+				dirs++;
+			else if (cmp(v, PMEMFILE_BLOCK_ARRAY_VERSION(0)))
+				block_arrays++;
+			else if (cmp(v, PMEMFILE_INODE_ARRAY_VERSION(0)))
+				inode_arrays++;
+		} else if (data_block_info(size, MAX_BLOCK_SIZE).size == size) {
 			blocks++;
-		else
-			FATAL("unknown type %u", t);
+		} else {
+			FATAL("unknown block");
+		}
 	}
+
 	stats->inodes = inodes;
 	stats->dirs = dirs;
 	stats->block_arrays = block_arrays;

@@ -34,7 +34,6 @@
 
 #include "inode.h"
 
-extern size_t pmemfile_posix_block_size;
 extern bool pmemfile_overallocate_on_append;
 
 int vinode_rebuild_block_tree(PMEMfilepool *pfp,

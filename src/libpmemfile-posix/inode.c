@@ -38,6 +38,7 @@
 #include <inttypes.h>
 
 #include "alloc.h"
+#include "blocks.h"
 #include "callbacks.h"
 #include "ctree.h"
 #include "data.h"
@@ -285,7 +286,12 @@ inode_alloc(PMEMfilepool *pfp, struct pmemfile_cred *cred, uint64_t flags)
 
 	ASSERT_IN_TX();
 
-	TOID(struct pmemfile_inode) tinode = TX_ZNEW(struct pmemfile_inode);
+	struct alloc_class_info info = metadata_block_info();
+
+	TOID(struct pmemfile_inode) tinode =
+		TX_XALLOC(struct pmemfile_inode, info.size,
+			POBJ_XALLOC_ZERO | POBJ_CLASS_ID(info.class_id));
+
 	struct pmemfile_inode *inode = PF_RW(pfp, tinode);
 
 	struct pmemfile_time t;
@@ -306,6 +312,7 @@ inode_alloc(PMEMfilepool *pfp, struct pmemfile_cred *cred, uint64_t flags)
 				sizeof(inode->file_data.blocks)) /
 				sizeof(struct pmemfile_block_desc);
 	else if (inode_is_dir(inode)) {
+		inode->file_data.dir.version = PMEMFILE_DIR_VERSION(1);
 		inode->file_data.dir.num_elements =
 				(sizeof(inode->file_data) -
 				sizeof(inode->file_data.dir)) /

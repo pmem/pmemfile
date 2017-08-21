@@ -34,6 +34,7 @@
  * inode_array.c -- inode_array utility functions
  */
 
+#include "blocks.h"
 #include "inode.h"
 #include "inode_array.h"
 #include "locks.h"
@@ -76,6 +77,30 @@ inode_array_add_single(struct pmemfile_inode_array *cur,
 	return false;
 }
 
+/*
+ * inode_array_alloc -- allocates inode array
+ */
+TOID(struct pmemfile_inode_array)
+inode_array_alloc(PMEMfilepool *pfp)
+{
+	ASSERT_IN_TX();
+
+	const struct pmem_block_info *info = metadata_block_info();
+
+	TOID(struct pmemfile_inode_array) array =
+		TX_XALLOC(struct pmemfile_inode_array, info->size,
+			POBJ_XALLOC_ZERO | info->class_id);
+
+	PF_RW(pfp, array)->version = PMEMFILE_INODE_ARRAY_VERSION(1);
+
+	return array;
+}
+
+/*
+ * inode_array_add -- adds inode to array, returns its position
+ *
+ * Must be called in a transaction.
+ */
 void
 _inode_array_add(PMEMfilepool *pfp,
 		TOID(struct pmemfile_inode_array) array,
@@ -102,8 +127,7 @@ _inode_array_add(PMEMfilepool *pfp,
 			if (TOID_IS_NULL(cur->next)) {
 				mutex_tx_unlock_on_abort(&cur->mtx);
 
-				TX_SET_DIRECT(cur, next,
-					TX_ZNEW(struct pmemfile_inode_array));
+				cur->next = inode_array_alloc(pfp);
 				PF_RW(pfp, cur->next)->prev = array;
 
 				modified = true;
@@ -212,17 +236,6 @@ inode_array_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode_array) arr)
 		TX_FREE(arr);
 		arr = tmp;
 	}
-}
-
-/*
- * inode_array_alloc -- allocates inode array
- */
-TOID(struct pmemfile_inode_array)
-inode_array_alloc()
-{
-	ASSERT_IN_TX();
-
-	return TX_ZNEW(struct pmemfile_inode_array);
 }
 
 /*

@@ -178,24 +178,6 @@ pmfi_path(struct pmemfile_vinode *vinode)
 }
 #endif
 
-/*
- * expand_to_full_pages
- * Alters two file offsets to be pmemfile-page aligned. This is not
- * necessarily the same as memory page alignment!
- * The resulting offset refer to an interval that contains the original
- * interval.
- */
-void
-expand_to_full_pages(uint64_t *offset, uint64_t *length)
-{
-	/* align the offset */
-	*length += *offset % BLOCK_ALIGNMENT;
-	*offset -= *offset % BLOCK_ALIGNMENT;
-
-	/* align the length */
-	*length = block_roundup(*length);
-}
-
 void *
 pmemfile_direct(PMEMfilepool *pfp, PMEMoid oid)
 {

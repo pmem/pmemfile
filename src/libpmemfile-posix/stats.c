@@ -34,9 +34,59 @@
  * stats.c -- pmemfile_stats implementation
  */
 
+#include "blocks.h"
 #include "libpmemfile-posix.h"
 #include "out.h"
 #include "pool.h"
+#include "layout.h"
+#include "utils.h"
+
+static bool
+cmp(uint32_t version, uint32_t requested_version)
+{
+	/* only compare 24 least significant bits - discard version number */
+	return (version & 0xFFFFFF) == (requested_version & 0xFFFFFF);
+}
+
+static void
+stats_header(PMEMfilepool *pfp, unsigned t, struct pmemfile_stats *stats)
+{
+	if (t == TOID_TYPE_NUM(struct pmemfile_inode))
+		stats->inodes++;
+	else if (t == TOID_TYPE_NUM(struct pmemfile_dir))
+		stats->dirs++;
+	else if (t == TOID_TYPE_NUM(struct pmemfile_block_array))
+		stats->block_arrays++;
+	else if (t == TOID_TYPE_NUM(struct pmemfile_inode_array))
+		stats->inode_arrays++;
+	else if (t == TOID_TYPE_NUM(char))
+		stats->blocks++;
+	else
+		FATAL("unknown type %u", t);
+}
+static void
+stats_alloc_class(PMEMfilepool *pfp, PMEMoid oid, struct pmemfile_stats *stats)
+{
+	size_t size = pmemobj_alloc_usable_size(oid);
+
+	if (size == METADATA_BLOCK_SIZE) {
+		uint32_t v = *((uint32_t *) pmemfile_direct(pfp, oid));
+
+	if (cmp(v, PMEMFILE_INODE_VERSION(0)))
+		stats->inodes++;
+	else if (cmp(v, PMEMFILE_DIR_VERSION(0)))
+		stats->dirs++;
+	else if (cmp(v, PMEMFILE_BLOCK_ARRAY_VERSION(0)))
+		stats->block_arrays++;
+	else if (cmp(v, PMEMFILE_INODE_ARRAY_VERSION(0)))
+		stats->inode_arrays++;
+	} else if (data_block_info(size, MAX_BLOCK_SIZE)->size
+				== size) {
+			stats->blocks++;
+	} else {
+		FATAL("unknown block");
+	}
+}
 
 /*
  * pmemfile_stats -- get pool statistics
@@ -45,28 +95,18 @@ void
 pmemfile_stats(PMEMfilepool *pfp, struct pmemfile_stats *stats)
 {
 	PMEMoid oid;
-	unsigned inodes = 0, dirs = 0, block_arrays = 0, inode_arrays = 0,
-			blocks = 0;
+	stats->inodes = 0;
+	stats->dirs = 0;
+	stats->block_arrays = 0;
+	stats->inode_arrays = 0;
+	stats->blocks = 0;
 
 	POBJ_FOREACH(pfp->pop, oid) {
 		unsigned t = (unsigned)pmemobj_type_num(oid);
 
-		if (t == TOID_TYPE_NUM(struct pmemfile_inode))
-			inodes++;
-		else if (t == TOID_TYPE_NUM(struct pmemfile_dir))
-			dirs++;
-		else if (t == TOID_TYPE_NUM(struct pmemfile_block_array))
-			block_arrays++;
-		else if (t == TOID_TYPE_NUM(struct pmemfile_inode_array))
-			inode_arrays++;
-		else if (t == TOID_TYPE_NUM(char))
-			blocks++;
+		if (t != 0)
+			stats_header(pfp, t, stats);
 		else
-			FATAL("unknown type %u", t);
+			stats_alloc_class(pfp, oid, stats);
 	}
-	stats->inodes = inodes;
-	stats->dirs = dirs;
-	stats->block_arrays = block_arrays;
-	stats->inode_arrays = inode_arrays;
-	stats->blocks = blocks;
 }

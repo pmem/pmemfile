@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017, Intel Corporation
+ * Copyright 2017, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,49 +29,51 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef PMEMFILE_INODE_ARRAY_H
-#define PMEMFILE_INODE_ARRAY_H
 
+#include <stdlib.h>
 #include "libpmemfile-posix.h"
-#include "inode.h"
-#include "layout.h"
+#include "pool.h"
 
-enum inode_array_lock { INODE_ARRAY_LOCK, INODE_ARRAY_NOLOCK };
+#ifndef PMEMFILE_BLOCKS_H
+#define PMEMFILE_BLOCKS_H
 
-void _inode_array_add(PMEMfilepool *pfp,
-		TOID(struct pmemfile_inode_array) array,
-		TOID(struct pmemfile_inode) tinode,
-		struct pmemfile_inode_array **ins,
-		unsigned *ins_idx,
-		enum inode_array_lock lock);
-void inode_array_add(PMEMfilepool *pfp,
-		TOID(struct pmemfile_inode_array) array,
-		TOID(struct pmemfile_inode) tinode,
-		struct pmemfile_inode_array **ins,
-		unsigned *ins_idx);
+struct pmem_block_info {
 
-void _inode_array_unregister(PMEMfilepool *pfp,
-		struct pmemfile_inode_array *cur,
-		unsigned idx,
-		enum inode_array_lock lock);
-void inode_array_unregister(PMEMfilepool *pfp,
-		struct pmemfile_inode_array *cur,
-		unsigned idx);
+	size_t size;
 
-typedef void (*inode_cb)(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode);
+	unsigned units_per_block;
 
-void inode_array_traverse(PMEMfilepool *pfp,
-		TOID(struct pmemfile_inode_array) arr,
-		inode_cb inode_cb);
+	uint64_t class_id;
+};
 
-void inode_array_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode_array) arr);
+#define MIN_BLOCK_SIZE ((size_t)0x4000)
 
-TOID(struct pmemfile_inode_array) inode_array_alloc(PMEMfilepool *pfp);
 
-bool inode_array_empty(PMEMfilepool *pfp,
-		TOID(struct pmemfile_inode_array) tarr);
+/* block_alignment value is always equal to the smallest block size */
+extern size_t block_alignment;
 
-bool inode_array_is_small(PMEMfilepool *pfp,
-		TOID(struct pmemfile_inode_array) tarr);
+#define MAX_BLOCK_SIZE (UINT32_MAX - (UINT32_MAX % block_alignment))
+
+static inline size_t
+block_rounddown(size_t n)
+{
+	return n & ~(block_alignment - 1);
+}
+
+static inline size_t
+block_roundup(size_t n)
+{
+	return block_rounddown(n + block_alignment - 1);
+}
+
+void set_block_size(size_t size);
+
+void expand_to_full_pages(uint64_t *offset, uint64_t *length);
+
+const struct pmem_block_info *metadata_block_info(void);
+
+const struct pmem_block_info *data_block_info(size_t size, size_t limit);
+
+void initialize_alloc_classes(PMEMobjpool *pop);
 
 #endif

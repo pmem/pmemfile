@@ -38,6 +38,7 @@
 #include <inttypes.h>
 
 #include "alloc.h"
+#include "blocks.h"
 #include "callbacks.h"
 #include "compiler_utils.h"
 #include "dir.h"
@@ -81,6 +82,8 @@ initialize_super_block(PMEMfilepool *pfp)
 	os_rwlock_init(&pfp->cwd_rwlock);
 	os_rwlock_init(&pfp->inode_map_rwlock);
 
+	initialize_alloc_classes(pfp->pop);
+
 	struct pmemfile_cred cred;
 	if (cred_acquire(pfp, &cred)) {
 		error = errno;
@@ -101,8 +104,8 @@ initialize_super_block(PMEMfilepool *pfp)
 					&cred, PMEMFILE_ACCESSPERMS);
 
 			super->version = PMEMFILE_CUR_VERSION;
-			super->orphaned_inodes = inode_array_alloc();
-			super->suspended_inodes = inode_array_alloc();
+			super->orphaned_inodes = inode_array_alloc(pfp);
+			super->suspended_inodes = inode_array_alloc(pfp);
 		} TX_ONABORT {
 			error = errno;
 		} TX_END
@@ -253,7 +256,7 @@ pmemfile_pool_open(const char *pathname)
 
 			inode_array_free(pfp, orphaned);
 
-			pfp->super->orphaned_inodes = inode_array_alloc();
+			pfp->super->orphaned_inodes = inode_array_alloc(pfp);
 		} TX_ONABORT {
 			FATAL("!cannot cleanup list of deleted files");
 		} TX_END

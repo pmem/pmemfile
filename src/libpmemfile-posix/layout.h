@@ -53,6 +53,8 @@ POBJ_LAYOUT_TOID(pmemfile, struct pmemfile_inode_array);
 POBJ_LAYOUT_TOID(pmemfile, char);
 POBJ_LAYOUT_END(pmemfile);
 
+#define METADATA_BLOCK_SIZE 4096
+
 struct pmemfile_block_desc {
 	/* block data pointer */
 	TOID(char) data;
@@ -75,8 +77,17 @@ struct pmemfile_block_desc {
 
 #define BLOCK_INITIALIZED 1
 
+#define PMEMFILE_BLOCK_ARRAY_VERSION(a) ((uint32_t)0x00414C42 | \
+		((uint32_t)(a + '0') << 24))
+
 /* single block array */
 struct pmemfile_block_array {
+	/* layout version */
+	uint32_t version;
+
+	/* padding / unused */
+	uint32_t padding1;
+
 	/* next block array */
 	TOID(struct pmemfile_block_array) next;
 
@@ -84,7 +95,7 @@ struct pmemfile_block_array {
 	uint32_t length;
 
 	/* padding / unused */
-	uint32_t padding;
+	uint32_t padding2;
 
 	/* blocks */
 	struct pmemfile_block_desc blocks[];
@@ -100,13 +111,16 @@ struct pmemfile_dirent {
 	char name[PMEMFILE_MAX_FILE_NAME + 1];
 };
 
+#define PMEMFILE_DIR_VERSION(a) ((uint32_t)0x00524944 | \
+		((uint32_t)(a + '0') << 24))
+
 /* Directory */
 struct pmemfile_dir {
+	/* layout version */
+	uint32_t version;
+
 	/* number of entries in "dirents" */
 	uint32_t num_elements;
-
-	/* padding / unused */
-	uint32_t padding;
 
 	/* next batch of entries */
 	TOID(struct pmemfile_dir) next;
@@ -126,12 +140,12 @@ struct pmemfile_time {
 #define PMEMFILE_INODE_VERSION(a) ((uint32_t)0x00444E49 | \
 		((uint32_t)(a + '0') << 24))
 
-#define PMEMFILE_INODE_SIZE 4096
+#define PMEMFILE_INODE_SIZE METADATA_BLOCK_SIZE
 #define PMEMFILE_IN_INODE_STORAGE (PMEMFILE_INODE_SIZE\
 				- 4  /* version */ \
 				- 4  /* uid */ \
 				- 4  /* gid */ \
-				- 4  /* reserved */ \
+				- 4  /* suspeneded references */ \
 				- 16 /* atime */ \
 				- 16 /* ctime */ \
 				- 16 /* mtime */ \
@@ -192,27 +206,34 @@ struct pmemfile_inode {
 
 COMPILE_ERROR_ON(sizeof(struct pmemfile_inode) != PMEMFILE_INODE_SIZE);
 
-#define PMEMFILE_INODE_ARRAY_SIZE 4096
+#define PMEMFILE_INODE_ARRAY_VERSION(a) ((uint32_t)0x00414E49 | \
+		((uint32_t)(a + '0') << 24))
+#define PMEMFILE_INODE_ARRAY_SIZE METADATA_BLOCK_SIZE
 /* number of inodes for pmemfile_inode_array to fit in 4kB */
 #define NUMINODES_PER_ENTRY 249
 
-COMPILE_ERROR_ON(sizeof(PMEMmutex) \
+COMPILE_ERROR_ON(4 /* version */
+		+ 4  /* used */ \
+		+ 8 /* padding */\
 		+ 16 /* prev */ \
 		+ 16 /* next */ \
-		+ 4  /* used */ \
-		+ 12 /* padding */ \
+		+ sizeof(PMEMmutex) \
 		+ NUMINODES_PER_ENTRY * sizeof(TOID(struct pmemfile_inode)) \
 		!= PMEMFILE_INODE_ARRAY_SIZE);
 
 struct pmemfile_inode_array {
-	PMEMmutex mtx;
-	TOID(struct pmemfile_inode_array) prev;
-	TOID(struct pmemfile_inode_array) next;
+	/* layout version */
+	uint32_t version;
 
 	/* number of used entries, <0, NUMINODES_PER_ENTRY> */
 	uint32_t used;
 
-	char padding[12];
+	/* padding / unused */
+	uint64_t padding;
+
+	TOID(struct pmemfile_inode_array) prev;
+	TOID(struct pmemfile_inode_array) next;
+	PMEMmutex mtx;
 
 	TOID(struct pmemfile_inode) inodes[NUMINODES_PER_ENTRY];
 };
@@ -222,7 +243,7 @@ COMPILE_ERROR_ON(sizeof(struct pmemfile_inode_array) !=
 
 #define PMEMFILE_SUPER_VERSION(a, b) ((uint64_t)0x000056454C494650 | \
 		((uint64_t)(a + '0') << 48) | ((uint64_t)(b + '0') << 56))
-#define PMEMFILE_SUPER_SIZE 4096
+#define PMEMFILE_SUPER_SIZE METADATA_BLOCK_SIZE
 
 /* superblock */
 struct pmemfile_super {

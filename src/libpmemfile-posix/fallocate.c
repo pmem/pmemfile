@@ -36,6 +36,7 @@
 
 #include <limits.h>
 
+#include "blocks.h"
 #include "callbacks.h"
 #include "data.h"
 #include "file.h"

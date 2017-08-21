@@ -120,6 +120,10 @@ TEST(crash, 0)
 int
 main(int argc, char *argv[])
 {
+	char *is_pmemfile_pop_str = std::getenv("LIBPMEMFILE_POP");
+	is_pmemfile_pop = is_pmemfile_pop_str != nullptr &&
+		strtol(is_pmemfile_pop_str, nullptr, 10);
+
 	START();
 
 	if (argc < 3) {

@@ -33,7 +33,7 @@ include(${SRC_DIR}/../preload-helpers.cmake)
 
 setup()
 
-mkfs(${DIR}/fs 16m)
+mkfs(${DIR}/fs 128m)
 
 execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${DIR}/mount_point)
 execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${DIR}/some_dir)

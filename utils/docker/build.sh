@@ -47,6 +47,8 @@ if [[ -z "$HOST_WORKDIR" ]]; then
 	exit 1
 fi
 
+sudo chmod -R a+w $HOST_WORKDIR
+
 if [[ "$TRAVIS_EVENT_TYPE" == "cron" || "$TRAVIS_BRANCH" == "coverity_scan" ]]; then
 	if [[ $COVERITY -eq 1 ]]; then
 		command="./run-coverity.sh"

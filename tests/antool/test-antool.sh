@@ -70,11 +70,20 @@ FUNCT=$TEST_DIR/helper_functions.sh
 
 source $FUNCT
 
+ANTOOL=$(realpath $TEST_DIR/../../src/tools/antool/antool.py)
+
+if [ "$COVERAGE" == "1" ]; then
+	COVERAGE_REPORT=.coverage
+	ANTOOL="$(which python3) $(which coverage) run -a --rcfile=$TEST_DIR/.coveragerc --source=$PYTHON_SOURCE $ANTOOL"
+fi
+
 # create a new temporary directory for the test to enable parallel testing
 NAME_PATTERN="$NAME-$TEST_NUM"
 DIR_NAME="logs-${NAME_PATTERN}-$(date +%F_%T_%N)-$$"
 mkdir -p $DIR_NAME
 cd $DIR_NAME
+
+[ -f ../$COVERAGE_REPORT ] && cp ../$COVERAGE_REPORT .
 
 if [ "$VLTRACE" -a ! "$VLTRACE_SKIP" ]; then
 	if [ ! -x $TEST_FILE ]; then
@@ -99,8 +108,6 @@ else
 		exit 1
 	fi
 fi
-
-ANTOOL=$(realpath $TEST_DIR/../../src/tools/antool/antool.py)
 
 PATTERN_START="close                (0x0000000012345678)"
 PATTERN_END="close                (0x0000000087654321)"
@@ -177,6 +184,9 @@ check
 # copy vltrace binary log for regeneration
 cp $OUTBIN ..
 cp $FILE_DIR_PMEM ..
+
+# copy coverage report
+[ -f $COVERAGE_REPORT ] && cp -f $COVERAGE_REPORT ..
 
 # remove the temporary test directory
 cd ..

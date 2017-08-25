@@ -54,14 +54,18 @@ RUN dnf install -y \
 	pandoc \
 	perl-Text-Diff \
 	passwd \
+	python-pip \
+	python3-coverage \
 	rpm-build \
 	sqlite \
 	sudo \
 	tcl-devel \
 	wget \
 	which \
-	python-pip \
 	whois
+
+# Upgrade pip
+RUN pip install --upgrade pip
 
 # Install codecov
 RUN pip install codecov

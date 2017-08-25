@@ -50,8 +50,12 @@ cmake .. -DDEVELOPER_MODE=1 \
 		-DCMAKE_CXX_FLAGS=-coverage
 
 make -j2
-ctest -E "_memcheck|_drd|_helgrind|_pmemcheck" -j2 --output-on-failure
+
+ctest -E "_memcheck|_drd|_helgrind|_pmemcheck|antool" -j2 --output-on-failure
+COVERAGE=1 PYTHON_SOURCE=$WORKDIR/src/tools/antool ctest -R antool --output-on-failure
 git diff --exit-code || ( echo "Did you forget to commit generated source file?" && exit 1 )
+
+REPORT=$(find . -name ".coverage") && [ $REPORT ] && cp -f -v $REPORT . && $(which python3) $(which coverage) xml
 bash <(curl -s https://codecov.io/bash)
 cd ..
 rm -r build

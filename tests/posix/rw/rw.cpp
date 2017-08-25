@@ -1102,13 +1102,36 @@ TEST_F(rw, sparse_files_using_lseek)
 	f = pmemfile_open(pfp, "/", PMEMFILE_O_DIRECTORY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
-	/* Using these two flags with directories is not supported */
+	/*
+	 * SEEK_DATA - Directory does not have holes, so if offset passed is
+	 * smaller than end offset, then it should be returned.
+	 *
+	 * Current directory should contain 2 dirents: '.' and '..'
+	 */
 	errno = 0;
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_HOLE), -1);
-	EXPECT_EQ(errno, ENXIO);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, -1, PMEMFILE_SEEK_DATA), -1);
+	EXPECT_EQ(errno, EINVAL);
+	EXPECT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_DATA), 0);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_DATA), 1);
+
+	/* get last offset in directory */
+	pmemfile_off_t end = pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_END);
+
+	ASSERT_EQ(pmemfile_lseek(pfp, f, end - 1, PMEMFILE_SEEK_DATA), end - 1);
 
 	errno = 0;
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_DATA), -1);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, end + 1, PMEMFILE_SEEK_DATA), -1);
+	EXPECT_EQ(errno, ENXIO);
+
+	/*
+	 * SEEK_HOLE - if passed offset is smaller than end offset,
+	 * the end offset should be returned
+	 */
+	ASSERT_EQ(pmemfile_lseek(pfp, f, -1, PMEMFILE_SEEK_HOLE), end);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_HOLE), end);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 1, PMEMFILE_SEEK_HOLE), end);
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, end, PMEMFILE_SEEK_HOLE), -1);
 	EXPECT_EQ(errno, ENXIO);
 
 	pmemfile_close(pfp, f);

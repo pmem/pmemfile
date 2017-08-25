@@ -1,6 +1,6 @@
-#!/bin/bash -ex
+#!/usr/bin/python3
 #
-# Copyright 2016-2017, Intel Corporation
+# Copyright 2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -30,33 +30,4 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#
-# run-coverage.sh - is called inside a Docker container;
-#		starts a build of PMEMFILE project
-#
-
-# Build all and run tests
-cd $WORKDIR
-cp /googletest-1.8.0.zip .
-
-mkdir build
-cd build
-cmake .. -DDEVELOPER_MODE=1 \
-		-DCMAKE_BUILD_TYPE=Debug \
-		-DTRACE_TESTS=1 \
-		-DTESTS_USE_FORCED_PMEM=1 \
-		-DAUTO_GENERATE_SOURCES=$AUTOGENSOURCES \
-		-DCMAKE_C_FLAGS=-coverage \
-		-DCMAKE_CXX_FLAGS=-coverage
-
-make -j2
-
-ctest -E "_memcheck|_drd|_helgrind|_pmemcheck|antool" -j2 --output-on-failure
-COVERAGE=1 PYTHON_SOURCE=$WORKDIR/src/tools/antool ctest -R antool --output-on-failure
-git diff --exit-code || ( echo "Did you forget to commit generated source file?" && exit 1 )
-
-REPORT=$(find . -name ".coverage") && [ $REPORT ] && cp -f -v $REPORT . && $(which python3) $(which coverage) xml
-codecov -X gcov
-bash <(curl -s https://codecov.io/bash)
-cd ..
-rm -r build
+__all__ = ["antool", "exceptions", "listsyscalls", "syscallinfo", "syscall", "syscalltable", "utils"]

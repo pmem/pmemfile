@@ -59,13 +59,17 @@ RUN apt-get install -y \
 	libunwind-dev \
 	pandoc \
 	pkg-config \
+	python-pip \
+	python3-coverage \
 	ruby \
 	sqlite3 \
 	sudo \
 	tcl-dev \
 	wget \
-	python-pip \
 	whois
+
+# Upgrade pip
+RUN pip install --upgrade pip
 
 # Install codecov
 RUN pip install codecov

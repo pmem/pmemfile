@@ -1,0 +1,1093 @@
+From 878c8260de020ca5ef31e2ab9cff04efd6528043 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marcin=20=C5=9Alusarz?= <marcin.slusarz@intel.com>
+Date: Wed, 2 Aug 2017 12:30:44 +0200
+Subject: [PATCH] disable special files tests
+
+---
+ tests/chmod/00.t     |  8 ++++----
+ tests/chmod/01.t     |  4 ++--
+ tests/chmod/11.t     |  6 +++---
+ tests/chown/00.t     | 18 +++++++++---------
+ tests/chown/01.t     |  4 ++--
+ tests/chown/07.t     |  4 ++--
+ tests/link/00.t      |  8 ++++----
+ tests/link/01.t      |  4 ++--
+ tests/link/10.t      |  4 ++--
+ tests/mkdir/01.t     |  4 ++--
+ tests/mkdir/10.t     |  4 ++--
+ tests/mkfifo/00.t    |  2 +-
+ tests/mkfifo/01.t    |  2 +-
+ tests/mkfifo/02.t    |  2 +-
+ tests/mkfifo/03.t    |  2 +-
+ tests/mkfifo/04.t    |  2 +-
+ tests/mkfifo/05.t    |  2 +-
+ tests/mkfifo/06.t    |  2 +-
+ tests/mkfifo/07.t    |  2 +-
+ tests/mkfifo/08.t    |  1 +
+ tests/mkfifo/09.t    |  2 +-
+ tests/mkfifo/10.t    |  2 ++
+ tests/mkfifo/11.t    |  2 ++
+ tests/mkfifo/12.t    |  2 +-
+ tests/mknod/00.t     |  2 +-
+ tests/mknod/01.t     |  2 +-
+ tests/mknod/02.t     |  2 +-
+ tests/mknod/03.t     |  2 +-
+ tests/mknod/04.t     |  2 +-
+ tests/mknod/05.t     |  2 +-
+ tests/mknod/06.t     |  2 +-
+ tests/mknod/07.t     |  2 +-
+ tests/mknod/08.t     |  2 +-
+ tests/mknod/09.t     |  2 ++
+ tests/mknod/10.t     |  2 +-
+ tests/mknod/11.t     |  2 ++
+ tests/open/01.t      |  4 ++--
+ tests/open/17.t      |  2 +-
+ tests/open/22.t      |  4 ++--
+ tests/rename/00.t    |  8 ++++----
+ tests/rename/09.t    | 12 ++++++------
+ tests/rename/10.t    | 12 ++++++------
+ tests/rename/12.t    |  4 ++--
+ tests/rename/13.t    |  4 ++--
+ tests/rename/14.t    |  4 ++--
+ tests/rename/20.t    |  4 ++--
+ tests/rmdir/06.t     |  4 ++--
+ tests/symlink/08.t   |  4 ++--
+ tests/unlink/11.t    |  4 ++--
+ tests/utimensat/00.t |  4 ++--
+ 50 files changed, 100 insertions(+), 91 deletions(-)
+
+diff --git a/tests/chmod/00.t b/tests/chmod/00.t
+index f7ab7a6..aacc49b 100644
+--- a/tests/chmod/00.t
++++ b/tests/chmod/00.t
+@@ -10,7 +10,7 @@ dir=`dirname $0`
+ if supported lchmod; then
+ 	echo "1..203"
+ else
+-	echo "1..119"
++	echo "1..47"
+ fi
+ 
+ n0=`namegen`
+@@ -21,7 +21,7 @@ expect 0 mkdir ${n2} 0755
+ cdir=`pwd`
+ cd ${n2}
+ 
+-for type in regular dir fifo block char socket symlink; do
++for type in regular dir symlink; do
+ 	if [ "${type}" != "symlink" ]; then
+ 		create_file ${type} ${n0}
+ 		expect 0 chmod ${n0} 0111
+@@ -55,7 +55,7 @@ for type in regular dir fifo block char socket symlink; do
+ done
+ 
+ # successful chmod(2) updates ctime.
+-for type in regular dir fifo block char socket symlink; do
++for type in regular dir symlink; do
+ 	if [ "${type}" != "symlink" ]; then
+ 		create_file ${type} ${n0}
+ 		ctime1=`${fstest} stat ${n0} ctime`
+@@ -86,7 +86,7 @@ for type in regular dir fifo block char socket symlink; do
+ done
+ 
+ # unsuccessful chmod(2) does not update ctime.
+-for type in regular dir fifo block char socket symlink; do
++for type in regular dir symlink; do
+ 	if [ "${type}" != "symlink" ]; then
+ 		create_file ${type} ${n0}
+ 		ctime1=`${fstest} stat ${n0} ctime`
+diff --git a/tests/chmod/01.t b/tests/chmod/01.t
+index aa629cf..c762103 100644
+--- a/tests/chmod/01.t
++++ b/tests/chmod/01.t
+@@ -7,13 +7,13 @@ desc="chmod returns ENOTDIR if a component of the path prefix is not a directory
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..17"
++echo "1..5"
+ 
+ n0=`namegen`
+ n1=`namegen`
+ 
+ expect 0 mkdir ${n0} 0755
+-for type in regular fifo block char socket; do
++for type in regular; do
+ 	create_file ${type} ${n0}/${n1}
+ 	expect ENOTDIR chmod ${n0}/${n1}/test 0644
+ 	expect 0 unlink ${n0}/${n1}
+diff --git a/tests/chmod/11.t b/tests/chmod/11.t
+index c68d939..a2d0aa3 100644
+--- a/tests/chmod/11.t
++++ b/tests/chmod/11.t
+@@ -10,7 +10,7 @@ dir=`dirname $0`
+ if supported lchmod; then
+ 	echo "1..173"
+ else
+-	echo "1..109"
++	echo "1..37"
+ fi
+ 
+ n0=`namegen`
+@@ -21,7 +21,7 @@ expect 0 mkdir ${n0} 0755
+ cdir=`pwd`
+ cd ${n0}
+ 
+-for type in regular dir fifo block char socket symlink; do
++for type in regular dir symlink; do
+ 	if [ "${type}" != "symlink" ]; then
+ 		create_file ${type} ${n1}
+ 		expect 0 chmod ${n1} 01621
+@@ -59,7 +59,7 @@ expect 01700 stat ${n1} mode
+ expect 0 unlink ${n2}
+ expect 0 rmdir ${n1}
+ 
+-for type in regular fifo block char socket symlink; do
++for type in regular symlink; do
+ 	if [ "${type}" != "symlink" ]; then
+ 		create_file ${type} ${n1} 0640 65534 65534
+ 		expect 0 symlink ${n1} ${n2}
+diff --git a/tests/chown/00.t b/tests/chown/00.t
+index d62fba7..7eeb5ad 100644
+--- a/tests/chown/00.t
++++ b/tests/chown/00.t
+@@ -10,7 +10,7 @@ dir=`dirname $0`
+ if supported lchmod; then
+ 	echo "1..1349"
+ else
+-	echo "1..1323"
++	echo "1..467"
+ fi
+ 
+ n0=`namegen`
+@@ -22,7 +22,7 @@ cdir=`pwd`
+ cd ${n2}
+ 
+ # super-user can always modify ownership
+-for type in regular dir fifo block char socket symlink; do
++for type in regular dir symlink; do
+ 	if [ "${type}" != "symlink" ]; then
+ 		create_file ${type} ${n0}
+ 
+@@ -58,7 +58,7 @@ done
+ 
+ # non-super-user can modify file group if he is owner of a file and
+ # gid he is setting is in his groups list.
+-for type in regular dir fifo block char socket symlink; do
++for type in regular dir symlink; do
+ 	if [ "${type}" != "symlink" ]; then
+ 		create_file ${type} ${n0}
+ 
+@@ -108,7 +108,7 @@ done
+ 
+ # chown(2) return 0 if user is not owner of a file, but chown(2) is called
+ # with both uid and gid equal to -1.
+-for type in regular dir fifo block char socket symlink; do
++for type in regular dir symlink; do
+ 	if [ "${type}" != "symlink" ]; then
+ 		create_file ${type} ${n0}
+ 
+@@ -147,7 +147,7 @@ for type in regular dir fifo block char socket symlink; do
+ done
+ 
+ # when super-user calls chown(2), set-uid and set-gid bits may be removed.
+-for type in regular dir fifo block char socket symlink; do
++for type in regular dir symlink; do
+ 	if [ "${type}" != "symlink" ]; then
+ 		create_file ${type} ${n0}
+ 
+@@ -213,7 +213,7 @@ done
+ 
+ # when non-super-user calls chown(2) successfully, set-uid and set-gid bits may
+ # be removed, except when both uid and gid are equal to -1.
+-for type in regular dir fifo block char socket symlink; do
++for type in regular dir symlink; do
+ 	#
+ 	# Linux makes a destinction for behavior when an executable file vs a
+ 	# non-executable file. From chmod(2):
+@@ -320,7 +320,7 @@ for type in regular dir fifo block char socket symlink; do
+ done
+ 
+ # successful chown(2) call (except uid and gid equal to -1) updates ctime.
+-for type in regular dir fifo block char socket symlink; do
++for type in regular dir symlink; do
+ 	if [ "${type}" != "symlink" ]; then
+ 		create_file ${type} ${n0}
+ 
+@@ -381,7 +381,7 @@ for type in regular dir fifo block char socket symlink; do
+ 	fi
+ done
+ 
+-for type in regular dir fifo block char socket symlink; do
++for type in regular dir symlink; do
+ 	if [ "${type}" != "symlink" ]; then
+ 		create_file ${type} ${n0}
+ 
+@@ -428,7 +428,7 @@ for type in regular dir fifo block char socket symlink; do
+ done
+ 
+ # unsuccessful chown(2) does not update ctime.
+-for type in regular dir fifo block char socket symlink; do
++for type in regular dir symlink; do
+ 	if [ "${type}" != "symlink" ]; then
+ 		create_file ${type} ${n0}
+ 
+diff --git a/tests/chown/01.t b/tests/chown/01.t
+index a60126a..055b361 100644
+--- a/tests/chown/01.t
++++ b/tests/chown/01.t
+@@ -7,13 +7,13 @@ desc="chown returns ENOTDIR if a component of the path prefix is not a directory
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..22"
++echo "1..6"
+ 
+ n0=`namegen`
+ n1=`namegen`
+ 
+ expect 0 mkdir ${n0} 0755
+-for type in regular fifo block char socket; do
++for type in regular; do
+ 	create_file ${type} ${n0}/${n1}
+ 	expect ENOTDIR chown ${n0}/${n1}/test 65534 65534
+ 	expect ENOTDIR lchown ${n0}/${n1}/test 65534 65534
+diff --git a/tests/chown/07.t b/tests/chown/07.t
+index bf7c544..5d4e95a 100644
+--- a/tests/chown/07.t
++++ b/tests/chown/07.t
+@@ -7,7 +7,7 @@ desc="chown returns EPERM if the operation would change the ownership, but the e
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..132"
++echo "1..52"
+ 
+ n0=`namegen`
+ n1=`namegen`
+@@ -19,7 +19,7 @@ cdir=`pwd`
+ cd ${n0}
+ expect 0 mkdir ${n1} 0755
+ expect 0 chown ${n1} 65534 65534
+-for type in regular dir fifo block char socket symlink; do
++for type in regular dir symlink; do
+ 	if [ "${type}" != "symlink" ]; then
+ 		create_file ${type} ${n1}/${n2} 65534 65534
+ 		expect EPERM -u 65534 -g 65534 chown ${n1}/${n2} 65533 65533
+diff --git a/tests/link/00.t b/tests/link/00.t
+index 940ffba..1854eb9 100644
+--- a/tests/link/00.t
++++ b/tests/link/00.t
+@@ -7,7 +7,7 @@ desc="link creates hardlinks"
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..202"
++echo "1..42"
+ 
+ n0=`namegen`
+ n1=`namegen`
+@@ -18,7 +18,7 @@ expect 0 mkdir ${n3} 0755
+ cdir=`pwd`
+ cd ${n3}
+ 
+-for type in regular fifo block char socket; do
++for type in regular; do
+ 	create_file ${type} ${n0}
+ 	expect ${type},1 lstat ${n0} type,nlink
+ 
+@@ -55,7 +55,7 @@ for type in regular fifo block char socket; do
+ done
+ 
+ # successful link(2) updates ctime.
+-for type in regular fifo block char socket; do
++for type in regular; do
+ 	create_file ${type} ${n0}
+ 	ctime1=`${fstest} stat ${n0} ctime`
+ 	dctime1=`${fstest} stat . ctime`
+@@ -73,7 +73,7 @@ for type in regular fifo block char socket; do
+ done
+ 
+ # unsuccessful link(2) does not update ctime.
+-for type in regular fifo block char socket; do
++for type in regular; do
+ 	create_file ${type} ${n0}
+ 	expect 0 -- chown ${n0} 65534 -1
+ 	ctime1=`${fstest} stat ${n0} ctime`
+diff --git a/tests/link/01.t b/tests/link/01.t
+index c3ddade..d727b80 100644
+--- a/tests/link/01.t
++++ b/tests/link/01.t
+@@ -7,14 +7,14 @@ desc="link returns ENOTDIR if a component of either path prefix is not a directo
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..32"
++echo "1..8"
+ 
+ n0=`namegen`
+ n1=`namegen`
+ n2=`namegen`
+ 
+ expect 0 mkdir ${n0} 0755
+-for type in regular fifo block char socket; do
++for type in regular; do
+ 	create_file ${type} ${n0}/${n1}
+ 	expect ENOTDIR link ${n0}/${n1}/test ${n0}/${n2}
+ 	create_file ${type} ${n0}/${n2}
+diff --git a/tests/link/10.t b/tests/link/10.t
+index 1ff378b..c229376 100644
+--- a/tests/link/10.t
++++ b/tests/link/10.t
+@@ -7,14 +7,14 @@ desc="link returns EEXIST if the destination file does exist"
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..23"
++echo "1..11"
+ 
+ n0=`namegen`
+ n1=`namegen`
+ 
+ expect 0 create ${n0} 0644
+ 
+-for type in regular dir fifo block char socket symlink; do
++for type in regular dir symlink; do
+ 	create_file ${type} ${n1}
+ 	expect EEXIST link ${n0} ${n1}
+ 	if [ "${type}" = "dir" ]; then
+diff --git a/tests/mkdir/01.t b/tests/mkdir/01.t
+index 02a1958..29f3e6a 100644
+--- a/tests/mkdir/01.t
++++ b/tests/mkdir/01.t
+@@ -7,13 +7,13 @@ desc="mkdir returns ENOTDIR if a component of the path prefix is not a directory
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..17"
++echo "1..5"
+ 
+ n0=`namegen`
+ n1=`namegen`
+ 
+ expect 0 mkdir ${n0} 0755
+-for type in regular fifo block char socket; do
++for type in regular; do
+ 	create_file ${type} ${n0}/${n1}
+ 	expect ENOTDIR mkdir ${n0}/${n1}/test 0755
+ 	expect 0 unlink ${n0}/${n1}
+diff --git a/tests/mkdir/10.t b/tests/mkdir/10.t
+index a8c4fef..ecd231f 100644
+--- a/tests/mkdir/10.t
++++ b/tests/mkdir/10.t
+@@ -7,11 +7,11 @@ desc="mkdir returns EEXIST if the named file exists"
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..21"
++echo "1..9"
+ 
+ n0=`namegen`
+ 
+-for type in regular dir fifo block char socket symlink; do
++for type in regular dir symlink; do
+ 	create_file ${type} ${n0}
+ 	expect EEXIST mkdir ${n0} 0755
+ 	if [ "${type}" = "dir" ]; then
+diff --git a/tests/mkfifo/00.t b/tests/mkfifo/00.t
+index 5982517..8f17924 100644
+--- a/tests/mkfifo/00.t
++++ b/tests/mkfifo/00.t
+@@ -7,7 +7,7 @@ desc="mkfifo creates fifo files"
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..36"
++quick_exit
+ 
+ n0=`namegen`
+ n1=`namegen`
+diff --git a/tests/mkfifo/01.t b/tests/mkfifo/01.t
+index b3156e9..8294733 100644
+--- a/tests/mkfifo/01.t
++++ b/tests/mkfifo/01.t
+@@ -7,7 +7,7 @@ desc="mkfifo returns ENOTDIR if a component of the path prefix is not a director
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..17"
++quick_exit
+ 
+ n0=`namegen`
+ n1=`namegen`
+diff --git a/tests/mkfifo/02.t b/tests/mkfifo/02.t
+index f6fb3f1..bcd0190 100644
+--- a/tests/mkfifo/02.t
++++ b/tests/mkfifo/02.t
+@@ -7,7 +7,7 @@ desc="mkfifo returns ENAMETOOLONG if a component of a pathname exceeded {NAME_MA
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..4"
++quick_exit
+ 
+ nx=`namegen_max`
+ nxx="${nx}x"
+diff --git a/tests/mkfifo/03.t b/tests/mkfifo/03.t
+index 397640a..8f5610a 100644
+--- a/tests/mkfifo/03.t
++++ b/tests/mkfifo/03.t
+@@ -7,7 +7,7 @@ desc="mkfifo returns ENAMETOOLONG if an entire path name exceeded {PATH_MAX} cha
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..4"
++quick_exit
+ 
+ nx=`dirgen_max`
+ nxx="${nx}x"
+diff --git a/tests/mkfifo/04.t b/tests/mkfifo/04.t
+index 0e0a4b7..54eef01 100644
+--- a/tests/mkfifo/04.t
++++ b/tests/mkfifo/04.t
+@@ -7,7 +7,7 @@ desc="mkfifo returns ENOENT if a component of the path prefix does not exist"
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..3"
++quick_exit
+ 
+ n0=`namegen`
+ n1=`namegen`
+diff --git a/tests/mkfifo/05.t b/tests/mkfifo/05.t
+index bd3771b..3db6691 100644
+--- a/tests/mkfifo/05.t
++++ b/tests/mkfifo/05.t
+@@ -7,7 +7,7 @@ desc="mkfifo returns EACCES when search permission is denied for a component of
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..12"
++quick_exit
+ 
+ n0=`namegen`
+ n1=`namegen`
+diff --git a/tests/mkfifo/06.t b/tests/mkfifo/06.t
+index 52a5c27..52f6a69 100644
+--- a/tests/mkfifo/06.t
++++ b/tests/mkfifo/06.t
+@@ -7,7 +7,7 @@ desc="mkfifo returns EACCES when write permission is denied on the parent direct
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..12"
++quick_exit
+ 
+ n0=`namegen`
+ n1=`namegen`
+diff --git a/tests/mkfifo/07.t b/tests/mkfifo/07.t
+index 1a11eb3..b3c56d2 100644
+--- a/tests/mkfifo/07.t
++++ b/tests/mkfifo/07.t
+@@ -7,7 +7,7 @@ desc="mkfifo returns ELOOP if too many symbolic links were encountered in transl
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..6"
++quick_exit
+ 
+ n0=`namegen`
+ n1=`namegen`
+diff --git a/tests/mkfifo/08.t b/tests/mkfifo/08.t
+index 7ac6f8b..c83a1fd 100644
+--- a/tests/mkfifo/08.t
++++ b/tests/mkfifo/08.t
+@@ -7,6 +7,7 @@ desc="mkfifo returns EROFS if the named file resides on a read-only file system"
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
++quick_exit
+ [ "${os}:${fs}" = "FreeBSD:UFS" ] || quick_exit
+ 
+ echo "1..7"
+diff --git a/tests/mkfifo/09.t b/tests/mkfifo/09.t
+index 80437d3..b1293b7 100644
+--- a/tests/mkfifo/09.t
++++ b/tests/mkfifo/09.t
+@@ -7,7 +7,7 @@ desc="mkfifo returns EEXIST if the named file exists"
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..21"
++quick_exit
+ 
+ n0=`namegen`
+ 
+diff --git a/tests/mkfifo/10.t b/tests/mkfifo/10.t
+index dfa4c61..bdc5a00 100644
+--- a/tests/mkfifo/10.t
++++ b/tests/mkfifo/10.t
+@@ -7,6 +7,8 @@ desc="mkfifo returns EPERM if the parent directory of the file to be created has
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
++quick_exit
++
+ require chflags
+ 
+ case "${os}:${fs}" in
+diff --git a/tests/mkfifo/11.t b/tests/mkfifo/11.t
+index 39cfea4..29643ac 100644
+--- a/tests/mkfifo/11.t
++++ b/tests/mkfifo/11.t
+@@ -7,6 +7,8 @@ desc="mkfifo returns ENOSPC if there are no free inodes on the file system on wh
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
++quick_exit
++
+ [ "${os}:${fs}" = "FreeBSD:UFS" ] || quick_exit
+ 
+ echo "1..3"
+diff --git a/tests/mkfifo/12.t b/tests/mkfifo/12.t
+index c7f8107..9165d79 100644
+--- a/tests/mkfifo/12.t
++++ b/tests/mkfifo/12.t
+@@ -7,7 +7,7 @@ desc="mkfifo returns EFAULT if the path argument points outside the process's al
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..2"
++quick_exit
+ 
+ expect EFAULT mkfifo NULL 0644
+ expect EFAULT mkfifo DEADCODE 0644
+diff --git a/tests/mknod/00.t b/tests/mknod/00.t
+index f10aa7f..5e3d9d1 100644
+--- a/tests/mknod/00.t
++++ b/tests/mknod/00.t
+@@ -7,7 +7,7 @@ desc="mknod creates fifo files"
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..36"
++quick_exit
+ 
+ n0=`namegen`
+ n1=`namegen`
+diff --git a/tests/mknod/01.t b/tests/mknod/01.t
+index 407da5a..07a5486 100644
+--- a/tests/mknod/01.t
++++ b/tests/mknod/01.t
+@@ -7,7 +7,7 @@ desc="mknod returns ENOTDIR if a component of the path prefix is not a directory
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..27"
++quick_exit
+ 
+ n0=`namegen`
+ n1=`namegen`
+diff --git a/tests/mknod/02.t b/tests/mknod/02.t
+index a923f5a..13f7066 100644
+--- a/tests/mknod/02.t
++++ b/tests/mknod/02.t
+@@ -7,7 +7,7 @@ desc="mknod returns ENAMETOOLONG if a component of a pathname exceeded {NAME_MAX
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..12"
++quick_exit
+ 
+ nx=`namegen_max`
+ nxx="${nx}x"
+diff --git a/tests/mknod/03.t b/tests/mknod/03.t
+index e400f89..781f520 100644
+--- a/tests/mknod/03.t
++++ b/tests/mknod/03.t
+@@ -7,7 +7,7 @@ desc="mknod returns ENAMETOOLONG if an entire path name exceeded {PATH_MAX} char
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..12"
++quick_exit
+ 
+ nx=`dirgen_max`
+ nxx="${nx}x"
+diff --git a/tests/mknod/04.t b/tests/mknod/04.t
+index 1f43e1d..b20805d 100644
+--- a/tests/mknod/04.t
++++ b/tests/mknod/04.t
+@@ -7,7 +7,7 @@ desc="mknod returns ENOENT if a component of the path prefix does not exist"
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..3"
++quick_exit
+ 
+ n0=`namegen`
+ n1=`namegen`
+diff --git a/tests/mknod/05.t b/tests/mknod/05.t
+index 5d5cbc0..c457591 100644
+--- a/tests/mknod/05.t
++++ b/tests/mknod/05.t
+@@ -7,7 +7,7 @@ desc="mknod returns EACCES when search permission is denied for a component of t
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..12"
++quick_exit
+ 
+ n0=`namegen`
+ n1=`namegen`
+diff --git a/tests/mknod/06.t b/tests/mknod/06.t
+index b6e4990..b3df214 100644
+--- a/tests/mknod/06.t
++++ b/tests/mknod/06.t
+@@ -7,7 +7,7 @@ desc="mknod returns EACCES when write permission is denied on the parent directo
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..12"
++quick_exit
+ 
+ n0=`namegen`
+ n1=`namegen`
+diff --git a/tests/mknod/07.t b/tests/mknod/07.t
+index 6aed4bb..8ca8d42 100644
+--- a/tests/mknod/07.t
++++ b/tests/mknod/07.t
+@@ -7,7 +7,7 @@ desc="mknod returns ELOOP if too many symbolic links were encountered in transla
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..6"
++quick_exit
+ 
+ n0=`namegen`
+ n1=`namegen`
+diff --git a/tests/mknod/08.t b/tests/mknod/08.t
+index 3369935..d69848b 100644
+--- a/tests/mknod/08.t
++++ b/tests/mknod/08.t
+@@ -7,7 +7,7 @@ desc="mknod returns EEXIST if the named file exists"
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..35"
++quick_exit
+ 
+ n0=`namegen`
+ 
+diff --git a/tests/mknod/09.t b/tests/mknod/09.t
+index 6156cb2..2f4fe81 100644
+--- a/tests/mknod/09.t
++++ b/tests/mknod/09.t
+@@ -7,6 +7,8 @@ desc="mknod returns EPERM if the parent directory of the file to be created has
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
++quick_exit
++
+ require chflags
+ 
+ case "${os}:${fs}" in
+diff --git a/tests/mknod/10.t b/tests/mknod/10.t
+index 16d6071..6822ef9 100644
+--- a/tests/mknod/10.t
++++ b/tests/mknod/10.t
+@@ -7,7 +7,7 @@ desc="mknod returns EFAULT if the path argument points outside the process's all
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..2"
++quick_exit
+ 
+ expect EFAULT mknod NULL f 0644 0 0
+ expect EFAULT mknod DEADCODE f 0644 0 0
+diff --git a/tests/mknod/11.t b/tests/mknod/11.t
+index e4d2da8..3d7f867 100644
+--- a/tests/mknod/11.t
++++ b/tests/mknod/11.t
+@@ -7,6 +7,8 @@ desc="mknod creates device files"
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
++quick_exit
++
+ case "${os}" in
+ SunOS)
+ 	echo "1..40"
+diff --git a/tests/open/01.t b/tests/open/01.t
+index d11c925..7d7ebd3 100644
+--- a/tests/open/01.t
++++ b/tests/open/01.t
+@@ -7,13 +7,13 @@ desc="open returns ENOTDIR if a component of the path prefix is not a directory"
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..22"
++echo "1..6"
+ 
+ n0=`namegen`
+ n1=`namegen`
+ 
+ expect 0 mkdir ${n0} 0755
+-for type in regular fifo block char socket; do
++for type in regular; do
+ 	create_file ${type} ${n0}/${n1}
+ 	expect ENOTDIR open ${n0}/${n1}/test O_RDONLY
+ 	expect ENOTDIR open ${n0}/${n1}/test O_CREAT 0644
+diff --git a/tests/open/17.t b/tests/open/17.t
+index 27ac9a8..20d2825 100644
+--- a/tests/open/17.t
++++ b/tests/open/17.t
+@@ -7,7 +7,7 @@ desc="open returns ENXIO when O_NONBLOCK is set, the named file is a fifo, O_WRO
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..3"
++quick_exit
+ 
+ n0=`namegen`
+ 
+diff --git a/tests/open/22.t b/tests/open/22.t
+index b0444af..9edd238 100644
+--- a/tests/open/22.t
++++ b/tests/open/22.t
+@@ -7,11 +7,11 @@ desc="open returns EEXIST when O_CREAT and O_EXCL were specified and the file ex
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..21"
++echo "1..9"
+ 
+ n0=`namegen`
+ 
+-for type in regular dir fifo block char socket symlink; do
++for type in regular dir symlink; do
+ 	create_file ${type} ${n0}
+ 	expect EEXIST open ${n0} O_CREAT,O_EXCL 0644
+ 	if [ "${type}" = "dir" ]; then
+diff --git a/tests/rename/00.t b/tests/rename/00.t
+index df76de1..8a46fe6 100644
+--- a/tests/rename/00.t
++++ b/tests/rename/00.t
+@@ -7,7 +7,7 @@ desc="rename changes file name"
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..150"
++echo "1..58"
+ 
+ n0=`namegen`
+ n1=`namegen`
+@@ -18,7 +18,7 @@ expect 0 mkdir ${n3} 0755
+ cdir=`pwd`
+ cd ${n3}
+ 
+-for type in regular fifo block char socket; do
++for type in regular; do
+ 	create_file ${type} ${n0} 0644
+ 	expect ${type},0644,1 lstat ${n0} type,mode,nlink
+ 	inode=`${fstest} lstat ${n0} inode`
+@@ -59,7 +59,7 @@ expect 0 unlink ${n0}
+ expect 0 unlink ${n2}
+ 
+ # successful rename(2) updates ctime.
+-for type in regular dir fifo block char socket symlink; do
++for type in regular dir symlink; do
+ 	create_file ${type} ${n0}
+ 	ctime1=`${fstest} lstat ${n0} ctime`
+ 	sleep 1
+@@ -74,7 +74,7 @@ for type in regular dir fifo block char socket symlink; do
+ done
+ 
+ # unsuccessful link(2) does not update ctime.
+-for type in regular dir fifo block char socket symlink; do
++for type in regular dir symlink; do
+ 	create_file ${type} ${n0}
+ 	ctime1=`${fstest} lstat ${n0} ctime`
+ 	sleep 1
+diff --git a/tests/rename/09.t b/tests/rename/09.t
+index de401ca..961806b 100644
+--- a/tests/rename/09.t
++++ b/tests/rename/09.t
+@@ -7,7 +7,7 @@ desc="rename returns EACCES or EPERM if the directory containing 'from' is marke
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..2353"
++echo "1..441"
+ 
+ n0=`namegen`
+ n1=`namegen`
+@@ -26,13 +26,13 @@ expect 0 chown ${n0} 65534 65534
+ expect 0 mkdir ${n1} 0755
+ expect 0 chown ${n1} 65534 65534
+ 
+-for type in regular fifo block char socket symlink; do
++for type in regular symlink; do
+ 	# User owns both: the source sticky directory and the source file.
+ 	expect 0 chown ${n0} 65534 65534
+ 	create_file ${type} ${n0}/${n2} 65534 65534
+ 	inode=`${fstest} lstat ${n0}/${n2} inode`
+ 
+-	for type in none regular fifo block char socket symlink; do
++	for type in none regular symlink; do
+ 		create_file ${type} ${n1}/${n3} 65534 65534
+ 		expect 0 -u 65534 -g 65534 rename ${n0}/${n2} ${n1}/${n3}
+ 		expect ENOENT lstat ${n0}/${n2} inode
+@@ -50,7 +50,7 @@ for type in regular fifo block char socket symlink; do
+ 		create_file ${type} ${n0}/${n2} ${id} ${id}
+ 		inode=`${fstest} lstat ${n0}/${n2} inode`
+ 
+-		for type in none regular fifo block char socket symlink; do
++		for type in none regular symlink; do
+ 			create_file ${type} ${n1}/${n3} 65534 65534
+ 			expect 0 -u 65534 -g 65534 rename ${n0}/${n2} ${n1}/${n3}
+ 			expect ENOENT lstat ${n0}/${n2} inode
+@@ -69,7 +69,7 @@ for type in regular fifo block char socket symlink; do
+ 		create_file ${type} ${n0}/${n2} 65534 65534
+ 		inode=`${fstest} lstat ${n0}/${n2} inode`
+ 
+-		for type in none regular fifo block char socket symlink; do
++		for type in none regular symlink; do
+ 			create_file ${type} ${n1}/${n3} 65534 65534
+ 			expect 0 -u 65534 -g 65534 rename ${n0}/${n2} ${n1}/${n3}
+ 			expect ENOENT lstat ${n0}/${n2} inode
+@@ -88,7 +88,7 @@ for type in regular fifo block char socket symlink; do
+ 		create_file ${type} ${n0}/${n2} ${id} ${id}
+ 		inode=`${fstest} lstat ${n0}/${n2} inode`
+ 
+-		for type in none regular fifo block char socket symlink; do
++		for type in none regular symlink; do
+ 			create_file ${type} ${n1}/${n3} 65534 65534
+ 			expect "EACCES|EPERM" -u 65534 -g 65534 rename ${n0}/${n2} ${n1}/${n3}
+ 			expect ${inode},${id},${id} lstat ${n0}/${n2} inode,uid,gid
+diff --git a/tests/rename/10.t b/tests/rename/10.t
+index 91c7843..e86e67c 100644
+--- a/tests/rename/10.t
++++ b/tests/rename/10.t
+@@ -7,7 +7,7 @@ desc="rename returns EACCES or EPERM if the file pointed at by the 'to' argument
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..2099"
++echo "1..323"
+ 
+ n0=`namegen`
+ n1=`namegen`
+@@ -25,13 +25,13 @@ expect 0 chown ${n0} 65534 65534
+ expect 0 mkdir ${n1} 0755
+ expect 0 chmod ${n1} 01777
+ 
+-for type in regular fifo block char socket symlink; do
++for type in regular symlink; do
+ 	# User owns both: the sticky directory and the destination file.
+ 	expect 0 chown ${n1} 65534 65534
+ 	create_file ${type} ${n0}/${n2} 65534 65534
+ 	inode=`${fstest} lstat ${n0}/${n2} inode`
+ 
+-	for type in regular fifo block char socket symlink; do
++	for type in regular symlink; do
+ 		create_file ${type} ${n1}/${n3} 65534 65534
+ 		expect 0 -u 65534 -g 65534 rename ${n0}/${n2} ${n1}/${n3}
+ 		expect ENOENT lstat ${n0}/${n2} inode
+@@ -49,7 +49,7 @@ for type in regular fifo block char socket symlink; do
+ 		create_file ${type} ${n0}/${n2} 65534 65534
+ 		inode=`${fstest} lstat ${n0}/${n2} inode`
+ 
+-		for type in regular fifo block char socket symlink; do
++		for type in regular symlink; do
+ 			create_file ${type} ${n1}/${n3} ${id} ${id}
+ 			expect 0 -u 65534 -g 65534 rename ${n0}/${n2} ${n1}/${n3}
+ 			expect ENOENT lstat ${n0}/${n2} inode
+@@ -68,7 +68,7 @@ for type in regular fifo block char socket symlink; do
+ 		create_file ${type} ${n0}/${n2} 65534 65534
+ 		inode=`${fstest} lstat ${n0}/${n2} inode`
+ 
+-		for type in regular fifo block char socket symlink; do
++		for type in regular symlink; do
+ 			create_file ${type} ${n1}/${n3} 65534 65534
+ 			expect 0 -u 65534 -g 65534 rename ${n0}/${n2} ${n1}/${n3}
+ 			expect ENOENT lstat ${n0}/${n2} inode
+@@ -87,7 +87,7 @@ for type in regular fifo block char socket symlink; do
+ 		create_file ${type} ${n0}/${n2} 65534 65534
+ 		inode=`${fstest} lstat ${n0}/${n2} inode`
+ 
+-		for type in regular fifo block char socket symlink; do
++		for type in regular symlink; do
+ 			create_file ${type} ${n1}/${n3} ${id} ${id}
+ 			expect "EACCES|EPERM" -u 65534 -g 65534 rename ${n0}/${n2} ${n1}/${n3}
+ 			expect ${inode} lstat ${n0}/${n2} inode
+diff --git a/tests/rename/12.t b/tests/rename/12.t
+index 5c122e6..34482a5 100644
+--- a/tests/rename/12.t
++++ b/tests/rename/12.t
+@@ -7,14 +7,14 @@ desc="rename returns ENOTDIR if a component of either path prefix is not a direc
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..32"
++echo "1..8"
+ 
+ n0=`namegen`
+ n1=`namegen`
+ n2=`namegen`
+ 
+ expect 0 mkdir ${n0} 0755
+-for type in regular fifo block char socket; do
++for type in regular; do
+ 	create_file ${type} ${n0}/${n1}
+ 	expect ENOTDIR rename ${n0}/${n1}/test ${n0}/${n2}
+ 	create_file ${type} ${n0}/${n2}
+diff --git a/tests/rename/13.t b/tests/rename/13.t
+index 7e06cc9..a1bd9bc 100644
+--- a/tests/rename/13.t
++++ b/tests/rename/13.t
+@@ -7,14 +7,14 @@ desc="rename returns ENOTDIR when the 'from' argument is a directory, but 'to' i
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..32"
++echo "1..12"
+ 
+ n0=`namegen`
+ n1=`namegen`
+ 
+ expect 0 mkdir ${n0} 0755
+ 
+-for type in regular fifo block char socket symlink; do
++for type in regular symlink; do
+ 	create_file ${type} ${n1}
+ 	expect ENOTDIR rename ${n0} ${n1}
+ 	expect dir lstat ${n0} type
+diff --git a/tests/rename/14.t b/tests/rename/14.t
+index d050db9..806f1ee 100644
+--- a/tests/rename/14.t
++++ b/tests/rename/14.t
+@@ -7,14 +7,14 @@ desc="rename returns EISDIR when the 'to' argument is a directory, but 'from' is
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..32"
++echo "1..12"
+ 
+ n0=`namegen`
+ n1=`namegen`
+ 
+ expect 0 mkdir ${n0} 0755
+ 
+-for type in regular fifo block char socket symlink; do
++for type in regular symlink; do
+ 	create_file ${type} ${n1}
+ 	expect EISDIR rename ${n1} ${n0}
+ 	expect dir lstat ${n0} type
+diff --git a/tests/rename/20.t b/tests/rename/20.t
+index b587278..13883c7 100644
+--- a/tests/rename/20.t
++++ b/tests/rename/20.t
+@@ -7,7 +7,7 @@ desc="rename returns EEXIST or ENOTEMPTY if the 'to' argument is a directory and
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..25"
++echo "1..13"
+ 
+ n0=`namegen`
+ n1=`namegen`
+@@ -16,7 +16,7 @@ n2=`namegen`
+ expect 0 mkdir ${n0} 0755
+ expect 0 mkdir ${n1} 0755
+ 
+-for type in regular dir fifo block char socket symlink; do
++for type in regular dir symlink; do
+ 	create_file ${type} ${n1}/${n2}
+ 	expect "EEXIST|ENOTEMPTY" rename ${n0} ${n1}
+ 	if [ "${type}" = "dir" ]; then
+diff --git a/tests/rmdir/06.t b/tests/rmdir/06.t
+index 371649c..b8cf6ee 100644
+--- a/tests/rmdir/06.t
++++ b/tests/rmdir/06.t
+@@ -7,13 +7,13 @@ desc="rmdir returns EEXIST or ENOTEMPTY the named directory contains files other
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..23"
++echo "1..11"
+ 
+ n0=`namegen`
+ n1=`namegen`
+ 
+ expect 0 mkdir ${n0} 0755
+-for type in regular dir fifo block char socket symlink; do
++for type in regular dir symlink; do
+ 	create_file ${type} ${n0}/${n1}
+ 	expect "EEXIST|ENOTEMPTY" rmdir ${n0}
+ 	if [ "${type}" = "dir" ]; then
+diff --git a/tests/symlink/08.t b/tests/symlink/08.t
+index 001fffc..d314d19 100644
+--- a/tests/symlink/08.t
++++ b/tests/symlink/08.t
+@@ -7,11 +7,11 @@ desc="symlink returns EEXIST if the name2 argument already exists"
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..21"
++echo "1..9"
+ 
+ n0=`namegen`
+ 
+-for type in regular dir fifo block char socket symlink; do
++for type in regular dir symlink; do
+ 	create_file ${type} ${n0}
+ 	expect EEXIST symlink test ${n0}
+ 	if [ "${type}" = "dir" ]; then
+diff --git a/tests/unlink/11.t b/tests/unlink/11.t
+index 259c50d..93f3af3 100644
+--- a/tests/unlink/11.t
++++ b/tests/unlink/11.t
+@@ -7,7 +7,7 @@ desc="unlink returns EACCES or EPERM if the directory containing the file is mar
+ dir=`dirname $0`
+ . ${dir}/../misc.sh
+ 
+-echo "1..270"
++echo "1..94"
+ 
+ n0=`namegen`
+ n1=`namegen`
+@@ -21,7 +21,7 @@ expect 0 mkdir ${n0} 0755
+ expect 0 chmod ${n0} 01777
+ expect 0 chown ${n0} 65534 65534
+ 
+-for type in regular fifo block char socket symlink; do
++for type in regular symlink; do
+ 	# User owns both: the sticky directory and the file.
+ 	expect 0 chown ${n0} 65534 65534
+ 	create_file ${type} ${n0}/${n1} 65534 65534
+diff --git a/tests/utimensat/00.t b/tests/utimensat/00.t
+index 5a75585..9185ce2 100644
+--- a/tests/utimensat/00.t
++++ b/tests/utimensat/00.t
+@@ -9,7 +9,7 @@ dir=`dirname $0`
+ 
+ require "utimensat"
+ 
+-echo "1..32"
++echo "1..12"
+ 
+ n0=`namegen`
+ n1=`namegen`
+@@ -20,7 +20,7 @@ cd ${n1}
+ 
+ DATE1=1900000000 #Sun Mar 17 11:46:40 MDT 2030
+ DATE2=1950000000 #Fri Oct 17 04:40:00 MDT 2031
+-for type in regular dir fifo block char socket; do
++for type in regular dir; do
+ 	create_file ${type} ${n0}
+ 	expect 0 open . O_RDONLY : utimensat 0 ${n0} $DATE1 0 $DATE2 0 0
+ 	expect $DATE1 lstat ${n0} atime
+-- 
+2.11.0
+

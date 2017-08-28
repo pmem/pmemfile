@@ -89,6 +89,15 @@ RUN ./install-syscall_intercept.sh deb
 
 RUN curl -L -o /googletest-1.8.0.zip https://github.com/google/googletest/archive/release-1.8.0.zip
 
+# Install sqlite
+COPY install-sqlite.sh install-sqlite.sh
+RUN ./install-sqlite.sh
+
+# Install pjdfstest
+COPY 0001-disable-special-files-tests.patch 0001-disable-special-files-tests.patch
+COPY install-pjdfstest.sh install-pjdfstest.sh
+RUN ./install-pjdfstest.sh
+
 # Add user
 ENV USER user
 ENV USERPASS pass
@@ -103,10 +112,6 @@ RUN apt-get remove -y \
 RUN apt-get autoremove -y
 
 USER $USER
-
-# Install sqlite
-COPY install-sqlite.sh install-sqlite.sh
-RUN ./install-sqlite.sh
 
 # Set required environment variables
 ENV OS ubuntu

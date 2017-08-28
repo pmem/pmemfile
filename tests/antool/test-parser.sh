@@ -90,6 +90,11 @@ TEST_DIR=$(dirname $0)
 
 ANTOOL=$(realpath $TEST_DIR/../../src/tools/antool/antool.py)
 
+if [ "$COVERAGE" == "1" ]; then
+	COVERAGE_REPORT=.coverage
+	ANTOOL="$(which python3) $(which coverage) run -a --rcfile=$TEST_DIR/.coveragerc --source=$PYTHON_SOURCE $ANTOOL"
+fi
+
 FUNCT=$TEST_DIR/helper_functions.sh
 [ ! -f $FUNCT ] \
 	&& echo "Error: missing file: $FUNCT" \
@@ -102,6 +107,8 @@ NAME_PATTERN="$NAME-$TEST_NUM-$MAX_STR_LEN"
 DIR_NAME="logs-${NAME_PATTERN}-$(date +%F_%T_%N)-$$"
 mkdir -p $DIR_NAME
 cd $DIR_NAME
+
+[ "$COVERAGE" == "1" -a -f ../$COVERAGE_REPORT ] && cp ../$COVERAGE_REPORT .
 
 if [ "$VLTRACE" -a ! "$VLTRACE_SKIP" ]; then
 	if [ ! -x $TEST_FILE ]; then
@@ -165,6 +172,9 @@ check
 # test succeeded
 # copy vltrace binary log for regeneration
 cp $OUT_VLT ..
+
+# copy coverage report
+[ "$COVERAGE" == "1" -a -f $COVERAGE_REPORT ] && cp -f $COVERAGE_REPORT ..
 
 # remove the temporary test directory
 cd ..

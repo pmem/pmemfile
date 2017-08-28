@@ -1768,7 +1768,7 @@ dispatch_syscall_fd_first(long syscall_number,
 		return fd_first_pmemfile_write(arg0, arg1, arg2);
 
 	case SYS_writev:
-		return fd_first_pmemfile_write(arg0, arg1, arg2);
+		return fd_first_pmemfile_writev(arg0, arg1, arg2);
 
 	case SYS_read:
 		return fd_first_pmemfile_read(arg0, arg1, arg2);

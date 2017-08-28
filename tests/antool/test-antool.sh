@@ -131,7 +131,7 @@ if [ ! "$VLTRACE_SKIP" ]; then
 	USER=$(stat --format=%U $TEST_FILE)
 	chown -R $USER.$USER "$DIR"/*
 
-	# remove all logs and match files of the current test
+	# remove all old logs and match files of the current test
 	rm -f *-$TEST_NUM.log*
 	echo "$ sudo bash -c \"$RUN_VLTRACE -o $OUTBIN $TEST_FILE $TEST_NUM $TEST_OPTIONS\""
 	sudo bash -c "$RUN_VLTRACE -o $OUTBIN $TEST_FILE $TEST_NUM $TEST_OPTIONS"
@@ -175,8 +175,10 @@ check
 
 # test succeeded
 # copy vltrace binary log for regeneration
-cp $OUTBIN ..
-cp $FILE_DIR_PMEM ..
+if [ ! "$VLTRACE_SKIP" ]; then
+	mv -f $OUTBIN ..
+	mv -f $FILE_DIR_PMEM ..
+fi
 
 # remove the temporary test directory
 cd ..

@@ -127,8 +127,8 @@ OUT_VLT=$OUT_BIN
 
 if [ ! "$VLTRACE_SKIP" ]; then
 	require_superuser
-	# remove all logs of the current test
-	rm -f *-$TEST_NUM.log
+	# remove all old logs and match files of the current test
+	rm -f *-$TEST_NUM.log*
 	echo "$ sudo bash -c \"$RUN_VLTRACE $FF -o $OUT_VLT $TEST_FILE $TEST_NUM\""
 	sudo bash -c "$RUN_VLTRACE $FF -o $OUT_VLT $TEST_FILE $TEST_NUM"
 else
@@ -164,7 +164,7 @@ check
 
 # test succeeded
 # copy vltrace binary log for regeneration
-cp $OUT_VLT ..
+[ ! "$VLTRACE_SKIP" ] && mv -f $OUT_VLT ..
 
 # remove the temporary test directory
 cd ..

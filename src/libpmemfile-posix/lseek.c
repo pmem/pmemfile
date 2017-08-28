@@ -105,56 +105,6 @@ lseek_seek_hole(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	return offset;
 }
 
-/*
- * lseek_seek_data_or_hole -- part of the lseek implementation
- * Expects the vinode to be locked while being called.
- */
-static pmemfile_off_t
-lseek_seek_data_or_hole(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
-			pmemfile_off_t offset, int whence)
-{
-	pmemfile_ssize_t fsize = (pmemfile_ssize_t)vinode->inode->size;
-
-	if (!vinode_is_regular_file(vinode))
-		return -ENXIO;
-
-	if (offset < 0 || offset >= fsize) {
-		/*
-		 * offset < 0
-		 * on xfs calling lseek data or hole with negative offset
-		 * will return -1 with ENXIO errno
-		 * this also happens with proper ext4 implementation
-		 * (Linux 4.4.76 is fine, however Linux 4.9.37 has
-		 * a bug which causes EFSCORRUPTED errno)
-		 *
-		 * offset >= fsize
-		 * From GNU man page: ENXIO if
-		 * "...ENXIO  whence is SEEK_DATA or SEEK_HOLE, and the file
-		 * offset is beyond the end of the file..."
-		 */
-		return -ENXIO;
-	}
-
-	/* Lock the vinode for read, rebuild block-tree if needed */
-	int r = vinode_rdlock_with_block_tree(pfp, vinode);
-	if (r != 0)
-		return r;
-
-	if (whence == PMEMFILE_SEEK_DATA) {
-		offset = lseek_seek_data(pfp, vinode, offset, fsize);
-	} else {
-		ASSERT(whence == PMEMFILE_SEEK_HOLE);
-		offset = lseek_seek_hole(pfp, vinode, offset, fsize);
-	}
-
-	os_rwlock_unlock(&vinode->rwlock);
-
-	if (offset > fsize)
-		offset = fsize;
-
-	return offset;
-}
-
 static pmemfile_off_t
 lseek_end_directory(PMEMfilepool *pfp, struct pmemfile_inode *inode,
 			pmemfile_off_t offset)
@@ -196,6 +146,84 @@ lseek_end_directory(PMEMfilepool *pfp, struct pmemfile_inode *inode,
 	}
 
 	return (ret_dir_num << 32) + ret + offset;
+}
+
+/*
+ * lseek_seek_data_or_hole -- part of the lseek implementation
+ * Expects the vinode to be locked while being called.
+ */
+static pmemfile_off_t
+lseek_seek_data_or_hole(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+			pmemfile_off_t offset, int whence)
+{
+	pmemfile_ssize_t fsize = (pmemfile_ssize_t)vinode->inode->size;
+
+	if (vinode_is_symlink(vinode)) {
+		return -ENXIO;
+	} else if (vinode_is_regular_file(vinode)) {
+		if (offset < 0 || offset >= fsize) {
+			/*
+			 * offset < 0
+			 * on xfs calling lseek data or hole with negative
+			 * offset will return -1 with ENXIO errno
+			 * this also happens with proper ext4 implementation
+			 * (Linux 4.4.76 is fine, however Linux 4.9.37 has
+			 * a bug which causes EFSCORRUPTED errno)
+			 *
+			 * offset >= fsize
+			 * From GNU man page: ENXIO if
+			 * "...ENXIO  whence is SEEK_DATA or SEEK_HOLE, and
+			 * the file offset is beyond the end of the file..."
+			 */
+			return -ENXIO;
+		}
+	} else if (vinode_is_dir(vinode)) {
+		/* Nothing to do for now */
+	} else
+		return -ENXIO;
+
+	/* Lock the vinode for read, rebuild block-tree if needed */
+	int r = vinode_rdlock_with_block_tree(pfp, vinode);
+	if (r != 0)
+		return r;
+
+	if (vinode_is_regular_file(vinode)) {
+		if (whence == PMEMFILE_SEEK_DATA) {
+			offset = lseek_seek_data(pfp, vinode, offset, fsize);
+		} else {
+			ASSERT(whence == PMEMFILE_SEEK_HOLE);
+			offset = lseek_seek_hole(pfp, vinode, offset, fsize);
+		}
+	} else {
+		/*
+		 * SEEK_DATA seems to work similar to SEEK_SET in ext4.
+		 * After the end of directory there will be no data,
+		 * so as man page states - ENXIO errno applies.
+		 *
+		 * SEEK_HOLE - directory is constant data series,
+		 * so first hole is pointed to by last dirent.
+		 */
+		pmemfile_off_t end = lseek_end_directory(pfp, vinode->inode, 0);
+		if (whence == PMEMFILE_SEEK_DATA) {
+			if (offset < 0)
+				offset = -EINVAL;
+			else if (offset >= end)
+				offset = -ENXIO;
+		} else {
+			ASSERT(whence == PMEMFILE_SEEK_HOLE);
+			if (offset >= end)
+				offset = -ENXIO;
+			else
+				offset = end;
+		}
+	}
+
+	os_rwlock_unlock(&vinode->rwlock);
+
+	if (offset > fsize)
+		offset = fsize;
+
+	return offset;
 }
 
 /*

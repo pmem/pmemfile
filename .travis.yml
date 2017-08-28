@@ -18,6 +18,8 @@ env:
     - AUTOGENSOURCES=1 PUSH_IMAGE=1 COVERAGE=1 OS=ubuntu OS_VER=17.04
     - COVERITY=1 OS=ubuntu OS_VER=16.04
     - SQLITE=1 COVERAGE=1 OS=ubuntu OS_VER=16.04
+# too slow for Travis for now
+#    - PJDFSTEST=1 OS=ubuntu OS_VER=16.04
 
 before_install:
   - export HOST_WORKDIR=`pwd`

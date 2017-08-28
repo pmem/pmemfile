@@ -31,27 +31,49 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #
-# install-nvml.sh - installs libpmem & libpmemobj
+# build-and-test.sh - builds pmemfile and runs pjdfstest
 #
 
-git clone https://github.com/pmem/nvml.git
-cd nvml
-git checkout 1.3
-BUILD_PACKAGE_CHECK=n make $1 EXTRA_CFLAGS="-DUSE_VALGRIND"
-if [ "$1" = "dpkg" ]; then
-	sudo dpkg -i dpkg/libpmem_*.deb dpkg/libpmem-dev_*.deb
-	sudo dpkg -i dpkg/libpmemobj_*.deb dpkg/libpmemobj-dev_*.deb
-	# nvml-tools deps
-	sudo dpkg -i dpkg/libpmemblk_*.deb dpkg/libpmemlog_*.deb dpkg/libpmempool_*.deb
-	sudo dpkg -i dpkg/nvml-tools_*.deb
-elif [ "$1" = "rpm" ]; then
-	sudo rpm -i rpm/*/libpmem-*.rpm
-	sudo rpm -i rpm/*/libpmemobj-*.rpm
-	# nvml-tools deps, version specified to avoid installing devel packages
-	sudo rpm -i rpm/*/libpmemblk-1.3*.rpm
-	sudo rpm -i rpm/*/libpmemlog-1.3*.rpm
-	sudo rpm -i rpm/*/libpmempool-1.3*.rpm
-	sudo rpm -i rpm/*/nvml-tools-*.rpm
+if [[ -z "$WORKDIR"  ]]; then
+	echo "ERROR: The variable WORKDIR has to contain a path to " \
+	"the root of pmemfile repository."
+	exit 1
 fi
-cd ..
-rm -rf nvml
+
+export PMEMFILE_INSTALL_DIR=$HOME/pmemfile
+export PMEMFILE_SHARED_OPTS=".. -DCMAKE_INSTALL_PREFIX=$PMEMFILE_INSTALL_DIR"
+
+if [ "$COVERAGE" = "1" ]; then
+	export PMEMFILE_SHARED_OPTS="${PMEMFILE_SHARED_OPTS} -DCMAKE_C_FLAGS=-coverage -DCMAKE_CXX_FLAGS=-coverage"
+fi
+
+# Install pmemfile
+cd $WORKDIR
+mkdir -p build
+cd build
+if [ ! -d ${PMEMFILE_INSTALL_DIR} ]; then
+	cmake ${PMEMFILE_SHARED_OPTS} -DCMAKE_BUILD_TYPE=Debug
+	make install -j2
+	rm -r *
+	cmake ${PMEMFILE_SHARED_OPTS} -DCMAKE_BUILD_TYPE=RelWithDebInfo
+	make install -j2
+fi
+
+export PMEMFILE_POOL_FILE=/tmp/pool
+export PMEMFILE_POOL_SIZE=0
+export PMEMFILE_MOUNT_POINT=/tmp/pjd
+export PJDFSTEST_DIR=/root/pjdfstest
+
+rm -f ${PMEMFILE_POOL_FILE}
+truncate -s 1G ${PMEMFILE_POOL_FILE}
+chmod a+rw ${PMEMFILE_POOL_FILE}
+
+cd $WORKDIR/utils/docker/pjdfstest/
+./test.sh
+
+if [ "$COVERAGE" = "1" ]; then
+	bash <(curl -s https://codecov.io/bash)
+fi
+
+cd $WORKDIR
+rm -rf build

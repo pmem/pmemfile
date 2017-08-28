@@ -31,27 +31,56 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #
-# install-nvml.sh - installs libpmem & libpmemobj
+# test.sh
 #
 
-git clone https://github.com/pmem/nvml.git
-cd nvml
-git checkout 1.3
-BUILD_PACKAGE_CHECK=n make $1 EXTRA_CFLAGS="-DUSE_VALGRIND"
-if [ "$1" = "dpkg" ]; then
-	sudo dpkg -i dpkg/libpmem_*.deb dpkg/libpmem-dev_*.deb
-	sudo dpkg -i dpkg/libpmemobj_*.deb dpkg/libpmemobj-dev_*.deb
-	# nvml-tools deps
-	sudo dpkg -i dpkg/libpmemblk_*.deb dpkg/libpmemlog_*.deb dpkg/libpmempool_*.deb
-	sudo dpkg -i dpkg/nvml-tools_*.deb
-elif [ "$1" = "rpm" ]; then
-	sudo rpm -i rpm/*/libpmem-*.rpm
-	sudo rpm -i rpm/*/libpmemobj-*.rpm
-	# nvml-tools deps, version specified to avoid installing devel packages
-	sudo rpm -i rpm/*/libpmemblk-1.3*.rpm
-	sudo rpm -i rpm/*/libpmemlog-1.3*.rpm
-	sudo rpm -i rpm/*/libpmempool-1.3*.rpm
-	sudo rpm -i rpm/*/nvml-tools-*.rpm
+if [ -z "${PMEMFILE_INSTALL_DIR}" ]; then
+	echo "PMEMFILE_INSTALL_DIR not set"
+	exit 1
 fi
-cd ..
-rm -rf nvml
+
+if [ -z "${PMEMFILE_POOL_FILE}" ]; then
+	echo "PMEMFILE_POOL_FILE not set"
+	exit 1
+fi
+
+if [ -z "${PMEMFILE_POOL_SIZE}" ]; then
+	echo "PMEMFILE_POOL_SIZE not set"
+	exit 1
+fi
+
+if [ -z "${PMEMFILE_MOUNT_POINT}" ]; then
+	echo "PMEMFILE_MOUNT_POINT not set"
+	exit 1
+fi
+
+if [ -z "${PJDFSTEST_DIR}" ]; then
+	echo "PJDFSTEST_DIR not set"
+	exit 1
+fi
+
+export TEST_DIR=`pwd`
+export LD_LIBRARY_PATH=${PMEMFILE_INSTALL_DIR}/lib:${LD_LIBRARY_PATH}
+export PATH=${PMEMFILE_INSTALL_DIR}/bin:${PATH}
+export PMEMFILE_PRELOAD_PROCESS_SWITCHING=1
+export PMEMOBJ_CONF="tx.debug.skip_expensive_checks=1"
+
+mkdir -p ${PMEMFILE_MOUNT_POINT}
+mount -t tmpfs | grep "pmemfile:${PMEMFILE_POOL_FILE} on ${PMEMFILE_MOUNT_POINT} " && umount ${PMEMFILE_MOUNT_POINT}
+
+if echo "${PMEMFILE_POOL_FILE}" | grep -q "^/dev/dax"; then
+	pmempool rm ${PMEMFILE_POOL_FILE}
+fi
+
+mkfs.pmemfile ${PMEMFILE_POOL_FILE} ${PMEMFILE_POOL_SIZE}
+pmemfile-mount ${PMEMFILE_POOL_FILE} ${PMEMFILE_MOUNT_POINT}
+export PMEM_IS_PMEM_FORCE=1
+
+cd ${PMEMFILE_MOUNT_POINT}
+
+rm -f ${TEST_DIR}/pmemfile.log
+LD_PRELOAD=libpmemfile.so prove -rv --timer ${PJDFSTEST_DIR}/tests/$1 2>&1 | tee ${TEST_DIR}/pmemfile.log
+
+cd ${TEST_DIR}
+cat pmemfile.log | sed -n "/Test Summary Report/,\$p" > pmemfile-summary.log
+../../../tests/match pmemfile-summary.log.match

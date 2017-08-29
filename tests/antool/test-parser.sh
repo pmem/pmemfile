@@ -90,10 +90,9 @@ TEST_DIR=$(dirname $0)
 
 ANTOOL=$(realpath $TEST_DIR/../../src/tools/antool/antool.py)
 
-if [ "$COVERAGE" == "1" ]; then
-	COVERAGE_REPORT=.coverage
+COVERAGE_REPORT=.coverage
+[ "$COVERAGE" == "1" ] && \
 	ANTOOL="$(which python3) $(which coverage) run -a --rcfile=$TEST_DIR/.coveragerc --source=$PYTHON_SOURCE $ANTOOL"
-fi
 
 FUNCT=$TEST_DIR/helper_functions.sh
 [ ! -f $FUNCT ] \

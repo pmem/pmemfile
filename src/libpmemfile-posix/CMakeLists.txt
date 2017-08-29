@@ -220,7 +220,6 @@ target_link_libraries(pmemfile-posix_shared PRIVATE ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(pmemfile-posix_shared PRIVATE -Wl,--version-script=${CMAKE_CURRENT_BINARY_DIR}/libpmemfile-posix.map)
 set_target_properties(pmemfile-posix_shared PROPERTIES LINK_DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/libpmemfile-posix.map)
 
-set_target_properties(pmemfile-posix_static_unscoped PROPERTIES OUTPUT_NAME pmemfile-posix_unscoped)
 set_target_properties(pmemfile-posix_shared PROPERTIES OUTPUT_NAME pmemfile-posix)
 set_target_properties(pmemfile-posix_shared PROPERTIES VERSION ${VERSION} SOVERSION ${VERSION_MAJOR})
 
@@ -229,11 +228,26 @@ if(NOT ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 		PUBLIC_HEADER "${CMAKE_SOURCE_DIR}/include/libpmemfile-posix.h;${CMAKE_SOURCE_DIR}/include/libpmemfile-posix-stubs.h")
 endif()
 
-add_custom_command(OUTPUT libpmemfile-posix.a
-		COMMAND objcopy --localize-hidden ${OBJDUMP_EXPORTED_SYMBOLS} libpmemfile-posix_unscoped.a libpmemfile-posix.a
-		DEPENDS pmemfile-posix_static_unscoped
+set(posix_unscoped_a $<TARGET_FILE:pmemfile-posix_static_unscoped>)
+
+add_custom_command(OUTPUT pmemfile-posix_unscoped.o
+		COMMAND ${CMAKE_LINKER} -r --whole-archive ${posix_unscoped_a}
+					-o pmemfile-posix_unscoped.o
+		COMMENT "Linking pmemfile-posix_unscoped.o"
+		DEPENDS pmemfile-posix_static_unscoped)
+
+add_custom_command(OUTPUT pmemfile-posix_scoped.o
+		COMMAND ${CMAKE_OBJCOPY} --localize-hidden
+				${OBJDUMP_EXPORTED_SYMBOLS}
+				pmemfile-posix_unscoped.o pmemfile-posix_scoped.o
+		COMMENT "Creating pmemfile-posix_scoped.o"
+		DEPENDS pmemfile-posix_unscoped.o
 		DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/libpmemfile-posix.map)
-add_custom_target(pmemfile-posix_static ALL DEPENDS libpmemfile-posix.a)
+
+add_library(pmemfile-posix_static STATIC pmemfile-posix_scoped.o)
+set_target_properties(pmemfile-posix_static PROPERTIES LINKER_LANGUAGE C)
+set_target_properties(pmemfile-posix_static PROPERTIES OUTPUT_NAME pmemfile-posix)
+target_link_libraries(pmemfile-posix_static INTERFACE ${PMEMOBJ_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 
 install(TARGETS pmemfile-posix_shared
 	CONFIGURATIONS Release None RelWithDebInfo

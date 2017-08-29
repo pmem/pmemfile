@@ -151,7 +151,6 @@ mv $OUT_TXT $OUT_BARE
 	&& cat $OUT_TXT \
 	&& exit 1
 
-echo "$ sort $OUT_BARE -o $OUT_SORT"
 sort $OUT_BARE -o $OUT_SORT
 
 if [ ! "$FF" ]; then
@@ -161,7 +160,6 @@ else
 	# tests with fork()
 	NFILES=$(split_forked_file $OUT_SORT out $TEST_NUM.log)
 	for N in $(seq -s' ' $NFILES); do
-		echo "$ sort out-$N-$TEST_NUM.log -o out-sort-$N-$TEST_NUM.log"
 		sort out-$N-$TEST_NUM.log -o out-sort-$N-$TEST_NUM.log
 		cut_part_file out-sort-$N-$TEST_NUM.log "$PATTERN_START" "$PATTERN_END" > cut-$N-$TEST_NUM.log
 	done

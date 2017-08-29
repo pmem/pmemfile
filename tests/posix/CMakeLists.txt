@@ -29,6 +29,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# XXX Needed for using libpmemfile-posix_static
+link_directories(${PMEMOBJ_LIBRARY_DIRS})
+
 add_c_flag(-fno-strict-aliasing)
 
 # GTest macros trigger this warning with GCC7. The code is correct
@@ -92,34 +95,47 @@ add_check_whitespace("tests-posix-test" ${CMAKE_CURRENT_SOURCE_DIR}/*.*pp)
 add_cstyle(tests-posix-test_bt ${CMAKE_CURRENT_SOURCE_DIR}/../test_backtrace.c)
 add_check_whitespace(tests-posix-test_bt ${CMAKE_CURRENT_SOURCE_DIR}/../test_backtrace.c)
 
-function(build_test name srcs)
+function(build_test name posix_lib srcs)
 	add_cppstyle(tests-posix-${name} ${CMAKE_CURRENT_SOURCE_DIR}/${srcs})
 	add_check_whitespace(tests-posix-${name} ${CMAKE_CURRENT_SOURCE_DIR}/${srcs})
 	add_executable(${name} ${srcs})
-	target_link_libraries(${name} pmemfile-posix_shared pmemfile_test test_backtrace)
+	target_link_libraries(${name} ${posix_lib} pmemfile_test test_backtrace)
 	if(LIBUNWIND_FOUND)
 		target_link_libraries(${name} ${LIBUNWIND_LIBRARIES} ${CMAKE_DL_LIBS})
 	endif()
 	add_dependencies(tests ${name})
 endfunction()
 
-build_test(file_basic basic/basic.cpp)
-build_test(file_pointer_caching pointer_caching/pointer_caching.cpp)
-build_test(file_crash crash/crash.cpp)
-build_test(file_dirs dirs/dirs.cpp)
-build_test(file_getdents getdents/getdents.cpp)
-build_test(file_mt mt/mt.cpp)
-build_test(file_openp openp/openp.cpp)
-build_test(file_permissions permissions/permissions.cpp)
-build_test(file_rw rw/rw.cpp)
-build_test(file_stat stat/stat.cpp)
-build_test(file_symlinks symlinks/symlinks.cpp)
-build_test(file_timestamps timestamps/timestamps.cpp)
+function(build_test_using_shared name srcs)
+	build_test(${name} pmemfile-posix_shared ${srcs})
+endfunction()
+
+function(build_test_using_static name srcs)
+	build_test(${name} pmemfile-posix_static ${srcs})
+endfunction()
+
+build_test_using_shared(file_basic basic/basic.cpp)
+build_test_using_static(file_basic_using_static basic/basic.cpp)
+build_test_using_shared(file_pointer_caching pointer_caching/pointer_caching.cpp)
+build_test_using_shared(file_crash crash/crash.cpp)
+build_test_using_shared(file_dirs dirs/dirs.cpp)
+build_test_using_shared(file_getdents getdents/getdents.cpp)
+build_test_using_shared(file_mt mt/mt.cpp)
+build_test_using_shared(file_openp openp/openp.cpp)
+build_test_using_shared(file_permissions permissions/permissions.cpp)
+build_test_using_shared(file_rw rw/rw.cpp)
+build_test_using_shared(file_stat stat/stat.cpp)
+build_test_using_shared(file_symlinks symlinks/symlinks.cpp)
+build_test_using_shared(file_timestamps timestamps/timestamps.cpp)
 
 # Configures test ${name} using tracer ${tracer} and gtest filter ${filter}
 # Optional next argument is passed as is to test.
 # Optional next argument is appended to environment variables.
-function(add_test_with_filter name filter tracer)
+function(add_test_with_filter name filter tracer executable)
+	if ("${executable}" STREQUAL "")
+		set(executable ${name})
+	endif()
+
 	set(vg_tracers memcheck helgrind drd pmemcheck)
 	if ("${filter}" STREQUAL "")
 		set(filter_postfix)
@@ -147,16 +163,16 @@ function(add_test_with_filter name filter tracer)
 		return()
 	endif()
 
-	add_test(NAME ${name}${filter_postfix}_${tracer}
+	add_test(NAME ${executable}${filter_postfix}_${tracer}
 		COMMAND ${CMAKE_COMMAND}
 			${GLOBAL_TEST_ARGS}
-			-DTEST_NAME=${name}${filter_postfix}_${tracer}
+			-DTEST_NAME=${executable}${filter_postfix}_${tracer}
 			-DSRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/${name}
-			-DBIN_DIR=${CMAKE_CURRENT_BINARY_DIR}/${name}${filter_postfix}_${tracer}
-			-DTEST_EXECUTABLE=$<TARGET_FILE:file_${name}>
+			-DBIN_DIR=${CMAKE_CURRENT_BINARY_DIR}/${executable}${filter_postfix}_${tracer}
+			-DTEST_EXECUTABLE=$<TARGET_FILE:file_${executable}>
 			-DTRACER=${tracer}
 			-DLONG_TESTS=${LONG_TESTS}
-			${ARGV3}
+			${ARGV4}
 			${filter_cmd}
 			-P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/${name}.cmake)
 
@@ -165,10 +181,15 @@ function(add_test_with_filter name filter tracer)
 endfunction()
 
 function(add_test_generic name tracer)
-	add_test_with_filter(${name} "" ${tracer} ${ARGN})
+	add_test_with_filter(${name} "" ${tracer} ${name} ${ARGN})
+endfunction()
+
+function(add_test_generic_with_exe name tracer executable)
+	add_test_with_filter(${name} "" ${tracer} ${executable} ${ARGN})
 endfunction()
 
 add_test_generic(basic none)
+add_test_generic_with_exe(basic none basic_using_static)
 add_test_generic(basic memcheck)
 add_test_generic(basic helgrind)
 add_test_generic(basic pmemcheck)
@@ -184,7 +205,7 @@ add_test_generic(crash none)
 
 add_test_generic(dirs none)
 add_test_generic(dirs memcheck)
-add_test_generic(dirs helgrind  -Dops=10)
+add_test_generic(dirs helgrind -Dops=10)
 add_test_generic(dirs drd)
 add_test_generic(dirs pmemcheck -Dops=10)
 
@@ -193,11 +214,11 @@ add_test_generic(getdents memcheck)
 add_test_generic(getdents pmemcheck)
 
 function(add_mt_test tracer ops)
-	add_test_with_filter(mt open_close_create_unlink ${tracer} -Dops=${ops})
-	add_test_with_filter(mt pread                    ${tracer} -Dops=${ops})
-	add_test_with_filter(mt rename                   ${tracer} -Dops=${ops})
-	add_test_with_filter(mt rename_random_paths      ${tracer} -Dops=${ops})
-	add_test_with_filter(mt exchange_random_paths    ${tracer} -Dops=${ops})
+	add_test_with_filter(mt open_close_create_unlink ${tracer} "" -Dops=${ops})
+	add_test_with_filter(mt pread                    ${tracer} "" -Dops=${ops})
+	add_test_with_filter(mt rename                   ${tracer} "" -Dops=${ops})
+	add_test_with_filter(mt rename_random_paths      ${tracer} "" -Dops=${ops})
+	add_test_with_filter(mt exchange_random_paths    ${tracer} "" -Dops=${ops})
 endfunction()
 
 if(LONG_TESTS)

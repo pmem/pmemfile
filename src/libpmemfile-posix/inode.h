@@ -48,6 +48,12 @@ struct pmemfile_vinode {
 	/* read-write lock, also protects inode read/writes */
 	os_rwlock_t rwlock;
 
+	/*
+	 * Counter to keep track of modifications that potentially
+	 * invalidate a block_pointer_cache field in pmemfile_file struct.
+	 */
+	uint64_t block_pointer_invalidation_counter;
+
 	/* persistent inode */
 	struct pmemfile_inode *inode;
 

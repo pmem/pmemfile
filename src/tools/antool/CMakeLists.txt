@@ -29,25 +29,17 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-add_executable(mkfs.pmemfile mkfs.pmemfile.c)
-target_link_libraries(mkfs.pmemfile pmemfile-posix_shared)
+set(ANTOOL_BIN "${CMAKE_CURRENT_BINARY_DIR}/antool")
+set(ANTOOL_DIR "${CMAKE_INSTALL_PREFIX}/share/antool")
 
-add_executable(pmemfile-cat pmemfile-cat.c)
-target_link_libraries(pmemfile-cat pmemfile-posix_shared)
+# create a main antool startup file
+file(WRITE  ${ANTOOL_BIN} "#!/bin/sh\n")
+file(APPEND ${ANTOOL_BIN} "exec python3 ${ANTOOL_DIR}/antool.py \$*\n")
 
-add_executable(pmemfile-mount pmemfile-mount.c)
-
-install(TARGETS mkfs.pmemfile
+install(PROGRAMS ${ANTOOL_BIN}
 	CONFIGURATIONS Release None RelWithDebInfo
-	DESTINATION ${CMAKE_INSTALL_BINDIR}
-	PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+	DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install(TARGETS pmemfile-mount
+install(DIRECTORY . DESTINATION ${ANTOOL_DIR}
 	CONFIGURATIONS Release None RelWithDebInfo
-	DESTINATION ${CMAKE_INSTALL_BINDIR}
-	PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
-
-add_cstyle(tools ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
-add_check_whitespace(tools ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
-
-add_subdirectory(antool)
+	FILES_MATCHING PATTERN "*.py")

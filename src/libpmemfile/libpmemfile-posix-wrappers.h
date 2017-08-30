@@ -85,6 +85,19 @@ wrapper_pmemfile_pool_close(PMEMfilepool *pfp)
 	pmemfile_pool_close(pfp);
 }
 
+static inline void
+wrapper_pmemfile_pool_set_device(PMEMfilepool *pfp,
+		pmemfile_dev_t dev)
+{
+	log_write(
+	    "pmemfile_pool_set_device(%p, %jx)",
+		pfp,
+		(uintmax_t)dev);
+
+	pmemfile_pool_set_device(pfp,
+		dev);
+}
+
 static inline PMEMfile *
 wrapper_pmemfile_create(PMEMfilepool *pfp,
 		const char *pathname,
@@ -1866,6 +1879,43 @@ wrapper_pmemfile_errormsg(void)
 
 	log_write(
 	    "pmemfile_errormsg() = %p",
+		ret);
+
+	return ret;
+}
+
+static inline int
+wrapper_pmemfile_pool_resume(PMEMfilepool *pfp,
+		const char *pathname)
+{
+	int ret;
+
+	ret = pmemfile_pool_resume(pfp,
+		pathname);
+	if (ret < 0)
+		ret = -errno;
+
+	log_write(
+	    "pmemfile_pool_resume(%p, \"%s\") = %d",
+		pfp,
+		pathname,
+		ret);
+
+	return ret;
+}
+
+static inline int
+wrapper_pmemfile_pool_suspend(PMEMfilepool *pfp)
+{
+	int ret;
+
+	ret = pmemfile_pool_suspend(pfp);
+	if (ret < 0)
+		ret = -errno;
+
+	log_write(
+	    "pmemfile_pool_suspend(%p) = %d",
+		pfp,
 		ret);
 
 	return ret;

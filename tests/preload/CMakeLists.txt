@@ -54,6 +54,8 @@ int main() {
 }
 " XATTR_AVAILABLE_IN_TEST_DIR)
 
+option(TEST_PROCESS_SWITCHING "test process switching using preload tests" OFF)
+
 add_executable(preload_basic basic/basic.c)
 add_executable(preload_config config/config.c)
 add_executable(preload_pool_locking pool_locking/pool_locking.c)
@@ -98,6 +100,7 @@ function(add_test_generic name sub_name main_executable)
 			-DBIN_DIR=${CMAKE_CURRENT_BINARY_DIR}/${name}${sub_name}
 			-DPRELOAD_LIB=${PRELOAD_LIB_LIST}
 			-DMAIN_EXECUTABLE=${main_executable}
+			-DTEST_PROCESS_SWITCHING=${TEST_PROCESS_SWITCHING}
 			${ARGN}
 			-P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/${name}.cmake)
 

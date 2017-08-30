@@ -65,11 +65,18 @@ We reserve the right to change the on-media layout without warning.
 # Example: #
 
 ```sh
-$ mkfs.pmemfile /mnt/pmem/pmemfile_pool 1G
+$ mkfs.pmemfile /dev/dax0.0 0
 $ mkdir /tmp/mountpoint
-$ alias pf='LD_PRELOAD=libpmemfile.so PMEMFILE_POOLS=/tmp/mountpoint:/mnt/pmem/pmemfile_pool'
+
+$ sudo pmemfile-mount /dev/dax0.0 /tmp/mountpoint
+$ alias pf='LD_PRELOAD=libpmemfile.so'
+
+# or if you don't have root access:
+
+$ alias pf='LD_PRELOAD=libpmemfile.so PMEMFILE_POOLS=/tmp/mountpoint:/dev/dax0.0'
+
 # now all commands prefixed with 'pf' will see files under /tmp/mountpoint,
-# but files will be stored in file system backed by /mnt/pmem/pmemfile_pool
+# but files will be stored in file system backed by /dev/dax0.0
 $ pf mkdir /tmp/mountpoint/dir_in_pmemfile
 $ pf cp README.md /tmp/mountpoint/dir_in_pmemfile
 $ pf ls -l /tmp/mountpoint/

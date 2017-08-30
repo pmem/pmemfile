@@ -76,6 +76,53 @@ inode_array_add_single(struct pmemfile_inode_array *cur,
 	return false;
 }
 
+void
+_inode_array_add(PMEMfilepool *pfp,
+		TOID(struct pmemfile_inode_array) array,
+		TOID(struct pmemfile_inode) tinode,
+		struct pmemfile_inode_array **ins,
+		unsigned *ins_idx,
+		enum inode_array_lock lock)
+{
+	bool found = false;
+	ASSERT_IN_TX();
+
+	do {
+		struct pmemfile_inode_array *cur = PF_RW(pfp, array);
+
+		if (lock == INODE_ARRAY_LOCK)
+			pmemobj_mutex_lock_nofail(pfp->pop, &cur->mtx);
+
+		if (cur->used < NUMINODES_PER_ENTRY)
+			found = inode_array_add_single(cur, tinode, ins,
+					ins_idx);
+
+		bool modified = false;
+		if (!found) {
+			if (TOID_IS_NULL(cur->next)) {
+				mutex_tx_unlock_on_abort(&cur->mtx);
+
+				TX_SET_DIRECT(cur, next,
+					TX_ZNEW(struct pmemfile_inode_array));
+				PF_RW(pfp, cur->next)->prev = array;
+
+				modified = true;
+			}
+
+			array = cur->next;
+		}
+
+		if (lock == INODE_ARRAY_LOCK) {
+			if (found || modified)
+				mutex_tx_unlock_on_commit(&cur->mtx);
+			else
+				pmemobj_mutex_unlock_nofail(pfp->pop,
+						&cur->mtx);
+		}
+
+	} while (!found);
+}
+
 /*
  * inode_array_add -- adds inode to array, returns its position
  *
@@ -88,40 +135,30 @@ inode_array_add(PMEMfilepool *pfp,
 		struct pmemfile_inode_array **ins,
 		unsigned *ins_idx)
 {
-	bool found = false;
+	_inode_array_add(pfp, array, tinode, ins, ins_idx, INODE_ARRAY_LOCK);
+}
+
+void
+_inode_array_unregister(PMEMfilepool *pfp,
+		struct pmemfile_inode_array *cur,
+		unsigned idx,
+		enum inode_array_lock lock)
+{
 	ASSERT_IN_TX();
 
-	do {
-		struct pmemfile_inode_array *cur = PF_RW(pfp, array);
+	if (lock == INODE_ARRAY_LOCK)
+		mutex_tx_lock(pfp, &cur->mtx);
 
-		pmemobj_mutex_lock_nofail(pfp->pop, &cur->mtx);
+	ASSERT(cur->used > 0);
 
-		if (cur->used < NUMINODES_PER_ENTRY)
-			found = inode_array_add_single(cur, tinode, ins,
-					ins_idx);
+	TX_ADD_DIRECT(&cur->inodes[idx]);
+	cur->inodes[idx] = TOID_NULL(struct pmemfile_inode);
 
-		bool modified = false;
-		if (!found) {
-			if (TOID_IS_NULL(cur->next)) {
-				mutex_tx_unlock_on_abort(
-						&cur->mtx);
+	TX_ADD_DIRECT(&cur->used);
+	cur->used--;
 
-				TX_SET_DIRECT(cur, next,
-					TX_ZNEW(struct pmemfile_inode_array));
-				PF_RW(pfp, cur->next)->prev = array;
-
-				modified = true;
-			}
-
-			array = cur->next;
-		}
-
-		if (found || modified)
-			mutex_tx_unlock_on_commit(&cur->mtx);
-		else
-			pmemobj_mutex_unlock_nofail(pfp->pop, &cur->mtx);
-
-	} while (!found);
+	if (lock == INODE_ARRAY_LOCK)
+		mutex_tx_unlock_on_commit(&cur->mtx);
 }
 
 /*
@@ -135,22 +172,8 @@ inode_array_unregister(PMEMfilepool *pfp,
 		struct pmemfile_inode_array *cur,
 		unsigned idx)
 {
-	ASSERT_IN_TX();
-
-	mutex_tx_lock(pfp, &cur->mtx);
-
-	ASSERT(cur->used > 0);
-
-	TX_ADD_DIRECT(&cur->inodes[idx]);
-	cur->inodes[idx] = TOID_NULL(struct pmemfile_inode);
-
-	TX_ADD_DIRECT(&cur->used);
-	cur->used--;
-
-	mutex_tx_unlock_on_commit(&cur->mtx);
-
+	_inode_array_unregister(pfp, cur, idx, INODE_ARRAY_LOCK);
 }
-
 /*
  * inode_array_traverse -- traverses whole inode array and calls specified
  * callback function for each inode

@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2017, Intel Corporation
+ * Copyright 2017, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,55 +30,78 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+ * pmemfile-mount.c -- pmemfile mount command source file
+ */
+
+#include <getopt.h>
 #include <limits.h>
 #include <stdio.h>
-#include <string.h>
-#include <sys/types.h>
-#include <unistd.h>
+#include <stdlib.h>
+#include <sys/mount.h>
 
-#include "os_util.h"
+static const char *progname;
+
+static void
+print_version(void)
+{
+	puts("pmemfile-mount v1");
+}
+
+static void
+print_usage(FILE *stream)
+{
+	fprintf(stream,
+	    "Usage: %s [-v] [-h] pool-path mount-point\n"
+	    "Options:\n"
+	    "  -v      print version\n"
+	    "  -h      print this help text\n",
+	    progname);
+}
+
 
 int
-os_getpid(void)
+main(int argc, char *argv[])
 {
-	return getpid();
-}
+	int opt;
+	const char *pool_path;
+	const char *mount_point;
 
-void
-os_describe_errno(int errnum, char *buf, size_t buflen)
-{
-	/*
-	 * There are 2 versions of strerror_r - returning int and char * -
-	 * defined depending on feature macros. We want int variant, so to
-	 * catch accidental change in the definition we use temporary int
-	 * variable.
-	 */
-	int r = strerror_r(errnum, buf, buflen);
-	if (r)
-		snprintf(buf, buflen, "Unknown errno %d", errnum);
-}
+	progname = argv[0];
 
-#ifdef DEBUG
-const char *
-os_getexecname(void)
-{
-	static char namepath[PATH_MAX + 1];
-	char procpath[PATH_MAX];
-	ssize_t cc;
+	while ((opt = getopt(argc, argv, "vh")) >= 0) {
+		switch (opt) {
+		case 'v':
+		case 'V':
+			print_version();
+			return 0;
+		case 'h':
+		case 'H':
+			print_usage(stdout);
+			return 0;
+		default:
+			print_usage(stderr);
+			return 2;
+		}
+	}
 
-	snprintf(procpath, PATH_MAX, "/proc/%d/exe", os_getpid());
+	if (optind + 2 > argc) {
+		print_usage(stderr);
+		return 2;
+	}
 
-	if ((cc = readlink(procpath, namepath, PATH_MAX)) < 0)
-		strcpy(namepath, "unknown");
-	else
-		namepath[cc] = '\0';
+	pool_path = argv[optind];
+	mount_point = argv[optind + 1];
 
-	return namepath;
-}
-#endif	/* DEBUG */
+	char mount_source[PATH_MAX];
+	sprintf(mount_source, "pmemfile:%s", pool_path);
 
-int
-os_usleep(unsigned usec)
-{
-	return usleep(usec);
+	if (mount(mount_source, mount_point, "tmpfs",
+			MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_RELATIME,
+			"size=4k")) {
+		perror("mount");
+		return 1;
+	}
+
+	return 0;
 }

@@ -208,6 +208,7 @@ PMEMfilepool *pmemfile_pool_create(const char *pathname, size_t poolsize,
 
 PMEMfilepool *pmemfile_pool_open(const char *pathname);
 void pmemfile_pool_close(PMEMfilepool *pfp);
+void pmemfile_pool_set_device(PMEMfilepool *pfp, pmemfile_dev_t dev);
 
 PMEMfile *pmemfile_open(PMEMfilepool *pfp, const char *pathname, int flags,
 		...);
@@ -382,6 +383,9 @@ PMEMfile *pmemfile_open_parent(PMEMfilepool *pfp, PMEMfile *at,
 		char *path, size_t path_size, int flags);
 
 const char *pmemfile_errormsg(void);
+
+int pmemfile_pool_resume(PMEMfilepool *pfp, const char *pathname);
+int pmemfile_pool_suspend(PMEMfilepool *pfp);
 
 #include "libpmemfile-posix-stubs.h"
 

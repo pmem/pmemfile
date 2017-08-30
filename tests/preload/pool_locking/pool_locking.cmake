@@ -39,8 +39,11 @@ execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${DIR}/mount_point)
 
 set(ENV{LD_PRELOAD} ${PRELOAD_LIB})
 set(ENV{PMEMFILE_POOLS} ${DIR}/mount_point:${DIR}/fs)
-set(ENV{PMEMFILE_PRELOAD_LOG} ${BIN_DIR}/pmemfile_preload.log)
-set(ENV{INTERCEPT_LOG} ${BIN_DIR}/intercept.log)
+
+if (NOT TEST_PROCESS_SWITCHING)
+	set(ENV{PMEMFILE_PRELOAD_LOG} ${BIN_DIR}/pmemfile_preload.log)
+	set(ENV{INTERCEPT_LOG} ${BIN_DIR}/intercept.log)
+endif()
 
 execute(${MAIN_EXECUTABLE} ${DIR}/mount_point/file)
 

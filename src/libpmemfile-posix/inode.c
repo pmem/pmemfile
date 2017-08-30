@@ -51,8 +51,9 @@
 #include "utils.h"
 
 static void
-log_leak(uint64_t key, void *value)
+log_leak(uint64_t key, void *value, void *arg)
 {
+	(void) arg;
 #ifdef DEBUG
 	(void) key;
 	struct pmemfile_vinode *vinode = value;
@@ -71,7 +72,7 @@ void
 inode_map_free(PMEMfilepool *pfp)
 {
 	struct hash_map *map = pfp->inode_map;
-	int ref_leaks = hash_map_traverse(map, log_leak);
+	int ref_leaks = hash_map_traverse(map, log_leak, NULL);
 	if (ref_leaks)
 		FATAL("%d inode reference leaks", ref_leaks);
 
@@ -217,7 +218,8 @@ vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 
 		if (__sync_sub_and_fetch(&vinode->ref, 1) == 0) {
 			uint64_t nlink = vinode->inode->nlink;
-			if (nlink == 0)
+			if (vinode->inode->suspended_references == 0 &&
+					nlink == 0)
 				vinode_free_pmem(pfp, vinode);
 
 			to_unregister = vinode;
@@ -329,6 +331,9 @@ vinode_orphan_unlocked(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 
 	ASSERT_IN_TX();
 	ASSERTeq(vinode->orphaned.arr, NULL);
+
+	if (vinode->inode->suspended_references > 0)
+		return;
 
 	TOID(struct pmemfile_inode_array) orphaned =
 			pfp->super->orphaned_inodes;
@@ -691,4 +696,83 @@ vinode_rdlock_with_block_tree(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 	}
 
 	return 0;
+}
+
+/*
+ * vinode_suspend -- prepares vinode for pool suspend
+ */
+void
+vinode_suspend(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
+{
+	TX_ADD_DIRECT(&vinode->inode->suspended_references);
+	vinode->inode->suspended_references++;
+
+	_inode_array_add(pfp, pfp->super->suspended_inodes, vinode->tinode,
+			&vinode->suspended.arr, &vinode->suspended.idx,
+			INODE_ARRAY_NOLOCK);
+
+	if (vinode->blocks) {
+		ctree_delete(vinode->blocks);
+		vinode->blocks = NULL;
+	}
+
+	vinode->first_free_block.arr = NULL;
+	vinode->first_free_block.idx = 0;
+
+	vinode->first_block = NULL;
+}
+
+static inline void *
+add_off(void *ptr, uintptr_t off)
+{
+	return (void *)((uintptr_t)ptr + off);
+}
+
+/*
+ * inode_resume -- restores persistent part of inode after suspend
+ */
+void
+inode_resume(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+		PMEMobjpool *old_pop)
+{
+	struct inode_suspend_info suspended = vinode->suspended;
+	struct pmemfile_inode *inode = vinode->inode;
+
+	ASSERT(vinode->suspended.arr != NULL);
+
+	if (pfp->pop != old_pop) {
+		uintptr_t diff = (uintptr_t)pfp->pop - (uintptr_t)old_pop;
+
+		suspended.arr = add_off(suspended.arr, diff);
+		inode = add_off(inode, diff);
+	}
+
+	ASSERT(inode->suspended_references > 0);
+
+	TX_ADD_DIRECT(&inode->suspended_references);
+	inode->suspended_references--;
+
+	_inode_array_unregister(pfp, suspended.arr, suspended.idx,
+			INODE_ARRAY_NOLOCK);
+}
+
+/*
+ * vinode_resume -- restores runtime part of inode after suspend
+ */
+void
+vinode_resume(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+		PMEMobjpool *old_pop)
+{
+	vinode->suspended.arr = NULL;
+	vinode->suspended.idx = 0;
+
+	if (pfp->pop != old_pop) {
+		uintptr_t diff = (uintptr_t)pfp->pop - (uintptr_t)old_pop;
+
+		vinode->inode = add_off(vinode->inode, diff);
+
+		if (vinode->orphaned.arr)
+			vinode->orphaned.arr =
+					add_off(vinode->orphaned.arr, diff);
+	}
 }

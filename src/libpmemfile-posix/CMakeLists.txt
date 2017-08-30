@@ -150,6 +150,9 @@ set(EXPORTED_SYMBOLS
 	pmemfile_pool_close
 	pmemfile_pool_create
 	pmemfile_pool_open
+	pmemfile_pool_resume
+	pmemfile_pool_set_device
+	pmemfile_pool_suspend
 	pmemfile_posix_fallocate
 	pmemfile_pread
 	pmemfile_preadv

@@ -36,7 +36,9 @@
 
 git clone https://github.com/pmem/nvml.git
 cd nvml
-git checkout 1.3
+
+# checkout commit which introduces allocation classes
+git checkout 852860df2aed2e7ffb7f3aadc27be49d080ba81b
 BUILD_PACKAGE_CHECK=n make $1 EXTRA_CFLAGS="-DUSE_VALGRIND"
 if [ "$1" = "dpkg" ]; then
 	sudo dpkg -i dpkg/libpmem_*.deb dpkg/libpmem-dev_*.deb dpkg/libpmemobj_*.deb dpkg/libpmemobj-dev_*.deb

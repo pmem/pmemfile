@@ -57,6 +57,7 @@ RUN dnf install -y \
 	python-pip \
 	python3 \
 	python3-coverage \
+	python3-devel \
 	rpm-build \
 	sqlite \
 	sudo \

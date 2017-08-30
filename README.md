@@ -107,22 +107,42 @@ ls: cannot access '/tmp/mountpoint/dir_in_pmemfile': No such file or directory
 Environment variables:
 
 libsyscall_intercept.so:
-* INTERCEPT_LOG - log file for all intercepted syscalls
+* INTERCEPT_LOG - log file for all intercepted syscalls (default: none)
+* INTERCEPT_LOG_TRUNC - when set to 0, the above log file is not truncated
+  (default: 1)
 * INTERCEPT_HOOK_CMDLINE_FILTER - intercept syscalls only when process name
-  matches this variable (used to skip gdb from intercepting)
+  matches this variable (used to skip gdb from intercepting) (default: empty)
 
 libpmemobj.so:
-* PMEMOBJ_LOG_FILE - log file
-* PMEMOBJ_LOG_LEVEL - logging level
+* PMEMOBJ_LOG_FILE - log file (default: none)
+* PMEMOBJ_LOG_LEVEL - logging level (default: 0)
 
 libpmemfile-posix.so:
-* PMEMFILE_POSIX_LOG_FILE - log file
-* PMEMFILE_POSIX_LOG_LEVEL - logging level
+* PMEMFILE_POSIX_LOG_FILE - log file (default: none)
+* PMEMFILE_POSIX_LOG_LEVEL - logging level (default: 0)
 
 libpmemfile.so:
-* PMEMFILE_PRELOAD_LOG - log file for operations handled by libpmemfile-posix
+* PMEMFILE_PRELOAD_LOG - log file (default: none)
+* PMEMFILE_PRELOAD_LOG_TRUNC - when set to 0, the above log file is not
+  truncated (default: 1)
 * PMEMFILE_EXIT_ON_NOT_SUPPORTED - when set to 1, aborts an application which
-  uses currently unsupported syscalls
+  uses unsupported syscall (default: 0)
+* PMEMFILE_PRELOAD_PAUSE_AT_START - pauses initialization of pmemfile until
+  debugger is attached (default: 0)
+
+# Other variables: #
+* PMEMFILE_BLOCK_SIZE - forces one block size (default: dynamic)
+* PMEMFILE_CD - performs early chdir() to specified directory, used as
+  a workaround for missing multi-process support when application must start
+  from pmemfile-backed directory (default: none)
+* PMEMFILE_IGNORE_INODE_FREE_ERRORS - when set to 1, disables abort() when
+  freeing inode's metadata fails (it defers freeing to the next application
+  start) - can be used to get out of out-of-space situations (default: 0)
+* PMEMFILE_OVERALLOCATE_ON_APPEND - when set to 0, disables allocation of more
+  space than required (default: 1)
+* PMEMFILE_PRELOAD_PROCESS_SWITCHING - when set to 1, enables VERY slow
+  emulation of multi-process support, used for testing pmemfile with file system
+  test suites (default: 0)
 
 # Other stuff #
 * vltrace - tool for tracing applications and evaluating whether libpmemfile.so

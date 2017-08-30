@@ -70,7 +70,7 @@ FUNCT=$TEST_DIR/helper_functions.sh
 
 source $FUNCT
 
-ANTOOL=$(realpath $TEST_DIR/../../src/tools/antool/antool.py)
+ANTOOL=$(realpath $TEST_DIR/../../src/tools/antool/antool)
 
 COVERAGE_REPORT=.coverage
 [ "$COVERAGE" == "1" ] && \

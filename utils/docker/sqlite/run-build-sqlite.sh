@@ -49,6 +49,10 @@ PF_DIR=$TEST_DIR/pf
 PF_POOL=$PF_DIR/pmemfile_pool
 MOUNTPOINT=$TEST_DIR/mountpoint
 MKFS_PMEMFILE=$PMEMFILE_INSTALL_DIR/bin/mkfs.pmemfile
+PMEMFILE_SHARED_OPTS=".. -DCMAKE_INSTALL_PREFIX=$PMEMFILE_INSTALL_DIR"
+if [ "$COVERAGE" = "1" ]; then
+	PMEMFILE_SHARED_OPTS="${PMEMFILE_SHARED_OPTS} -DCMAKE_C_FLAGS=-coverage -DCMAKE_CXX_FLAGS=-coverage"
+fi
 
 mkdir $TEST_DIR
 mkdir $PF_DIR
@@ -58,9 +62,10 @@ mkdir $MOUNTPOINT
 cd $WORKDIR
 mkdir build
 cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PMEMFILE_INSTALL_DIR
+cmake ${PMEMFILE_SHARED_OPTS} -DCMAKE_BUILD_TYPE=Release
 make install -j2
-cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$PMEMFILE_INSTALL_DIR
+rm -r *
+cmake ${PMEMFILE_SHARED_OPTS} -DCMAKE_BUILD_TYPE=Debug
 make install -j2
 
 export LD_LIBRARY_PATH=${PMEMFILE_INSTALL_DIR}/lib/pmemfile_debug:${LD_LIBRARY_PATH}
@@ -77,6 +82,10 @@ set +e
 	-i $PMEMFILE_INSTALL_DIR -p $PF_POOL -t $PF_SQL_UTILS_DIR/short_tests \
 	-f $PF_SQL_UTILS_DIR/failing_short_tests \
 	--timeout 120
+
+if [ "$COVERAGE" = "1" ]; then
+	bash <(curl -s https://codecov.io/bash)
+fi
 
 cd $WORKDIR
 rm -rf build

@@ -450,9 +450,12 @@ if(PKG_CONFIG_FOUND)
 else()
 	find_package(LIBUNWIND QUIET)
 endif()
+
 if(NOT LIBUNWIND_FOUND)
 	message(WARNING "libunwind not found. Stack traces from tests will not be reliable")
 endif()
+
+find_package(PythonInterp 3 QUIET REQUIRED)
 
 if(TEST_DIR)
 	enable_testing()

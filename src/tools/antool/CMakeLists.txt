@@ -29,25 +29,31 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-add_executable(mkfs.pmemfile mkfs.pmemfile.c)
-target_link_libraries(mkfs.pmemfile pmemfile-posix_shared)
+set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
+set(DEPS "${CMAKE_CURRENT_SOURCE_DIR}/antoollib/__init__.py")
 
-add_executable(pmemfile-cat pmemfile-cat.c)
-target_link_libraries(pmemfile-cat pmemfile-posix_shared)
+set(SETUP_PY "${CMAKE_CURRENT_BINARY_DIR}/setup.py")
+set(TIMESTAMP "${CMAKE_CURRENT_BINARY_DIR}/build/timestamp")
 
-add_executable(pmemfile-mount pmemfile-mount.c)
+set(MANIFEST "install_manifest.txt")
+set(MAIN_MANIFEST "${CMAKE_BINARY_DIR}/${MANIFEST}")
 
-install(TARGETS mkfs.pmemfile
-	CONFIGURATIONS Release None RelWithDebInfo
-	DESTINATION ${CMAKE_INSTALL_BINDIR}
-	PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+configure_file(${SETUP_PY_IN} ${SETUP_PY})
 
-install(TARGETS pmemfile-mount
-	CONFIGURATIONS Release None RelWithDebInfo
-	DESTINATION ${CMAKE_INSTALL_BINDIR}
-	PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+add_custom_command(
+		COMMAND ${PYTHON} ${SETUP_PY} build
+		COMMAND ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
+		OUTPUT  ${TIMESTAMP}
+		DEPENDS ${DEPS})
 
-add_cstyle(tools ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
-add_check_whitespace(tools ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
+add_custom_target(target ALL DEPENDS ${TIMESTAMP})
 
-add_subdirectory(antool)
+if(${CMAKE_BUILD_TYPE} STREQUAL Release OR
+   ${CMAKE_BUILD_TYPE} STREQUAL None OR
+   ${CMAKE_BUILD_TYPE} STREQUAL RelWithDebInfo)
+	install(CODE "
+		execute_process(COMMAND ${PYTHON} ${SETUP_PY} install --prefix=\$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX} --record=${MANIFEST})
+		file(READ ${MANIFEST} BUFFER)
+		file(APPEND ${MAIN_MANIFEST} \"\${BUFFER}\")
+	")
+endif()

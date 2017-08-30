@@ -450,8 +450,21 @@ if(PKG_CONFIG_FOUND)
 else()
 	find_package(LIBUNWIND QUIET)
 endif()
+
 if(NOT LIBUNWIND_FOUND)
 	message(WARNING "libunwind not found. Stack traces from tests will not be reliable")
+endif()
+
+if(PKG_CONFIG_FOUND)
+	pkg_check_modules(PYTHON3 QUIET python3)
+else()
+	find_package(PYTHON3 QUIET)
+endif()
+
+find_program(PYTHON3_BIN "python3")
+
+if(NOT PYTHON3_FOUND AND NOT PYTHON3_BIN)
+	message(FATAL_ERROR "python3 not found")
 endif()
 
 if(TEST_DIR)

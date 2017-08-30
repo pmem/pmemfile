@@ -36,7 +36,7 @@
 
 git clone https://github.com/pmem/nvml.git
 cd nvml
-git checkout 1.3
+git checkout 3fdd3f91bf55d93779d05a680726f08c810511dd
 BUILD_PACKAGE_CHECK=n make $1 EXTRA_CFLAGS="-DUSE_VALGRIND"
 if [ "$1" = "dpkg" ]; then
 	sudo dpkg -i dpkg/libpmem_*.deb dpkg/libpmem-dev_*.deb dpkg/libpmemobj_*.deb dpkg/libpmemobj-dev_*.deb

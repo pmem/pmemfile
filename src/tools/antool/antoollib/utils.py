@@ -32,9 +32,9 @@
 
 import struct
 import inspect
-
 from sys import stderr
-from exceptions import *
+
+from antoollib.exceptions import *
 
 
 ########################################################################################################################

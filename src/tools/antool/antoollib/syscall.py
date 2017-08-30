@@ -32,8 +32,8 @@
 
 import logging
 
-from utils import *
-from syscallinfo import *
+from antoollib.utils import *
+from antoollib.syscallinfo import *
 
 E_KP_ENTRY = 0
 E_KP_EXIT = 1

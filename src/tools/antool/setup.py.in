@@ -1,5 +1,6 @@
+#!/usr/bin/python3
 #
-# Copyright 2017, Intel Corporation
+# Copyright (c) 2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,18 +30,18 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-add_executable(mkfs.pmemfile mkfs.pmemfile.c)
-target_link_libraries(mkfs.pmemfile pmemfile-posix_shared)
+from distutils.core import setup
 
-add_executable(pmemfile-cat pmemfile-cat.c)
-target_link_libraries(pmemfile-cat pmemfile-posix_shared)
+setup(
+    name="antool",
+    version="0.1.0",
 
-install(TARGETS mkfs.pmemfile
-	CONFIGURATIONS Release None RelWithDebInfo
-	DESTINATION ${CMAKE_INSTALL_BINDIR}
-	PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+    author="Lukasz Dorau",
+    author_email="lukasz.dorau@intel.com",
 
-add_cstyle(tools ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
-add_check_whitespace(tools ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
+    url="https://github.com/pmem/pmemfile/tree/master/src/tools/antool",
 
-add_subdirectory(antool)
+    package_dir={ '': '${CMAKE_CURRENT_SOURCE_DIR}' },
+    packages=["antoollib"],
+    scripts=["${CMAKE_CURRENT_SOURCE_DIR}/antool"],
+)

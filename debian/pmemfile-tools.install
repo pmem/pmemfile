@@ -1,2 +1,4 @@
 usr/bin/mkfs.pmemfile
 usr/share/man/man1/mkfs.pmemfile.1
+usr/bin/antool
+usr/lib/python3*/site-packages/antool*

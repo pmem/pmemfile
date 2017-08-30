@@ -12,6 +12,7 @@ BuildRequires:	cmake
 BuildRequires:	pkgconfig
 BuildRequires:	libpmemobj-devel
 BuildRequires:	libsyscall_intercept-devel
+BuildRequires:  python3-devel
 
 #ExclusiveArch: x86_64
 
@@ -72,6 +73,8 @@ XXX
 %defattr(-,root,root,-)
 %{_bindir}/mkfs.pmemfile
 %{_mandir}/man1/mkfs.pmemfile.1.gz
+%{_bindir}/antool
+%{python3_sitelib}/antool*
 %license LICENSE
 %doc
 

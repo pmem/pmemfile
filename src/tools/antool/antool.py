@@ -33,8 +33,8 @@
 import argparse
 from os import stat
 
-from listsyscalls import *
-from syscalltable import *
+from antoollib.listsyscalls import *
+from antoollib.syscalltable import *
 
 # minimum required version of vltrace log
 VLTRACE_VMAJOR = 0

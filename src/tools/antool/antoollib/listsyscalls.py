@@ -30,8 +30,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from syscall import *
-from utils import *
+from antoollib.syscall import *
+from antoollib.utils import *
 
 RESULT_UNSUPPORTED_YET = 1
 RESULT_UNSUPPORTED_RELATIVE = 2

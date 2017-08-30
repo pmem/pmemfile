@@ -88,7 +88,7 @@ TEST_NUM=$4
 TEST_DIR=$(dirname $0)
 [ "$TEST_DIR" == "." ] && TEST_DIR=$(pwd)
 
-ANTOOL=$(realpath $TEST_DIR/../../src/tools/antool/antool.py)
+ANTOOL=$(realpath $TEST_DIR/../../src/tools/antool/antool)
 
 if [ "$COVERAGE" == "1" ]; then
 	COVERAGE_REPORT=.coverage

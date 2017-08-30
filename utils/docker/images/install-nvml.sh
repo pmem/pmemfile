@@ -34,9 +34,8 @@
 # install-nvml.sh - installs libpmem & libpmemobj
 #
 
-git clone https://github.com/pmem/nvml.git
+git clone https://github.com/igchor/nvml.git
 cd nvml
-git checkout 1.3
 BUILD_PACKAGE_CHECK=n make $1 EXTRA_CFLAGS="-DUSE_VALGRIND"
 if [ "$1" = "dpkg" ]; then
 	sudo dpkg -i dpkg/libpmem_*.deb dpkg/libpmem-dev_*.deb dpkg/libpmemobj_*.deb dpkg/libpmemobj-dev_*.deb

@@ -226,6 +226,14 @@ lseek_seek_data_or_hole(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	return offset;
 }
 
+static inline pmemfile_off_t
+add_off(size_t cur, pmemfile_off_t off)
+{
+	if (off >= 0)
+		return (pmemfile_off_t)(cur + (size_t)off);
+	return (pmemfile_off_t)(cur - (size_t)-off);
+}
+
 /*
  * pmemfile_lseek_locked -- changes file current offset
  */
@@ -280,7 +288,7 @@ pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t offset,
 			}
 			break;
 		case PMEMFILE_SEEK_CUR:
-			ret = (pmemfile_off_t)file->offset + offset;
+			ret = add_off(file->offset, offset);
 			if (ret < 0) {
 				/* Error as in SEEK_SET */
 				new_errno = EINVAL;
@@ -291,7 +299,7 @@ pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t offset,
 			if (vinode_is_dir(vinode))
 				ret = lseek_end_directory(pfp, inode, offset);
 			else
-				ret = (pmemfile_off_t)inode->size + offset;
+				ret = add_off(inode->size, offset);
 			os_rwlock_unlock(&vinode->rwlock);
 
 			if (ret < 0) {

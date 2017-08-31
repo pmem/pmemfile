@@ -55,6 +55,7 @@ RUN dnf install -y \
 	perl-Text-Diff \
 	passwd \
 	python-pip \
+	python3 \
 	python3-coverage \
 	rpm-build \
 	sqlite \

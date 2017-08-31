@@ -161,7 +161,8 @@ function(add_test_with_filter name filter tracer)
 			-P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/${name}.cmake)
 
 	set_tests_properties(${name}${filter_postfix}_${tracer} PROPERTIES
-		ENVIRONMENT "LC_ALL=C;PATH=$ENV{PATH};${ARGV4}")
+		ENVIRONMENT "LC_ALL=C;PATH=$ENV{PATH};${ARGV4}"
+		FAIL_REGULAR_EXPRESSION Sanitizer)
 endfunction()
 
 function(add_test_generic name tracer)

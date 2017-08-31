@@ -94,7 +94,11 @@ main(int argc, char *argv[])
 	mount_point = argv[optind + 1];
 
 	char mount_source[PATH_MAX];
-	sprintf(mount_source, "pmemfile:%s", pool_path);
+	if (snprintf(mount_source, PATH_MAX, "pmemfile:%s",
+			pool_path) >= PATH_MAX) {
+		fprintf(stderr, "too long source path\n");
+		return 3;
+	}
 
 	if (mount(mount_source, mount_point, "tmpfs",
 			MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_RELATIME,

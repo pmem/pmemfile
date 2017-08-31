@@ -81,12 +81,13 @@ function(execute name)
 		unset(ENV{PMEM_IS_PMEM_FORCE})
 	endif()
 
+	message(STATUS "Test ${name}:")
+	file(READ ${BIN_DIR}/${TRACER}.out OUT)
+	message(STATUS "Stdout:\n${OUT}")
+	file(READ ${BIN_DIR}/${TRACER}.err ERR)
+	message(STATUS "Stderr:\n${ERR}")
+
 	if(HAD_ERROR)
-		message(STATUS "Test ${name} failed: ${HAD_ERROR}")
-		file(READ ${BIN_DIR}/${TRACER}.out OUT)
-		message(STATUS "Stdout:\n${OUT}")
-		file(READ ${BIN_DIR}/${TRACER}.err ERR)
-		message(STATUS "Stderr:\n${ERR}")
 		message(FATAL_ERROR "Test ${name} failed: ${HAD_ERROR}")
 	endif()
 

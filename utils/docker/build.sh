@@ -70,7 +70,13 @@ if [[ "$command" == "" ]]; then
 	if [[ $MAKE_PKG -eq 0 ]] ; then command="./run-build.sh"; fi
 	if [[ $MAKE_PKG -eq 1 ]] ; then command="./run-build-package.sh"; fi
 	if [[ $COVERAGE -eq 1 ]] ; then command="./run-coverage.sh"; ci_env=`bash <(curl -s https://codecov.io/env)`; fi
-	if [[ $SQLITE -eq 1 ]] ; then command="sqlite/run-build-sqlite.sh"; SET_ULIMIT="--ulimit nofile=1024:1024"; fi
+	if [[ $SQLITE -eq 1 ]]; then
+		command="sqlite/run-build-sqlite.sh";
+		if [[ $COVERAGE -eq 1 ]]; then
+			ci_env=`bash <(curl -s https://codecov.io/env)`;
+		fi
+		SET_ULIMIT="--ulimit nofile=1024:1024";
+	fi
 fi
 
 WORKDIR=/pmemfile-${OS}-${OS_VER}
@@ -96,6 +102,7 @@ sudo docker run --rm --privileged=true --name=$containerName $EXTRA_DOCKER_ARGS 
 	--env COVERITY_SCAN_TOKEN=$COVERITY_SCAN_TOKEN \
 	--env COVERITY_SCAN_NOTIFICATION_EMAIL=$COVERITY_SCAN_NOTIFICATION_EMAIL \
 	--env AUTOGENSOURCES=$AUTOGENSOURCES \
+	--env COVERAGE=$COVERAGE \
 	-v $HOST_WORKDIR:$WORKDIR \
 	-w $WORKDIR/utils/docker \
 	$imageName $command

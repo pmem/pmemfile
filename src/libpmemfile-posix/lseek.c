@@ -231,6 +231,12 @@ add_off(size_t cur, pmemfile_off_t off)
 {
 	if (off >= 0)
 		return (pmemfile_off_t)(cur + (size_t)off);
+
+	/* -INT64_MIN can't be represented in pmemfile_off_t */
+	COMPILE_ERROR_ON(sizeof(pmemfile_off_t) != sizeof(int64_t));
+	if (off == INT64_MIN)
+		return -1;
+
 	return (pmemfile_off_t)(cur - (size_t)-off);
 }
 

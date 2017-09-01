@@ -151,6 +151,8 @@ class ListSyscalls(list):
         # add slash at the end and normalize all paths
         self.pmem_paths = [realpath(path + '/') for path in self.pmem_paths]
 
+        self.all_supported = 1  # all syscalls are supported
+
         self.unsupported = 0
         self.unsupported_yet = 0
         self.unsupported_rel = 0
@@ -881,6 +883,12 @@ class ListSyscalls(list):
 
     ####################################################################################################################
     def add_to_unsupported_lists_or_print(self, syscall):
+        if syscall.unsupported == RESULT_SUPPORTED:
+            return
+
+        if self.all_supported:
+            self.all_supported = 0
+
         if syscall.unsupported == RESULT_UNSUPPORTED:
             if self.verbose_mode >= 2:
                 self.print_unsupported_verbose2("unsupported syscall:", syscall, relative=0, end=1)
@@ -911,6 +919,10 @@ class ListSyscalls(list):
 
     ####################################################################################################################
     def print_unsupported_syscalls(self):
+        if self.all_supported:
+            print("All syscalls are supported.")
+            return
+
         if self.verbose_mode >= 2:
             return
 
@@ -937,10 +949,6 @@ class ListSyscalls(list):
             print("Yet-unsupported syscalls detected (will be supported):")
             self.print_unsupported(self.list_unsup_yet, self.ind_unsup_yet)
             print()
-
-        if not (len(self.list_unsup) or len(self.list_unsup_flag) or len(self.list_unsup_rel)
-           or len(self.list_unsup_yet)):
-            print("All syscalls are supported.")
 
     ####################################################################################################################
     def print_unsupported_syscalls_offline(self):

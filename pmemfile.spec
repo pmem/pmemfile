@@ -1,3 +1,5 @@
+%global __python %{__python3}
+
 Name:		pmemfile
 Version:	0.1
 Release:	0%{?dist}
@@ -12,6 +14,8 @@ BuildRequires:	cmake
 BuildRequires:	pkgconfig
 BuildRequires:	libpmemobj-devel
 BuildRequires:	libsyscall_intercept-devel
+BuildRequires:	python3
+BuildRequires:	python3-devel
 
 #ExclusiveArch: x86_64
 
@@ -73,6 +77,8 @@ XXX
 %{_bindir}/mkfs.pmemfile
 %{_bindir}/pmemfile-mount
 %{_mandir}/man1/mkfs.pmemfile.1.gz
+%{_bindir}/antool
+%{_datadir}/antool/*
 %license LICENSE
 %doc
 

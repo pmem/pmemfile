@@ -34,6 +34,7 @@
 export LC_ALL=C
 export VER=0.1
 
+rm -rf ~/rpmbuild/BUILDROOT/pmemfile-$VER*
 mkdir -p ~/rpmbuild/SOURCES
 git archive --prefix=pmemfile-$VER/ HEAD > pmemfile-$VER.tar
 if [ -n "$1" ]; then

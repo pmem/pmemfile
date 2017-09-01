@@ -1,0 +1,42 @@
+bind01
+chdir04
+chroot03
+close01
+close02
+execl01
+execlp01
+execv01
+execvp01
+fchdir02
+fcntl07
+fcntl07_64
+fcntl15
+fcntl15_64
+getrusage03
+test_ioctl
+symlink01 -T link01
+link04
+linkat01
+mkdir01
+removexattr02
+rename08
+rmdir05
+signal06
+seq 1 20000 | splice02 splice02-temp
+stat06
+stat06_64
+symlinkat01
+truncate01
+truncate01_64
+truncate02
+truncate02_64
+unlink07
+symlink01 -T utime01
+memfd_create01
+rwtest -N rwtest05 -c -q -i 50 -T 64b 500b:/tmp//rwtest01%f
+ftest01
+ftest03
+ftest05
+ftest07
+fs_di -d /tmp/
+

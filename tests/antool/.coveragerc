@@ -36,6 +36,8 @@ branch = True
 
 [report]
 exclude_lines =
+    pragma: no cover
+
     if self.debug_mode
     elif self.debug_mode
     if debug_mode

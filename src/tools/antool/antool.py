@@ -278,10 +278,8 @@ class AnalyzingTool(ListSyscalls):
         sizeI = struct.calcsize('I')
         sizeQ = struct.calcsize('Q')
         sizeIQQQ = sizeI + 3 * sizeQ
-        sizeIIQQQ = 2 * sizeI + 3 * sizeQ
 
         file_size = 0
-        read_size = 0
 
         fh = open_file(path_to_trace_log, 'rb')
 
@@ -299,15 +297,12 @@ class AnalyzingTool(ListSyscalls):
 
             # read and init global buf_size
             self.buf_size, = read_fmt_data(fh, 'i')
-            read_size += sizei
 
             # read length of CWD
             cwd_len, = read_fmt_data(fh, 'i')
-            read_size += sizei
 
             # read CWD
             bdata = read_bdata(fh, cwd_len)
-            read_size += cwd_len
 
             # decode and set CWD
             cwd = str(bdata.decode(errors="ignore"))
@@ -319,7 +314,6 @@ class AnalyzingTool(ListSyscalls):
             data_size, argc = read_fmt_data(fh, 'ii')
             data_size -= sizei
             bdata = read_bdata(fh, data_size)
-            read_size += 2 * sizei + data_size
             argv = str(bdata.decode(errors="ignore"))
             argv = argv.replace('\0', ' ')
 
@@ -350,12 +344,11 @@ class AnalyzingTool(ListSyscalls):
                 data_size, info_all, pid_tid, sc_id, timestamp = read_fmt_data(fh, 'IIQQQ')
                 data_size -= sizeIQQQ
                 bdata = read_bdata(fh, data_size)
-                read_size += sizeIIQQQ + data_size
 
                 # print progress
                 n += 1
                 if self.print_progress:
-                    print("\r{0:d} ({1:d}%) ".format(n, int((100 * read_size) / file_size)), end=' ')
+                    print("\r{0:d} ({1:d}% bytes) ".format(n, int((100 * fh.tell()) / file_size)), end=' ')
                 if n >= self.max_packets > 0:
                     if not self.script_mode:
                         print("done (read maximum number of packets: {0:d})".format(n))

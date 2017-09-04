@@ -331,7 +331,7 @@ class AnalyzingTool(ListSyscalls):
             print("ERROR: {0:s}".format(err.message), file=stderr)
             exit(-1)
 
-        except:
+        except:  # pragma: no cover
             print("ERROR: unexpected error", file=stderr)
             raise
 
@@ -389,7 +389,7 @@ class AnalyzingTool(ListSyscalls):
             except EndOfFile:
                 break
 
-            except:
+            except:  # pragma: no cover
                 print("ERROR: unexpected error", file=stderr)
                 raise
 
@@ -472,5 +472,5 @@ def main():
     at.print_unsupported_syscalls_offline()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

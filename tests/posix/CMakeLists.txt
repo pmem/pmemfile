@@ -107,13 +107,17 @@ function(build_test name posix_lib srcs)
 endfunction()
 
 function(build_test_using_shared name srcs)
+	# Build an executable for testing, linked to the pmemfile-posix shared library
 	build_test(${name} pmemfile-posix_shared ${srcs})
 endfunction()
 
 function(build_test_using_static name srcs)
+	# Build an executable for testing, linked with the pmemfile-posix static library
 	build_test(${name} pmemfile-posix_static ${srcs})
 endfunction()
 
+# We use basic/basic.cpp twice: running the same test once using the dynamically loaded
+# shared library, and once using the static library (libpmemfile-posix.a).
 build_test_using_shared(file_basic basic/basic.cpp)
 build_test_using_static(file_basic_using_static basic/basic.cpp)
 build_test_using_shared(file_pointer_caching pointer_caching/pointer_caching.cpp)

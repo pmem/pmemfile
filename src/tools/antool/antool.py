@@ -56,7 +56,7 @@ DO_REINIT = 1
 ########################################################################################################################
 class AnalyzingTool(ListSyscalls):
     def __init__(self, convert_mode, pmem_paths, fileout, max_packets, offline_mode,
-                 script_mode, debug_mode, verbose_mode):
+                 script_mode, debug_mode, print_log_mode, verbose_mode):
 
         ListSyscalls.__init__(self, pmem_paths, script_mode, debug_mode, verbose_mode)
 
@@ -64,9 +64,11 @@ class AnalyzingTool(ListSyscalls):
         self.script_mode = script_mode
         self.debug_mode = debug_mode
         self.offline_mode = offline_mode
+        self.print_log_mode = print_log_mode
         self.verbose_mode = verbose_mode
 
-        self.print_progress = not (self.debug_mode or self.script_mode or (self.convert_mode and not self.offline_mode)
+        self.print_progress = not (self.debug_mode or self.script_mode or self.print_log_mode
+                                   or (self.convert_mode and not self.offline_mode)
                                    or (not self.convert_mode and self.verbose_mode >= 2))
 
         self.syscall_table = SyscallTable()
@@ -380,7 +382,7 @@ class AnalyzingTool(ListSyscalls):
                     elif not self.convert_mode:
                         self.syscall = self.analyse_if_supported(self.syscall)
 
-                if self.convert_mode and not self.offline_mode:
+                if not self.offline_mode and (self.convert_mode or self.print_log_mode):
                     self.syscall.print_single_record(DEBUG_OFF)
                 elif self.debug_mode:
                     self.syscall.print_single_record(DEBUG_ON)
@@ -464,7 +466,7 @@ def main():
         verbose = 0
 
     at = AnalyzingTool(args.convert, args.pmem, args.output, args.max_packets, args.offline, args.script, args.debug,
-                       verbose)
+                       args.log, verbose)
 
     at.read_and_parse_data(args.binlog)
 

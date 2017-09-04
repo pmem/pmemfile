@@ -283,21 +283,12 @@ class AnalyzingTool(ListSyscalls):
         file_size = 0
         read_size = 0
 
+        fh = open_file(path_to_trace_log, 'rb')
+
         try:
             statinfo = stat(path_to_trace_log)
             file_size = statinfo.st_size
 
-        except FileNotFoundError:
-            print("ERROR: file not found: {0:s}".format(path_to_trace_log), file=stderr)
-            exit(-1)
-
-        except:
-            print("ERROR: unexpected error", file=stderr)
-            raise
-
-        fh = open_file(path_to_trace_log, 'rb')
-
-        try:
             self.check_signature(fh, VLTRACE_TAB_SIGNATURE)
             self.check_version(fh, VLTRACE_VMAJOR, VLTRACE_VMINOR)
             self.check_architecture(fh, ARCH_x86_64)
@@ -341,7 +332,7 @@ class AnalyzingTool(ListSyscalls):
             exit(-1)
 
         except:
-            self.log_main.critical("unexpected error")
+            print("ERROR: unexpected error", file=stderr)
             raise
 
         if not self.script_mode:

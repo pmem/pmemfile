@@ -29,6 +29,6 @@ Package: pmemfile-tools
 Section: misc
 Architecture: any
 Priority: optional
-Depends: libpmemfile-posix0, ${shlibs:Depends}, ${misc:Depends}
+Depends: libpmemfile-posix0, python3, ${shlibs:Depends}, ${misc:Depends}
 Description: Tools for pmemfile
  Utilities for pmemfile.

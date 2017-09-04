@@ -69,20 +69,20 @@ containerName=pmemfile-${OS}-${OS_VER}
 if [[ "$command" == "" ]]; then
 	if [[ $MAKE_PKG -eq 0 ]] ; then command="./run-build.sh"; fi
 	if [[ $MAKE_PKG -eq 1 ]] ; then command="./run-build-package.sh"; fi
-	if [[ $COVERAGE -eq 1 ]] ; then command="./run-coverage.sh"; ci_env=`bash <(curl -s https://codecov.io/env)`; fi
+	if [[ $COVERAGE -eq 1 ]] ; then command="./run-coverage.sh"; fi
+
 	if [[ $SQLITE -eq 1 ]]; then
 		command="sqlite/run-build-sqlite.sh";
-		if [[ $COVERAGE -eq 1 ]]; then
-			ci_env=`bash <(curl -s https://codecov.io/env)`;
-		fi
 		SET_ULIMIT="--ulimit nofile=1024:1024";
 	fi
+
 	if [[ $PJDFSTEST -eq 1 ]]; then
 		command="pjdfstest/build-and-test.sh";
-		if [[ $COVERAGE -eq 1 ]]; then
-			ci_env=`bash <(curl -s https://codecov.io/env)`;
-		fi
 		ci_env="${ci_env} -u root";
+	fi
+
+	if [[ $COVERAGE -eq 1 ]]; then
+		ci_env=`bash <(curl -s https://codecov.io/env)`;
 	fi
 fi
 

@@ -70,6 +70,7 @@ if [[ "$command" == "" ]]; then
 	if [[ $MAKE_PKG -eq 0 ]] ; then command="./run-build.sh"; fi
 	if [[ $MAKE_PKG -eq 1 ]] ; then command="./run-build-package.sh"; fi
 	if [[ $COVERAGE -eq 1 ]] ; then command="./run-coverage.sh"; fi
+	if [[ $LTP -eq 1 ]] ; then command="external_tests/run-build-suite.sh ltp"; fi
 
 	if [[ $SQLITE -eq 1 ]]; then
 		command="external_tests/run-build-suite.sh sqlite"

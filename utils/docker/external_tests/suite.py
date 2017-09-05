@@ -119,13 +119,13 @@ class Suite(metaclass=ABCMeta):
 
         try:
             start = perf_counter()
-            output = self.exec_test(on_pf).decode('utf-8')
+            output = self.try_decode(self.exec_test(on_pf))
             self.results[test][configuration]['result'] = 'PASSED'
         except TimeoutExpired as e:
-            output = e.output.decode('utf-8')
+            output = self.try_decode(e.output)
             self.results[test][configuration]['result'] = "TIMEOUT"
         except CalledProcessError as e:
-            output = e.output.decode('utf-8')
+            output = self.try_decode(e.output)
             self.results[test][configuration]['result'] = self.get_process_error_result(
                 e)
         except Exception as e:
@@ -150,6 +150,12 @@ class Suite(metaclass=ABCMeta):
         with open(path, 'r') as f:
             self.tests_to_run = [test.strip() for test in f.readlines() if not test.isspace()
                                  and not test.startswith('#')]
+
+    def try_decode(self, output):
+        try:
+            return output.decode('utf-8')
+        except UnicodeDecodeError:
+            return "Error. Output couldn't be decoded."
 
     def LOG(self, output):
         if self.verbose:

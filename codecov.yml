@@ -7,22 +7,24 @@ coverage:
           - tests_posix_single_threaded
           - tests_posix_multi_threaded
           - tests_preload
-          - tests_sqlite
+          - sqlite_tests
       preload:
         flags:
           - tests_preload
-          - tests_sqlite
+          - sqlite_tests
       antool:
-        flags: tests_antool
+        flags:
+          - tests_antool
       other:
         flags:
           - tests_posix_single_threaded
           - tests_posix_multi_threaded
           - tests_preload
-          - tests_sqlite
+          - sqlite_tests
   ignore:
     - utils/
     - tests/
+    - src/valgrind/
 
 flags:
   posix:

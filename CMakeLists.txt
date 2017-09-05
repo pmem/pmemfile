@@ -385,10 +385,10 @@ add_custom_target(check-license
 		-a)
 add_dependencies(check-license check_license)
 add_cstyle(check_license ${CMAKE_SOURCE_DIR}/utils/check_license/*.c)
+
 add_check_whitespace(check_license ${CMAKE_SOURCE_DIR}/utils/check_license/*.c)
 
-add_check_whitespace(sqlite ${CMAKE_SOURCE_DIR}/utils/docker/sqlite/*.py
-			${CMAKE_SOURCE_DIR}/utils/docker/sqlite/*.sh)
+add_check_whitespace(external_tests -r ${CMAKE_SOURCE_DIR}/utils/docker/external_tests)
 
 add_custom_target(check-whitespace-main
 		COMMAND ${PERL_EXECUTABLE}

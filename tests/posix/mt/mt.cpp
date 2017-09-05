@@ -114,6 +114,7 @@ TEST_F(mt, open_close_create_unlink)
 	unsigned n = ncpus / 2;
 	if (n == 0) /* when ncpus == 1 */
 		n = 1;
+	n++; /* add some randomness */
 
 	for (unsigned j = 0; j < n; ++j) {
 		threads.emplace_back(open_close_worker, "/aaa");
@@ -170,7 +171,8 @@ TEST_F(mt, pread)
 	ASSERT_EQ(pmemfile_lseek(pfp, file, 0, PMEMFILE_SEEK_CUR), 128 << 10);
 	ASSERT_EQ(pmemfile_lseek(pfp, file, 0, PMEMFILE_SEEK_SET), 0);
 
-	for (unsigned j = 0; j < ncpus; ++j)
+	unsigned randomness = 1;
+	for (unsigned j = 0; j < ncpus + randomness; ++j)
 		threads.emplace_back(pread_worker, file);
 
 	for (auto &t : threads)

@@ -71,7 +71,7 @@ if [[ "$command" == "" ]]; then
 	if [[ $MAKE_PKG -eq 1 ]] ; then command="./run-build-package.sh"; fi
 	if [[ $COVERAGE -eq 1 ]] ; then command="./run-coverage.sh"; fi
 	if [[ $SQLITE -eq 1 ]]; then
-		command="sqlite/run-build-sqlite.sh";
+		command="external_tests/run-build-suite.sh sqlite"
 		SET_ULIMIT="--ulimit nofile=1024:1024";
 	fi
 

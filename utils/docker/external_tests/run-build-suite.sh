@@ -47,13 +47,17 @@ if [[ -z "$1" ]]; then
 	exit 1
 fi
 
+if [[ "$2" == "verbose" ]]; then
+	VERBOSE="--verbose"
+fi
+
+SUITE=$1
+
 PMEMFILE_INSTALL_DIR=$HOME/pmemfile_libs
 PMEMFILE_LIB_DIR=$PMEMFILE_INSTALL_DIR/lib/pmemfile_debug
 TEST_UTILS_DIR=$WORKDIR/utils/docker/external_tests
-PF_SQL_UTILS_DIR=$TEST_UTILS_DIR/sqlite
 TEST_DIR=$HOME/testdir
-PF_DIR=$TEST_DIR/pf
-PF_POOL=$PF_DIR/pmemfile_pool
+PF_POOL=$TEST_DIR/pmemfile_pool
 MOUNTPOINT=$TEST_DIR/mountpoint
 MKFS_PMEMFILE=$PMEMFILE_INSTALL_DIR/bin/mkfs.pmemfile
 PMEMFILE_SHARED_OPTS=".. -DCMAKE_INSTALL_PREFIX=$PMEMFILE_INSTALL_DIR"
@@ -62,18 +66,22 @@ if [ "$COVERAGE" = "1" ]; then
 	PMEMFILE_SHARED_OPTS="${PMEMFILE_SHARED_OPTS} -DCMAKE_C_FLAGS=-coverage -DCMAKE_CXX_FLAGS=-coverage"
 fi
 
-if [[ "$1" == "sqlite" ]]; then
+if [[ "$SUITE" == "sqlite" ]]; then
 	SUITE_DIR=$HOME/sqlite
-	TESTS=$PF_SQL_UTILS_DIR/short_tests
-	FAILING_TESTS=$PF_SQL_UTILS_DIR/failing_short_tests
+	SUITE_UTILS_DIR=$TEST_UTILS_DIR/sqlite
+elif [[ "$SUITE" == "ltp" ]]; then
+	SUITE_DIR=$HOME/ltp_install
+	SUITE_UTILS_DIR=$TEST_UTILS_DIR/ltp
 else
-	echo "First argument doesn't match any of existing suites"\
-	"(sqlite)."
+	echo "First argument doesn't match any existing test suites"\
+	"(sqlite|ltp)."
 	exit 1
 fi
 
+TESTS=$SUITE_UTILS_DIR/short_tests
+FAILING_TESTS=$SUITE_UTILS_DIR/failing_short_tests
+
 mkdir $TEST_DIR
-mkdir $PF_DIR
 mkdir $MOUNTPOINT
 
 # Install pmemfile
@@ -91,17 +99,23 @@ export LD_LIBRARY_PATH=${PMEMFILE_LIB_DIR}:${LD_LIBRARY_PATH}
 # Create pmemfile fs
 $MKFS_PMEMFILE $PF_POOL 3G
 
-
-
 # Run pmemfile testsuite short tests
 set +e
 
-$TEST_UTILS_DIR/run-suite.py $1 -i $SUITE_DIR -m $MOUNTPOINT -l $PMEMFILE_LIB_DIR \
-	-p $PF_POOL -t $TESTS -f $FAILING_TESTS --timeout 120
+$TEST_UTILS_DIR/run-suite.py $SUITE -i $SUITE_DIR -m $MOUNTPOINT -l $PMEMFILE_LIB_DIR \
+	-p $PF_POOL -t $TESTS -f $FAILING_TESTS --timeout 120 $VERBOSE
+
+
+EXIT_CODE=$?
 
 if [ "$COVERAGE" = "1" ]; then
-	bash <(curl -s https://codecov.io/bash)
+	bash <(curl -s https://codecov.io/bash) -c -F ${SUITE}_tests
 fi
 
-cd $WORKDIR
-rm -rf build
+# Cleanup
+rm -r $WORKDIR/build
+rm -r $TEST_DIR
+
+if [[ "$EXIT_CODE" != "0" ]]; then
+	exit 1
+fi

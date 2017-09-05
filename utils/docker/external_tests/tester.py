@@ -91,18 +91,18 @@ class Tester:
         past_fails = self.suite.get_past_fails(past_fails_path)
 
         if set(self.failed_pf_only) == set(past_fails):
-            print('No new fails.')
+            print('No new failed tests.')
             exit(exit_code)
 
-        new_fails = set(self.failed_pf_only) - set(past_fails)
+        new_fails = sorted(set(self.failed_pf_only) - set(past_fails))
         if new_fails:
             exit_code = 1
-            print('New fails introduced in this execution:')
+            print('New test failures introduced in this execution:')
             for fail in new_fails:
                 print(fail)
 
-        removed_fails = set(past_fails) - \
-            (set(self.failed_pf_only) | set(self.failed_both))
+        removed_fails = sorted(set(past_fails) -
+                               (set(self.failed_pf_only) | set(self.failed_both)))
         if removed_fails:
             exit_code = 1
             print('Tests that stopped failing since last execution:')

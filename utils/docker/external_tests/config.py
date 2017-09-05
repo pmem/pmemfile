@@ -1,4 +1,3 @@
-#!/bin/bash -ex
 #
 # Copyright 2017, Intel Corporation
 #
@@ -30,62 +29,30 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#
-# run-build-sqlite.sh - builds sqlite and runs sqlite short tests set
-#
+
+from os import path, environ
 
 
-if [[ -z "$WORKDIR"  ]]; then
-	echo "ERROR: The variable WORKDIR has to contain a path to " \
-	"the root of pmemfile repository."
-	exit 1
-fi
+class Config:
+    def __init__(self, pf_lib_dir, pf_pool, mountpoint):
+        self._mountpoint = mountpoint
+        self._pf_lib_dir = pf_lib_dir
+        self._pf_pool = pf_pool
+        self.update_env()
 
-PMEMFILE_INSTALL_DIR=$HOME/pmemfile_libs
-PF_SQL_UTILS_DIR=$WORKDIR/utils/docker/sqlite
-SQLITE_DIR=$HOME/sqlite
-TEST_DIR=$HOME/testdir
-PF_DIR=$TEST_DIR/pf
-PF_POOL=$PF_DIR/pmemfile_pool
-MOUNTPOINT=$TEST_DIR/mountpoint
-MKFS_PMEMFILE=$PMEMFILE_INSTALL_DIR/bin/mkfs.pmemfile
-PMEMFILE_SHARED_OPTS=".. -DCMAKE_INSTALL_PREFIX=$PMEMFILE_INSTALL_DIR"
-if [ "$COVERAGE" = "1" ]; then
-	PMEMFILE_SHARED_OPTS="${PMEMFILE_SHARED_OPTS} -DCMAKE_C_FLAGS=-coverage -DCMAKE_CXX_FLAGS=-coverage"
-fi
+    @property
+    def pf_env(self):
+        self.update_env()
+        return self._pf_env
 
-mkdir $TEST_DIR
-mkdir $PF_DIR
-mkdir $MOUNTPOINT
+    @property
+    def mountpoint(self):
+        return self._mountpoint
 
-# Install pmemfile
-cd $WORKDIR
-mkdir build
-cd build
-cmake ${PMEMFILE_SHARED_OPTS} -DCMAKE_BUILD_TYPE=Release
-make install -j2
-rm -r *
-cmake ${PMEMFILE_SHARED_OPTS} -DCMAKE_BUILD_TYPE=Debug
-make install -j2
-
-export LD_LIBRARY_PATH=${PMEMFILE_INSTALL_DIR}/lib/pmemfile_debug:${LD_LIBRARY_PATH}
-
-# Create pmemfile fs
-$MKFS_PMEMFILE $PF_POOL 3G
-
-# Run pmemfile testsuite short tests
-cd $PF_SQL_UTILS_DIR
-
-set +e
-
-./run-sqlite-testsuite.py -s $SQLITE_DIR -m $MOUNTPOINT \
-	-i $PMEMFILE_INSTALL_DIR -p $PF_POOL -t $PF_SQL_UTILS_DIR/short_tests \
-	-f $PF_SQL_UTILS_DIR/failing_short_tests \
-	--timeout 120
-
-if [ "$COVERAGE" = "1" ]; then
-	bash <(curl -s https://codecov.io/bash) -c -F sqlite_tests
-fi
-
-cd $WORKDIR
-rm -rf build
+    def update_env(self):
+        self._pf_env = environ.copy()
+        self._pf_env.update({
+            'PMEM_IS_PMEM_FORCE': '1',
+            'LD_PRELOAD': path.join(self._pf_lib_dir, 'libpmemfile.so'),
+            'PMEMFILE_POOLS': '{0}:{1}'.format(self.mountpoint, self._pf_pool)
+        })

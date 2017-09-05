@@ -200,7 +200,8 @@ foreach my $arg (@ARGV) {
 			    $full eq './src/debug' ||
 			    $full eq './src/nondebug' ||
 			    $full eq './rpmbuild' ||
-			    $full eq './dpkgbuild')) {
+			    $full eq './dpkgbuild' ||
+			    basename($full) eq '__init__.py' )) {
 				$File::Find::prune = 1;
 				return;
 			}

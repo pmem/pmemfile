@@ -1,0 +1,44 @@
+DEBUG(main): convert_mode   = 0
+DEBUG(main): script_mode    = 0
+DEBUG(main): offline_mode   = 0
+DEBUG(main): verbose_mode   = 0
+DEBUG(main): debug_mode     = 1
+DEBUG(main): print_progress = 0
+DEBUG(syscalltable): format of syscall table OK, reading 1000 records...
+DEBUG(syscalltable): read 1000 records of syscall table.
+INFO(main): Command line: vltrace -l bin -r -s 382 -o output-bin-7.log /home/ldorau/work/pmemfile/build/tests/antool/test_syscalls 7 
+INFO(main): Current working directory: /mnt/files/work/pmemfile/build/tests/antool/logs-test-parser.sh-7-382-2017-07-27_08:56:34_150516739-29404 
+
+DEBUG(parser): Notice: no exit info found for syscall: 000072E8000072E8 execve
+DEBUG(parser): Notice: packet saved (to 'list_no_exit'): 000072E8000072E8 execve
+DEBUG(parser): WARNING: no entry found: exit without entry info found: 000072E8000072E8 brk
+WARNING(analysis): missing info about arguments of syscall: 'brk' - skipping...
+DEBUG(analysis): mmap                 (-1)
+DEBUG(analysis): access               "/etc/ld.so.preload"
+DEBUG(analysis): open                 "/etc/ld.so.cache"
+DEBUG(analysis): newfstat             "/etc/ld.so.cache"
+DEBUG(analysis): mmap                 "/etc/ld.so.cache"
+DEBUG(analysis): close                "/etc/ld.so.cache"
+DEBUG(analysis): open                 "/lib64/libpthread.so.0"
+DEBUG(analysis): read                 "/lib64/libpthread.so.0"
+DEBUG(analysis): newfstat             "/lib64/libpthread.so.0"
+DEBUG(analysis): mmap                 "/lib64/libpthread.so.0"
+DEBUG(analysis): mmap                 "/lib64/libpthread.so.0"
+DEBUG(analysis): mmap                 (-1)
+DEBUG(analysis): close                "/lib64/libpthread.so.0"
+DEBUG(analysis): open                 "/lib64/libc.so.6"
+DEBUG(analysis): read                 "/lib64/libc.so.6"
+DEBUG(analysis): newfstat             "/lib64/libc.so.6"
+DEBUG(analysis): mmap                 "/lib64/libc.so.6"
+DEBUG(analysis): mmap                 "/lib64/libc.so.6"
+DEBUG(analysis): mmap                 (-1)
+DEBUG(analysis): close                "/lib64/libc.so.6"
+DEBUG(analysis): mmap                 (-1)
+DEBUG(analysis): mmap                 (-1)
+DEBUG(analysis): mmap                 (-1)
+DEBUG(analysis): newfstat             "(stdout)"
+DEBUG(analysis): close                (0x0000000012345678)
+DEBUG(analysis): close                (0x0000000087654321)
+DEBUG(analysis): write                "(stdout)"
+DEBUG(parser): Notice: found matching entry for syscall: 000072E8000072E8 execve
+DEBUG(analysis): execve               "/home/ldorau/work/pmemfile/build/tests/antool/test_syscalls"

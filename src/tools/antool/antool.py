@@ -349,7 +349,7 @@ class AnalyzingTool(ListSyscalls):
                 # print progress
                 n += 1
                 if self.print_progress:
-                    print("\r{0:d} ({1:d}%) ".format(n, int((100 * fh.tell()) / file_size)), end=' ')
+                    print("\r{0:d} ({1:d}% bytes) ".format(n, int((100 * fh.tell()) / file_size)), end=' ')
                 if n >= self.max_packets > 0:
                     if not self.script_mode:
                         print("done (read maximum number of packets: {0:d})".format(n))

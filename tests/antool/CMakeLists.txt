@@ -101,9 +101,7 @@ else()
 
 	set(TEST_ANTOOL ${ANTOOL_SRC_DIR}/test-antool.sh)
 	set(TEST_PARSER ${ANTOOL_SRC_DIR}/test-parser.sh)
-
-	add_test(NAME "antool-analyze"
-		COMMAND ${TEST_ANTOOL} "${VLTRACE_BIN}" "${TEST_APP}" 15)
+	set(TEST_OTHERS ${ANTOOL_SRC_DIR}/test-others.sh)
 
 	foreach(STR_LEN 126 382)
 		# 1
@@ -176,6 +174,15 @@ else()
 
 	add_test(NAME "antool-parser-1531-syscalls-string-arguments-with-fork"
 		COMMAND ${TEST_PARSER} -f "${VLTRACE_BIN}" 1531 "${TEST_APP}" 13)
+
 	add_test(NAME "antool-parser-1531-syscalls-string-arguments-with-double-fork"
 		COMMAND ${TEST_PARSER} -f "${VLTRACE_BIN}" 1531 "${TEST_APP}" 14)
+
+	add_test(NAME "antool-analyze"
+		COMMAND ${TEST_ANTOOL} "${VLTRACE_BIN}" "${TEST_APP}" 15)
+
+	foreach(NUMBER_TEST_OTHER 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35)
+		add_test(NAME "antool-others-${NUMBER_TEST_OTHER}"
+			COMMAND ${TEST_OTHERS} ${NUMBER_TEST_OTHER})
+	endforeach(NUMBER_TEST_OTHER)
 endif()

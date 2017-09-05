@@ -1,0 +1,4 @@
+ERROR(syscalltable): wrong format of syscalls table:
+ERROR(syscalltable):       format size : 80
+ERROR(syscalltable):       data size   : 1684234849
+ERROR: log file is truncated: output-bin-7.log

@@ -266,7 +266,7 @@ class AnalyzingTool(ListSyscalls):
             else:
                 iarch = 0
 
-            raise CriticalError("wrong architecture of vltrace log: {0:s} ({1:d}) (required: {2:s}"
+            raise CriticalError("wrong architecture of vltrace log: {0:s} ({1:d}) (required: {2:s})"
                                 .format(Archs[iarch], arch, Archs[architecture]))
 
     ####################################################################################################################

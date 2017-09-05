@@ -1,5 +1,3 @@
-ignore:
-  - utils/check_license/check-license.c
 coverage:
   status:
     project:
@@ -12,19 +10,26 @@ coverage:
         flags: tests_antool
       other:
         flags: tests_posix_single_threaded tests_posix_multi_threaded tests_preload tests_sqlite
+  ignore:
+    - utils/check_license/check-license.c
+    - utils/transform/*.c
+    - tests/posix/*/*.cpp
+    - tests/*.c
+    - tests/preload/*.c
+    - tests/preload/*/*.c
 
-flags:
-  posix:
-    paths:
-      - src/libpmemfile-posix/
-  preload:
-    paths:
-      - src/libpmemfile/
-  antool:
-    paths:
-      - src/tools/antool/
-  other:
-    paths:
-      - src/tools/mkfs.pmemfile.c
-      - src/tools/pmemfile-cat.c
-      - src/tools/pmemfile-mount.c
+#flags:
+#  posix:
+#    paths:
+#      - src/libpmemfile-posix/
+#  preload:
+#    paths:
+#      - src/libpmemfile/
+#  antool:
+#    paths:
+#      - src/tools/antool/
+#  other:
+#    paths:
+#      - src/tools/mkfs.pmemfile.c
+#      - src/tools/pmemfile-cat.c
+#      - src/tools/pmemfile-mount.c

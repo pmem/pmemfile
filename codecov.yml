@@ -1,43 +1,21 @@
 coverage:
   status:
     project:
-      default: off
       posix:
-        flags:
-          - tests_posix_single_threaded
-          - tests_posix_multi_threaded
-          - tests_preload
-          - sqlite_tests
+        paths:
+          - src/libpmemfile-posix/
       preload:
-        flags:
-          - tests_preload
-          - sqlite_tests
+        paths:
+          - src/libpmemfile/
       antool:
-        flags:
-          - tests_antool
+        paths:
+          - src/tools/antool/
       other:
-        flags:
-          - tests_posix_single_threaded
-          - tests_posix_multi_threaded
-          - tests_preload
-          - sqlite_tests
+        paths:
+          - src/tools/mkfs.pmemfile.c
+          - src/tools/pmemfile-cat.c
+          - src/tools/pmemfile-mount.c
   ignore:
     - utils/
     - tests/
     - src/valgrind/
-
-flags:
-  posix:
-    paths:
-      - src/libpmemfile-posix/
-  preload:
-    paths:
-      - src/libpmemfile/
-  antool:
-    paths:
-      - src/tools/antool/
-  other:
-    paths:
-      - src/tools/mkfs.pmemfile.c
-      - src/tools/pmemfile-cat.c
-      - src/tools/pmemfile-mount.c

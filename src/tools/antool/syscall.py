@@ -142,7 +142,7 @@ class Syscall(SyscallInfo):
 
         self.pid_ind = -1
         self.is_pmem = 0
-        self.unsupported = RESULT_SUPPORTED
+        self.unsupported_type = RESULT_SUPPORTED
 
     ####################################################################################################################
     def __lt__(self, other):

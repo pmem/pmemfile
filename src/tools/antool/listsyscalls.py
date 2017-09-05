@@ -778,7 +778,7 @@ class ListSyscalls(list):
                 continue
 
             self.match_fd_with_path(syscall)
-            syscall.unsupported = self.is_supported(syscall)
+            syscall.unsupported_type = self.is_supported(syscall)
 
         if self.print_progress:
             print(" done.\n")
@@ -881,13 +881,13 @@ class ListSyscalls(list):
 
     ####################################################################################################################
     def add_to_unsupported_lists_or_print(self, syscall):
-        if syscall.unsupported == RESULT_UNSUPPORTED:
+        if syscall.unsupported_type == RESULT_UNSUPPORTED:
             if self.verbose_mode >= 2:
                 self.print_unsupported_verbose2("unsupported syscall:", syscall, relative=0, end=1)
             else:
                 self.add_to_unsupported_lists(syscall, syscall.name, self.list_unsup, self.ind_unsup, relative=0)
 
-        elif syscall.unsupported == RESULT_UNSUPPORTED_FLAG:
+        elif syscall.unsupported_type == RESULT_UNSUPPORTED_FLAG:
             if self.verbose_mode >= 2:
                 self.print_unsupported_verbose2("unsupported flag:", syscall, relative=0, end=0)
                 print(" [unsupported flag:]", syscall.unsupported_flag)
@@ -895,14 +895,14 @@ class ListSyscalls(list):
                 name = syscall.name + " <" + syscall.unsupported_flag + ">"
                 self.add_to_unsupported_lists(syscall, name, self.list_unsup_flag, self.ind_unsup_flag, relative=0)
 
-        elif syscall.unsupported == RESULT_UNSUPPORTED_RELATIVE:
+        elif syscall.unsupported_type == RESULT_UNSUPPORTED_RELATIVE:
             if self.verbose_mode >= 2:
                 self.print_unsupported_verbose2("unsupported relative path:", syscall, relative=1, end=1)
             else:
                 self.add_to_unsupported_lists(syscall, syscall.name, self.list_unsup_rel, self.ind_unsup_rel,
                                               relative=1)
 
-        elif syscall.unsupported == RESULT_UNSUPPORTED_YET:
+        elif syscall.unsupported_type == RESULT_UNSUPPORTED_YET:
             if self.verbose_mode >= 2:
                 self.print_unsupported_verbose2("unsupported syscall yet:", syscall, relative=0, end=1)
             else:

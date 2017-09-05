@@ -1343,6 +1343,12 @@ TEST_F(dirs, rename_noreplace)
 		  -1);
 	EXPECT_EQ(errno, EEXIST);
 
+	errno = 0;
+	ASSERT_EQ(pmemfile_renameat2(pfp, NULL, "/dir2", NULL, "/dir1",
+				     0xFFFFFFFF),
+		  -1);
+	EXPECT_EQ(errno, EINVAL);
+
 	ASSERT_EQ(pmemfile_renameat2(pfp, NULL, "/dir2", NULL, "/dir1", 0), 0);
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/dir1/f2"), 0);

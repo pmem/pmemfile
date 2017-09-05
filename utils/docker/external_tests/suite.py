@@ -53,10 +53,10 @@ class Suite(metaclass=ABCMeta):
     def __str__(self):
         if self.test not in self.results:
             return '{} not run'.format(self.test)
-
+        config_margin = 35
         results = ['{0:>15} on {1} {2:>{3}.3f} [ms]'.
                    format(self.test_entry[config]['result'], config,
-                          self.test_entry[config]['time'], 35 - len(config))
+                          self.test_entry[config]['time'], config_margin - len(config))
                    for config in self.test_entry.keys()]
 
         return '{0}:{1}'.format(self.test, linesep) + linesep.join(results)
@@ -71,10 +71,16 @@ class Suite(metaclass=ABCMeta):
         """Assigns default list of tests to self.tests_to_run."""
         pass
 
+    def read_tests_from_file(self, path):
+        with open(path, 'r') as f:
+            return [test.strip() for test in f.readlines() if not test.isspace()
+                    and not test.startswith('#')]
+
+    def run_tests_from_file(self, path):
+        self.tests_to_run = self.read_tests_from_file(path)
+
     def get_past_fails(self, past_fails_path):
-        with open(past_fails_path, 'r') as f:
-            return [fail.strip()
-                    for fail in f.readlines() if fail.strip()]
+        return self.read_tests_from_file(past_fails_path)
 
     @property
     def failed_pf_only(self):
@@ -117,21 +123,22 @@ class Suite(metaclass=ABCMeta):
 
         output = ''
 
+        start = perf_counter()
         try:
-            start = perf_counter()
-            output = self.exec_test(on_pf).decode('utf-8')
-            self.results[test][configuration]['result'] = 'PASSED'
+            output = self.try_decode(self.exec_test(on_pf))
         except TimeoutExpired as e:
-            output = e.output.decode('utf-8')
-            self.results[test][configuration]['result'] = "TIMEOUT"
+            output = self.try_decode(e.output)
+            self.results[test][configuration]['result'] = 'TIMEOUT'
         except CalledProcessError as e:
-            output = e.output.decode('utf-8')
+            output = self.try_decode(e.output)
             self.results[test][configuration]['result'] = self.get_process_error_result(
                 e)
         except Exception as e:
             print('Unexpected Error.')
             output = e
             self.results[test][configuration]['result'] = 'ERROR'
+        else:
+            self.results[test][configuration]['result'] = 'PASSED'
         finally:
             elapsed = (perf_counter() - start) * 1000
             self.results[test][configuration]['time'] = elapsed
@@ -146,10 +153,11 @@ class Suite(metaclass=ABCMeta):
         return check_output(cmd, timeout=self.timeout,
                             stderr=STDOUT, env=env, cwd=self.mountpoint, shell=self.run_in_shell)
 
-    def run_tests_from_file(self, path):
-        with open(path, 'r') as f:
-            self.tests_to_run = [test.strip() for test in f.readlines() if not test.isspace()
-                                 and not test.startswith('#')]
+    def try_decode(self, output):
+        try:
+            return output.decode('utf-8')
+        except UnicodeDecodeError:
+            return "Error. Output couldn't be decoded."
 
     def LOG(self, output):
         if self.verbose:

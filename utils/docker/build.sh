@@ -71,6 +71,11 @@ if [[ "$command" == "" ]]; then
 	if [[ $MAKE_PKG -eq 1 ]] ; then command="./run-build-package.sh"; fi
 	if [[ $COVERAGE -eq 1 ]] ; then command="./run-coverage.sh"; fi
 
+	if [[ $LTP -eq 1 ]] ; then
+		command="external_tests/run-build-suite.sh ltp"
+		SET_ULIMIT="--ulimit nofile=1024:1024";
+	fi
+
 	if [[ $SQLITE -eq 1 ]]; then
 		command="external_tests/run-build-suite.sh sqlite"
 		SET_ULIMIT="--ulimit nofile=1024:1024";
@@ -78,11 +83,11 @@ if [[ "$command" == "" ]]; then
 
 	if [[ $PJDFSTEST -eq 1 ]]; then
 		command="pjdfstest/build-and-test.sh";
-		ci_env="${ci_env} -u root";
+		ci_env="-u root";
 	fi
 
 	if [[ $COVERAGE -eq 1 ]]; then
-		ci_env=`bash <(curl -s https://codecov.io/env)`;
+		ci_env="`bash <(curl -s https://codecov.io/env)` ${ci_env}";
 	fi
 fi
 

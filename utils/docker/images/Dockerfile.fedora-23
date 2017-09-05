@@ -92,6 +92,14 @@ RUN useradd -m $USER
 RUN echo $USERPASS | passwd $USER --stdin
 RUN gpasswd wheel -a $USER
 
+USER $USER
+
+# Install ltp
+COPY install-ltp.sh install-ltp.sh
+RUN ./install-ltp.sh
+
+USER root
+
 RUN dnf remove -y \
 	autoconf \
 	automake \

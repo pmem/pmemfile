@@ -176,6 +176,15 @@ TEST_F(basic, open_create_close)
 	ASSERT_EQ(dir, nullptr);
 	ASSERT_EQ(errno, EISDIR);
 
+	errno = 0;
+	/*
+	 * O_PATH narrows flags to defined set, so we have to unset it to
+	 * test the behavior for unknown flags
+	*/
+	f1 = pmemfile_open(pfp, "path", -1 & ~PMEMFILE_O_PATH);
+	ASSERT_EQ(f1, nullptr);
+	EXPECT_EQ(errno, EINVAL);
+
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
 }
 

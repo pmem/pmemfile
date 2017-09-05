@@ -229,9 +229,15 @@ lseek_seek_data_or_hole(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 static inline pmemfile_off_t
 add_off(size_t cur, pmemfile_off_t off)
 {
-	if (off >= 0)
-		return (pmemfile_off_t)(cur + (size_t)off);
-	return (pmemfile_off_t)(cur - (size_t)-off);
+	COMPILE_ERROR_ON(sizeof(cur) != sizeof(int64_t));
+	ASSERT(cur <= INT64_MAX);
+
+	cur += (size_t)off;
+
+	if (cur > INT64_MAX)
+		return -1;
+
+	return (pmemfile_off_t)cur;
 }
 
 /*

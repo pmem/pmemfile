@@ -98,5 +98,6 @@ rmdir(${DIR}/mount_point/test_dir/a/b/c/d/e/f/g/x33)
 list_files(ls_g_no33.log      ${DIR}/mount_point/test_dir/a/b/c/d/e/f/g)
 rmdir(${DIR}/mount_point/test_dir/a/b/c/d/e/f/g/h/i/../../x32)
 list_files(ls_g_no33_no32.log ${DIR}/mount_point/test_dir/a/b/c/d/e/f/g)
+execute(rm -r ${DIR}/mount_point/test_dir/a)
 
 cleanup()

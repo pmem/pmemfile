@@ -51,11 +51,20 @@ cmake .. -DDEVELOPER_MODE=1 \
 
 make -j2
 
-ctest -E "_memcheck|_drd|_helgrind|_pmemcheck|antool" -j2 --output-on-failure
-COVERAGE=1 PYTHON_SOURCE=$WORKDIR/src/tools/antool ctest -R antool --output-on-failure
 git diff --exit-code || ( echo "Did you forget to commit generated source file?" && exit 1 )
 
+COVERAGE=1 PYTHON_SOURCE=$WORKDIR/src/tools/antool ctest -R antool --output-on-failure
 REPORT=$(find . -name ".coverage") && [ $REPORT ] && cp -f -v $REPORT . && $(which python3) $(which coverage) xml
-bash <(curl -s https://codecov.io/bash)
+bash <(curl -s https://codecov.io/bash) -c -F tests_antool
+
+ctest -E "_memcheck|_drd|_helgrind|_pmemcheck|antool|preload|mt" --output-on-failure
+bash <(curl -s https://codecov.io/bash) -c -F tests_posix_single_threaded
+
+ctest -E "_memcheck|_drd|_helgrind|_pmemcheck|antool" -R mt --output-on-failure
+bash <(curl -s https://codecov.io/bash) -c -F tests_posix_multi_threaded
+
+ctest -E "_memcheck|_drd|_helgrind|_pmemcheck|antool" -R preload --output-on-failure
+bash <(curl -s https://codecov.io/bash) -c -F tests_preload
+
 cd ..
 rm -r build

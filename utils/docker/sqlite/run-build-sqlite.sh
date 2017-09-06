@@ -84,7 +84,7 @@ set +e
 	--timeout 120
 
 if [ "$COVERAGE" = "1" ]; then
-	bash <(curl -s https://codecov.io/bash)
+	bash <(curl -s https://codecov.io/bash) -c -F sqlite_tests
 fi
 
 cd $WORKDIR

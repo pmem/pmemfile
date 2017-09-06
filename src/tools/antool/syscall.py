@@ -163,11 +163,7 @@ class Syscall(SyscallInfo):
         string = ""
         max_len = 0
 
-        if self.info_all >> 2:
-            max_len = self.str_max_1
-            string = buf_str
-
-        elif self.nstrargs == 1:
+        if self.nstrargs == 1 or self.info_all >> 2:
             max_len = self.str_max_1
             string = buf_str
 

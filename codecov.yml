@@ -1,2 +1,22 @@
-ignore:
-  - utils/check_license/check-license.c
+coverage:
+  status:
+    project:
+      posix:
+        paths:
+          - src/libpmemfile-posix/
+      preload:
+        paths:
+          - src/libpmemfile/
+      antool:
+        paths:
+          - src/tools/antool/
+      other:
+        paths:
+          - src/tools/mkfs.pmemfile.c
+          - src/tools/pmemfile-cat.c
+          - src/tools/pmemfile-mount.c
+  ignore:
+    - utils/
+    - tests/
+    - src/valgrind/
+    - src/libpmemfile/sys_util.h

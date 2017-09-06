@@ -49,3 +49,5 @@ install(TARGETS pmemfile-mount
 
 add_cstyle(tools ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
 add_check_whitespace(tools ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
+
+add_subdirectory(antool)

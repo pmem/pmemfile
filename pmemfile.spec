@@ -1,3 +1,5 @@
+%global __python %{__python3}
+
 Name:		pmemfile
 Version:	0.1
 Release:	0%{?dist}
@@ -65,6 +67,7 @@ XXX
 %package -n pmemfile-tools
 Summary: Tools for pmemfile
 Group: System Environment/Libraries
+Requires: python3
 %description -n pmemfile-tools
 XXX
 
@@ -73,6 +76,8 @@ XXX
 %{_bindir}/mkfs.pmemfile
 %{_bindir}/pmemfile-mount
 %{_mandir}/man1/mkfs.pmemfile.1.gz
+%{_bindir}/antool
+%{_datadir}/antool/*
 %license LICENSE
 %doc
 

@@ -1,5 +1,5 @@
 #
-# Copyright 2016-2017, Intel Corporation
+# Copyright 2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,88 +29,17 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#
-# Dockerfile - a 'recipe' for Docker to build an image of fedora-based
-#              environment for building the PMEMFILE project.
-#
+set(ANTOOL_BIN "${CMAKE_CURRENT_BINARY_DIR}/antool")
+set(ANTOOL_DIR "${CMAKE_INSTALL_PREFIX}/share/antool")
 
-# Pull base image
-FROM fedora:24
-MAINTAINER marcin.slusarz@intel.com
+# create a main antool startup file
+file(WRITE  ${ANTOOL_BIN} "#!/bin/sh\n")
+file(APPEND ${ANTOOL_BIN} "exec python3 ${ANTOOL_DIR}/antool.py \$*\n")
 
-# Install basic tools
-RUN dnf install -y \
-	autoconf \
-	automake \
-	capstone-devel \
-	clang \
-	cmake \
-	doxygen \
-	gcc \
-	git \
-	libcap-devel \
-	libunwind-devel \
-	make \
-	pandoc \
-	perl-Text-Diff \
-	passwd \
-	python-pip \
-	python3 \
-	python3-coverage \
-	rpm-build \
-	sqlite \
-	sudo \
-	tcl-devel \
-	wget \
-	which \
-	whois
+install(PROGRAMS ${ANTOOL_BIN}
+	CONFIGURATIONS Release None RelWithDebInfo
+	DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-# Upgrade pip
-RUN pip install --upgrade pip
-
-# Install codecov
-RUN pip install codecov
-
-# Install valgrind
-COPY install-valgrind.sh install-valgrind.sh
-RUN ./install-valgrind.sh
-
-# Install nvml
-COPY install-nvml.sh install-nvml.sh
-RUN ./install-nvml.sh rpm
-
-# Install syscall_intercept
-COPY install-syscall_intercept.sh install-syscall_intercept.sh
-RUN ./install-syscall_intercept.sh rpm
-
-RUN curl -L -o /googletest-1.8.0.zip https://github.com/google/googletest/archive/release-1.8.0.zip
-
-# Add user
-ENV USER user
-ENV USERPASS pass
-RUN useradd -m $USER
-RUN echo $USERPASS | passwd $USER --stdin
-RUN gpasswd wheel -a $USER
-
-RUN dnf remove -y \
-	autoconf \
-	automake \
-	doxygen \
-	passwd \
-	which \
-	whois
-
-RUN dnf autoremove -y
-
-USER $USER
-
-# Install sqlite
-COPY install-sqlite.sh install-sqlite.sh
-RUN ./install-sqlite.sh
-
-# Set required environment variables
-ENV OS fedora
-ENV OS_VER 24
-ENV PACKAGE_MANAGER rpm
-ENV NOTTY 1
-
+install(DIRECTORY . DESTINATION ${ANTOOL_DIR}
+	CONFIGURATIONS Release None RelWithDebInfo
+	FILES_MATCHING PATTERN "*.py")

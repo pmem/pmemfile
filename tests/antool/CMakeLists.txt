@@ -36,7 +36,7 @@ set(ANTOOL_TESTS "SAVED"
 
 set(VLTRACE_BIN "vltrace" CACHE FILEPATH "path to vltrace binary")
 
-if(${ANTOOL_TESTS} STREQUAL SKIP)
+if("${ANTOOL_TESTS}" STREQUAL "SKIP")
 	message(STATUS "skipping antool tests")
 
 else()
@@ -48,7 +48,7 @@ else()
 			OUTPUT_QUIET
 			ERROR_QUIET)
 
-	if(${ANTOOL_TESTS} STREQUAL SAVED)
+	if("${ANTOOL_TESTS}" STREQUAL "SAVED")
 		if(${BZIP2_FOUND} EQUAL 0)
 			set(VLTRACE_FOUND -1)
 			set(VLTRACE_BIN "")
@@ -103,81 +103,76 @@ else()
 
 	set(TEST_ANTOOL ${ANTOOL_SRC_DIR}/test-antool.sh)
 	set(TEST_PARSER ${ANTOOL_SRC_DIR}/test-parser.sh)
-
-	add_test(NAME "antool"
-		COMMAND ${TEST_ANTOOL} "${VLTRACE_BIN}" "${TEST_APP}" 15)
+	set(TEST_OTHERS ${ANTOOL_SRC_DIR}/test-others.sh)
 
 	foreach(STR_LEN 126 382)
 		# 1
-		add_test(NAME "antool-${STR_LEN}-basic-syscalls"
+		add_test(NAME "antool-parser-${STR_LEN}-basic-syscalls"
 			COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" ${STR_LEN} "${TEST_APP}" 0)
 
 		# 2
-		add_test(NAME "antool-${STR_LEN}-basic-syscalls-with-fork"
+		add_test(NAME "antool-parser-${STR_LEN}-basic-syscalls-with-fork"
 			COMMAND ${TEST_PARSER} -f "${VLTRACE_BIN}" ${STR_LEN} "${TEST_APP}" 1)
 
 		# 3
-		add_test(NAME "antool-${STR_LEN}-basic-syscalls-with-double-fork"
+		add_test(NAME "antool-parser-${STR_LEN}-basic-syscalls-with-double-fork"
 			COMMAND ${TEST_PARSER} -f "${VLTRACE_BIN}" ${STR_LEN} "${TEST_APP}" 5)
 
 		# 4
-		add_test(NAME "antool-${STR_LEN}-other-syscalls"
+		add_test(NAME "antool-parser-${STR_LEN}-other-syscalls"
 			COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" ${STR_LEN} "${TEST_APP}" 2)
 
 		# 5
-		add_test(NAME "antool-${STR_LEN}-other-syscalls-with-fork"
+		add_test(NAME "antool-parser-${STR_LEN}-other-syscalls-with-fork"
 			COMMAND ${TEST_PARSER} -f "${VLTRACE_BIN}" ${STR_LEN} "${TEST_APP}" 3)
 
 		# 6
-		add_test(NAME "antool-${STR_LEN}-other-syscalls-with-double-fork"
+		add_test(NAME "antool-parser-${STR_LEN}-other-syscalls-with-double-fork"
 			COMMAND ${TEST_PARSER} -f "${VLTRACE_BIN}" ${STR_LEN} "${TEST_APP}" 6)
 
 		# 7
-		add_test(NAME "antool-${STR_LEN}-syscall-vfork"
+		add_test(NAME "antool-parser-${STR_LEN}-syscall-vfork"
 			COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" ${STR_LEN} "${TEST_APP}" 4)
 
 		# 8
-		add_test(NAME "antool-${STR_LEN}-syscall-sigaction"
+		add_test(NAME "antool-parser-${STR_LEN}-syscall-sigaction"
 			COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" ${STR_LEN} "${TEST_APP}" 7)
 	endforeach(STR_LEN)
 
-	add_test(NAME "antool-126-syscalls-string-arguments-126"
-		COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" 126 "${TEST_APP}" 8)
-	add_test(NAME "antool-126-syscalls-string-arguments-382"
-		COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" 382 "${TEST_APP}" 8)
-	add_test(NAME "antool-126-syscalls-string-arguments-765"
-		COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" 765 "${TEST_APP}" 8)
-	add_test(NAME "antool-126-syscalls-string-arguments-1148"
-		COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" 1148 "${TEST_APP}" 8)
-	add_test(NAME "antool-126-syscalls-string-arguments-1531"
-		COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" 1531 "${TEST_APP}" 8)
+	foreach(STR_LEN 126 382 765 1148 1531)
+		add_test(NAME "antool-parser-126-syscalls-string-arguments-${STR_LEN}"
+			COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" ${STR_LEN} "${TEST_APP}" 8)
+	endforeach(STR_LEN)
 
-	add_test(NAME "antool-382-syscalls-string-arguments-382"
-		COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" 382 "${TEST_APP}" 9)
-	add_test(NAME "antool-382-syscalls-string-arguments-765"
-		COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" 765 "${TEST_APP}" 9)
-	add_test(NAME "antool-382-syscalls-string-arguments-1148"
-		COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" 1148 "${TEST_APP}" 9)
-	add_test(NAME "antool-382-syscalls-string-arguments-1531"
-		COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" 1531 "${TEST_APP}" 9)
+	foreach(STR_LEN 126 382 765 1148 1531)
+		add_test(NAME "antool-parser-382-syscalls-string-arguments-${STR_LEN}"
+			COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" ${STR_LEN} "${TEST_APP}" 9)
+	endforeach(STR_LEN)
 
-	add_test(NAME "antool-765-syscalls-string-arguments-765"
-		COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" 765 "${TEST_APP}" 10)
-	add_test(NAME "antool-765-syscalls-string-arguments-1148"
-		COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" 1148 "${TEST_APP}" 10)
-	add_test(NAME "antool-765-syscalls-string-arguments-1531"
-		COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" 1531 "${TEST_APP}" 10)
+	foreach(STR_LEN 765 1148 1531)
+		add_test(NAME "antool-parser-765-syscalls-string-arguments-${STR_LEN}"
+			COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" ${STR_LEN} "${TEST_APP}" 10)
+	endforeach(STR_LEN)
 
-	add_test(NAME "antool-1148-syscalls-string-arguments-1148"
-		COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" 1148 "${TEST_APP}" 11)
-	add_test(NAME "antool-1148-syscalls-string-arguments-1531"
-		COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" 1531 "${TEST_APP}" 11)
+	foreach(STR_LEN 1148 1531)
+		add_test(NAME "antool-parser-1148-syscalls-string-arguments-${STR_LEN}"
+			COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" ${STR_LEN} "${TEST_APP}" 11)
+	endforeach(STR_LEN)
 
-	add_test(NAME "antool-1531-syscalls-string-arguments-1531"
+	add_test(NAME "antool-parser-1531-syscalls-string-arguments-1531"
 		COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" 1531 "${TEST_APP}" 12)
 
-	add_test(NAME "antool-1531-syscalls-string-arguments-with-fork"
+	add_test(NAME "antool-parser-1531-syscalls-string-arguments-with-fork"
 		COMMAND ${TEST_PARSER} -f "${VLTRACE_BIN}" 1531 "${TEST_APP}" 13)
-	add_test(NAME "antool-1531-syscalls-string-arguments-with-double-fork"
+
+	add_test(NAME "antool-parser-1531-syscalls-string-arguments-with-double-fork"
 		COMMAND ${TEST_PARSER} -f "${VLTRACE_BIN}" 1531 "${TEST_APP}" 14)
+
+	add_test(NAME "antool-analyze"
+		COMMAND ${TEST_ANTOOL} "${VLTRACE_BIN}" "${TEST_APP}" 15)
+
+	foreach(NUMBER_TEST_OTHER 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37)
+		add_test(NAME "antool-others-${NUMBER_TEST_OTHER}"
+			COMMAND ${TEST_OTHERS} ${NUMBER_TEST_OTHER})
+	endforeach(NUMBER_TEST_OTHER)
 endif()

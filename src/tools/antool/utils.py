@@ -61,7 +61,7 @@ def open_file(path, flags):
     except FileNotFoundError:
         print("ERROR: file not found: {0:s}".format(path), file=stderr)
         exit(-1)
-    except:
+    except:  # pragma: no cover
         print("ERROR: unexpected error", file=stderr)
         raise
     # noinspection PyUnboundLocalVariable

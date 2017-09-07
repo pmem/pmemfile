@@ -1,0 +1,3 @@
+CRITICAL:$(*)/src/tools/antool/utils.py:$(N):read_bdata(): input file is truncated
+ERROR: input file is truncated
+ERROR: unexpected error

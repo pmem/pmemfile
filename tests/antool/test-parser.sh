@@ -124,8 +124,12 @@ fi
 PATTERN_START="------------------ close 0x0000000012345678"
 PATTERN_END="------------------ close 0x0000000087654321"
 
+SINGLE_TEST_NUM=$TEST_NUM
+TEST_NUM=$MAX_STR_LEN-$TEST_NUM
+
 OUT_BIN=output-bin-$TEST_NUM.log
 OUT_TXT=output-txt-$TEST_NUM.log
+OUT_ERR=output-err-$TEST_NUM.log
 OUT_BARE=output-bare-$TEST_NUM.log
 OUT_SORT=output-sort-$TEST_NUM.log
 
@@ -135,14 +139,14 @@ if [ ! "$VLTRACE_SKIP" ]; then
 	require_superuser
 	# remove all old logs and match files of the current test
 	rm -f *-$TEST_NUM.log*
-	echo "$ sudo bash -c \"$RUN_VLTRACE $FF -o $OUT_VLT $TEST_FILE $TEST_NUM\""
-	sudo bash -c "$RUN_VLTRACE $FF -o $OUT_VLT $TEST_FILE $TEST_NUM"
+	echo "$ sudo bash -c \"$RUN_VLTRACE $FF -o $OUT_VLT $TEST_FILE $SINGLE_TEST_NUM\""
+	sudo bash -c "$RUN_VLTRACE $FF -o $OUT_VLT $TEST_FILE $SINGLE_TEST_NUM"
 else
 	cp ../$OUT_VLT .
 fi
 
-echo "$ $ANTOOL -c -s -b $OUT_VLT > $OUT_TXT"
-$ANTOOL -c -s -b $OUT_VLT > $OUT_TXT
+echo "$ $ANTOOL -c -s -b $OUT_VLT > $OUT_TXT 2> $OUT_ERR"
+$ANTOOL -c -s -b $OUT_VLT > $OUT_TXT 2> $OUT_ERR
 
 mv $OUT_TXT $OUT_BARE
 [ $(cat $OUT_BARE | wc -l) -eq 0 ] \

@@ -50,7 +50,6 @@ STATE_IN_ENTRY = 1
 STATE_ENTRY_COMPLETED = 2
 STATE_COMPLETED = 3
 STATE_CORRUPTED_ENTRY = 4
-STATE_UNKNOWN_EVENT = 5
 
 CNT_NONE = 0
 CNT_ENTRY = 1
@@ -163,11 +162,7 @@ class Syscall(SyscallInfo):
         string = ""
         max_len = 0
 
-        if self.info_all >> 2:
-            max_len = self.str_max_1
-            string = buf_str
-
-        elif self.nstrargs == 1:
+        if self.nstrargs == 1 or self.info_all >> 2:
             max_len = self.str_max_1
             string = buf_str
 
@@ -251,13 +246,10 @@ class Syscall(SyscallInfo):
         if (self.state == STATE_COMPLETED) and (self.mask & EM_no_ret == 0):
             self.print_exit(DEBUG_OFF)
 
-    ####################################################################################################################
-    # print -- print record only in non-debug mode
-    ####################################################################################################################
-    def print(self):
-        if self.debug_mode:
-            return
-        self.print_always()
+        if not (self.content & CNT_ENTRY) and not (self.content & CNT_EXIT):
+            self.log_print("0x{0:016X} 0x{1:016X} {2:s} {3:s} [corrupted packet]".
+                           format(self.time_start, self.pid_tid, self.__str, self.name),
+                           DEBUG_OFF)
 
     ####################################################################################################################
     def log_print(self, msg, debug):
@@ -376,17 +368,16 @@ class Syscall(SyscallInfo):
         etype = info_all & E_MASK
         info_all &= ~E_MASK
 
+        assert_msg(etype in (E_KP_ENTRY, E_KP_EXIT, E_TP_EXIT), "unknown entry type")
+
         if etype == E_KP_ENTRY:
             if self.state not in (STATE_INIT, STATE_IN_ENTRY):
                 self.log_parse.error("wrong state for KProbe entry type: {0:d}".format(self.state))
             # kprobe entry handler
             return self.add_kprobe_entry(info_all, bdata, timestamp)
 
-        if (etype == E_KP_EXIT) or (etype == E_TP_EXIT):
-            # kprobe exit handler or raw tracepoint sys_exit
-            return self.add_exit(bdata, timestamp)
-
-        return STATE_UNKNOWN_EVENT
+        # kprobe exit handler or raw tracepoint sys_exit ((etype == E_KP_EXIT) or (etype == E_TP_EXIT))
+        return self.add_exit(bdata, timestamp)
 
     ####################################################################################################################
     # add_kprobe_entry -- add the kprobe entry info to the syscall record

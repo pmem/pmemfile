@@ -118,12 +118,10 @@ class AnalyzingTool(ListSyscalls):
         if self.debug_mode:
             if len(self.list_no_exit):
                 print("\nWARNING: list 'list_no_exit' is not empty!")
-                self.list_no_exit.sort()
                 self.list_no_exit.print_always()
 
             if len(self.list_others):
                 print("\nWARNING: list 'list_others' is not empty!")
-                self.list_others.sort()
                 self.list_others.print_always()
 
     ####################################################################################################################

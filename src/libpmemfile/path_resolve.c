@@ -262,16 +262,8 @@ exit_pool(struct resolved_path *result, size_t resolved, size_t *size)
 	*size -= resolved;
 }
 
-/*
- * resolve_path - the main logic for resolving paths containing arbitrary
- * combinations of path components in the kernel's vfs and pmemfile pools.
- *
- * The at argument describes the starting directory of the path resolution,
- * It can refer to either a directory in pmemfile pool, or a directory accessed
- * via the kernel.
- */
-void
-resolve_path(struct vfd_reference at,
+static void
+_resolve_path(struct vfd_reference at,
 			const char *path,
 			struct resolved_path *result,
 			int flags)
@@ -449,4 +441,29 @@ resolve_path(struct vfd_reference at,
 		memcpy(result->path, last_pool->mount_point, mnt_len);
 		result->path[mnt_len] = '/';
 	}
+}
+
+/*
+ * resolve_path - the main logic for resolving paths containing arbitrary
+ * combinations of path components in the kernel's vfs and pmemfile pools.
+ *
+ * The at argument describes the starting directory of the path resolution,
+ * It can refer to either a directory in pmemfile pool, or a directory accessed
+ * via the kernel.
+ */
+void
+resolve_path(struct vfd_reference at,
+			const char *path,
+			struct resolved_path *result,
+			int flags)
+{
+	struct pool_description *pool = at.pool;
+
+	if (pool)
+		pool_acquire(pool);
+
+	_resolve_path(at, path, result, flags);
+
+	if (pool)
+		pool_release(pool);
 }

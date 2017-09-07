@@ -688,21 +688,12 @@ hook_truncate(const char *path, off_t length)
 
 	struct vfd_reference at = pmemfile_vfd_at_ref(AT_FDCWD);
 
-	resolve_path(at, path, &where, RESOLVE_LAST_SLINK);
+	resolve_path(at, path, &where, RESOLVE_LAST_SLINK | NO_AT_PATH);
 
 	if (where.error_code != 0) {
 		result = where.error_code;
 	} else if (where.at_pool == NULL) {
-		/*
-		 * XXX
-		 * This only works as long as where.at_kernel == AT_FDCWD
-		 * or where.path is an absolute path.
-		 */
-		if (where.at_kernel == AT_FDCWD || where.path[0] == '/')
-			result = syscall_no_intercept(SYS_truncate,
-							where.path, length);
-		else
-			result = check_errno(-EIO, SYS_truncate);
+		result = syscall_no_intercept(SYS_truncate, where.path, length);
 	} else {
 		pool_acquire(where.at_pool);
 

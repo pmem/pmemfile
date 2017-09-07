@@ -50,7 +50,6 @@ STATE_IN_ENTRY = 1
 STATE_ENTRY_COMPLETED = 2
 STATE_COMPLETED = 3
 STATE_CORRUPTED_ENTRY = 4
-STATE_UNKNOWN_EVENT = 5
 
 CNT_NONE = 0
 CNT_ENTRY = 1
@@ -369,17 +368,16 @@ class Syscall(SyscallInfo):
         etype = info_all & E_MASK
         info_all &= ~E_MASK
 
+        assert_msg(etype in (E_KP_ENTRY, E_KP_EXIT, E_TP_EXIT), "unknown entry type")
+
         if etype == E_KP_ENTRY:
             if self.state not in (STATE_INIT, STATE_IN_ENTRY):
                 self.log_parse.error("wrong state for KProbe entry type: {0:d}".format(self.state))
             # kprobe entry handler
             return self.add_kprobe_entry(info_all, bdata, timestamp)
 
-        if (etype == E_KP_EXIT) or (etype == E_TP_EXIT):
-            # kprobe exit handler or raw tracepoint sys_exit
-            return self.add_exit(bdata, timestamp)
-
-        return STATE_UNKNOWN_EVENT
+        # kprobe exit handler or raw tracepoint sys_exit ((etype == E_KP_EXIT) or (etype == E_TP_EXIT))
+        return self.add_exit(bdata, timestamp)
 
     ####################################################################################################################
     # add_kprobe_entry -- add the kprobe entry info to the syscall record

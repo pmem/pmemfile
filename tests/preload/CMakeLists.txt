@@ -54,8 +54,6 @@ int main() {
 }
 " XATTR_AVAILABLE_IN_TEST_DIR)
 
-option(TEST_PROCESS_SWITCHING "test process switching using preload tests" OFF)
-
 add_executable(preload_basic basic/basic.c)
 add_executable(preload_dup dup/dup.c)
 set_target_properties(preload_dup PROPERTIES INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR}/src)
@@ -100,11 +98,10 @@ function(add_test_generic name sub_name main_executable)
 		COMMAND ${CMAKE_COMMAND}
 			${GLOBAL_TEST_ARGS}
 			-DTEST_NAME=${name}${sub_name}
-			-DSRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/${name}${sub_name}
+			-DSRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/${name}
 			-DBIN_DIR=${CMAKE_CURRENT_BINARY_DIR}/${name}${sub_name}
 			-DPRELOAD_LIB=${PRELOAD_LIB_LIST}
 			-DMAIN_EXECUTABLE=${main_executable}
-			-DTEST_PROCESS_SWITCHING=${TEST_PROCESS_SWITCHING}
 			${ARGN}
 			-P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/${name}.cmake)
 
@@ -112,16 +109,21 @@ function(add_test_generic name sub_name main_executable)
 		ENVIRONMENT "LC_ALL=C")
 endfunction()
 
+function(add_test_generic_ps name sub_name main_executable)
+	add_test_generic(${name} "${sub_name}"                        ${main_executable}                            ${ARGN})
+	add_test_generic(${name} "${sub_name}_with_process_switching" ${main_executable} -DTEST_PROCESS_SWITCHING=1 ${ARGN})
+endfunction()
+
 find_program(SQLITE3 sqlite3)
 if (SQLITE3)
-	add_test_generic(sqlite "" none)
+	add_test_generic_ps(sqlite "" none)
 else()
 	add_test(NAME sqlite_SKIPPED_BECAUSE_OF_MISSING_SQLITE3 COMMAND true)
 endif()
 
-add_test_generic(basic "" $<TARGET_FILE:preload_basic>)
-add_test_generic(dup "" $<TARGET_FILE:preload_dup>)
-add_test_generic(basic_commands "" none)
+add_test_generic_ps(basic "" $<TARGET_FILE:preload_basic>)
+add_test_generic_ps(dup "" $<TARGET_FILE:preload_dup>)
+add_test_generic_ps(basic_commands "" none)
 add_test_generic(nested_dirs "" none)
 add_test_generic(pool_locking "" $<TARGET_FILE:preload_pool_locking>)
 
@@ -153,11 +155,11 @@ add_test_generic(config "_outer_via_invalid" $<TARGET_FILE:preload_config> -DTES
 set_tests_properties("preload_config_outer_via_invalid"
 	PROPERTIES PASS_REGULAR_EXPRESSION "EIO")
 
-add_test_generic(unix "" $<TARGET_FILE:preload_unix>)
+add_test_generic_ps(unix "" $<TARGET_FILE:preload_unix>)
 
 if(XATTR_AVAILABLE_IN_TEST_DIR)
 	add_executable(preload_xattr xattr/xattr.c)
 	add_cstyle(tests-preload-xattr ${CMAKE_CURRENT_SOURCE_DIR}/xattr/xattr.c)
 	add_check_whitespace(tests-preload-xattr ${CMAKE_CURRENT_SOURCE_DIR}/xattr/xattr.c)
-	add_test_generic(xattr "" $<TARGET_FILE:preload_xattr>)
+	add_test_generic_ps(xattr "" $<TARGET_FILE:preload_xattr>)
 endif()

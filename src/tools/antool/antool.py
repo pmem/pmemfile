@@ -340,6 +340,11 @@ class AnalyzingTool(ListSyscalls):
         state = STATE_INIT
         while True:
             try:
+                if n >= self.max_packets > 0:
+                    if not self.script_mode:
+                        print("done (read maximum number of packets: {0:d})".format(n))
+                    break
+
                 # read data from the file
                 data_size, info_all, pid_tid, sc_id, timestamp = read_fmt_data(fh, 'IIQQQ')
                 data_size -= sizeIQQQ
@@ -349,10 +354,6 @@ class AnalyzingTool(ListSyscalls):
                 n += 1
                 if self.print_progress:
                     print("\r{0:d} ({1:d}% bytes) ".format(n, int((100 * fh.tell()) / file_size)), end=' ')
-                if n >= self.max_packets > 0:
-                    if not self.script_mode:
-                        print("done (read maximum number of packets: {0:d})".format(n))
-                    break
 
                 # analyse the read data and assign 'self.syscall' appropriately
                 state, self.syscall = self.analyse_read_data(state, info_all, pid_tid, sc_id, bdata)

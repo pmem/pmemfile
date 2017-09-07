@@ -2600,3 +2600,15 @@ pmemfile_preload_constructor(void)
 		exit(1);
 	}
 }
+
+pf_destructor void
+pmemfile_preload_destructor(void)
+{
+	/*
+	 * Flush all streams, before library state is destructed.
+	 * Fixes an issue when application forgets to flush or close a file
+	 * it written to and libc destructor calls fflush when pmemfile
+	 * and pmemobj state doesn't exist anymore.
+	 */
+	fflush(NULL);
+}

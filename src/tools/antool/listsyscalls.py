@@ -624,6 +624,26 @@ class ListSyscalls(list):
                 if fd_out != -1:
                     self.log_anls.warning("Unknown fd : {0:d}".format(fd_in))
 
+        # handle SyS_close
+        elif syscall.name == "close":
+            fd_in = syscall.args[0]
+            # get FD table of the current PID
+            fd_table = self.get_fd_table(syscall)
+
+            # is fd_in saved in the FD table?
+            if 0 <= fd_in < len(fd_table):
+                # read string index of fd_in
+                str_ind = fd_table[fd_in]
+                # "close" the fd_in descriptor
+                fd_table[fd_in] = -1
+                # read path of fd_in
+                path = self.all_strings[str_ind]
+                is_pmem = self.path_is_pmem[str_ind]
+                syscall.is_pmem |= is_pmem
+                self.log_print_path(is_pmem, syscall.name, path)
+            else:
+                self.log_anls.debug("{0:20s} (0x{1:016X})".format(syscall.name, fd_in))
+
         # handle syscalls with a path or a file descriptor among arguments
         elif syscall.has_mask(EM_str_all | EM_fd_all):
             msg = "{0:20s}".format(syscall.name)
@@ -692,26 +712,6 @@ class ListSyscalls(list):
                             msg += " (0x{0:016X})".format(fd)
 
             self.log_anls.debug(msg)
-
-        # handle SyS_close
-        elif syscall.name == "close":
-            fd_in = syscall.args[0]
-            # get FD table of the current PID
-            fd_table = self.get_fd_table(syscall)
-
-            # is fd_in saved in the FD table?
-            if 0 <= fd_in < len(fd_table):
-                # read string index of fd_in
-                str_ind = fd_table[fd_in]
-                # "close" the fd_in descriptor
-                fd_table[fd_in] = -1
-                # read path of fd_in
-                path = self.all_strings[str_ind]
-                is_pmem = self.path_is_pmem[str_ind]
-                syscall.is_pmem |= is_pmem
-                self.log_print_path(is_pmem, syscall.name, path)
-            else:
-                self.log_anls.debug("{0:20s} (0x{1:016X})".format(syscall.name, fd_in))
 
         self.post_match_action(syscall)
 

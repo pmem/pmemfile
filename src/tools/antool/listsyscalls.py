@@ -200,11 +200,6 @@ class ListSyscalls(list):
         table[fd] = val
 
     ####################################################################################################################
-    def print(self):
-        for syscall in self:
-            syscall.print()
-
-    ####################################################################################################################
     def print_always(self):
         for syscall in self:
             syscall.print_always()
@@ -792,26 +787,6 @@ class ListSyscalls(list):
                                       .format(syscall.name))
             return 0
         return 1
-
-    ####################################################################################################################
-    def print_syscall(self, syscall, relative, end):
-        print("   {0:20s}\t\t".format(syscall.name), end='')
-
-        if relative:
-            for path in syscall.strings:
-                print(" \"{0:s}\"".format(path), end='')
-        else:
-            for narg in range(syscall.nargs):
-                if syscall.has_mask(Arg_is_str[narg] | Arg_is_fd[narg]):
-                    str_ind = syscall.args[narg]
-
-                    if str_ind != -1:
-                        if self.path_is_pmem[str_ind]:
-                            print(" \"{0:s}\" [PMEM]  ".format(self.all_strings[str_ind]), end='')
-                        else:
-                            print(" \"{0:s}\"".format(self.all_strings[str_ind]), end='')
-        if end:
-            print()
 
     ####################################################################################################################
     def print_unsupported(self, l_names, l_inds):

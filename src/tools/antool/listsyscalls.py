@@ -412,7 +412,7 @@ class ListSyscalls(list):
                 return RESULT_UNSUPPORTED_AT_ALL
 
             # the following syscalls are not supported YET
-            if syscall.name in ("dup", "dup2", "dup3", "flock"):
+            if syscall.name in ("flock"):
                 return RESULT_UNSUPPORTED_YET
 
         # SyS_copy_file_range and SyS_splice syscalls are not supported YET

@@ -196,7 +196,7 @@ class AnalyzingTool(ListSyscalls):
         self.set_pid_index(syscall)
         if self.has_entry_content(syscall):
             self.match_fd_with_path(syscall)
-            syscall.unsupported = self.is_supported(syscall)
+            syscall.unsupported_type = self.is_supported(syscall)
             self.add_to_unsupported_lists_or_print(syscall)
         return syscall
 

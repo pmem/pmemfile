@@ -36,7 +36,7 @@ from utils import *
 RESULT_UNSUPPORTED_YET = 1
 RESULT_UNSUPPORTED_RELATIVE = 2
 RESULT_UNSUPPORTED_FLAG = 3
-RESULT_UNSUPPORTED = 4
+RESULT_UNSUPPORTED_AT_ALL = 4
 
 FLAG_RENAME_WHITEOUT = (1 << 2)  # renameat2's flag: whiteout source
 FLAG_O_ASYNC = 0o20000  # open's flag
@@ -354,7 +354,7 @@ class ListSyscalls(list):
     def is_supported(self, syscall):
         # SyS_fork and SyS_vfork are not supported at all
         if syscall.name in ("fork", "vfork"):
-            return RESULT_UNSUPPORTED
+            return RESULT_UNSUPPORTED_AT_ALL
 
         # SyS_clone is supported only with flags set by pthread_create()
         if syscall.name == "clone" and syscall.args[0] != F_PTHREAD_CREATE:
@@ -380,7 +380,7 @@ class ListSyscalls(list):
         if syscall.is_mask(EM_isfileat):
             # SyS_execveat and SyS_name_to_handle_at are not supported
             if syscall.name in ("execveat", "name_to_handle_at"):
-                return RESULT_UNSUPPORTED
+                return RESULT_UNSUPPORTED_AT_ALL
 
             # SyS_renameat2 with RENAME_WHITEOUT flag is not supported
             if syscall.nargs == 5 and syscall.name in "renameat2" and syscall.args[4] & FLAG_RENAME_WHITEOUT:
@@ -409,7 +409,7 @@ class ListSyscalls(list):
                     "setxattr", "lsetxattr", "fsetxattr",
                     "listxattr", "llistxattr", "flistxattr",
                     "removexattr", "lremovexattr", "fremovexattr"):
-                return RESULT_UNSUPPORTED
+                return RESULT_UNSUPPORTED_AT_ALL
 
             # the following syscalls are not supported YET
             if syscall.name in ("dup", "dup2", "dup3", "flock"):
@@ -780,7 +780,7 @@ class ListSyscalls(list):
                 continue
 
             self.match_fd_with_path(syscall)
-            syscall.unsupported = self.is_supported(syscall)
+            syscall.unsupported_type = self.is_supported(syscall)
 
         if self.print_progress:
             print(" done.\n")
@@ -883,19 +883,19 @@ class ListSyscalls(list):
 
     ####################################################################################################################
     def add_to_unsupported_lists_or_print(self, syscall):
-        if not syscall.unsupported:
+        if not syscall.unsupported_type:
             return
 
         if self.all_supported:
             self.all_supported = 0
 
-        if syscall.unsupported == RESULT_UNSUPPORTED:
+        if syscall.unsupported_type == RESULT_UNSUPPORTED_AT_ALL:
             if self.verbose_mode >= 2:
                 self.print_unsupported_verbose2("unsupported syscall:", syscall, relative=0, end=1)
             else:
                 self.add_to_unsupported_lists(syscall, syscall.name, self.list_unsup, self.ind_unsup, relative=0)
 
-        elif syscall.unsupported == RESULT_UNSUPPORTED_FLAG:
+        elif syscall.unsupported_type == RESULT_UNSUPPORTED_FLAG:
             if self.verbose_mode >= 2:
                 self.print_unsupported_verbose2("unsupported flag:", syscall, relative=0, end=0)
                 print(" [unsupported flag:]", syscall.unsupported_flag)
@@ -903,14 +903,14 @@ class ListSyscalls(list):
                 name = syscall.name + " <" + syscall.unsupported_flag + ">"
                 self.add_to_unsupported_lists(syscall, name, self.list_unsup_flag, self.ind_unsup_flag, relative=0)
 
-        elif syscall.unsupported == RESULT_UNSUPPORTED_RELATIVE:
+        elif syscall.unsupported_type == RESULT_UNSUPPORTED_RELATIVE:
             if self.verbose_mode >= 2:
                 self.print_unsupported_verbose2("unsupported relative path:", syscall, relative=1, end=1)
             else:
                 self.add_to_unsupported_lists(syscall, syscall.name, self.list_unsup_rel, self.ind_unsup_rel,
                                               relative=1)
 
-        elif syscall.unsupported == RESULT_UNSUPPORTED_YET:
+        elif syscall.unsupported_type == RESULT_UNSUPPORTED_YET:
             if self.verbose_mode >= 2:
                 self.print_unsupported_verbose2("unsupported syscall yet:", syscall, relative=0, end=1)
             else:
@@ -926,7 +926,7 @@ class ListSyscalls(list):
         if self.verbose_mode >= 2:
             return
 
-        # RESULT_UNSUPPORTED
+        # RESULT_UNSUPPORTED_AT_ALL
         if len(self.list_unsup):
             print("Unsupported syscalls detected:")
             self.print_unsupported(self.list_unsup, self.ind_unsup)

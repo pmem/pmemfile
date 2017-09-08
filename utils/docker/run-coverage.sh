@@ -43,6 +43,7 @@ mkdir build
 cd build
 cmake .. -DDEVELOPER_MODE=1 \
 		-DCMAKE_BUILD_TYPE=Debug \
+		-DTEST_DIR=/tmp/pmemfile-tests \
 		-DTRACE_TESTS=1 \
 		-DTESTS_USE_FORCED_PMEM=1 \
 		-DAUTO_GENERATE_SOURCES=$AUTOGENSOURCES \

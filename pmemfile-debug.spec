@@ -58,7 +58,7 @@ make install DESTDIR=%{buildroot}
 
 %check
 cd dbg_build
-ctest %{?_smp_mflags} --output-on-failure
+ctest %{?_smp_mflags} -E preload_unix --output-on-failure
 
 %changelog
 * Tue Feb 14 2017 Marcin Ślusarz <marcin.slusarz@intel.com> - 0.1-1

@@ -29,7 +29,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-option(TESTS_USE_FORCED_PMEM "let tests force enable or force disable use of optimized flush in libpmemobj (to speed them up)" OFF)
+cmake_dependent_option(TESTS_USE_FORCED_PMEM
+	"let tests force enable or force disable use of optimized flush in libpmemobj (to speed them up)" OFF
+	"BUILD_LIBPMEMFILE_POSIX_TESTS;BUILD_LIBPMEMFILE_TESTS" OFF)
 
 set(GLOBAL_TEST_ARGS
 	-DPERL_EXECUTABLE=${PERL_EXECUTABLE}
@@ -43,9 +45,11 @@ if(TRACE_TESTS)
 	set(GLOBAL_TEST_ARGS ${GLOBAL_TEST_ARGS} --trace-expand)
 endif()
 
-add_subdirectory(posix)
+if(BUILD_LIBPMEMFILE_POSIX_TESTS)
+	add_subdirectory(posix)
+endif()
 
-if(BUILD_LIBPMEMFILE)
+if(BUILD_LIBPMEMFILE_TESTS)
 	add_subdirectory(preload)
 endif()
 

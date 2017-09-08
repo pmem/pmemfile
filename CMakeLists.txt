@@ -40,11 +40,17 @@ set(VERSION_PATCH 0)
 set(VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
 
 include(FindThreads)
+include(CMakeDependentOption)
 
 # XXX rename libpmemfile, since the whole repo is also just
 # called pmemfile!
 option(BUILD_LIBPMEMFILE
 	"build libpmemfile (requires libsyscall_intercept)" ON)
+
+cmake_dependent_option(BUILD_LIBPMEMFILE_TESTS
+	"build libpmemfile tests" ON "BUILD_LIBPMEMFILE" OFF)
+
+option(BUILD_LIBPMEMFILE_POSIX_TESTS "build libpmemfile-posix tests" ON)
 
 option(TRACE_TESTS
 	"more verbose test outputs" OFF)
@@ -454,10 +460,16 @@ if(NOT LIBUNWIND_FOUND)
 	message(WARNING "libunwind not found. Stack traces from tests will not be reliable")
 endif()
 
-if(TEST_DIR)
-	enable_testing()
-else()
-	message(WARNING "TEST_DIR is empty - 'make test' will not work")
+if(BUILD_LIBPMEMFILE_POSIX_TESTS OR BUILD_LIBPMEMFILE_TESTS OR NOT (ANTOOL_TESTS STREQUAL SKIP))
+	set(BUILD_ANY_TESTS ON)
+endif()
+
+if(BUILD_ANY_TESTS)
+	if(TEST_DIR)
+		enable_testing()
+	else()
+		message(WARNING "TEST_DIR is empty - 'make test' will not work")
+	endif()
 endif()
 
 if(AUTO_GENERATE_SOURCES)
@@ -469,5 +481,7 @@ if(BUILD_LIBPMEMFILE)
 	add_subdirectory(src/libpmemfile)
 endif()
 add_subdirectory(src/tools)
-add_subdirectory(tests)
+if(BUILD_ANY_TESTS)
+	add_subdirectory(tests)
+endif()
 add_subdirectory(doc)

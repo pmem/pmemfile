@@ -47,9 +47,6 @@ PMEMFILE SUPPORT FOR SYSCALLS
 
 # Not supported _YET_ #
 
-- SYS_dup
-- SYS_dup2
-- SYS_dup3
 - SYS_copy_file_range
 - SYS_flock
 - SYS_sendfile
@@ -75,6 +72,9 @@ PMEMFILE SUPPORT FOR SYSCALLS
 - SYS_chmod
 - SYS_chown
 - SYS_close
+- SYS_dup
+- SYS_dup2
+- SYS_dup3
 - SYS_faccessat
 - SYS_fchdir
 - SYS_fchmodat

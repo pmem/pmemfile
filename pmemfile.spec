@@ -95,7 +95,7 @@ make install DESTDIR=%{buildroot}
 
 %check
 cd build
-ctest %{?_smp_mflags} --output-on-failure
+ctest %{?_smp_mflags} -E preload_unix --output-on-failure
 
 %post   -n libpmemfile-posix -p /sbin/ldconfig
 %postun -n libpmemfile-posix -p /sbin/ldconfig

@@ -7,4 +7,4 @@ override_dh_auto_configure:
 	dh_auto_configure -- -DCMAKE_BUILD_TYPE=RelWithDebInfo -DTESTS_USE_FORCED_PMEM=1
 
 override_dh_auto_test:
-	dh_auto_test -- ARGS+=--output-on-failure
+	dh_auto_test -- ARGS+="-E preload_unix --output-on-failure"

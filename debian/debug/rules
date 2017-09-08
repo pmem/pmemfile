@@ -10,4 +10,4 @@ override_dh_shlibdeps:
 	dh_shlibdeps  -O--buildsystem=cmake -l /usr/lib/x86_64-linux-gnu/pmemfile_debug
 
 override_dh_auto_test:
-	dh_auto_test -- ARGS+=--output-on-failure
+	dh_auto_test -- ARGS+="-E preload_unix --output-on-failure"

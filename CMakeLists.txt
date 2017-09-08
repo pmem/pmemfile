@@ -46,6 +46,15 @@ include(FindThreads)
 option(BUILD_LIBPMEMFILE
 	"build libpmemfile (requires libsyscall_intercept)" ON)
 
+option(BUILD_LIBPMEMFILE_TESTS
+	"build libpmemfile tests (ignored if BUILD_LIBPMEMFILE is not set)" ON)
+
+if(BUILD_LIBPMEMFILE AND BUILD_LIBPMEMFILE_TESTS)
+	set(ACTUALLY_BUILD_LIBPMEMFILE_TESTS ON)
+endif()
+
+option(BUILD_LIBPMEMFILE_POSIX_TESTS "build libpmemfile-posix tests" ON)
+
 option(TRACE_TESTS
 	"more verbose test outputs" OFF)
 
@@ -454,10 +463,12 @@ if(NOT LIBUNWIND_FOUND)
 	message(WARNING "libunwind not found. Stack traces from tests will not be reliable")
 endif()
 
-if(TEST_DIR)
-	enable_testing()
-else()
-	message(WARNING "TEST_DIR is empty - 'make test' will not work")
+if(BUILD_LIBPMEMFILE_POSIX_TESTS OR ACTUALLY_BUILD_LIBPMEMFILE_TESTS)
+	if(TEST_DIR)
+		enable_testing()
+	else()
+		message(WARNING "TEST_DIR is empty - 'make test' will not work")
+	endif()
 endif()
 
 if(AUTO_GENERATE_SOURCES)
@@ -469,5 +480,7 @@ if(BUILD_LIBPMEMFILE)
 	add_subdirectory(src/libpmemfile)
 endif()
 add_subdirectory(src/tools)
-add_subdirectory(tests)
+if(TEST_DIR AND (BUILD_LIBPMEMFILE_POSIX_TESTS OR ACTUALLY_BUILD_LIBPMEMFILE_TESTS))
+	add_subdirectory(tests)
+endif()
 add_subdirectory(doc)

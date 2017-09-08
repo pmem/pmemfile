@@ -106,8 +106,6 @@ set(EXPORTED_SYMBOLS
 	pmemfile_clrcap
 	pmemfile_copy_file_range
 	pmemfile_create
-	pmemfile_dup
-	pmemfile_dup2
 	pmemfile_errormsg
 	pmemfile_euidaccess
 	pmemfile_faccessat

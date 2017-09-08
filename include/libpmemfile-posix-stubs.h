@@ -52,9 +52,6 @@
 
 int pmemfile_flock(PMEMfilepool *, PMEMfile *file, int operation);
 
-PMEMfile *pmemfile_dup(PMEMfilepool *, PMEMfile *);
-PMEMfile *pmemfile_dup2(PMEMfilepool *, PMEMfile *file, PMEMfile *file2);
-
 void *pmemfile_mmap(PMEMfilepool *, void *addr, size_t len,
 		int prot, int flags, PMEMfile *file, pmemfile_off_t off);
 int pmemfile_munmap(PMEMfilepool *, void *addr, size_t len);

@@ -71,7 +71,7 @@ elif [[ "$1" == "ltp" ]]; then
 	SUITE_DIR=$HOME/ltp_install
 	SUITE_UTILS_DIR=$TEST_UTILS_DIR/ltp
 else
-	echo "First argument doesn't match any of existing suites"\
+	echo "First argument doesn't match any existing test suites"\
 	"(sqlite|ltp)."
 	exit 1
 fi

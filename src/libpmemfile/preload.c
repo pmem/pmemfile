@@ -2326,6 +2326,15 @@ open_pool_at_startup(struct pool_description *pool_desc)
 	if (pmemfile_vfd_chdir_pf(pool_desc, file) != 0)
 		exit_with_msg(PMEMFILE_PRELOAD_EXIT_POOL_OPEN_FAILED,
 				"!chdir into pmemfile_pool");
+
+	if (process_switching) {
+		/*
+		 * Give up access to the pool. We have to acquire it
+		 * first because ref_cnt == 0 and suspended == false.
+		 */
+		pool_acquire(pool_desc);
+		pool_release(pool_desc);
+	}
 }
 
 static void

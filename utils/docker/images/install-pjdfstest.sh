@@ -31,27 +31,17 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #
-# install-nvml.sh - installs libpmem & libpmemobj
+# install-pjdfstest.sh - installs (surprise!) pjdfstest
 #
 
-git clone https://github.com/pmem/nvml.git
-cd nvml
-git checkout 1.3
-BUILD_PACKAGE_CHECK=n make $1 EXTRA_CFLAGS="-DUSE_VALGRIND"
-if [ "$1" = "dpkg" ]; then
-	sudo dpkg -i dpkg/libpmem_*.deb dpkg/libpmem-dev_*.deb
-	sudo dpkg -i dpkg/libpmemobj_*.deb dpkg/libpmemobj-dev_*.deb
-	# nvml-tools deps
-	sudo dpkg -i dpkg/libpmemblk_*.deb dpkg/libpmemlog_*.deb dpkg/libpmempool_*.deb
-	sudo dpkg -i dpkg/nvml-tools_*.deb
-elif [ "$1" = "rpm" ]; then
-	sudo rpm -i rpm/*/libpmem-*.rpm
-	sudo rpm -i rpm/*/libpmemobj-*.rpm
-	# nvml-tools deps, version specified to avoid installing devel packages
-	sudo rpm -i rpm/*/libpmemblk-1.3*.rpm
-	sudo rpm -i rpm/*/libpmemlog-1.3*.rpm
-	sudo rpm -i rpm/*/libpmempool-1.3*.rpm
-	sudo rpm -i rpm/*/nvml-tools-*.rpm
-fi
-cd ..
-rm -rf nvml
+export commitid=d379e7fd28e9075c2d816287bf4b321b8e13a16a
+
+cd $HOME
+curl -L -o pjdfstest.zip https://github.com/pjd/pjdfstest/archive/${commitid}.zip
+unzip pjdfstest.zip
+mv pjdfstest-${commitid} pjdfstest
+cd pjdfstest
+patch -p1 < /0001-disable-special-files-tests.patch
+autoreconf -ifs
+./configure
+make pjdfstest

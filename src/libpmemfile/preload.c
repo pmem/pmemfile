@@ -1827,6 +1827,9 @@ dispatch_syscall(long syscall_number,
 	case SYS_dup2:
 		return pmemfile_vfd_dup2((int)arg0, (int)arg1);
 
+	case SYS_dup3:
+		return pmemfile_vfd_dup3((int)arg0, (int)arg1, (int)arg2);
+
 	default:
 		/* Did we miss something? */
 		assert(false);

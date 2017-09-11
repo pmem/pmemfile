@@ -386,6 +386,31 @@ pmemfile_vfd_dup2(int old_vfd, int new_vfd)
 }
 
 /*
+ * pmemfile_vfd_dup3 -- Almost the same as dup2, with two differences:
+ * It accepts an additional flag argument.
+ * If the old and new fd arguments are the same, both do nothing, but
+ * dup2 returns the specified fd, while dup3 indicates EINVAL error.
+ */
+int
+pmemfile_vfd_dup3(int old_vfd, int new_vfd, int flags)
+{
+	if (old_vfd == new_vfd)
+		return -EINVAL;
+
+	/*
+	 * The only flag allowed in dup3 is O_CLOEXEC, and that is ignored
+	 * by pmemfile as of now.
+	 * Note: once O_CLOEXEC is handled, it can be stored in the
+	 * vfd_table -- not in the corresponding vfile_description struct,
+	 * as the flag is specific to fd numbers.
+	 */
+	if ((flags & ~O_CLOEXEC) != 0)
+		return -EINVAL;
+
+	return pmemfile_vfd_dup2(old_vfd, new_vfd);
+}
+
+/*
  * pmemfile_vfd_close -- remove a reference from the vfd_table array (if
  * there was one at vfd_table[vfd]).
  * This does not necessarily close an underlying pmemfile file, as some

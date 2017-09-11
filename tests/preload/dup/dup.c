@@ -31,12 +31,15 @@
  */
 
 /*
- * dup.c - a dummy prog using pmemfile, using dup, dup2 via libc
+ * dup.c - a dummy prog using pmemfile, using dup, dup2, dup3 via libc
  */
 
 #ifdef NDEBUG
 #undef NDEBUG
 #endif
+
+/* Define _GNU_SOURCE to expose dup3 in glibc headers */
+#define _GNU_SOURCE
 
 #include <assert.h>
 #include <stdio.h>
@@ -80,6 +83,13 @@ xdup2(int old, int new)
 {
 	if (dup2(old, new) != new)
 		err(1, "dup2");
+}
+
+static void
+xdup3(int old, int new, int flags)
+{
+	if (dup3(old, new, flags) != new)
+		err(1, "dup3");
 }
 
 static off_t
@@ -162,9 +172,20 @@ test(const char *path, const char *extra_path)
 	fd[1] = xdup(fd[0]);
 	seek_and_destroy(fd[0], fd[1]);
 
+	fputs("fd and dup3'd fd\n", stderr);
+	fd[0] = xcreate(path);
+	assert(dup3(fd[0], fd[0], 0) == -1);
+	assert(errno == EINVAL);
+	assert(dup3(fd[0], fd[0], O_CLOEXEC) == -1);
+	assert(errno == EINVAL);
+	fd[1] = xdup(fd[0]);
+	seek_and_destroy(fd[0], fd[1]);
+
 	fputs("dup'ed fd and original fd\n", stderr);
 	fd[0] = xcreate(path);
 	fd[1] = xdup(fd[0]);
+	assert(dup3(fd[0], fd[1], O_CREAT) == -1);
+	assert(errno == EINVAL);
 	seek_and_destroy(fd[1], fd[0]);
 
 	fputs("dup2'd fd and original fd #0\n", stderr);
@@ -178,6 +199,15 @@ test(const char *path, const char *extra_path)
 	fd[0] = xcreate(path);
 	fd[1] = xcreate(extra_path);
 	xdup2(fd[0], fd[1]);
+	seek_and_destroy(fd[0], fd[1]);
+
+	/* dup3 an fd over another fd from another domain */
+	fputs("dup2'd fd and original fd #1\n", stderr);
+	fd[0] = xcreate(path);
+	fd[1] = xcreate(extra_path);
+	assert(dup3(fd[0], fd[1], O_CREAT) == -1);
+	assert(errno == EINVAL);
+	xdup3(fd[0], fd[1], 0);
 	seek_and_destroy(fd[0], fd[1]);
 
 	fputs("fd array\n", stderr);

@@ -53,6 +53,7 @@ void pmemfile_vfd_unref(struct vfd_reference);
 int pmemfile_vfd_dup(int vfd);
 int pmemfile_vfd_fcntl_dup(int vfd, int min_new_vfd);
 int pmemfile_vfd_dup2(int old_vfd, int new_vfd);
+int pmemfile_vfd_dup3(int old_vfd, int new_vfd, int flags);
 
 long pmemfile_vfd_close(int vfd);
 

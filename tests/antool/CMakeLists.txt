@@ -101,8 +101,11 @@ else()
 		endif()
 	endif()
 
-	set(TEST_ANTOOL ${ANTOOL_SRC_DIR}/test-antool.sh)
 	set(TEST_PARSER ${ANTOOL_SRC_DIR}/test-parser.sh)
+	set(TEST_ANTOOL ${ANTOOL_SRC_DIR}/test-antool.sh)
+
+	# fault-injection tests
+	set(TEST_FI ${ANTOOL_SRC_DIR}/test-fi.sh)
 
 	add_test(NAME "antool-parser-382-basic-syscalls"
 		COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" 382 "${TEST_APP}" 0)
@@ -154,4 +157,11 @@ else()
 
 	add_test(NAME "antool-analyze"
 		COMMAND ${TEST_ANTOOL} "${VLTRACE_BIN}" 126 "${TEST_APP}" 15)
+
+	# fault-injection tests
+	foreach(FI_TEST_NUMBER 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19
+			20 21 22 23 24 25 26 27)
+		add_test(NAME "antool-fi-${FI_TEST_NUMBER}"
+			COMMAND ${TEST_FI} fi-${FI_TEST_NUMBER})
+	endforeach(FI_TEST_NUMBER)
 endif()

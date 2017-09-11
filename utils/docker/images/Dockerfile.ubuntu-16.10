@@ -93,13 +93,9 @@ ENV USER user
 ENV USERPASS pass
 RUN useradd -m $USER -g sudo -p `mkpasswd $USERPASS`
 
-USER $USER
-
 # Install ltp
 COPY install-ltp.sh install-ltp.sh
 RUN ./install-ltp.sh
-
-USER root
 
 RUN apt-get remove -y \
 	autoconf \

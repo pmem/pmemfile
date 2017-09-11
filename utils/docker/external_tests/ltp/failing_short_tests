@@ -1,15 +1,8 @@
 bind01
 chdir04
 chroot03
-close01
-close02
 creat07
-dup01
-dup03
 dup05
-dup06
-dup07
-dup202
 dup203
 dup205
 dup3_02
@@ -18,11 +11,9 @@ execlp01
 execv01
 execve04
 execvp01
-fchdir02
+faccessat01
 fcntl01
 fcntl01_64
-fcntl02
-fcntl02_64
 fcntl04
 fcntl04_64
 fcntl05
@@ -37,8 +28,6 @@ fcntl11
 fcntl11_64
 fcntl14
 fcntl14_64
-fcntl15
-fcntl15_64
 fcntl17
 fcntl17_64
 fcntl19
@@ -57,8 +46,6 @@ fcntl25
 fcntl25_64
 fcntl26
 fcntl26_64
-fcntl29
-fcntl29_64
 fcntl32
 fcntl32_64
 fcntl34
@@ -80,7 +67,6 @@ test_ioctl
 inotify01
 inotify04
 inotify05
-kcmp01
 symlink01 -T link01
 link04
 linkat01
@@ -151,7 +137,6 @@ sendfile07_64
 sendfile08
 sendfile08_64
 sendfile09
-sendfile09_64
 signal06
 sockioctl01
 splice01
@@ -177,10 +162,6 @@ write05
 writev01
 writev07
 memfd_create01
-growfiles -W gf18 -b -e 1 -i 0 -L 120 -w -u -r 10-5000 -I r -l -S 2 -f Lgf04_ -d $TMPDIR
 growfiles -W gf27 -b -D 0 -w -g 8b -C 1 -b -i 1000 -u -f gfsparse-1-$$ -d $TMPDIR
 growfiles -W gf28 -b -D 0 -w -g 16b -C 1 -b -i 1000 -u -f gfsparse-2-$$ -d $TMPDIR
 rwtest -N rwtest05 -c -q -i 50 -T 64b 500b:$TMPDIR/rwtest01%f
-inode02
-stream01
-stream02

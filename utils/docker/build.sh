@@ -84,6 +84,7 @@ if [[ "$command" == "" ]]; then
 
 	if [[ $COVERAGE -eq 1 ]]; then
 		ci_env=`bash <(curl -s https://codecov.io/env)`;
+		SET_ULIMIT="--ulimit nofile=1024:1024";
 	fi
 fi
 

@@ -42,7 +42,7 @@ class LinuxTestProject(Suite):
         self.test_dir = path.join(install_dir, 'testcases', 'bin')
         self.test_suites_dir = path.join(install_dir, 'runtest')
         self.suppress_tconf_errors = True
-        self.tmp_dir = '/tmp/'
+        self.tmp_dir = config.mountpoint
 
         environ['PATH'] = self.test_dir + pathsep + environ['PATH']
         environ['LTPROOT'] = self.install_dir
@@ -53,17 +53,11 @@ class LinuxTestProject(Suite):
     def get_run_cmd(self, test):
         if '|' in test:
             self.run_in_shell = True
-            return test
+            return self.set_env_vars(test)
         else:
-            return path.join(self.test_dir, test).split()
+            return path.join(self.test_dir, self.set_env_vars(test)).split()
 
-    def run_tests_from_file(self, path):
-        with open(path, 'r') as f:
-            self.tests_to_run = [self.replace_env_vars(test.strip())
-                                 for test in f.readlines() if not test.isspace()
-                                 and not test.startswith('#')]
-
-    def replace_env_vars(self, test):
+    def set_env_vars(self, test):
         return test.replace('$LTPROOT', self.install_dir).replace('$TMPDIR', self.tmp_dir)
 
     def prepare_default_tests_to_run(self):
@@ -72,11 +66,6 @@ class LinuxTestProject(Suite):
     def get_process_error_result(self, process_error):
         tconf_return_code = 32
         if self.suppress_tconf_errors and process_error.returncode == tconf_return_code:
-            return "PASSED"
+            return 'PASSED'
         else:
-            return "FAILED"
-
-    def get_past_fails(self, past_fails_path):
-        with open(past_fails_path, 'r') as f:
-            return [self.replace_env_vars(fail.strip())
-                    for fail in f.readlines() if fail.strip()]
+            return 'FAILED'

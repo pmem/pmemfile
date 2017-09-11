@@ -71,7 +71,7 @@ elif [[ "$1" == "ltp" ]]; then
 	SUITE_DIR=$HOME/ltp_install
 	SUITE_UTILS_DIR=$TEST_UTILS_DIR/ltp
 else
-	echo "First argument doesn't match any of existing suites"\
+	echo "First argument doesn't match any existing test suites"\
 	"(sqlite|ltp)."
 	exit 1
 fi
@@ -104,7 +104,7 @@ $TEST_UTILS_DIR/run-suite.py $1 -i $SUITE_DIR -m $MOUNTPOINT -l $PMEMFILE_LIB_DI
 	-p $PF_POOL -t $TESTS -f $FAILING_TESTS --timeout 120 $VERBOSE
 
 
-EXIT_CODE=`echo $?`
+EXIT_CODE=$?
 
 if [ "$COVERAGE" = "1" ]; then
 	bash <(curl -s https://codecov.io/bash)

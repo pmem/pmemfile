@@ -433,7 +433,7 @@ hook_faccessat(int fd, long path_arg, long mode)
 	long ret;
 	struct resolved_path where;
 
-	struct vfd_reference at = pmemfile_vfd_ref(fd);
+	struct vfd_reference at = pmemfile_vfd_at_ref(fd);
 
 	resolve_path(at, (const char *)path_arg, &where, NO_RESOLVE_LAST_SLINK);
 

@@ -51,6 +51,8 @@ if [[ "$2" == "verbose" ]]; then
 	VERBOSE="--verbose"
 fi
 
+SUITE=$1
+
 PMEMFILE_INSTALL_DIR=$HOME/pmemfile_libs
 PMEMFILE_LIB_DIR=$PMEMFILE_INSTALL_DIR/lib/pmemfile_debug
 TEST_UTILS_DIR=$WORKDIR/utils/docker/external_tests
@@ -64,14 +66,14 @@ if [ "$COVERAGE" = "1" ]; then
 	PMEMFILE_SHARED_OPTS="${PMEMFILE_SHARED_OPTS} -DCMAKE_C_FLAGS=-coverage -DCMAKE_CXX_FLAGS=-coverage"
 fi
 
-if [[ "$1" == "sqlite" ]]; then
+if [[ "$SUITE" == "sqlite" ]]; then
 	SUITE_DIR=$HOME/sqlite
 	SUITE_UTILS_DIR=$TEST_UTILS_DIR/sqlite
-elif [[ "$1" == "ltp" ]]; then
+elif [[ "$SUITE" == "ltp" ]]; then
 	SUITE_DIR=$HOME/ltp_install
 	SUITE_UTILS_DIR=$TEST_UTILS_DIR/ltp
 else
-	echo "First argument doesn't match any of existing suites"\
+	echo "First argument doesn't match any existing test suites"\
 	"(sqlite|ltp)."
 	exit 1
 fi
@@ -100,14 +102,14 @@ $MKFS_PMEMFILE $PF_POOL 3G
 # Run pmemfile testsuite short tests
 set +e
 
-$TEST_UTILS_DIR/run-suite.py $1 -i $SUITE_DIR -m $MOUNTPOINT -l $PMEMFILE_LIB_DIR \
+$TEST_UTILS_DIR/run-suite.py $SUITE -i $SUITE_DIR -m $MOUNTPOINT -l $PMEMFILE_LIB_DIR \
 	-p $PF_POOL -t $TESTS -f $FAILING_TESTS --timeout 120 $VERBOSE
 
 
-EXIT_CODE=`echo $?`
+EXIT_CODE=$?
 
 if [ "$COVERAGE" = "1" ]; then
-	bash <(curl -s https://codecov.io/bash)
+	bash <(curl -s https://codecov.io/bash) -c -F ${SUITE}_tests
 fi
 
 # Cleanup

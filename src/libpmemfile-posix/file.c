@@ -706,20 +706,6 @@ pmemfile_close(PMEMfilepool *pfp, PMEMfile *file)
 	pf_free(file);
 }
 
-PMEMfile *
-pmemfile_dup(PMEMfilepool *pfp, PMEMfile *file)
-{
-	errno = ENOTSUP;
-	return NULL;
-}
-
-PMEMfile *
-pmemfile_dup2(PMEMfilepool *pfp, PMEMfile *file, PMEMfile *file2)
-{
-	errno = ENOTSUP;
-	return NULL;
-}
-
 pmemfile_mode_t
 pmemfile_umask(PMEMfilepool *pfp, pmemfile_mode_t mask)
 {

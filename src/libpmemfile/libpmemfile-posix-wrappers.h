@@ -1944,45 +1944,6 @@ wrapper_pmemfile_flock(PMEMfilepool *pfp,
 	return ret;
 }
 
-static inline PMEMfile *
-wrapper_pmemfile_dup(PMEMfilepool *pfp,
-		PMEMfile *file)
-{
-	PMEMfile *ret;
-
-	ret = pmemfile_dup(pfp,
-		file);
-
-	log_write(
-	    "pmemfile_dup(%p, %p) = %p",
-		pfp,
-		file,
-		ret);
-
-	return ret;
-}
-
-static inline PMEMfile *
-wrapper_pmemfile_dup2(PMEMfilepool *pfp,
-		PMEMfile *file,
-		PMEMfile *file2)
-{
-	PMEMfile *ret;
-
-	ret = pmemfile_dup2(pfp,
-		file,
-		file2);
-
-	log_write(
-	    "pmemfile_dup2(%p, %p, %p) = %p",
-		pfp,
-		file,
-		file2,
-		ret);
-
-	return ret;
-}
-
 static inline void *
 wrapper_pmemfile_mmap(PMEMfilepool *pfp,
 		void *addr,

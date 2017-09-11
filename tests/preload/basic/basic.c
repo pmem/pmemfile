@@ -79,6 +79,26 @@ main(int argc, char **argv)
 	if ((fd = open(full_path, O_CREAT | O_RDWR, 0666)) < 0)
 		err(1, "open(\"%s\", O_CREAT | O_RDWR, 0666) ", full_path);
 
+	if (access(full_path, F_OK) != 0)
+		err(1, "access(\"%s\", F_OK) ", full_path);
+
+	if (access("invalid_path", F_OK) == 0)
+		err(1, "access(\"invalid_path\", F_OK) == 0");
+
+	if (access(full_path, R_OK) != 0)
+		err(1, "access(\"%s\", R_OK) ", full_path);
+
+	if (faccessat(AT_FDCWD, full_path, F_OK, 0) != 0)
+		err(1, "faccessat(AT_FDCWD\"%s\", F_OK, 0) ", full_path);
+
+	if (faccessat(AT_FDCWD, full_path, F_OK, AT_EACCESS) != 0)
+		err(1, "faccessat(AT_FDCWD\"%s\", F_OK, AT_EACCESS) ",
+		    full_path);
+
+	if (faccessat(AT_FDCWD, full_path, F_OK, AT_SYMLINK_NOFOLLOW) != 0)
+		err(1, "faccessat(AT_FDCWD\"%s\", F_OK, AT_SYMLINK_NOFOLLOW) ",
+		    full_path);
+
 	if (close(fd) != 0)
 		err(1, "close \"%s\"", full_path);
 
@@ -103,6 +123,26 @@ main(int argc, char **argv)
 	 */
 	if ((fd = open(relative_path, O_CREAT | O_RDWR, 0666)) < 0)
 		err(1, "open(\"%s\", O_CREAT | O_RDWR, 0666) ", relative_path);
+
+	if (access(relative_path, F_OK) != 0)
+		err(1, "access(\"%s\", F_OK) ", relative_path);
+
+	if (access("invalid_path", F_OK) == 0)
+		err(1, "access(\"invalid_path\", F_OK) == 0");
+
+	if (access(relative_path, R_OK) != 0)
+		err(1, "access(\"%s\", R_OK) ", relative_path);
+
+	if (faccessat(AT_FDCWD, relative_path, F_OK, 0) != 0)
+		err(1, "faccessat(AT_FDCWD\"%s\", F_OK, 0) ", relative_path);
+
+	if (faccessat(AT_FDCWD, relative_path, F_OK, AT_EACCESS) != 0)
+		err(1, "faccessat(AT_FDCWD\"%s\", F_OK, AT_EACCESS) ",
+		    relative_path);
+
+	if (faccessat(AT_FDCWD, relative_path, F_OK, AT_SYMLINK_NOFOLLOW) != 0)
+		err(1, "faccessat(AT_FDCWD\"%s\", F_OK, AT_SYMLINK_NOFOLLOW) ",
+		    relative_path);
 
 	if (close(fd) != 0)
 		err(1, "close \"%s\"", relative_path);
@@ -153,6 +193,20 @@ main(int argc, char **argv)
 	struct stat stat_buf;
 	if (fstatat(fd, inner_file, &stat_buf, 0) != 0)
 		err(1, "fstatat \"%s/%s\"", dir_to_list_path, inner_file);
+
+	if (faccessat(fd, inner_file, F_OK, 0) != 0)
+		err(1, "faccessat(fd, \"%s\", F_OK, 0) ", inner_file);
+
+	if (faccessat(fd, inner_file, F_OK, AT_EACCESS) != 0)
+		err(1, "faccessat(fd, \"%s\", F_OK, AT_EACCESS) ",
+		    inner_file);
+
+	if (faccessat(fd, inner_file, F_OK, AT_SYMLINK_NOFOLLOW) != 0)
+		err(1, "faccessat(fd, \"%s\", F_OK, AT_SYMLINK_NOFOLLOW) ",
+		    inner_file);
+
+	if (faccessat(fd, "invalid_path", F_OK, 0) == 0)
+		err(1, "faccessat(fd, \"invalid_path\", F_OK, 0) == 0");
 
 	if (fchdir(fd) != 0)
 		err(1, "fchdir");

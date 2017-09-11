@@ -742,22 +742,26 @@ class ListSyscalls(list):
 
     ####################################################################################################################
     def post_match_action(self, syscall):
-        # change current working directory in case of SyS_chdir and SyS_fchdir
-        if syscall.ret == 0 and syscall.name in ("chdir", "fchdir"):
-            old_cwd = self.get_cwd(syscall)
-            new_cwd = self.all_strings[syscall.args[0]]
-            self.set_cwd(new_cwd, syscall)
-            self.log_anls.debug("INFO: current working directory changed:")
-            self.log_anls.debug("      from: \"{0:s}\"".format(old_cwd))
-            self.log_anls.debug("      to:   \"{0:s}\"".format(new_cwd))
-
-        # add new PID to the table in case of SyS_fork, SyS_vfork and SyS_clone
-        if syscall.name in ("fork", "vfork", "clone"):
-            if syscall.iret <= 0:
+        if syscall.iret == 0:
+            # change current working directory in case of SyS_chdir and SyS_fchdir
+            if syscall.name in ("chdir", "fchdir"):
+                old_cwd = self.get_cwd(syscall)
+                new_cwd = self.all_strings[syscall.args[0]]
+                self.set_cwd(new_cwd, syscall)
+                self.log_anls.debug("INFO: current working directory changed:")
+                self.log_anls.debug("      from: \"{0:s}\"".format(old_cwd))
+                self.log_anls.debug("      to:   \"{0:s}\"".format(new_cwd))
                 return
-            old_pid = syscall.pid_tid >> 32
-            new_pid = syscall.iret
-            self.add_pid(new_pid, old_pid)
+            return
+
+        if syscall.iret > 0:
+            # add new PID to the table in case of SyS_fork, SyS_vfork and SyS_clone
+            if syscall.name in ("fork", "vfork", "clone"):
+                old_pid = syscall.pid_tid >> 32
+                new_pid = syscall.iret
+                self.add_pid(new_pid, old_pid)
+                return
+            return
 
     ####################################################################################################################
     # add_pid -- add new PID to the table and copy CWD and FD table for this PID

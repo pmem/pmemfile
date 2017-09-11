@@ -97,6 +97,23 @@ main(int argc, char **argv)
 	if (chdir(chdir_path) != 0)
 		err(1, "chdir to \"%s\"", chdir_path);
 
+	/* Test file access outside of pmemfile pool. */
+	if (truncate("trunc_test", 10) == 0)
+		err(1, "truncate trunc_test 10 unexpectedly succeeded");
+
+	if (unlink("trunc_test") == 0)
+		err(1, "unlink trunc_test unexpectedly succeeded");
+
+	if ((fd = creat("trunc_test", 0777) < 0))
+		err(1, "creat trunc_test");
+	close(fd);
+
+	if (truncate("trunc_test", 10))
+		err(1, "truncate trunc_test 10");
+
+	if (unlink("trunc_test"))
+		err(1, "unlink trunc_test");
+
 	/*
 	 * Creating a file with an relative path,
 	 * and writing to it.

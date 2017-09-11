@@ -130,4 +130,15 @@ set(ENV{PMEMFILE_CD} ${DIR}/mount_point)
 execute(stat ../dummy_file_a)
 unset(ENV{PMEMFILE_CD})
 
+# test syscalls for paths outside of pmemfile mount point
+execute(touch ${DIR}/out_file)
+execute(truncate -s 10 ${DIR}/out_file)
+execute_expect_failure(truncate -s 10 ${DIR}/bla/out_file)
+execute(mv ${DIR}/out_file ${DIR}/out_file2)
+execute_expect_failure(mv ${DIR}/out_file ${DIR}/out_file2)
+execute_expect_failure(mv ${DIR}/out_file2 ${DIR}/bla/out_file)
+# cross-device rename
+execute(mv ${DIR}/out_file2 ${DIR}/mount_point/out_file)
+execute(rm ${DIR}/mount_point/out_file)
+
 cleanup()

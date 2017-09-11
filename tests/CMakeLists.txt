@@ -43,9 +43,11 @@ if(TRACE_TESTS)
 	set(GLOBAL_TEST_ARGS ${GLOBAL_TEST_ARGS} --trace-expand)
 endif()
 
-add_subdirectory(posix)
+if(BUILD_LIBPMEMFILE_POSIX_TESTS)
+	add_subdirectory(posix)
+endif()
 
-if(BUILD_LIBPMEMFILE)
+if(BUILD_LIBPMEMFILE_TESTS)
 	add_subdirectory(preload)
 endif()
 

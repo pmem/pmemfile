@@ -310,7 +310,7 @@ class AnalyzingTool(ListSyscalls):
 
             # read header = command line
             data_size, argc = read_fmt_data(fh, 'ii')
-            data_size -= sizei
+            data_size -= sizei  # subtract size of argc only, because 'data_size' does not include its own size
             bdata = read_bdata(fh, data_size)
             argv = str(bdata.decode(errors="ignore"))
             argv = argv.replace('\0', ' ')
@@ -345,6 +345,8 @@ class AnalyzingTool(ListSyscalls):
 
                 # read data from the file
                 data_size, info_all, pid_tid, sc_id, timestamp = read_fmt_data(fh, 'IIQQQ')
+                # subtract size of all read fields except of 'data_size' itself,
+                # because 'data_size' does not include its own size
                 data_size -= sizeIQQQ
                 bdata = read_bdata(fh, data_size)
 

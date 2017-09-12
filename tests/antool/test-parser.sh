@@ -130,6 +130,7 @@ TEST_NUM=$MAX_STR_LEN-$TEST_NUM
 
 OUT_BIN=output-bin-$TEST_NUM.log
 OUT_TXT=output-txt-$TEST_NUM.log
+OUT_ERR=output-err-$TEST_NUM.log
 OUT_BARE=output-bare-$TEST_NUM.log
 OUT_SORT=output-sort-$TEST_NUM.log
 
@@ -145,8 +146,8 @@ else
 	cp ../$OUT_VLT .
 fi
 
-echo "$ $ANTOOL -c -s -b $OUT_VLT > $OUT_TXT"
-$ANTOOL -c -s -b $OUT_VLT > $OUT_TXT
+echo "$ $ANTOOL -c -s -b $OUT_VLT > $OUT_TXT 2> $OUT_ERR"
+$ANTOOL -c -s -b $OUT_VLT > $OUT_TXT 2> $OUT_ERR
 
 mv $OUT_TXT $OUT_BARE
 [ $(cat $OUT_BARE | wc -l) -eq 0 ] \

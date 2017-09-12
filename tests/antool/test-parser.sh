@@ -76,7 +76,8 @@ fi
 if [ "$4" == "" ]; then
 	echo "ERROR($NAME): not enough arguments"
 	echo "Usage: $0 [-f] <vltrace-path> <max-string-length> <test-file> <test-number>"
-	echo "   -f - turn on follow-fork"
+	echo "   -f                   -  turn on follow-fork"
+	echo "   <max-string-length>  -  parameter of vltrace (see the man page of vltrace)"
 	exit 1
 fi
 
@@ -124,6 +125,9 @@ fi
 PATTERN_START="------------------ close 0x0000000012345678"
 PATTERN_END="------------------ close 0x0000000087654321"
 
+SINGLE_TEST_NUM=$TEST_NUM
+TEST_NUM=$MAX_STR_LEN-$TEST_NUM
+
 OUT_BIN=output-bin-$TEST_NUM.log
 OUT_TXT=output-txt-$TEST_NUM.log
 OUT_BARE=output-bare-$TEST_NUM.log
@@ -135,8 +139,8 @@ if [ ! "$VLTRACE_SKIP" ]; then
 	require_superuser
 	# remove all old logs and match files of the current test
 	rm -f *-$TEST_NUM.log*
-	echo "$ sudo bash -c \"$RUN_VLTRACE $FF -o $OUT_VLT $TEST_FILE $TEST_NUM\""
-	sudo bash -c "$RUN_VLTRACE $FF -o $OUT_VLT $TEST_FILE $TEST_NUM"
+	echo "$ sudo bash -c \"$RUN_VLTRACE $FF -o $OUT_VLT $TEST_FILE $SINGLE_TEST_NUM\""
+	sudo bash -c "$RUN_VLTRACE $FF -o $OUT_VLT $TEST_FILE $SINGLE_TEST_NUM"
 else
 	cp ../$OUT_VLT .
 fi

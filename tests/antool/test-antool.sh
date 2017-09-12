@@ -42,16 +42,18 @@ if [ "$1" == "-f" ]; then
 	shift
 fi
 
-if [ "$3" == "" ]; then
+if [ "$4" == "" ]; then
 	echo "ERROR($NAME): not enough arguments"
-	echo "Usage: $0 [-f] <path-to-vltrace> <test-app> <test-number>"
-	echo "   -f - turn on follow-fork"
+	echo "Usage: $0 [-f] <path-to-vltrace> <max-string-length> <test-app> <test-number>"
+	echo "   -f                   -  turn on follow-fork"
+	echo "   <max-string-length>  -  parameter of vltrace (see the man page of vltrace)"
 	exit 1
 fi
 
 VLTRACE=$1
-TEST_FILE=$2
-TEST_NUM=$3
+MAX_STR_LEN=$2
+TEST_FILE=$3
+TEST_NUM=$4
 
 TEST_DIR=$(dirname $0)
 [ "$TEST_DIR" == "." ] && TEST_DIR=$(pwd)
@@ -89,7 +91,7 @@ if [ "$VLTRACE" -a ! "$VLTRACE_SKIP" ]; then
 		echo "Error: executable file '$TEST_FILE' does not exist"
 		exit 1
 	fi
-	OPT_VLTRACE="$FF -l bin -t -r"
+	OPT_VLTRACE="$FF -l bin -t -r -s $MAX_STR_LEN"
 	RUN_VLTRACE="ulimit -l 10240 && ulimit -n 10240 && PATH=\"$PATH\" $VLTRACE $OPT_VLTRACE"
 else
 	if [ ! "$VLTRACE_SKIP" -a -f ../$FILE_DIR_PMEM ]; then
@@ -110,6 +112,9 @@ fi
 
 PATTERN_START="close                (0x0000000012345678)"
 PATTERN_END="close                (0x0000000087654321)"
+
+SINGLE_TEST_NUM=$TEST_NUM
+TEST_NUM=$MAX_STR_LEN-$TEST_NUM
 
 OUTBIN=output-bin-$TEST_NUM.log
 OUT=output-$TEST_NUM.log
@@ -139,8 +144,8 @@ if [ ! "$VLTRACE_SKIP" ]; then
 
 	# remove all old logs and match files of the current test
 	rm -f *-$TEST_NUM.log*
-	echo "$ sudo bash -c \"$RUN_VLTRACE -o $OUTBIN $TEST_FILE $TEST_NUM $TEST_OPTIONS\""
-	sudo bash -c "$RUN_VLTRACE -o $OUTBIN $TEST_FILE $TEST_NUM $TEST_OPTIONS"
+	echo "$ sudo bash -c \"$RUN_VLTRACE -o $OUTBIN $TEST_FILE $SINGLE_TEST_NUM $TEST_OPTIONS\""
+	sudo bash -c "$RUN_VLTRACE -o $OUTBIN $TEST_FILE $SINGLE_TEST_NUM $TEST_OPTIONS"
 else
 	DIR_PMEM=$VLTRACE_SKIP
 	cp ../$OUTBIN .

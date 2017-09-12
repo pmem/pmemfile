@@ -36,7 +36,7 @@ set(ANTOOL_TESTS "SAVED"
 
 set(VLTRACE_BIN "vltrace" CACHE FILEPATH "path to vltrace binary")
 
-if(${ANTOOL_TESTS} STREQUAL SKIP)
+if("${ANTOOL_TESTS}" STREQUAL "SKIP")
 	message(STATUS "skipping antool tests")
 
 else()
@@ -48,7 +48,7 @@ else()
 			OUTPUT_QUIET
 			ERROR_QUIET)
 
-	if(${ANTOOL_TESTS} STREQUAL SAVED)
+	if("${ANTOOL_TESTS}" STREQUAL "SAVED")
 		if(${BZIP2_FOUND} EQUAL 0)
 			set(VLTRACE_FOUND -1)
 			set(VLTRACE_BIN "")

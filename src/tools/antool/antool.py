@@ -56,7 +56,7 @@ DO_REINIT = 1
 ########################################################################################################################
 class AnalyzingTool(ListSyscalls):
     def __init__(self, convert_mode, pmem_paths, fileout, max_packets, offline_mode,
-                 script_mode, debug_mode, verbose_mode):
+                 script_mode, debug_mode, print_log_mode, verbose_mode):
 
         ListSyscalls.__init__(self, pmem_paths, script_mode, debug_mode, verbose_mode)
 
@@ -64,9 +64,11 @@ class AnalyzingTool(ListSyscalls):
         self.script_mode = script_mode
         self.debug_mode = debug_mode
         self.offline_mode = offline_mode
+        self.print_log_mode = print_log_mode
         self.verbose_mode = verbose_mode
 
-        self.print_progress = not (self.debug_mode or self.script_mode or (self.convert_mode and not self.offline_mode)
+        self.print_progress = not (self.debug_mode or self.script_mode or self.print_log_mode
+                                   or (self.convert_mode and not self.offline_mode)
                                    or (not self.convert_mode and self.verbose_mode >= 2))
 
         self.syscall_table = SyscallTable()
@@ -116,12 +118,10 @@ class AnalyzingTool(ListSyscalls):
         if self.debug_mode:
             if len(self.list_no_exit):
                 print("\nWARNING: list 'list_no_exit' is not empty!")
-                self.list_no_exit.sort()
                 self.list_no_exit.print_always()
 
             if len(self.list_others):
                 print("\nWARNING: list 'list_others' is not empty!")
-                self.list_others.sort()
                 self.list_others.print_always()
 
     ####################################################################################################################
@@ -264,7 +264,7 @@ class AnalyzingTool(ListSyscalls):
             else:
                 iarch = 0
 
-            raise CriticalError("wrong architecture of vltrace log: {0:s} ({1:d}) (required: {2:s}"
+            raise CriticalError("wrong architecture of vltrace log: {0:s} ({1:d}) (required: {2:s})"
                                 .format(Archs[iarch], arch, Archs[architecture]))
 
     ####################################################################################################################
@@ -276,26 +276,15 @@ class AnalyzingTool(ListSyscalls):
         sizeI = struct.calcsize('I')
         sizeQ = struct.calcsize('Q')
         sizeIQQQ = sizeI + 3 * sizeQ
-        sizeIIQQQ = 2 * sizeI + 3 * sizeQ
 
         file_size = 0
-        read_size = 0
+
+        fh = open_file(path_to_trace_log, 'rb')
 
         try:
             statinfo = stat(path_to_trace_log)
             file_size = statinfo.st_size
 
-        except FileNotFoundError:
-            print("ERROR: file not found: {0:s}".format(path_to_trace_log), file=stderr)
-            exit(-1)
-
-        except:
-            print("ERROR: unexpected error", file=stderr)
-            raise
-
-        fh = open_file(path_to_trace_log, 'rb')
-
-        try:
             self.check_signature(fh, VLTRACE_TAB_SIGNATURE)
             self.check_version(fh, VLTRACE_VMAJOR, VLTRACE_VMINOR)
             self.check_architecture(fh, ARCH_x86_64)
@@ -306,15 +295,12 @@ class AnalyzingTool(ListSyscalls):
 
             # read and init global buf_size
             self.buf_size, = read_fmt_data(fh, 'i')
-            read_size += sizei
 
             # read length of CWD
             cwd_len, = read_fmt_data(fh, 'i')
-            read_size += sizei
 
             # read CWD
             bdata = read_bdata(fh, cwd_len)
-            read_size += cwd_len
 
             # decode and set CWD
             cwd = str(bdata.decode(errors="ignore"))
@@ -324,9 +310,8 @@ class AnalyzingTool(ListSyscalls):
 
             # read header = command line
             data_size, argc = read_fmt_data(fh, 'ii')
-            data_size -= sizei
+            data_size -= sizei  # subtract size of argc only, because 'data_size' does not include its own size
             bdata = read_bdata(fh, data_size)
-            read_size += 2 * sizei + data_size
             argv = str(bdata.decode(errors="ignore"))
             argv = argv.replace('\0', ' ')
 
@@ -338,8 +323,8 @@ class AnalyzingTool(ListSyscalls):
             print("ERROR: {0:s}".format(err.message), file=stderr)
             exit(-1)
 
-        except:
-            self.log_main.critical("unexpected error")
+        except:  # pragma: no cover
+            print("ERROR: unexpected error", file=stderr)
             raise
 
         if not self.script_mode:
@@ -353,20 +338,22 @@ class AnalyzingTool(ListSyscalls):
         state = STATE_INIT
         while True:
             try:
-                # read data from the file
-                data_size, info_all, pid_tid, sc_id, timestamp = read_fmt_data(fh, 'IIQQQ')
-                data_size -= sizeIQQQ
-                bdata = read_bdata(fh, data_size)
-                read_size += sizeIIQQQ + data_size
-
-                # print progress
-                n += 1
-                if self.print_progress:
-                    print("\r{0:d} ({1:d}%) ".format(n, int((100 * read_size) / file_size)), end=' ')
                 if n >= self.max_packets > 0:
                     if not self.script_mode:
                         print("done (read maximum number of packets: {0:d})".format(n))
                     break
+
+                # read data from the file
+                data_size, info_all, pid_tid, sc_id, timestamp = read_fmt_data(fh, 'IIQQQ')
+                # subtract size of all read fields except of 'data_size' itself,
+                # because 'data_size' does not include its own size
+                data_size -= sizeIQQQ
+                bdata = read_bdata(fh, data_size)
+
+                # print progress
+                n += 1
+                if self.print_progress:
+                    print("\r{0:d} ({1:d}% bytes) ".format(n, int((100 * fh.tell()) / file_size)), end=' ')
 
                 # analyse the read data and assign 'self.syscall' appropriately
                 state, self.syscall = self.analyse_read_data(state, info_all, pid_tid, sc_id, bdata)
@@ -380,7 +367,7 @@ class AnalyzingTool(ListSyscalls):
                     elif not self.convert_mode:
                         self.syscall = self.analyse_if_supported(self.syscall)
 
-                if self.convert_mode and not self.offline_mode:
+                if not self.offline_mode and (self.convert_mode or self.print_log_mode):
                     self.syscall.print_single_record(DEBUG_OFF)
                 elif self.debug_mode:
                     self.syscall.print_single_record(DEBUG_ON)
@@ -396,7 +383,7 @@ class AnalyzingTool(ListSyscalls):
             except EndOfFile:
                 break
 
-            except:
+            except:  # pragma: no cover
                 print("ERROR: unexpected error", file=stderr)
                 raise
 
@@ -464,7 +451,7 @@ def main():
         verbose = 0
 
     at = AnalyzingTool(args.convert, args.pmem, args.output, args.max_packets, args.offline, args.script, args.debug,
-                       verbose)
+                       args.log, verbose)
 
     at.read_and_parse_data(args.binlog)
 
@@ -479,5 +466,5 @@ def main():
     at.print_unsupported_syscalls_offline()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

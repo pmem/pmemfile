@@ -175,7 +175,7 @@ class Syscall(SyscallInfo):
                 string = buf_str[self.buf_size_2: 2 * self.buf_size_2]
             else:  # pragma: no cover
                 assert_msg(self.num_str <= 2, "unsupported number of string arguments ({0:d}), "
-                                              "input file can be corrupted".format(self.nstrargs))
+                                              "input file may be corrupted".format(self.nstrargs))
 
         elif self.nstrargs == 3:
             max_len = self.str_max_3
@@ -188,10 +188,10 @@ class Syscall(SyscallInfo):
                 string = buf_str[2 * self.buf_size_3: 3 * self.buf_size_3]
             else:  # pragma: no cover
                 assert_msg(self.num_str <= 3, "unsupported number of string arguments ({0:d}), "
-                                              "input file can be corrupted".format(self.nstrargs))
+                                              "input file may be corrupted".format(self.nstrargs))
 
         else:  # pragma: no cover
-            assert_msg(self.nstrargs <= 3, "unsupported number of string arguments ({0:d}), input file can be corrupted"
+            assert_msg(self.nstrargs <= 3, "unsupported number of string arguments ({0:d}), input file may be corrupted"
                        .format(self.nstrargs))
 
         str_p = str(string.decode(errors="ignore"))

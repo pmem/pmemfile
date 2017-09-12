@@ -131,6 +131,9 @@ else()
 	add_test(NAME "antool-parser-1531-syscalls-string-arguments-126"
 		COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" 1531 "${TEST_APP}" 8)
 
+	add_test(NAME "antool-parser-126-syscalls-string-arguments-382"
+		COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" 126 "${TEST_APP}" 9)
+
 	add_test(NAME "antool-parser-1531-syscalls-string-arguments-382"
 		COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" 1531 "${TEST_APP}" 9)
 
@@ -139,6 +142,9 @@ else()
 
 	add_test(NAME "antool-parser-1531-syscalls-string-arguments-1148"
 		COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" 1531 "${TEST_APP}" 11)
+
+	add_test(NAME "antool-parser-1148-syscalls-string-arguments-1531"
+		COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" 1148 "${TEST_APP}" 12)
 
 	add_test(NAME "antool-parser-1531-syscalls-string-arguments-1531"
 		COMMAND ${TEST_PARSER} "${VLTRACE_BIN}" 1531 "${TEST_APP}" 12)

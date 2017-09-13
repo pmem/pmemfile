@@ -220,11 +220,6 @@ class Syscall(SyscallInfo):
 
     ####################################################################################################################
     def print_single_record(self, debug):
-        if self.state not in (STATE_ENTRY_COMPLETED, STATE_COMPLETED):
-            if self.debug_mode and self.state != STATE_IN_ENTRY:
-                self.log_parse.debug("DEBUG(print_single_record): state = {0:d}".format(self.state))
-            return
-
         if self.state == STATE_ENTRY_COMPLETED:
             self.print_entry(debug)
             return
@@ -235,6 +230,11 @@ class Syscall(SyscallInfo):
             else:
                 self.print_exit(debug)
             return
+
+        if self.state == STATE_CORRUPTED_ENTRY:
+            self.log_print("corrupted entry packet information of syscall {0:s}:".format(self.name), debug)
+            self.log_print("0x{0:016X} 0x{1:016X} {2:s} {3:s} [corrupted entry packet]"
+                           .format(self.time_start, self.pid_tid, self.__str, self.name), debug)
 
     ####################################################################################################################
     def print_always(self):

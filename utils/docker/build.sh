@@ -50,14 +50,12 @@ fi
 sudo chmod -R a+w $HOST_WORKDIR
 
 if [[ "$TRAVIS_EVENT_TYPE" == "cron" || "$TRAVIS_BRANCH" == "coverity_scan" ]]; then
-	if [[ $COVERITY -eq 1 ]]; then
-		command="./run-coverity.sh"
-	else
+	if [[ $TYPE != coverity ]]; then
 		echo "Skipping non-Coverity job for cron/Coverity build"
 		exit 0
 	fi
 else
-	if [[ $COVERITY -eq 1 ]]; then
+	if [[ $TYPE = "coverity" ]]; then
 		echo "Skipping Coverity job for non cron/Coverity build"
 		exit 0
 	fi
@@ -67,22 +65,31 @@ imageName=${DOCKERHUB_REPO}:${OS}-${OS_VER}
 containerName=pmemfile-${OS}-${OS_VER}
 
 if [[ "$command" == "" ]]; then
-	if [[ $MAKE_PKG -eq 0 ]] ; then command="./run-build.sh"; fi
-	if [[ $MAKE_PKG -eq 1 ]] ; then command="./run-build-package.sh"; fi
-	if [[ $COVERAGE -eq 1 ]] ; then command="./run-coverage.sh"; ci_env=`bash <(curl -s https://codecov.io/env)`; fi
-	if [[ $SQLITE -eq 1 ]]; then
-		command="sqlite/run-build-sqlite.sh";
-		if [[ $COVERAGE -eq 1 ]]; then
-			ci_env=`bash <(curl -s https://codecov.io/env)`;
-		fi
-		SET_ULIMIT="--ulimit nofile=1024:1024";
-	fi
-	if [[ $PJDFSTEST -eq 1 ]]; then
-		command="pjdfstest/build-and-test.sh";
-		if [[ $COVERAGE -eq 1 ]]; then
-			ci_env=`bash <(curl -s https://codecov.io/env)`;
-		fi
-		ci_env="${ci_env} -u root";
+	case $TYPE in
+		normal)
+			command="./run-build.sh";
+			;;
+		package)
+			command="./run-build-package.sh";
+			;;
+		sqlite)
+			command="sqlite/run-build-sqlite.sh";
+			docker_opts="--ulimit nofile=1024:1024";
+			;;
+		coverity)
+			command="./run-coverity.sh";
+			;;
+		pjdfstest)
+			command="pjdfstest/build-and-test.sh";
+			docker_opts="-u root";
+			;;
+		coverage)
+			command="./run-coverage.sh";
+			;;
+	esac
+
+	if [ $TYPE = "coverage" -o "$COVERAGE" = "1" ]; then
+		docker_opts="${docker_opts} `bash <(curl -s https://codecov.io/env)`";
 	fi
 fi
 
@@ -93,8 +100,7 @@ WORKDIR=/pmemfile-${OS}-${OS_VER}
 #  - host directory containing pmemfile source mounted (-v)
 #  - working directory set (-w)
 sudo docker run --rm --privileged=true --name=$containerName $EXTRA_DOCKER_ARGS -i \
-	$ci_env \
-	$SET_ULIMIT \
+	${docker_opts} \
 	--env http_proxy=$http_proxy \
 	--env https_proxy=$https_proxy \
 	--env C_COMPILER=$C_COMPILER \

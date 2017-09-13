@@ -60,13 +60,13 @@ if [ "$FILES_BIN" == "" ]; then
 	exit 1
 fi
 
-if [ ! -f $FILE_DIR_PMEM ]; then
-	echo "ERROR: file with pmem directory does not exist: $FILE_DIR_PMEM"
+if [ $(ls -1 $MASK_DIR_PMEM | wc -l) -eq 0 ]; then
+	echo "ERROR: files with pmem directory do not exist: $MASK_DIR_PMEM"
 	echo "       - please rerun antool tests"
 	exit 1
 fi
 
-cp -f $FILE_DIR_PMEM $SRC_DIR
+cp -f $MASK_DIR_PMEM $SRC_DIR
 
 rm -f *.$ARCH_EXT
 

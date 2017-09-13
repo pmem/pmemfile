@@ -91,7 +91,7 @@ if [ "$MODE" == "fi_only" ]; then
 	mv -f $SRC_DIR/$FI_SRC_BIN_LOG $SRC_DIR/$FI_BIN_LOG
 else
 	cp -f $SRC_DIR/$FI_SRC_BIN_LOG $SRC_DIR/$FI_BIN_LOG
-	cp -f $SRC_DIR/$FILE_DIR_PMEM $DEST_DIR
+	cp -f $SRC_DIR/$MASK_DIR_PMEM $DEST_DIR
 fi
 mv -f $SRC_DIR/$MASK_BIN $DEST_DIR
 rm -f $SRC_DIR/$SYSCALL_TABLE

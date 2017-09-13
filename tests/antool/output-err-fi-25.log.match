@@ -1,0 +1,1 @@
+WARNING(analysis): BPF read error occurred, path is empty in syscall: open

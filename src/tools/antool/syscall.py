@@ -246,7 +246,7 @@ class Syscall(SyscallInfo):
         if (self.state == STATE_COMPLETED) and (self.mask & EM_no_ret == 0):
             self.print_exit(DEBUG_OFF)
 
-        if not (self.content & CNT_ENTRY) and not (self.content & CNT_EXIT):
+        if not (self.content & (CNT_ENTRY | CNT_EXIT)):
             self.log_print("0x{0:016X} 0x{1:016X} {2:s} {3:s} [corrupted packet]".
                            format(self.time_start, self.pid_tid, self.__str, self.name),
                            DEBUG_OFF)

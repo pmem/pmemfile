@@ -288,8 +288,7 @@ class Syscall(SyscallInfo):
     # print_exit -- print exit info of the syscall
     ####################################################################################################################
     def print_exit(self, debug):
-        if not (self.content & CNT_EXIT):
-            return
+        assert_msg(self.content & CNT_EXIT, "print_exit: no exit content")
 
         if len(self.name) > 0:
             self.log_print("0x{0:016X} 0x{1:016X} 0x{2:016X} 0x{3:016X} {4:s}".format(

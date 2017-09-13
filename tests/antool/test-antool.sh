@@ -84,6 +84,10 @@ DIR_NAME="logs-${NAME_PATTERN}-$(date +%F_%T_%N)-$$"
 mkdir -p $DIR_NAME
 cd $DIR_NAME
 
+SINGLE_TEST_NUM=$TEST_NUM
+TEST_NUM=$MAX_STR_LEN-$TEST_NUM
+FILE_DIR_PMEM="dir_pmem-$TEST_NUM.txt"
+
 [ "$COVERAGE" == "1" -a -f ../$COVERAGE_REPORT ] && cp ../$COVERAGE_REPORT .
 
 if [ "$VLTRACE" -a ! "$VLTRACE_SKIP" ]; then
@@ -112,9 +116,6 @@ fi
 
 PATTERN_START="close                (0x0000000012345678)"
 PATTERN_END="close                (0x0000000087654321)"
-
-SINGLE_TEST_NUM=$TEST_NUM
-TEST_NUM=$MAX_STR_LEN-$TEST_NUM
 
 OUTBIN=output-bin-$TEST_NUM.log
 OUT=output-$TEST_NUM.log

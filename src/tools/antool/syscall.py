@@ -508,10 +508,9 @@ class Syscall(SyscallInfo):
 
     ####################################################################################################################
     def get_return_value(self, bdata):
-        retval = -1
-        if len(bdata) >= self.size_fmt_exit:
-            bret = bdata[0: self.size_fmt_exit]
-            retval, = struct.unpack(self.fmt_exit, bret)
+        assert_msg(len(bdata) >= self.size_fmt_exit, "no return value, input file may be corrupted")
+        bret = bdata[0: self.size_fmt_exit]
+        retval, = struct.unpack(self.fmt_exit, bret)
         return retval
 
     ####################################################################################################################

@@ -405,8 +405,8 @@ class ListSyscalls(list):
                     "removexattr", "lremovexattr", "fremovexattr"):
                 return RESULT_UNSUPPORTED_AT_ALL
 
-            # the following syscalls are not supported YET
-            if syscall.name in ("flock"):
+            # the SyS_flock syscall is not supported YET
+            if syscall.name == "flock":
                 return RESULT_UNSUPPORTED_YET
 
         # SyS_copy_file_range and SyS_splice syscalls are not supported YET

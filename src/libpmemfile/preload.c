@@ -542,6 +542,10 @@ hook_mkdirat(int fd, long path_arg, long mode)
 static long
 openat_helper(struct resolved_path *where, long flags, long mode)
 {
+	int fd = pmemfile_acquire_new_fd(where->path);
+	if (fd < 0)
+		return fd;
+
 	pool_acquire(where->at_pool);
 
 	PMEMfile *file = pmemfile_openat(where->at_pool->pool,
@@ -558,12 +562,10 @@ openat_helper(struct resolved_path *where, long flags, long mode)
 					file);
 	pool_release(where->at_pool);
 
-	if (file == NULL)
+	if (file == NULL) {
+		syscall_no_intercept(SYS_close, fd);
 		return check_errno(-errno, SYS_openat);
-
-	int fd = pmemfile_acquire_new_fd(where->path);
-	if (fd < 0)
-		return fd;
+	}
 
 	int r = pmemfile_vfd_assign(fd, where->at_pool, file, where->path);
 

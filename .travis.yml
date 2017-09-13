@@ -1,5 +1,7 @@
 dist: trusty
-sudo: required
+
+services:
+  - docker
 
 language: c
 
@@ -21,7 +23,6 @@ before_install:
   - export DOCKERHUB_REPO=pmem/pmemfile
   - export EXTRA_DOCKER_ARGS=-t
   - cd utils/docker
-  - ./prepare-environment.sh
   - ./pull-or-rebuild-image.sh
   - if [[ -f push_image_to_repo_flag ]]; then PUSH_THE_IMAGE=1; fi
   - rm -f push_image_to_repo_flag

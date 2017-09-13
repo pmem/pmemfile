@@ -2,9 +2,11 @@ coverage:
   status:
     project:
       posix:
+        threshold: 0.2
         paths:
           - src/libpmemfile-posix/
       preload:
+        threshold: 0.2
         paths:
           - src/libpmemfile/
       antool:

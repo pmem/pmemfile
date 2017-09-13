@@ -388,7 +388,7 @@ class ListSyscalls(list):
         if syscall.has_mask(EM_fd_1):
             # SyS_fallocate with FALLOC_FL_COLLAPSE_RANGE and FALLOC_FL_ZERO_RANGE and FALLOC_FL_INSERT_RANGE flags
             # is not supported
-            if syscall.name == "fallocate" and syscall.args[1]:
+            if syscall.name == "fallocate":
                 return self.check_fallocate_flags(syscall)
 
             # many of SyS_fcntl flags is not supported

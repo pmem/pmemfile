@@ -310,7 +310,7 @@ class ListSyscalls(list):
             syscall.unsupported_flag = "F_SETLKW"
         elif syscall.args[1] == F_SETOWN:
             syscall.unsupported_flag = "F_SETOWN"
-        elif syscall.args[1] == F_GETOWN:
+        elif syscall.args[1] == F_GETOWN:  # pragma: no cover (F_GETOWN is read as F_GETOWN_EX by OS)
             syscall.unsupported_flag = "F_GETOWN"
         elif syscall.args[1] == F_SETSIG:
             syscall.unsupported_flag = "F_SETSIG"
@@ -501,7 +501,7 @@ class ListSyscalls(list):
                 dir_str = self.all_strings[str_ind]
                 newpath = dir_str + "/" + path
 
-            elif syscall.has_mask(EM_rfd) and syscall.iret != -1:
+            elif syscall.has_mask(EM_rfd) and syscall.iret != -1:  # pragma: no cover
                 unknown_dirfd = 1
 
         if newpath != path:
@@ -520,7 +520,7 @@ class ListSyscalls(list):
         if is_pmem:
             msg += " [PMEM]"
 
-        if unknown_dirfd:
+        if unknown_dirfd:  # pragma: no cover
             self.log_anls.warning("Unknown dirfd : {0:d}".format(dirfd))
 
         return path, is_pmem, msg
@@ -621,7 +621,7 @@ class ListSyscalls(list):
                 syscall.args[0] = -1
                 self.log_anls.debug("{0:20s} ({1:d})".format(syscall.name, fd_in))
 
-                if fd_out != -1:
+                if fd_out != -1:  # pragma: no cover
                     self.log_anls.warning("Unknown fd : {0:d}".format(fd_in))
 
         # handle SyS_close
@@ -708,7 +708,7 @@ class ListSyscalls(list):
 
                         if fd < MAX_DEC_FD:
                             msg += " ({0:d})".format(fd)
-                        else:
+                        else:  # pragma: no cover
                             msg += " (0x{0:016X})".format(fd)
 
             self.log_anls.debug(msg)

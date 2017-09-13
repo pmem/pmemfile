@@ -47,7 +47,7 @@ if [[ -z "$HOST_WORKDIR" ]]; then
 	exit 1
 fi
 
-sudo chmod -R a+w $HOST_WORKDIR
+chmod -R a+w $HOST_WORKDIR
 
 if [[ "$TRAVIS_EVENT_TYPE" == "cron" || "$TRAVIS_BRANCH" == "coverity_scan" ]]; then
 	if [[ $TYPE != coverity ]]; then
@@ -99,7 +99,7 @@ WORKDIR=/pmemfile-${OS}-${OS_VER}
 #  - environment variables set (--env)
 #  - host directory containing pmemfile source mounted (-v)
 #  - working directory set (-w)
-sudo docker run --rm --privileged=true --name=$containerName $EXTRA_DOCKER_ARGS -i \
+docker run --rm --privileged=true --name=$containerName $EXTRA_DOCKER_ARGS -i \
 	${docker_opts} \
 	--env http_proxy=$http_proxy \
 	--env https_proxy=$https_proxy \

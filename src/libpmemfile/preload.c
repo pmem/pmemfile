@@ -1630,7 +1630,7 @@ dispatch_syscall(long syscall_number,
 
 	case SYS_access:
 		/* Use pmemfile_faccessat to implement access */
-		return hook_faccessat(AT_FDCWD, arg0, 0);
+		return hook_faccessat(AT_FDCWD, arg0, arg1);
 
 	case SYS_faccessat:
 		return hook_faccessat((int)arg0, arg1, arg2);

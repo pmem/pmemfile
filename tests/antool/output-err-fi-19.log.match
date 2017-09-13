@@ -1,0 +1,28 @@
+DEBUG(main): convert_mode   = 0
+DEBUG(main): script_mode    = 0
+DEBUG(main): offline_mode   = 0
+DEBUG(main): verbose_mode   = 0
+DEBUG(main): debug_mode     = 1
+DEBUG(main): print_progress = 0
+DEBUG(syscalltable): format of syscall table OK, reading 1000 records...
+DEBUG(syscalltable): read 1000 records of syscall table.
+INFO(main): Command line: vltrace -f -l bin -r -s 1531 -f -o output-bin-14.log /home/ldorau/work/pmemfile/build/tests/antool/test_syscalls 14 
+INFO(main): Current working directory: /mnt/files/work/pmemfile/build/tests/antool/logs-test-parser.sh-14-1531-2017-07-27_09:05:31_242116266-9110 
+
+DEBUG(parser): 0x000447D4D13A8361 0x0000254E0000254E ------------------ ------------------ execve "/home/ldorau/work/pmemfile/build/tests/antool/test_syscalls" 0x00007FFC9E8BC528 0x00007FFC9E8BC540
+DEBUG(parser): Notice: no exit info found for syscall: 0000254E0000254E execve
+DEBUG(parser): Notice: packet saved (to 'list_no_exit'): 0000254E0000254E execve
+DEBUG(parser): WARNING: no entry found: exit without entry info found: 0000254E0000254E brk
+WARNING(analysis): missing info about arguments of syscall: 'brk' - skipping...
+DEBUG(parser): 0x000447D4D13FC18C 0x0000254E0000254E 0x0000000000000000 0x0000000001F0E000 brk
+DEBUG(parser): 0x000447D4D13FE878 0x0000254E0000254E ------------------ ------------------ mmap 0x0000000000000000 0x0000000000001000 0x0000000000000003 0x0000000000000022 0xFFFFFFFFFFFFFFFF 0x0000000000000000
+DEBUG(analysis): mmap                 (-1)
+DEBUG(parser): 0x000447D4D13FF72A 0x0000254E0000254E 0x0000000000000000 0x00007F6C96F25000 mmap
+DEBUG(parser): 0x000447D4D14012A2 0x0000254E0000254E ------------------ ------------------ access "/etc/ld.so.preload" 0x0000000000000004
+DEBUG(analysis): access               "/etc/ld.so.preload"
+DEBUG(parser): 0x000447D4D14027FE 0x0000254E0000254E 0x0000000000000002 0xFFFFFFFFFFFFFFFF access
+DEBUG(parser): 0x000447D4D1403BB4 0x0000254E0000254E ------------------ ------------------ open "/etc/ld.so.cache" 0x0000000000080000 0x0000000000000001
+DEBUG(analysis): open                 "/etc/ld.so.cache"
+DEBUG(parser): 0x000447D4D1404F48 0x0000254E0000254E 0x0000000000000000 0x0000000000000005 open
+DEBUG(parser): 0x000447D4D14054EC 0x0000254E0000254E ------------------ ------------------ newfstat 0x0000000000000005 0x00007FFCFA956EF0
+DEBUG(analysis): execve               "/home/ldorau/work/pmemfile/build/tests/antool/test_syscalls"

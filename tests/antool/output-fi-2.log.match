@@ -1,0 +1,11 @@
+Reading packets:
+1 (35% bytes)  2 (35% bytes)  3 (35% bytes)  4 (35% bytes)  5 (35% bytes)  6 (35% bytes)  7 (35% bytes)  8 (35% bytes)  9 (36% bytes)  10 (36% bytes)  done (read maximum number of packets: 10)
+Done (read 10 packets).
+
+Counting PIDs:
+1 of 5 (20%) 2 of 5 (40%) 3 of 5 (60%) 4 of 5 (80%) 5 of 5 (100%)  done.
+
+Analyzing:
+1 of 5 (20%) 2 of 5 (40%) 3 of 5 (60%) 4 of 5 (80%) 5 of 5 (100%)  done.
+
+All syscalls are supported.

@@ -480,17 +480,10 @@ class Syscall(SyscallInfo):
         for n in range((self.arg_first - 1), self.arg_last):
             if self.is_string(n):
                 index = self.get_str_arg(buf_str)
-
                 if index >= 0:
-                    if len(self.args) < n + 1:
-                        self.args.append(index)
-                    else:
-                        self.args[n] = index
+                    self.args.append(index)
             else:
-                if len(self.args) < n + 1:
-                    self.args.append(args[n])
-                else:
-                    self.args[n] = args[n]
+                self.args.append(args[n])
 
         if end_of_syscall:
             self.num_str = 0  # reset counter of string arguments

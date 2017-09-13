@@ -4,7 +4,6 @@ dbstatus2.test
 delete_db.test
 diskfull.test
 eqp.test
-e_uri.test
 e_vacuum.test
 e_walauto.test
 e_walckpt.test
@@ -15,17 +14,13 @@ exists.test
 fallocate.test
 incrvacuum2.test
 incrvacuum3.test
-interrupt2.test
-io.test
 journal1.test
 journal2.test
-journal3.test
 jrnlmode2.test
 jrnlmode3.test
 jrnlmode.test
 lock2.test
 lock5.test
-misc1.test
 misc8.test
 mmap1.test
 mmap2.test
@@ -35,9 +30,7 @@ multiplex.test
 nockpt.test
 nolock.test
 pager1.test
-pager3.test
 pragma3.test
-quota2.test
 rollback.test
 rowallock.test
 savepoint.test
@@ -74,7 +67,6 @@ walcksum.test
 walcrash4.test
 walhook.test
 walmode.test
-walnoshm.test
 waloverwrite.test
 walpersist.test
 walro.test

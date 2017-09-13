@@ -5,13 +5,12 @@ creat07
 dup05
 dup203
 dup205
-dup3_02
+dup3_01
 execl01
 execlp01
 execv01
 execve04
 execvp01
-faccessat01
 fcntl01
 fcntl01_64
 fcntl04

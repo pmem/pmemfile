@@ -620,10 +620,32 @@ static long
 hook_fcntl(struct vfd_reference *file, int cmd, long arg)
 {
 	assert(!file->pool->suspended);
-	int r = pmemfile_fcntl(file->pool->pool, file->file, cmd, arg);
 
-	if (r < 0)
-		r = -errno;
+	int r = 0;
+
+	/*
+	 * pmemfile_fcntl only pretends to take a lock. With process switching
+	 * enabled this can lead to application data corruption, so to prevent
+	 * that we catch it here and return an error. It's better to tell
+	 * the application locking failed than mislead it into believing it
+	 * succeeded and has exclusive access to the file.
+	 */
+	if (process_switching) {
+		switch (cmd) {
+			case F_SETLK:
+			case F_SETLKW:
+			case F_GETLK:
+				r = -ENOTSUP;
+				break;
+		}
+	}
+
+	if (r == 0) {
+		r = pmemfile_fcntl(file->pool->pool, file->file, cmd, arg);
+
+		if (r < 0)
+			r = -errno;
+	}
 
 	log_write("pmemfile_fcntl(%p, %p, 0x%x, 0x%lx) = %d",
 		(void *)file->pool->pool, (void *)file->file, cmd, arg, r);

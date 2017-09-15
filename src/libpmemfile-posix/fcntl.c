@@ -34,6 +34,7 @@
  * fcntl.c -- pmemfile_fcntl implementation
  */
 
+#include <fcntl.h>
 #include "file.h"
 #include "libpmemfile-posix.h"
 #include "out.h"
@@ -55,6 +56,7 @@ pmemfile_fcntl(PMEMfilepool *pfp, PMEMfile *file, int cmd, ...)
 
 
 	switch (cmd) {
+		case PMEMFILE_F_SETLKW:
 		case PMEMFILE_F_SETLK:
 			if (file->flags & PFILE_PATH) {
 				errno = EBADF;
@@ -63,6 +65,23 @@ pmemfile_fcntl(PMEMfilepool *pfp, PMEMfile *file, int cmd, ...)
 
 			/* XXX */
 			return 0;
+		case PMEMFILE_F_GETLK:
+		{
+			if (file->flags & PFILE_PATH) {
+				errno = EBADF;
+				return -1;
+			}
+
+			va_list ap;
+			va_start(ap, cmd);
+			pmemfile_flock_t *fl = va_arg(ap, void *);
+			va_end(ap);
+
+			/* XXX */
+			fl->l_type = PMEMFILE_F_UNLCK;
+
+			return 0;
+		}
 		case PMEMFILE_F_GETFL:
 		{
 			if (file->flags & PFILE_PATH)

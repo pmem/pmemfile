@@ -21,7 +21,6 @@ jrnlmode3.test
 jrnlmode.test
 lock2.test
 lock5.test
-misc8.test
 mmap1.test
 mmap2.test
 mmap3.test
@@ -31,12 +30,10 @@ nockpt.test
 nolock.test
 pager1.test
 pragma3.test
-rollback.test
 rowallock.test
 savepoint.test
 schema3.test
 shared2.test
-shared6.test
 shared9.test
 superlock.test
 symlink.test
@@ -48,7 +45,6 @@ tkt-313723c356.test
 tkt3457.test
 tkt4018.test
 tkt-5d863f876e.test
-tkt-f3e5abed55.test
 tkt-fc62af4523.test
 unixexcl.test
 uri.test

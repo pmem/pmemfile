@@ -865,7 +865,7 @@ class ListSyscalls(list):
                 name = syscall.name + " <" + syscall.unsupported_flag + ">"
                 self.add_to_unsupported_lists(syscall, name, self.list_unsup_flag, self.ind_unsup_flag)
 
-        elif syscall.unsupported_type == RESULT_UNSUPPORTED_YET:
+        else:  # syscall.unsupported_type == RESULT_UNSUPPORTED_YET
             if self.verbose_mode >= 2:
                 self.print_unsupported_verbose2("unsupported syscall yet:", syscall, end=1)
             else:

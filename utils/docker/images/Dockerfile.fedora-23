@@ -46,6 +46,7 @@ RUN dnf install -y \
 	clang \
 	cmake \
 	doxygen \
+	fuse-devel \
 	gcc \
 	git \
 	libcap-devel \

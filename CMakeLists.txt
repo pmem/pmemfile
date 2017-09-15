@@ -60,6 +60,9 @@ option(LONG_TESTS "build long running tests as well" OFF)
 option(AUTO_GENERATE_SOURCES
 	"Use libclang to (re)generate certain source files -- this is required for the modification of some sources (e.g. libpmemfile-posix-wrappers.h must be regenerated each time libpmemfile-posix.h is modified" OFF)
 
+option(BUILD_PMEMFILE_FUSE
+	"build pmemfile-fuse (requires libfuse)" ON)
+
 set(TEST_DIR ${CMAKE_CURRENT_BINARY_DIR}/test
 	CACHE STRING "working directory for tests")
 
@@ -479,6 +482,9 @@ endif()
 add_subdirectory(src/libpmemfile-posix)
 if(BUILD_LIBPMEMFILE)
 	add_subdirectory(src/libpmemfile)
+endif()
+if(BUILD_PMEMFILE_FUSE)
+	add_subdirectory(src/pmemfile-fuse)
 endif()
 add_subdirectory(src/tools)
 if(BUILD_ANY_TESTS)

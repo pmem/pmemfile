@@ -116,7 +116,7 @@ endfunction()
 
 find_program(SQLITE3 sqlite3)
 if (SQLITE3)
-	add_test_generic_ps(sqlite "" none)
+	add_test_generic(sqlite "" none)
 else()
 	add_test(NAME sqlite_SKIPPED_BECAUSE_OF_MISSING_SQLITE3 COMMAND true)
 endif()

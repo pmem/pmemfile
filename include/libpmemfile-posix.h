@@ -200,6 +200,7 @@ typedef struct timespec pmemfile_timespec_t;
 typedef struct utimbuf pmemfile_utimbuf_t;
 typedef struct timeval pmemfile_timeval_t;
 typedef struct stat pmemfile_stat_t;
+typedef struct flock pmemfile_flock_t;
 
 #define PMEMFILE_AT_CWD ((PMEMfile *)(((unsigned char *)0) - 1))
 

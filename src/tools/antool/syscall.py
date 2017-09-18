@@ -245,7 +245,7 @@ class Syscall(SyscallInfo):
         if (self.state == STATE_COMPLETED) and (self.mask & EM_no_ret == 0):
             self.print_exit(DEBUG_OFF)
 
-        if not (self.content & CNT_ENTRY) and not (self.content & CNT_EXIT):
+        if not (self.content & (CNT_ENTRY | CNT_EXIT)):
             self.log_print("0x{0:016X} 0x{1:016X} {2:s} {3:s} [corrupted packet]".
                            format(self.time_start, self.pid_tid, self.str_entry, self.name),
                            DEBUG_OFF)
@@ -287,8 +287,7 @@ class Syscall(SyscallInfo):
     # print_exit -- print exit info of the syscall
     ####################################################################################################################
     def print_exit(self, debug):
-        if not (self.content & CNT_EXIT):
-            return
+        assert_msg(self.content & CNT_EXIT, "print_exit: no exit content")
 
         if len(self.name) > 0:
             self.log_print("0x{0:016X} 0x{1:016X} 0x{2:016X} 0x{3:016X} {4:s}".format(
@@ -479,17 +478,10 @@ class Syscall(SyscallInfo):
         for n in range((self.arg_first - 1), self.arg_last):
             if self.is_string(n):
                 index = self.get_str_arg(buf_str)
-
                 if index >= 0:
-                    if len(self.args) < n + 1:
-                        self.args.append(index)
-                    else:
-                        self.args[n] = index
+                    self.args.append(index)
             else:
-                if len(self.args) < n + 1:
-                    self.args.append(args[n])
-                else:
-                    self.args[n] = args[n]
+                self.args.append(args[n])
 
         if end_of_syscall:
             self.num_str = 0  # reset counter of string arguments
@@ -507,10 +499,9 @@ class Syscall(SyscallInfo):
 
     ####################################################################################################################
     def get_return_value(self, bdata):
-        retval = -1
-        if len(bdata) >= self.size_fmt_exit:
-            bret = bdata[0: self.size_fmt_exit]
-            retval, = struct.unpack(self.fmt_exit, bret)
+        assert_msg(len(bdata) >= self.size_fmt_exit, "no return value, input file may be corrupted")
+        bret = bdata[0: self.size_fmt_exit]
+        retval, = struct.unpack(self.fmt_exit, bret)
         return retval
 
     ####################################################################################################################

@@ -404,8 +404,8 @@ class ListSyscalls(list):
                     "removexattr", "lremovexattr", "fremovexattr"):
                 return RESULT_UNSUPPORTED_AT_ALL
 
-            # the following syscalls are not supported YET
-            if syscall.name in ("flock"):
+            # the SyS_flock syscall is not supported YET
+            if syscall.name == "flock":
                 return RESULT_UNSUPPORTED_YET
 
         # SyS_copy_file_range and SyS_splice syscalls are not supported YET
@@ -877,7 +877,7 @@ class ListSyscalls(list):
                 name = syscall.name + " <" + syscall.unsupported_flag + ">"
                 self.add_to_unsupported_lists(syscall, name, self.list_unsup_flag, self.ind_unsup_flag)
 
-        elif syscall.unsupported_type == RESULT_UNSUPPORTED_YET:
+        else:  # syscall.unsupported_type == RESULT_UNSUPPORTED_YET
             if self.verbose_mode >= 2:
                 self.print_unsupported_verbose2("unsupported syscall yet:", syscall, end=1)
             else:

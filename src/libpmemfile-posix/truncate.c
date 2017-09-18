@@ -151,13 +151,8 @@ pmemfile_ftruncate(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t length)
 	struct pmemfile_vinode *vinode = file->vinode;
 	os_mutex_unlock(&file->mutex);
 
-	if (vinode_is_dir(vinode)) {
+	if (vinode_is_dir(vinode) || !(flags & PFILE_WRITE)) {
 		errno = EINVAL;
-		return -1;
-	}
-
-	if (!(flags & PFILE_WRITE)) {
-		errno = EBADF;
 		return -1;
 	}
 

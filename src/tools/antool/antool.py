@@ -304,7 +304,7 @@ class AnalyzingTool(ListSyscalls):
 
             # decode and set CWD
             cwd = str(bdata.decode(errors="ignore"))
-            cwd = cwd.replace('\0', ' ')
+            cwd = cwd.split('\0')[0]
             self.set_first_cwd(cwd)
             self.list_ok.set_first_cwd(cwd)
 

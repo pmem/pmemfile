@@ -85,8 +85,8 @@ def is_exit(etype):
 # Syscall
 ########################################################################################################################
 class Syscall(SyscallInfo):
-    __str = "------------------ ------------------"
-    __arg_str_mask = [1, 2, 4, 8, 16, 32]
+    str_entry = "------------------ ------------------"
+    arg_str_mask = [1, 2, 4, 8, 16, 32]
 
     ####################################################################################################################
     def __init__(self, pid_tid, sc_id, sc_info, buf_size, debug_mode):
@@ -123,7 +123,6 @@ class Syscall(SyscallInfo):
         self.truncated = 0
 
         self.strings = []
-        self.str_is_path = []
 
         self.buf_size = int(buf_size)
         self.buf_size_2 = int(buf_size / 2)
@@ -149,7 +148,7 @@ class Syscall(SyscallInfo):
 
     ####################################################################################################################
     def is_string(self, n):
-        if (self.mask & self.__arg_str_mask[n]) == self.__arg_str_mask[n]:
+        if (self.mask & self.arg_str_mask[n]) == self.arg_str_mask[n]:
             return 1
         else:
             return 0
@@ -220,11 +219,6 @@ class Syscall(SyscallInfo):
 
     ####################################################################################################################
     def print_single_record(self, debug):
-        if self.state not in (STATE_ENTRY_COMPLETED, STATE_COMPLETED):
-            if self.debug_mode and self.state != STATE_IN_ENTRY:
-                self.log_parse.debug("DEBUG(print_single_record): state = {0:d}".format(self.state))
-            return
-
         if self.state == STATE_ENTRY_COMPLETED:
             self.print_entry(debug)
             return
@@ -235,6 +229,11 @@ class Syscall(SyscallInfo):
             else:
                 self.print_exit(debug)
             return
+
+        if self.state == STATE_CORRUPTED_ENTRY:
+            self.log_print("corrupted entry packet information of syscall {0:s}:".format(self.name), debug)
+            self.log_print("0x{0:016X} 0x{1:016X} {2:s} {3:s} [corrupted entry packet]"
+                           .format(self.time_start, self.pid_tid, self.str_entry, self.name), debug)
 
     ####################################################################################################################
     def print_always(self):
@@ -248,7 +247,7 @@ class Syscall(SyscallInfo):
 
         if not (self.content & CNT_ENTRY) and not (self.content & CNT_EXIT):
             self.log_print("0x{0:016X} 0x{1:016X} {2:s} {3:s} [corrupted packet]".
-                           format(self.time_start, self.pid_tid, self.__str, self.name),
+                           format(self.time_start, self.pid_tid, self.str_entry, self.name),
                            DEBUG_OFF)
 
     ####################################################################################################################
@@ -272,7 +271,7 @@ class Syscall(SyscallInfo):
             else:
                 print("WARNING: " + warn_str)
 
-        msg = "0x{0:016X} 0x{1:016X} {2:s} {3:s}".format(self.time_start, self.pid_tid, self.__str, self.name)
+        msg = "0x{0:016X} 0x{1:016X} {2:s} {3:s}".format(self.time_start, self.pid_tid, self.str_entry, self.name)
 
         assert_msg(self.nargs == len(self.args), "incorrect number of syscall arguments, input file can be corrupted")
 

@@ -74,13 +74,15 @@ pmemfile_fcntl(PMEMfilepool *pfp, PMEMfile *file, int cmd, ...)
 				ret |= PMEMFILE_O_APPEND;
 			if (file->flags & PFILE_NOATIME)
 				ret |= PMEMFILE_O_NOATIME;
-			if ((file->flags & PFILE_READ) == PFILE_READ)
-				ret |= PMEMFILE_O_RDONLY;
-			if ((file->flags & PFILE_WRITE) == PFILE_WRITE)
-				ret |= PMEMFILE_O_WRONLY;
+
 			if ((file->flags & (PFILE_READ | PFILE_WRITE)) ==
 					(PFILE_READ | PFILE_WRITE))
 				ret |= PMEMFILE_O_RDWR;
+			else if ((file->flags & PFILE_READ) == PFILE_READ)
+				ret |= PMEMFILE_O_RDONLY;
+			else if ((file->flags & PFILE_WRITE) == PFILE_WRITE)
+				ret |= PMEMFILE_O_WRONLY;
+
 			return ret;
 		}
 		case PMEMFILE_F_GETFD:

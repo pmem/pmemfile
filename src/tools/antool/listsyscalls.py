@@ -84,16 +84,12 @@ MAX_DEC_FD = 0x10000000
 ########################################################################################################################
 # noinspection PyShadowingBuiltins
 def realpath(path):
-    newpath = ""
-    newdirs = []
-
     len_path = len(path)
-    if len_path == 0:
-        return ""
 
-    if path[0] == '/':
-        newpath = "/"
+    assert(len_path > 0 and path[0] == '/')
 
+    newpath = "/"
+    newdirs = []
     dirs = path.split('/')
 
     for dir in dirs:
@@ -145,7 +141,10 @@ class ListSyscalls(list):
         self.all_strings = ["(stdin)", "(stdout)", "(stderr)"]
         self.path_is_pmem = [0, 0, 0]
 
-        paths = str(pmem_paths)
+        if pmem_paths:
+            paths = str(pmem_paths)
+        else:
+            paths = ""
         self.pmem_paths = paths.split(':')
         # add slash at the end and normalize all paths
         self.pmem_paths = [realpath(path + '/') for path in self.pmem_paths]
@@ -475,7 +474,7 @@ class ListSyscalls(list):
            (syscall.has_mask(EM_aep_arg_5) and (syscall.args[4] & AT_EMPTY_PATH)):
             path = ""
         else:
-            path = realpath(syscall.strings[syscall.args[arg2]])
+            path = syscall.strings[syscall.args[arg2]]
 
         dir_str = ""
         newpath = path
@@ -489,7 +488,6 @@ class ListSyscalls(list):
             # check if dirfd == AT_FDCWD
             if dirfd == AT_FDCWD_DEC:
                 dir_str = self.get_cwd(syscall)
-                newpath = dir_str + "/" + path
 
             # is dirfd saved in the FD table?
             elif 0 <= dirfd < len(fd_table):
@@ -499,16 +497,25 @@ class ListSyscalls(list):
                 syscall.args[arg1] = str_ind
                 # read path of dirfd
                 dir_str = self.all_strings[str_ind]
-                newpath = dir_str + "/" + path
 
             elif syscall.has_mask(EM_rfd) and syscall.iret != -1:
                 unknown_dirfd = 1
 
-        if newpath != path:
+            if not unknown_dirfd:
+                if len(path) == 0:
+                    newpath = dir_str
+                else:
+                    newpath = dir_str + "/" + path
+
+        if dir_str != "":
             msg += " \"{0:s}\" \"{1:s}\"".format(dir_str, path)
-            path = newpath
         else:
             msg += " ({0:d}) \"{1:s}\"".format(dirfd, path)
+
+        if not unknown_dirfd:
+            path = realpath(newpath)
+        else:
+            path = newpath
 
         is_pmem = self.is_path_pmem(path)
         # append new path to the global array of all strings
@@ -529,16 +536,24 @@ class ListSyscalls(list):
     # handle_one_path -- helper function of match_fd_with_path() - handles one path argument of number n
     ####################################################################################################################
     def handle_one_path(self, syscall, n):
-        path = realpath(syscall.strings[syscall.args[n]])
+        path = syscall.strings[syscall.args[n]]
 
-        # handle relative paths
-        if (len(path) == 0 or path[0] != '/') and not syscall.read_error:
-            path = self.get_cwd(syscall) + "/" + path
+        if syscall.read_error and len(path) == 0:
+            is_pmem = 0
+        else:
+            # handle relative paths
+            if len(path) == 0:
+                path = self.get_cwd(syscall)
+            elif path[0] != '/':
+                path = self.get_cwd(syscall) + "/" + path
 
-        is_pmem = self.is_path_pmem(path)
-        syscall.is_pmem |= is_pmem
+            path = realpath(path)
+            is_pmem = self.is_path_pmem(path)
+            syscall.is_pmem |= is_pmem
+
         # append new path to the global array of all strings
         str_ind = self.all_strings_append(path, is_pmem)
+
         # save index in the global array as the argument
         syscall.args[n] = str_ind
 
@@ -654,7 +669,7 @@ class ListSyscalls(list):
                 # check if the argument is a string
                 if syscall.has_mask(Arg_is_str[narg]):
                     is_pmem = 0
-                    path = realpath(syscall.strings[syscall.args[narg]])
+                    path = syscall.strings[syscall.args[narg]]
 
                     # check if the argument is a path
                     if syscall.has_mask(Arg_is_path[narg]):
@@ -667,13 +682,16 @@ class ListSyscalls(list):
                         elif len(path) == 0 and not syscall.read_error:
                             path = self.get_cwd(syscall)
 
+                        path = realpath(path)
                         is_pmem = self.is_path_pmem(path)
+                        syscall.is_pmem |= is_pmem
 
-                    syscall.is_pmem |= is_pmem
                     # append new path to the global array of all strings
                     str_ind = self.all_strings_append(path, is_pmem)
+
                     # save index in the global array as the argument
                     syscall.args[narg] = str_ind
+
                     msg = self.log_build_msg(msg, is_pmem, path)
 
                 # check if the argument is a file descriptor

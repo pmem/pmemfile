@@ -73,7 +73,11 @@ if [[ "$command" == "" ]]; then
 			command="./run-build-package.sh";
 			;;
 		sqlite)
-			command="sqlite/run-build-sqlite.sh";
+			command="external_tests/run-build-suite.sh sqlite"
+			docker_opts="--ulimit nofile=1024:1024";
+			;;
+		ltp)
+			command="external_tests/run-build-suite.sh ltp"
 			docker_opts="--ulimit nofile=1024:1024";
 			;;
 		coverity)

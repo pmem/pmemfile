@@ -658,9 +658,6 @@ class ListSyscalls(list):
 
                     # check if the argument is a path
                     if syscall.has_mask(Arg_is_path[narg]):
-                        # mark it as a path
-                        syscall.str_is_path.append(1)
-
                         # handle relative paths
                         if len(path) != 0 and path[0] != '/':
                             self.all_strings_append(path, 0)  # add relative path as non-pmem
@@ -671,9 +668,6 @@ class ListSyscalls(list):
                             path = self.get_cwd(syscall)
 
                         is_pmem = self.is_path_pmem(path)
-
-                    else:
-                        syscall.str_is_path.append(0)
 
                     syscall.is_pmem |= is_pmem
                     # append new path to the global array of all strings

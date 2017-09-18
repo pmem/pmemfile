@@ -123,7 +123,6 @@ class Syscall(SyscallInfo):
         self.truncated = 0
 
         self.strings = []
-        self.str_is_path = []
 
         self.buf_size = int(buf_size)
         self.buf_size_2 = int(buf_size / 2)

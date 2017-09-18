@@ -752,6 +752,17 @@ class ListSyscalls(list):
                 self.log_anls.debug("      from: \"{0:s}\"".format(old_cwd))
                 self.log_anls.debug("      to:   \"{0:s}\"".format(new_cwd))
                 return
+
+            # if target is pmem then new symlink is pmem too
+            if syscall.name == "symlink":
+                if self.path_is_pmem[syscall.args[0]]:
+                    str_ind = syscall.args[1]
+                    self.path_is_pmem[str_ind] = 1
+                    link_path = self.all_strings[str_ind]
+                    self.pmem_paths.append(link_path)
+                    self.log_anls.debug("INFO: new symlink added to pmem paths: \"{0:s}\"".format(link_path))
+                return
+
             return
 
         if syscall.iret > 0:

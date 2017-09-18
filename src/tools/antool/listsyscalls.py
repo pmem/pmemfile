@@ -678,6 +678,36 @@ class ListSyscalls(list):
             else:
                 self.log_anls.debug("{0:20s} (0x{1:016X})".format(syscall.name, fd_in))
 
+        # handle SyS_symlink
+        elif syscall.name == "symlink":
+            msg = "{0:20s}".format("symlink")
+
+            # loop through all syscall's arguments
+            for narg in range(2):  # syscall.nargs of SyS_symlink == 2
+                path = syscall.strings[syscall.args[narg]]
+
+                # handle relative paths
+                if len(path) != 0 and path[0] != '/':
+                    self.all_strings_append(path, 0)  # add relative path as non-pmem
+                    path = self.get_cwd(syscall) + "/" + path
+                # handle empty paths
+                elif len(path) == 0 and not syscall.read_error:
+                    path = self.get_cwd(syscall)
+
+                is_pmem = self.is_path_pmem(self.realpath(path))
+                syscall.is_pmem |= is_pmem
+
+                # append new path to the global array of all strings
+                str_ind = self.all_strings_append(path, is_pmem)
+
+                # save index in the global array as the argument
+                syscall.args[narg] = str_ind
+
+                # if 1st path is pmem, 2nd one has to be pmem too
+                msg = self.log_build_msg(msg, syscall.is_pmem, path)
+
+            self.log_anls.debug(msg)
+
         # handle syscalls with a path or a file descriptor among arguments
         elif syscall.has_mask(EM_str_all | EM_fd_all):
             msg = "{0:20s}".format(syscall.name)
@@ -757,6 +787,17 @@ class ListSyscalls(list):
                 self.log_anls.debug("      from: \"{0:s}\"".format(old_cwd))
                 self.log_anls.debug("      to:   \"{0:s}\"".format(new_cwd))
                 return
+
+            # if target is pmem then new symlink is pmem too
+            if syscall.name == "symlink":
+                if self.path_is_pmem[syscall.args[0]]:
+                    str_ind = syscall.args[1]
+                    self.path_is_pmem[str_ind] = 1
+                    link_path = self.all_strings[str_ind]
+                    self.pmem_paths.append(link_path)
+                    self.log_anls.debug("INFO: new symlink added to pmem paths: \"{0:s}\"".format(link_path))
+                return
+
             return
 
         if syscall.iret > 0:

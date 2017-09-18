@@ -635,6 +635,17 @@ TEST_F(rw, ftruncate)
 
 	pmemfile_close(pfp, f);
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
+
+	errno = 0;
+	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT | PMEMFILE_O_RDONLY,
+			  0);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+
+	ASSERT_EQ(pmemfile_ftruncate(pfp, f, 4), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	pmemfile_close(pfp, f);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
 }
 
 TEST_F(rw, truncate)

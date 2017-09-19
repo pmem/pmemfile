@@ -72,7 +72,7 @@ def open_file(path, flags):
 # read_bdata - read binary data from file
 ####################################################################################################################
 def read_bdata(fh, size):
-    assert_msg(size >= 0, "attempt to read data of negative size, input file can be corrupted")
+    assert_msg(size >= 0, "attempt to read data of negative size, input file may be corrupted")
     bdata = fh.read(size)
     length = len(bdata)
     if length == 0:

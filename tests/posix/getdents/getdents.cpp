@@ -149,7 +149,9 @@ TEST_F(getdents, 1)
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	/* 4 entries in directory and '.' '..' */
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_END), 6);
+	pmemfile_off_t offset = pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_END);
+	ASSERT_TRUE(offset == 6 || offset == INT64_MAX) << "offset is: "
+							<< offset;
 
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_SET), 0);
 

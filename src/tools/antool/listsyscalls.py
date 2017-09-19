@@ -191,7 +191,7 @@ class ListSyscalls(list):
     def fd_table_assign(table, fd, val):
         fd_table_length = len(table)
 
-        assert_msg(fd_table_length + 1000 > fd, "abnormally huge file descriptor ({0:d}), input file can be corrupted"
+        assert_msg(fd_table_length + 1000 > fd, "abnormally huge file descriptor ({0:d}), input file may be corrupted"
                    .format(fd))
 
         for i in range(fd_table_length, fd + 1):

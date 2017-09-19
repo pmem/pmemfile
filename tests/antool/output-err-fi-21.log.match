@@ -160,5 +160,5 @@ ERROR(parser): wrong state for KProbe entry type: 4
 DEBUG(parser): corrupted entry packet information of syscall open:
 DEBUG(parser): 0x000447D4D1489045 0x00004A6100004A61 ------------------ ------------------ open [corrupted entry packet]
 ERROR(parser): wrong state for KProbe entry type: 4
-CRITICAL:$(*)/src/tools/antool/syscall.py:$(N):print_entry(): incorrect number of syscall arguments, input file can be corrupted
-ERROR: incorrect number of syscall arguments, input file can be corrupted
+CRITICAL:$(*)/src/tools/antool/syscall.py:$(N):print_entry(): incorrect number of syscall arguments, input file may be corrupted
+ERROR: incorrect number of syscall arguments, input file may be corrupted

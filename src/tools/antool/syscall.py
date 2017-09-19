@@ -273,7 +273,7 @@ class Syscall(SyscallInfo):
 
         msg = "0x{0:016X} 0x{1:016X} {2:s} {3:s}".format(self.time_start, self.pid_tid, self.str_entry, self.name)
 
-        assert_msg(self.nargs == len(self.args), "incorrect number of syscall arguments, input file can be corrupted")
+        assert_msg(self.nargs == len(self.args), "incorrect number of syscall arguments, input file may be corrupted")
 
         for n in range(0, self.nargs):
             if self.is_string(n):
@@ -405,7 +405,7 @@ class Syscall(SyscallInfo):
 
         # check if it is a continuation of a string
         if self.arg_first == self.arg_last:
-            assert_msg(self.is_cont == 1, "packet is not marked as a continuation, input file can be corrupted")
+            assert_msg(self.is_cont == 1, "packet is not marked as a continuation, input file may be corrupted")
 
             if self.str_fini:
                 return self.state

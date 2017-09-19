@@ -184,6 +184,9 @@ TEST_F(openp, 0)
 #ifdef FAULT_INJECTION
 TEST_F(openp, copy_cred)
 {
+	if (is_pmemfile_pop)
+		return;
+
 	pmemfile_gid_t groups[1] = {1002};
 	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", 0777), 0);

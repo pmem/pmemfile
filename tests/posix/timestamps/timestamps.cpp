@@ -89,14 +89,14 @@ TEST_F(timestamps, utime)
 	tm.modtime = -456;
 	ASSERT_EQ(pmemfile_utime(pfp, "/file", &tm), 0);
 
-#ifdef FAULT_INJECTION
-	pmemfile_gid_t groups[1] = {1002};
-	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
-	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
-	errno = 0;
-	ASSERT_EQ(pmemfile_utime(pfp, "/file", &tm), -1);
-	EXPECT_EQ(errno, ENOMEM);
-#endif
+	if (xpmemfile_fault_injection_enabled()) {
+		pmemfile_gid_t groups[1] = {1002};
+		ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
+		xpmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+		errno = 0;
+		ASSERT_EQ(pmemfile_utime(pfp, "/file", &tm), -1);
+		EXPECT_EQ(errno, ENOMEM);
+	}
 
 	memset(&st2, 0, sizeof(st2));
 	ASSERT_EQ(pmemfile_stat(pfp, "/file", &st2), 0);

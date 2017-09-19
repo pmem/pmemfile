@@ -30,94 +30,18 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <errno.h>
 #include <stdlib.h>
-#include <string.h>
 
-#include "alloc.h"
 #include "libpmemfile-posix.h"
-#include "out.h"
-
-static __thread int malloc_num;
-static __thread int fail_malloc_num;
-static __thread const char *fail_malloc_from;
-
-void *
-_pf_malloc(size_t size, const char *func)
-{
-	if (fail_malloc_from && strcmp(func, fail_malloc_from) == 0) {
-		if (++malloc_num == fail_malloc_num) {
-			errno = ENOMEM;
-			return NULL;
-		}
-	}
-	return malloc(size);
-}
-
-static __thread int calloc_num;
-static __thread int fail_calloc_num;
-static __thread const char *fail_calloc_from;
-
-void *
-_pf_calloc(size_t nmemb, size_t size, const char *func)
-{
-	if (fail_calloc_from && strcmp(func, fail_calloc_from) == 0) {
-		if (++calloc_num == fail_calloc_num) {
-			errno = ENOMEM;
-			return NULL;
-		}
-	}
-	return calloc(nmemb, size);
-}
-
-void
-_pf_free(void *ptr, const char *func)
-{
-	free(ptr);
-}
-
-static __thread int realloc_num;
-static __thread int fail_realloc_num;
-static __thread const char *fail_realloc_from;
-
-void *
-_pf_realloc(void *ptr, size_t size, const char *func)
-{
-	if (fail_realloc_from && strcmp(func, fail_realloc_from) == 0) {
-		if (++realloc_num == fail_realloc_num) {
-			errno = ENOMEM;
-			return NULL;
-		}
-	}
-	return realloc(ptr, size);
-}
 
 void
 xpmemfile_inject_fault_at(enum pf_allocation_type type, int nth, const char *at)
 {
-	switch (type) {
-		case PF_MALLOC:
-			malloc_num = 0;
-			fail_malloc_num = nth;
-			fail_malloc_from = at;
-			break;
-		case PF_CALLOC:
-			calloc_num = 0;
-			fail_calloc_num = nth;
-			fail_calloc_from = at;
-			break;
-		case PF_REALLOC:
-			realloc_num = 0;
-			fail_realloc_num = nth;
-			fail_realloc_from = at;
-			break;
-		default:
-			FATAL("unknown allocation type");
-	}
+	abort();
 }
 
 int
 xpmemfile_fault_injection_enabled(void)
 {
-	return 1;
+	return 0;
 }

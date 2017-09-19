@@ -356,3 +356,16 @@ int\ pmemfile_mknodat(PMEMfilepool\ *pfp,\ PMEMfile\ *dir,\ const\ char\ *path,
 For now only S_IFREG file type is supported.
 This function\[aq]s API is subject to change.
 Don\[aq]t use it yet.
+.SS Experimental \- fault injection
+.IP
+.nf
+\f[C]
+void\ xpmemfile_inject_fault_at(enum\ pf_allocation_type\ type,\ int\ nth,
+\ \ \ \ \ \ \ \ const\ char*\ at);
+int\ xpmemfile_fault_injection_enabled(void);
+\f[]
+.fi
+.PP
+Fault injection is highly experimental feature, which is used when
+developing and testing libpmemfile\-posix library.
+Do not use.

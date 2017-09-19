@@ -51,6 +51,9 @@ protected:
 	pmemfile_blkcnt_t
 	stat_block_count(PMEMfile *f)
 	{
+		if (is_pmemfile_pop)
+			return 0;
+
 		pmemfile_stat_t stat_buf;
 
 		if (pmemfile_fstat(pfp, f, &stat_buf) != 0) {
@@ -709,14 +712,14 @@ TEST_F(rw, truncate)
 	EXPECT_TRUE(test_pmemfile_stats_match(
 		pfp, 2, 0, 0, (env_block_size == 0x4000) ? 2 : 1));
 
-#ifdef FAULT_INJECTION
-	pmemfile_gid_t groups[1] = {1002};
-	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
-	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
-	errno = 0;
-	ASSERT_EQ(pmemfile_truncate(pfp, "/file1", large + 4), -1);
-	EXPECT_EQ(errno, ENOMEM);
-#endif
+	if (xpmemfile_fault_injection_enabled()) {
+		pmemfile_gid_t groups[1] = {1002};
+		ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
+		xpmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+		errno = 0;
+		ASSERT_EQ(pmemfile_truncate(pfp, "/file1", large + 4), -1);
+		EXPECT_EQ(errno, ENOMEM);
+	}
 
 	r = pmemfile_truncate(pfp, "/file1", large + 4);
 	ASSERT_EQ(r, 0) << COND_ERROR(r);
@@ -1138,7 +1141,10 @@ TEST_F(rw, sparse_files_using_lseek)
 
 	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, end + 1, PMEMFILE_SEEK_DATA), -1);
-	EXPECT_EQ(errno, ENXIO);
+	if (errno != ENXIO && errno != EINVAL) {
+		EXPECT_EQ(errno, ENXIO);
+		EXPECT_EQ(errno, EINVAL);
+	}
 
 	/*
 	 * SEEK_HOLE - if passed offset is smaller than end offset,

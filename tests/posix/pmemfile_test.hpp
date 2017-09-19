@@ -49,6 +49,8 @@
 #define T_OUT(...) fprintf(stderr, __VA_ARGS__)
 #define COND_ERROR(ret) (ret < 0 ? strerror(errno) : "")
 
+extern bool is_pmemfile_pop;
+
 /*
  * A bad file pointer, for test cases where libpmemfile-posix is expected to
  * ignore a file pointer.
@@ -164,6 +166,9 @@ public:
 	      poolsize(poolsize),
 	      test_empty_dir_on_teardown(true)
 	{
+		char *is_pmemfile_pop_str = std::getenv("LIBPMEMFILE_POP");
+		is_pmemfile_pop = is_pmemfile_pop_str != nullptr &&
+			strtol(is_pmemfile_pop_str, nullptr, 10);
 	}
 
 	void
@@ -185,6 +190,8 @@ public:
 		assert(test_empty_dir(pfp, "/"));
 
 		assert(test_pmemfile_stats_match(pfp, 1, 0, 0, 0));
+
+		pmemfile_umask(pfp, 0);
 	}
 
 	void

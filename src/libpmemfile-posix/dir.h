@@ -107,8 +107,6 @@ struct pmemfile_vinode *pool_get_cwd(PMEMfilepool *pfp);
 struct pmemfile_vinode *pool_get_dir_for_path(PMEMfilepool *pfp, PMEMfile *dir,
 		const char *path, bool *unref);
 
-size_t pmemfile_dir_size(TOID(struct pmemfile_dir) dir);
-
 int lock_parent_and_child(PMEMfilepool *pfp,
 		struct pmemfile_path_info *path,
 		struct pmemfile_dirent_info *info);

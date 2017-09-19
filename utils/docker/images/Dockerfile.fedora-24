@@ -47,10 +47,12 @@ RUN dnf install -y \
 	cmake \
 	doxygen \
 	gcc \
+	gdb \
 	git \
 	libcap-devel \
 	libunwind-devel \
 	make \
+	man \
 	pandoc \
 	perl-Text-Diff \
 	passwd \

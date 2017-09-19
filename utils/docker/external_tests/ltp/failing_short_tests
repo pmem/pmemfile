@@ -13,8 +13,6 @@ execve04
 execvp01
 fcntl01
 fcntl01_64
-fcntl04
-fcntl04_64
 fcntl05
 fcntl05_64
 fcntl07

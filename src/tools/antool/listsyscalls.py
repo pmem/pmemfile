@@ -470,7 +470,7 @@ class ListSyscalls(list):
     ####################################################################################################################
     # handle_fileat -- helper function of match_fd_with_path() - handles *at syscalls
     ####################################################################################################################
-    def handle_fileat(self, syscall, arg1, arg2, msg):
+    def handle_fileat(self, syscall, arg1, arg2, msg, has_to_be_pmem):
         assert_msg(syscall.has_mask(Arg_is_fd[arg1]), "argument #{0:d} is not a file descriptor".format(arg1))
         assert_msg(syscall.has_mask(Arg_is_path[arg2]), "argument #{0:d} is not a path".format(arg2))
 
@@ -527,6 +527,8 @@ class ListSyscalls(list):
             is_pmem = self.is_path_pmem(realpath(path))
         else:
             is_pmem = 0
+
+        is_pmem |= has_to_be_pmem
 
         # append new path to the global array of all strings
         str_ind = self.all_strings_append(path, is_pmem)
@@ -591,7 +593,7 @@ class ListSyscalls(list):
         # handle all SyS_*at syscalls
         elif syscall.is_mask(EM_isfileat):
             msg = "{0:20s}".format(syscall.name)
-            path, is_pmem, msg = self.handle_fileat(syscall, 0, 1, msg)
+            path, is_pmem, msg = self.handle_fileat(syscall, 0, 1, msg, 0)
             fd_out = syscall.iret
 
             # handle SyS_openat
@@ -605,17 +607,20 @@ class ListSyscalls(list):
 
             # handle syscalls with second 'at' pair (e.g. linkat, renameat)
             if syscall.is_mask(EM_isfileat2):
-                path, is_pmem, msg = self.handle_fileat(syscall, 2, 3, msg)
+                path, is_pmem, msg = self.handle_fileat(syscall, 2, 3, msg, 0)
 
             self.log_anls.debug(msg)
 
         # handle SyS_symlinkat (it is a special case of SyS_*at syscalls)
         elif syscall.name == "symlinkat":
             msg = "{0:20s}".format(syscall.name)
-            path, str_ind, is_pmem = self.handle_one_path(syscall, 0)
-            msg = self.log_build_msg(msg, is_pmem, path)
-            path, is_pmem, msg = self.handle_fileat(syscall, 1, 2, msg)
+            target_path, str_ind, target_is_pmem = self.handle_one_path(syscall, 0)
+            msg = self.log_build_msg(msg, target_is_pmem, target_path)
+            link_path, link_is_pmem, msg = self.handle_fileat(syscall, 1, 2, msg, target_is_pmem)
             self.log_anls.debug(msg)
+            if link_is_pmem and syscall.iret == 0:
+                self.pmem_paths.append(link_path)
+                self.log_anls.debug("INFO: new symlink added to pmem paths: \"{0:s}\"".format(link_path))
 
         # handle SyS_dup*
         elif syscall.is_mask(EM_fd_from_fd):

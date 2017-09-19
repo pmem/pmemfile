@@ -49,6 +49,9 @@
 #define T_OUT(...) fprintf(stderr, __VA_ARGS__)
 #define COND_ERROR(ret) (ret < 0 ? strerror(errno) : "")
 
+extern bool fault_injection;
+extern bool is_pmemfile_pop;
+
 /*
  * is_zeroed -- check if given memory range is all zero
  */
@@ -151,6 +154,16 @@ public:
 	      poolsize(poolsize),
 	      test_empty_dir_on_teardown(true)
 	{
+#ifdef FAULT_INJECTION
+		fault_injection = true;
+#else
+		fault_injection = false;
+#endif
+		char *is_pmemfile_pop_str = std::getenv("LIBPMEMFILE_POP");
+		is_pmemfile_pop = is_pmemfile_pop_str != nullptr &&
+			strtol(is_pmemfile_pop_str, nullptr, 10);
+		if (is_pmemfile_pop)
+			fault_injection = false;
 	}
 
 	void
@@ -172,6 +185,8 @@ public:
 		assert(test_empty_dir(pfp, "/"));
 
 		assert(test_pmemfile_stats_match(pfp, 1, 0, 0, 0));
+
+		pmemfile_umask(pfp, 0);
 	}
 
 	void

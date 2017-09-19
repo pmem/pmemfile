@@ -197,16 +197,16 @@ TEST_F(symlinks, 0)
 	ASSERT_EQ(pmemfile_symlinkat(pfp, "whatever", NULL, "lalala"), -1);
 	EXPECT_EQ(errno, EFAULT);
 
-#ifdef FAULT_INJECTION
-	pmemfile_gid_t groups[1] = {1002};
-	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
-	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
-	errno = 0;
-	ASSERT_EQ(
-		pmemfile_symlinkat(pfp, "whatever", PMEMFILE_AT_CWD, "cwd-sym"),
-		-1);
-	EXPECT_EQ(errno, ENOMEM);
-#endif
+	if (fault_injection) {
+		pmemfile_gid_t groups[1] = {1002};
+		ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
+		pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+		errno = 0;
+		ASSERT_EQ(pmemfile_symlinkat(pfp, "whatever", PMEMFILE_AT_CWD,
+					     "cwd-sym"),
+			  -1);
+		EXPECT_EQ(errno, ENOMEM);
+	}
 
 	ASSERT_EQ(
 		pmemfile_symlinkat(pfp, "whatever", PMEMFILE_AT_CWD, "cwd-sym"),
@@ -263,14 +263,14 @@ TEST_F(symlinks, 0)
 				      buf, 2),
 		  2);
 
-#ifdef FAULT_INJECTION
-	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
-	errno = 0;
-	ASSERT_EQ(pmemfile_readlinkat(pfp, PMEMFILE_AT_CWD, "dir/sym1-exists",
-				      buf, 2),
-		  -1);
-	EXPECT_EQ(errno, ENOMEM);
-#endif
+	if (fault_injection) {
+		pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+		errno = 0;
+		ASSERT_EQ(pmemfile_readlinkat(pfp, PMEMFILE_AT_CWD,
+					      "dir/sym1-exists", buf, 2),
+			  -1);
+		EXPECT_EQ(errno, ENOMEM);
+	}
 
 	pmemfile_close(pfp, f);
 

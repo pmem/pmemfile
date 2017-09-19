@@ -390,11 +390,13 @@ int pmemfile_pool_suspend(PMEMfilepool *pfp);
 
 #include "libpmemfile-posix-stubs.h"
 
-#ifdef FAULT_INJECTION
+/*
+ * This feature is highly experimental and usable only when developing
+ * and testing libpmemfile-posix library. Do not use.
+ */
 enum pf_allocation_type { PF_MALLOC, PF_CALLOC, PF_REALLOC };
 void pmemfile_inject_fault_at(enum pf_allocation_type type, int nth,
 		const char *at);
-#endif
 
 #ifdef __cplusplus
 }

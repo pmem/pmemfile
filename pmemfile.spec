@@ -74,6 +74,7 @@ XXX
 %files -n pmemfile-tools
 %defattr(-,root,root,-)
 %{_bindir}/mkfs.pmemfile
+%{_bindir}/pmemfile-fuse
 %{_bindir}/pmemfile-mount
 %{_mandir}/man1/mkfs.pmemfile.1.gz
 %{_bindir}/antool

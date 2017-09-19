@@ -165,7 +165,8 @@ allocate_new_block_array(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 	COMPILE_ERROR_ON(METADATA_BLOCK_SIZE <
 		sizeof(struct pmemfile_block_array));
 
-	ASSERT(pmemobj_alloc_usable_size(new.oid) == info->size);
+	if (info->class_id)
+		ASSERT(pmemobj_alloc_usable_size(new.oid) == info->size);
 
 	PF_RW(pfp, new)->length = (uint32_t)
 			((info->size - sizeof(struct pmemfile_block_array)) /

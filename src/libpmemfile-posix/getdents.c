@@ -276,16 +276,24 @@ pmemfile_getdents_worker(PMEMfilepool *pfp, PMEMfile *file, char *data,
 
 		uint64_t next_off = get_next_dirent_off(file, dir, dirent_id);
 
-		unsigned short slen = fill_dirent(pfp, dirent, next_off,
-				count - (unsigned)read1, data);
-		if (slen == 0)
+		unsigned short slen = fill_dirent(
+			pfp, dirent, next_off, count - (unsigned)read1, data);
+
+		if (slen == 0) {
+			if (read1 == 0)
+				return -EINVAL;
 			break;
+		}
 
 		data += slen;
 		read1 += slen;
 
 		++dirent_id;
 		++file->offset;
+	}
+
+	if (read1 == 0) {
+		return -ENOENT;
 	}
 
 	return read1;
@@ -333,20 +341,23 @@ pmemfile_getdents_generic(PMEMfilepool *pfp, PMEMfile *file, char *data,
 	if ((int)count < 0)
 		count = INT_MAX;
 
-	int bytes_read = 0;
+	int read = 0;
 
 	os_mutex_lock(&file->mutex);
 	os_rwlock_rdlock(&vinode->rwlock);
 
-	bytes_read = pmemfile_getdents_worker(pfp, file, data, count,
-			fill_dirent);
-	ASSERT(bytes_read >= 0);
+	read = pmemfile_getdents_worker(pfp, file, data, count, fill_dirent);
 
 	os_rwlock_unlock(&vinode->rwlock);
 	os_mutex_unlock(&file->mutex);
 
-	ASSERT((unsigned)bytes_read <= count);
-	return bytes_read;
+	if (read < 0) {
+		errno = -read;
+		return -1;
+	}
+
+	ASSERT((unsigned)read <= count);
+	return read;
 }
 
 int

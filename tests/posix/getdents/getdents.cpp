@@ -175,6 +175,23 @@ TEST_F(getdents, 1)
 	ASSERT_EQ(pmemfile_getdents(NULL, f, dirents, sizeof(buf)), -1);
 	EXPECT_EQ(errno, EFAULT);
 
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1", 0755), 0);
+	PMEMfile *dir = pmemfile_open(pfp, "/dir1",
+				      PMEMFILE_O_DIRECTORY | PMEMFILE_O_RDONLY);
+	ASSERT_NE(dir, nullptr) << strerror(errno);
+	errno = 0;
+	char *short_buf[1];
+	EXPECT_EQ(pmemfile_getdents(pfp, dir, (linux_dirent *)short_buf,
+				    sizeof(short_buf)),
+		  -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
+	errno = 0;
+	EXPECT_EQ(pmemfile_getdents(pfp, dir, dirents, sizeof(buf)), -1);
+	EXPECT_EQ(errno, ENOENT);
+	pmemfile_close(pfp, dir);
+
 	int r = pmemfile_getdents(pfp, f, dirents, sizeof(buf));
 	ASSERT_GT(r, 0);
 
@@ -357,7 +374,7 @@ TEST_F(getdents, offset)
 	 * affects output from getdents - each getdents call should return
 	 * one less entry, than previous one
 	 */
-	for (size_t i = 0; i < (size_t)file_dir_count * 2 + 3; i++) {
+	for (size_t i = 0; i < (size_t)file_dir_count * 2 + 2; i++) {
 		pmemfile_off_t offset =
 			pmemfile_lseek(pfp, f, offsets[i], PMEMFILE_SEEK_SET);
 		ASSERT_EQ(offset, offsets[i]);

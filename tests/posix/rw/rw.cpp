@@ -51,6 +51,9 @@ protected:
 	pmemfile_blkcnt_t
 	stat_block_count(PMEMfile *f)
 	{
+		if (is_pmemfile_pop)
+			return 0;
+
 		pmemfile_stat_t stat_buf;
 
 		if (pmemfile_fstat(pfp, f, &stat_buf) != 0) {
@@ -1127,7 +1130,10 @@ TEST_F(rw, sparse_files_using_lseek)
 
 	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, end + 1, PMEMFILE_SEEK_DATA), -1);
-	EXPECT_EQ(errno, ENXIO);
+	if (errno != ENXIO && errno != EINVAL) {
+		EXPECT_EQ(errno, ENXIO);
+		EXPECT_EQ(errno, EINVAL);
+	}
 
 	/*
 	 * SEEK_HOLE - if passed offset is smaller than end offset,

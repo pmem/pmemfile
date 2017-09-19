@@ -87,16 +87,27 @@ test_stat(PMEMfilepool *pfp, const char *path, pmemfile_mode_t mode = 0,
 	int ret = pmemfile_stat(pfp, path, &st);
 	if (ret)
 		return ret;
-	EXPECT_EQ(mode, st.st_mode);
-	EXPECT_EQ(nlink, st.st_nlink);
-	EXPECT_EQ(size, st.st_size);
-	EXPECT_EQ(blksize, st.st_blksize);
-	EXPECT_EQ(blocks, st.st_blocks);
 
-	if (mode != st.st_mode || nlink != st.st_nlink || size != st.st_size ||
-	    blksize != st.st_blksize || blocks != st.st_blocks)
-		return -1;
+	if (is_pmemfile_pop) {
+		EXPECT_EQ(mode, st.st_mode);
+		if (!S_ISDIR(st.st_mode))
+			EXPECT_EQ(size, st.st_size);
 
+		if (mode != st.st_mode ||
+		    (size != st.st_size && !S_ISDIR(st.st_mode)))
+			return -1;
+	} else {
+		EXPECT_EQ(mode, st.st_mode);
+		EXPECT_EQ(nlink, st.st_nlink);
+		EXPECT_EQ(size, st.st_size);
+		EXPECT_EQ(blksize, st.st_blksize);
+		EXPECT_EQ(blocks, st.st_blocks);
+
+		if (mode != st.st_mode || nlink != st.st_nlink ||
+		    size != st.st_size || blksize != st.st_blksize ||
+		    blocks != st.st_blocks)
+			return -1;
+	}
 	if (verbose)
 		dump_stat(&st, path);
 	return 0;
@@ -112,15 +123,27 @@ test_fstat(PMEMfilepool *pfp, PMEMfile *f, pmemfile_mode_t mode = 0,
 	int ret = pmemfile_fstat(pfp, f, &st);
 	if (ret)
 		return ret;
-	EXPECT_EQ(mode, st.st_mode);
-	EXPECT_EQ(nlink, st.st_nlink);
-	EXPECT_EQ(size, st.st_size);
-	EXPECT_EQ(blksize, st.st_blksize);
-	EXPECT_EQ(blocks, st.st_blocks);
 
-	if (mode != st.st_mode || nlink != st.st_nlink || size != st.st_size ||
-	    blksize != st.st_blksize || blocks != st.st_blocks)
-		return -1;
+	if (is_pmemfile_pop) {
+		EXPECT_EQ(mode, st.st_mode);
+		if (!S_ISDIR(st.st_mode))
+			EXPECT_EQ(size, st.st_size);
+
+		if (mode != st.st_mode ||
+		    (size != st.st_size && !S_ISDIR(st.st_mode)))
+			return -1;
+	} else {
+		EXPECT_EQ(mode, st.st_mode);
+		EXPECT_EQ(nlink, st.st_nlink);
+		EXPECT_EQ(size, st.st_size);
+		EXPECT_EQ(blksize, st.st_blksize);
+		EXPECT_EQ(blocks, st.st_blocks);
+
+		if (mode != st.st_mode || nlink != st.st_nlink ||
+		    size != st.st_size || blksize != st.st_blksize ||
+		    blocks != st.st_blocks)
+			return -1;
+	}
 
 	if (verbose)
 		dump_stat(&st, NULL);
@@ -138,15 +161,27 @@ test_fstatat(PMEMfilepool *pfp, PMEMfile *dir, const char *path, int flags,
 	int ret = pmemfile_fstatat(pfp, dir, path, &st, flags);
 	if (ret)
 		return ret;
-	EXPECT_EQ(mode, st.st_mode);
-	EXPECT_EQ(nlink, st.st_nlink);
-	EXPECT_EQ(size, st.st_size);
-	EXPECT_EQ(blksize, st.st_blksize);
-	EXPECT_EQ(blocks, st.st_blocks);
 
-	if (mode != st.st_mode || nlink != st.st_nlink || size != st.st_size ||
-	    blksize != st.st_blksize || blocks != st.st_blocks)
-		return -1;
+	if (is_pmemfile_pop) {
+		EXPECT_EQ(mode, st.st_mode);
+		if (!S_ISDIR(st.st_mode))
+			EXPECT_EQ(size, st.st_size);
+
+		if (mode != st.st_mode ||
+		    (size != st.st_size && !S_ISDIR(st.st_mode)))
+			return -1;
+	} else {
+		EXPECT_EQ(mode, st.st_mode);
+		EXPECT_EQ(nlink, st.st_nlink);
+		EXPECT_EQ(size, st.st_size);
+		EXPECT_EQ(blksize, st.st_blksize);
+		EXPECT_EQ(blocks, st.st_blocks);
+
+		if (mode != st.st_mode || nlink != st.st_nlink ||
+		    size != st.st_size || blksize != st.st_blksize ||
+		    blocks != st.st_blocks)
+			return -1;
+	}
 
 	if (verbose)
 		dump_stat(&st, NULL);

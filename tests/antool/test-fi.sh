@@ -322,7 +322,8 @@ case $NUM in
 	replace_n_bytes $BIN_LOG 82384 4 '\x00\x00\x00\x00'
 	# change fallocate's argument #4
 	replace_n_bytes $BIN_LOG 82392 4 '\x00\x00\x00\x00'
-	ANTOOL_OPTS="-m16 -s -d -p /etc"
+	# add test for resolving pmem paths
+	ANTOOL_OPTS="-m16 -s -d -p /../../REMOVE_THIS/AND_THAT_TOO/../../etc"
 	;;
 35)	# change syscall in packet #14 from close to SyS_symlinkat
 	replace_n_bytes $BIN_LOG 82352 2 '\x0A\x01'

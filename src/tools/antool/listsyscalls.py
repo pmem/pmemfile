@@ -96,7 +96,7 @@ def realpath(path):
         if dir in ("", "."):
             continue
 
-        if dir == ".." and dirs.index(dir) > 0:
+        if dir == "..":
             len_newdirs = len(newdirs)
             if len_newdirs > 0:
                 del newdirs[len_newdirs - 1]

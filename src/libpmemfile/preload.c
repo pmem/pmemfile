@@ -2070,14 +2070,12 @@ lookup_pd_by_inode(struct stat *stat)
 #define HOOKED 0
 
 static int
-hook(long syscall_number,
+hook(const struct syscall_early_filter_entry *filter_entry, long syscall_number,
 			long arg0, long arg1,
 			long arg2, long arg3,
 			long arg4, long arg5,
 			long *syscall_return_value)
 {
-	assert(pool_count > 0);
-
 	if (syscall_number == SYS_chdir) {
 		*syscall_return_value = hook_chdir((const char *)arg0);
 		return HOOKED;
@@ -2108,24 +2106,18 @@ hook(long syscall_number,
 		return HOOKED;
 	}
 
-	struct syscall_early_filter_entry filter_entry;
-	filter_entry = get_early_filter_entry(syscall_number);
-
-	if (!filter_entry.must_handle)
-		return NOT_HOOKED;
-
 	int is_hooked;
 
 	is_hooked = HOOKED;
 
-	if (filter_entry.fd_first_arg) {
+	if (filter_entry->fd_first_arg) {
 		struct vfd_reference file = pmemfile_vfd_ref((int)arg0);
 
 		if (file.pool == NULL) {
 			is_hooked = NOT_HOOKED;
-		} else if (filter_entry.returns_zero) {
+		} else if (filter_entry->returns_zero) {
 			*syscall_return_value = 0;
-		} else if (filter_entry.returns_ENOTSUP) {
+		} else if (filter_entry->returns_ENOTSUP) {
 			*syscall_return_value =
 			    check_errno(-ENOTSUP, syscall_number);
 		} else {
@@ -2174,11 +2166,21 @@ hook_reentrance_guard_wrapper(long syscall_number,
 	if (guard_flag)
 		return NOT_HOOKED;
 
+	assert(pool_count > 0);
+
+	struct syscall_early_filter_entry filter_entry;
+	filter_entry = get_early_filter_entry(syscall_number);
+
+	if (!filter_entry.must_handle)
+		return NOT_HOOKED;
+
 	int is_hooked;
 
 	guard_flag = true;
-	is_hooked = hook(syscall_number, arg0, arg1, arg2, arg3, arg4, arg5,
-				syscall_return_value);
+	int oerrno = errno;
+	is_hooked = hook(&filter_entry, syscall_number, arg0, arg1, arg2, arg3,
+			arg4, arg5, syscall_return_value);
+	errno = oerrno;
 	guard_flag = false;
 
 	return is_hooked;

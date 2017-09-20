@@ -46,6 +46,9 @@ static struct syscall_early_filter_entry filter_table[] = {
 	[SYS_access] = {
 		.must_handle = true,
 	},
+	[SYS_chdir] = {
+		.must_handle = true,
+	},
 	[SYS_chmod] = {
 		.must_handle = true,
 	},
@@ -71,6 +74,9 @@ static struct syscall_early_filter_entry filter_table[] = {
 		.fd_first_arg = true,
 	},
 	[SYS_fchmodat] = {
+		.must_handle = true,
+	},
+	[SYS_fchdir] = {
 		.must_handle = true,
 	},
 	[SYS_fchmod] = {
@@ -121,6 +127,9 @@ static struct syscall_early_filter_entry filter_table[] = {
 		.fd_first_arg = true,
 	},
 	[SYS_futimesat] = {
+		.must_handle = true,
+	},
+	[SYS_getcwd] = {
 		.must_handle = true,
 	},
 	[SYS_getdents64] = {

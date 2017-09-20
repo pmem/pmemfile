@@ -1234,7 +1234,7 @@ TEST_F(rw, sparse_files_using_lseek)
 
 	/* Fill the whole */
 	/*
-     * After this write, expecting a 16K block at the beginning of the
+	 * After this write, expecting a 16K block at the beginning of the
 	 * file, with the old block following it immediately.
 	 * Thus, no holes left in the file.
 	 */

@@ -82,37 +82,35 @@ MAX_DEC_FD = 0x10000000
 ########################################################################################################################
 # realpath -- get the resolved path (it does not resolve links YET)
 ########################################################################################################################
-# noinspection PyShadowingBuiltins
-def realpath(path):
-    len_path = len(path)
+def realpath(old_path):
+    len_old_path = len(old_path)
 
-    if len_path == 0:  # path is empty when BPF error occurs
+    if len_old_path == 0:  # path is empty when BPF error occurs
         return ""
 
-    assert(path[0] == '/')
+    assert(old_path[0] == '/')
 
-    newpath = "/"
-    newdirs = []
-    dirs = path.split('/')
+    old_dirs = old_path.split('/')
+    new_dirs = []
 
-    for dir in dirs:
-        if dir in ("", "."):
+    for one_dir in old_dirs:
+        if one_dir in ("", "."):
             continue
 
-        if dir == "..":
-            len_newdirs = len(newdirs)
-            if len_newdirs > 0:
-                del newdirs[len_newdirs - 1]
+        if one_dir == "..":
+            len_new_dirs = len(new_dirs)
+            if len_new_dirs > 0:
+                del new_dirs[len_new_dirs - 1]
             continue
 
-        newdirs.append(dir)
+        new_dirs.append(one_dir)
 
-    newpath += "/".join(newdirs)
+    new_path = "/" + "/".join(new_dirs)
 
-    if path[len_path - 1] == '/':
-        newpath += "/"
+    if old_path[len_old_path - 1] == '/':
+        new_path += "/"
 
-    return newpath
+    return new_path
 
 
 ########################################################################################################################

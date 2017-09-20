@@ -51,8 +51,6 @@ flock05
 flock06
 fork10
 getcwd03
-getdents02
-getdents02 -l
 getrusage03
 test_ioctl
 inotify01

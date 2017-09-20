@@ -512,12 +512,13 @@ class ListSyscalls(list):
         else:
             msg += " ({0:d}) \"{1:s}\"".format(dirfd, path)
 
-        if not unknown_dirfd:
-            path = realpath(newpath)
-        else:
-            path = newpath
+        path = newpath
 
-        is_pmem = self.is_path_pmem(path)
+        if not unknown_dirfd:
+            is_pmem = self.is_path_pmem(realpath(path))
+        else:
+            is_pmem = 0
+
         # append new path to the global array of all strings
         str_ind = self.all_strings_append(path, is_pmem)
         # save index in the global array as the argument
@@ -547,8 +548,7 @@ class ListSyscalls(list):
             elif path[0] != '/':
                 path = self.get_cwd(syscall) + "/" + path
 
-            path = realpath(path)
-            is_pmem = self.is_path_pmem(path)
+            is_pmem = self.is_path_pmem(realpath(path))
             syscall.is_pmem |= is_pmem
 
         # append new path to the global array of all strings
@@ -682,8 +682,7 @@ class ListSyscalls(list):
                         elif len(path) == 0 and not syscall.read_error:
                             path = self.get_cwd(syscall)
 
-                        path = realpath(path)
-                        is_pmem = self.is_path_pmem(path)
+                        is_pmem = self.is_path_pmem(realpath(path))
                         syscall.is_pmem |= is_pmem
 
                     # append new path to the global array of all strings

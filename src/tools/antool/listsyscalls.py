@@ -143,11 +143,17 @@ class ListSyscalls(list):
 
         if pmem_paths:
             paths = str(pmem_paths)
+            pmem_paths = paths.split(':')
+
+            # remove all empty strings
+            while pmem_paths.count(""):
+                pmem_paths.remove("")
+
+            # add slash at the end and normalize all paths
+            self.pmem_paths = [realpath(path + "/") for path in pmem_paths]
+
         else:
-            paths = ""
-        self.pmem_paths = paths.split(':')
-        # add slash at the end and normalize all paths
-        self.pmem_paths = [realpath(path + '/') for path in self.pmem_paths]
+            self.pmem_paths = []
 
         self.all_supported = 1  # all syscalls are supported
 

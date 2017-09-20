@@ -43,6 +43,7 @@ endif()
 
 include_directories(${FUSE_INCLUDE_DIRS})
 link_directories(${FUSE_LIBRARY_DIRS})
+add_c_flag(-fno-strict-aliasing)
 
 add_executable(pmemfile-fuse main.c)
 target_link_libraries(pmemfile-fuse PRIVATE ${FUSE_LIBRARIES})

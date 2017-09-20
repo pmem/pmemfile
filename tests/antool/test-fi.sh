@@ -309,7 +309,8 @@ case $NUM in
 	replace_n_bytes $BIN_LOG 82436 1 '\x48'
 	# change fcntl's flag to F_GETOWN (0x09) (2nd argument)
 	replace_n_bytes $BIN_LOG 82376 4 '\x09\x00\x00\x00'
-	ANTOOL_OPTS="-m16 -s -d -p /etc"
+	# test also empty pmem paths
+	ANTOOL_OPTS="-m16 -s -d -p /etc::"
 	;;
 34)	# change syscall in packet #14 from close to fallocate
 	replace_n_bytes $BIN_LOG 82352 2 '\x1D\x01'

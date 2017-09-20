@@ -118,7 +118,6 @@ readv03
 recvmsg01
 remap_file_pages02
 rename08
-renameat201
 rmdir05
 select03
 sendfile02

@@ -27,5 +27,5 @@ DEBUG(parser): 0x000447D4D1406134 0x0000254E0000254E ------------------ --------
 DEBUG(analysis): mmap                 "/etc/ld.so.cache" [PMEM]
 DEBUG(parser): 0x000447D4D1406DE6 0x0000254E0000254E 0x0000000000000000 0x00007F6C96F09000 mmap
 DEBUG(parser): 0x000447D4D1407291 0x0000254E0000254E ------------------ ------------------ symlinkat "" 0x00000000FFFFFF9C ""
-DEBUG(analysis): symlinkat           symlinkat            "$(*)/tests/antool/logs-test-parser.sh-14-1531-2017-07-27_09:05:31_242116266-9110" "$(*)/tests/antool/logs-test-parser.sh-14-1531-2017-07-27_09:05:31_242116266-9110" ""
+DEBUG(analysis): symlinkat            "$(*)/tests/antool/logs-test-parser.sh-14-1531-2017-07-27_09:05:31_242116266-9110" "$(*)/tests/antool/logs-test-parser.sh-14-1531-2017-07-27_09:05:31_242116266-9110" ""
 DEBUG(parser): 0x000447D4D14075F7 0x0000254E0000254E 0x0000000000000000 0x0000000000000000 symlinkat

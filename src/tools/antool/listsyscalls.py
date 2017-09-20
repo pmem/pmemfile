@@ -610,7 +610,7 @@ class ListSyscalls(list):
         elif syscall.name == "symlinkat":
             msg = "{0:20s}".format(syscall.name)
             path, str_ind, is_pmem = self.handle_one_path(syscall, 0)
-            msg += self.log_build_msg(msg, is_pmem, path)
+            msg = self.log_build_msg(msg, is_pmem, path)
             path, is_pmem, msg = self.handle_fileat(syscall, 1, 2, msg)
             self.log_anls.debug(msg)
 

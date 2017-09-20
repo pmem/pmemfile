@@ -58,7 +58,7 @@ class AnalyzingTool(ListSyscalls):
     def __init__(self, convert_mode, pmem_paths, fileout, max_packets, offline_mode,
                  script_mode, debug_mode, print_log_mode, verbose_mode):
 
-        ListSyscalls.__init__(self, pmem_paths, script_mode, debug_mode, verbose_mode)
+        ListSyscalls.__init__(self, pmem_paths, script_mode, debug_mode, verbose_mode, init_pmem=(not offline_mode))
 
         self.convert_mode = convert_mode
         self.script_mode = script_mode
@@ -103,7 +103,7 @@ class AnalyzingTool(ListSyscalls):
         self.log_main.debug("debug_mode     = {0:d}".format(self.debug_mode))
         self.log_main.debug("print_progress = {0:d}".format(self.print_progress))
 
-        self.list_ok = ListSyscalls(pmem_paths, script_mode, debug_mode, verbose_mode)
+        self.list_ok = ListSyscalls(pmem_paths, script_mode, debug_mode, verbose_mode, init_pmem=offline_mode)
         self.list_no_exit = ListSyscalls(pmem_paths, script_mode, debug_mode, verbose_mode)
         self.list_others = ListSyscalls(pmem_paths, script_mode, debug_mode, verbose_mode)
 

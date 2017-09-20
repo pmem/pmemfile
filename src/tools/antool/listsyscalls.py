@@ -116,7 +116,7 @@ def realpath(path):
 # ListSyscalls
 ########################################################################################################################
 class ListSyscalls(list):
-    def __init__(self, pmem_paths, script_mode, debug_mode, verbose_mode):
+    def __init__(self, pmem_paths, script_mode, debug_mode, verbose_mode, init_pmem=0):
 
         list.__init__(self)
 
@@ -141,7 +141,7 @@ class ListSyscalls(list):
         self.all_strings = ["(stdin)", "(stdout)", "(stderr)"]
         self.path_is_pmem = [0, 0, 0]
 
-        if pmem_paths:
+        if init_pmem and pmem_paths:
             paths = str(pmem_paths)
             pmem_paths = paths.split(':')
 

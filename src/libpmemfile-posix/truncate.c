@@ -156,8 +156,13 @@ pmemfile_ftruncate(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t length)
 		return -1;
 	}
 
-	if (!(flags & PFILE_WRITE)) {
+	if (flags & PFILE_PATH) {
 		errno = EBADF;
+		return -1;
+	}
+
+	if (!(flags & PFILE_WRITE)) {
+		errno = EINVAL;
 		return -1;
 	}
 

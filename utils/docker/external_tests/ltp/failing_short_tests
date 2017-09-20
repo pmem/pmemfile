@@ -50,8 +50,6 @@ flock04
 flock05
 flock06
 fork10
-ftruncate03
-ftruncate03_64
 getcwd03
 getdents02
 getdents02 -l

@@ -11,8 +11,6 @@ $(S)/pjdfstest/tests/chown/02.t          (Wstat: 0 Tests: 10 Failed: 2)
   Failed tests:  5, 10
 $(S)/pjdfstest/tests/chown/10.t          (Wstat: 0 Tests: 4 Failed: 2)
   Failed tests:  2, 4
-$(S)/pjdfstest/tests/ftruncate/00.t      (Wstat: 0 Tests: 26 Failed: 1)
-  Failed test:  18
 $(S)/pjdfstest/tests/ftruncate/02.t      (Wstat: 0 Tests: 5 Failed: 1)
   Failed test:  5
 $(S)/pjdfstest/tests/ftruncate/14.t      (Wstat: 0 Tests: 2 Failed: 1)

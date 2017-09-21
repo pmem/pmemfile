@@ -190,9 +190,12 @@ lseek_seek_data_or_hole(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	if (vinode_is_regular_file(vinode)) {
 		if (whence == PMEMFILE_SEEK_DATA) {
 			offset = lseek_seek_data(pfp, vinode, offset, fsize);
+			ASSERT(offset <= fsize);
 		} else {
 			ASSERT(whence == PMEMFILE_SEEK_HOLE);
 			offset = lseek_seek_hole(pfp, vinode, offset, fsize);
+			if (offset > fsize)
+				offset = fsize;
 		}
 	} else {
 		/*
@@ -219,9 +222,6 @@ lseek_seek_data_or_hole(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	}
 
 	os_rwlock_unlock(&vinode->rwlock);
-
-	if (offset > fsize)
-		offset = fsize;
 
 	return offset;
 }

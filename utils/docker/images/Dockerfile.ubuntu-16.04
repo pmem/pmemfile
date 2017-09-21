@@ -41,6 +41,7 @@ MAINTAINER marcin.slusarz@intel.com
 # Update the Apt cache and install basic tools
 RUN apt-get update
 RUN apt-get install -y \
+	attr \
 	autoconf \
 	automake \
 	clang \
@@ -51,6 +52,10 @@ RUN apt-get install -y \
 	devscripts \
 	doxygen \
 	git \
+	libacl1-dev \
+	libaio-dev \
+	libattr1-dev \
+	libblkid-dev \
 	libcapstone-dev \
 	libcap-dev \
 	libc6-dbg \
@@ -67,8 +72,10 @@ RUN apt-get install -y \
 	sqlite3 \
 	sudo \
 	tcl-dev \
+	uuid-dev \
 	wget \
-	whois
+	whois \
+	xfsdump
 
 # Upgrade pip
 RUN pip install --upgrade pip
@@ -103,6 +110,11 @@ RUN useradd -m $USER -g sudo -p `mkpasswd $USERPASS`
 # Install ltp
 COPY install-ltp.sh install-ltp.sh
 RUN ./install-ltp.sh
+
+# Install xfs
+COPY 0001-enable-pmemfile.patch 0001-enable-pmemfile.patch
+COPY install-xfs.sh install-xfs.sh
+RUN ./install-xfs.sh
 
 RUN apt-get remove -y \
 	autoconf \

@@ -142,7 +142,7 @@ lseek_end_directory(PMEMfilepool *pfp, struct pmemfile_inode *inode,
 
 	if (ret_dir && ++ret == ret_dir->num_elements) {
 		ret = 0;
-		ret_dir_num = dir_num + 1;
+		ret_dir_num++;
 	}
 
 	return (ret_dir_num << 32) + ret + offset;

@@ -80,48 +80,16 @@ MAX_DEC_FD = 0x10000000
 
 
 ########################################################################################################################
-# realpath -- get the resolved path (it does not resolve links YET)
-########################################################################################################################
-def realpath(old_path):
-    len_old_path = len(old_path)
-
-    if len_old_path == 0:  # path is empty when BPF error occurs
-        return ""
-
-    assert(old_path[0] == '/')
-
-    old_dirs = old_path.split('/')
-    new_dirs = []
-
-    for one_dir in old_dirs:
-        if one_dir in ("", "."):
-            continue
-
-        if one_dir == "..":
-            len_new_dirs = len(new_dirs)
-            if len_new_dirs > 0:
-                del new_dirs[len_new_dirs - 1]
-            continue
-
-        new_dirs.append(one_dir)
-
-    new_path = "/" + "/".join(new_dirs)
-
-    if old_path[len_old_path - 1] == '/':
-        new_path += "/"
-
-    return new_path
-
-
-########################################################################################################################
 # ListSyscalls
 ########################################################################################################################
 class ListSyscalls(list):
-    def __init__(self, pmem_paths, script_mode, debug_mode, verbose_mode, init_pmem=0):
+    def __init__(self, pmem_paths, slink_file, script_mode, debug_mode, verbose_mode, init_pmem=0):
 
         list.__init__(self)
 
         self.log_anls = logging.getLogger("analysis")
+
+        self.slink_file = slink_file
 
         self.script_mode = script_mode
         self.debug_mode = debug_mode
@@ -142,6 +110,22 @@ class ListSyscalls(list):
         self.all_strings = ["(stdin)", "(stdout)", "(stderr)"]
         self.path_is_pmem = [0, 0, 0]
 
+        self.symlinks = dict()
+
+        if init_pmem and slink_file:
+            fh = open_file(slink_file, 'r')
+            lines = fh.readlines()
+            fh.close()
+            for line in lines:
+                line = line.split('\n')[0]
+                paths = line.split(':')
+                assert_msg(len(paths) == 2, "wrong format of symlinks file: {0:s}".format(slink_file))
+                # append new symlink to the dictionary
+                self.symlinks[paths[0]] = paths[1]
+
+        self.slink_file = len(self.symlinks)
+        self.pmem_paths = []
+
         if init_pmem and pmem_paths:
             paths = str(pmem_paths)
             pmem_paths = paths.split(':')
@@ -151,10 +135,7 @@ class ListSyscalls(list):
                 pmem_paths.remove("")
 
             # add slash at the end and normalize all paths
-            self.pmem_paths = [realpath(path + "/") for path in pmem_paths]
-
-        else:
-            self.pmem_paths = []
+            self.pmem_paths = [self.realpath(path + "/") for path in pmem_paths]
 
         self.all_supported = 1  # all syscalls are supported
 
@@ -180,6 +161,52 @@ class ListSyscalls(list):
             if string.find(path) == 0:
                 return 1
         return 0
+
+    ####################################################################################################################
+    # realpath -- get the resolved path
+    ####################################################################################################################
+    def realpath(self, old_path):
+        from os import path
+        len_old_path = len(old_path)
+
+        if len_old_path == 0:  # path is empty when BPF error occurs
+            return ""
+
+        assert (old_path[0] == '/')
+
+        old_dirs = old_path.split('/')
+        new_dirs = []
+        new_path = ""
+
+        for one_dir in old_dirs:
+            if one_dir in ("", "."):
+                continue
+
+            if one_dir == "..":
+                len_new_dirs = len(new_dirs)
+                if len_new_dirs > 0:
+                    del new_dirs[len_new_dirs - 1]
+                continue
+
+            new_dirs.append(one_dir)
+            new_path = "/" + "/".join(new_dirs)
+
+            if path.islink(new_path):
+                new_path = path.realpath(new_path)
+
+            # if there is a file with symlinks given by the '--slink-file' CLI option
+            # and the current 'new_path' is saved as a symlink in this file,
+            # replace it with the target path saved also in this file.
+            if self.slink_file and new_path in self.symlinks:
+                new_path = self.symlinks[new_path]
+
+            new_dirs = new_path.split('/')
+            del new_dirs[0]
+
+        if old_path[len_old_path - 1] == '/':
+            new_path += "/"
+
+        return new_path
 
     ####################################################################################################################
     # all_strings_append -- append the string to the list of all strings
@@ -527,7 +554,7 @@ class ListSyscalls(list):
         path = newpath
 
         if not unknown_dirfd:
-            is_pmem = self.is_path_pmem(realpath(path))
+            is_pmem = self.is_path_pmem(self.realpath(path))
         else:
             is_pmem = 0
 
@@ -562,7 +589,7 @@ class ListSyscalls(list):
             elif path[0] != '/':
                 path = self.get_cwd(syscall) + "/" + path
 
-            is_pmem = self.is_path_pmem(realpath(path))
+            is_pmem = self.is_path_pmem(self.realpath(path))
             syscall.is_pmem |= is_pmem
 
         # append new path to the global array of all strings
@@ -729,7 +756,7 @@ class ListSyscalls(list):
                         elif len(path) == 0 and not syscall.read_error:
                             path = self.get_cwd(syscall)
 
-                        is_pmem = self.is_path_pmem(realpath(path))
+                        is_pmem = self.is_path_pmem(self.realpath(path))
                         syscall.is_pmem |= is_pmem
 
                     # append new path to the global array of all strings

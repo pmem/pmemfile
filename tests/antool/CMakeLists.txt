@@ -35,6 +35,7 @@ set(ANTOOL_TESTS "SAVED"
 	CACHE STRING "run antool tests basing on saved vltrace logs (SAVED - default) or skip antool tests at all (SKIP)")
 
 set(VLTRACE_BIN "vltrace" CACHE FILEPATH "path to vltrace binary")
+set(DECOMPRESSOR ${ANTOOL_SRC_DIR}/decompress-bin-arch.sh)
 
 if("${ANTOOL_TESTS}" STREQUAL "SKIP")
 	message(STATUS "skipping antool tests")
@@ -52,9 +53,8 @@ else()
 		if(${BZIP2_FOUND} EQUAL 0)
 			set(VLTRACE_FOUND -1)
 			set(VLTRACE_BIN "")
-			set(DECOMPRESSOR ${ANTOOL_SRC_DIR}/decompress-bin-arch.sh)
 
-			execute_process(COMMAND ${DECOMPRESSOR} ${ANTOOL_SRC_DIR} ${CMAKE_CURRENT_BINARY_DIR}
+			execute_process(COMMAND ${DECOMPRESSOR} all ${ANTOOL_SRC_DIR} ${CMAKE_CURRENT_BINARY_DIR}
 					RESULT_VARIABLE RESULT_DECOMPRESSOR
 					OUTPUT_VARIABLE OUTPUT_DECOMPRESSOR
 					OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -86,9 +86,23 @@ else()
 				set(REGENERATOR ${ANTOOL_SRC_DIR}/regenerate-bin-arch.sh)
 				add_custom_target(regenerate
 						COMMAND ${REGENERATOR} ${ANTOOL_SRC_DIR})
+
+				execute_process(COMMAND ${DECOMPRESSOR} fi_only ${ANTOOL_SRC_DIR} ${CMAKE_CURRENT_BINARY_DIR}
+						RESULT_VARIABLE RESULT_DECOMPRESSOR
+						OUTPUT_VARIABLE OUTPUT_DECOMPRESSOR
+						OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+				message(STATUS ${OUTPUT_DECOMPRESSOR})
+
+				if(NOT(${RESULT_DECOMPRESSOR} EQUAL 0))
+					set(ANTOOL_FI_TESTS "DISABLED")
+					message(WARNING "cannot decompress vltrace logs, antool fault-injection tests cannot be performed.")
+				endif()
 			else()
-				message(WARNING "bzip2 compressor not found, "
-						"regeneration of antool test files will not be possible.")
+				set(ANTOOL_FI_TESTS "DISABLED")
+				message(WARNING "bzip2 compressor not found:\n"
+						"- antool fault-injection tests cannot be performed and"
+						"- regeneration of antool test files is not be possible.")
 			endif()
 
 		else()
@@ -161,10 +175,12 @@ else()
 	add_test(NAME "antool-analyze"
 		COMMAND ${TEST_ANTOOL} "${VLTRACE_BIN}" 126 "${TEST_APP}" 15)
 
-	# fault-injection tests
-	foreach(FI_TEST_NUMBER 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19
-			20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36)
-		add_test(NAME "antool-fi-${FI_TEST_NUMBER}"
-			COMMAND ${TEST_FI} fi-${FI_TEST_NUMBER})
-	endforeach(FI_TEST_NUMBER)
+	if(NOT ("${ANTOOL_FI_TESTS}" STREQUAL "DISABLED"))
+		# fault-injection tests
+		foreach(FI_TEST_NUMBER 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19
+				20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36)
+			add_test(NAME "antool-fi-${FI_TEST_NUMBER}"
+				COMMAND ${TEST_FI} fi-${FI_TEST_NUMBER})
+		endforeach(FI_TEST_NUMBER)
+	endif()
 endif()

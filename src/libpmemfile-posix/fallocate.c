@@ -96,6 +96,8 @@ vinode_fallocate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, int mode,
 			inode->allocated_space = allocated_space;
 		}
 	} TX_ONABORT {
+		if (errno == ENOMEM)
+			errno = ENOSPC;
 		error = errno;
 		vinode_restore_on_abort(vinode);
 	} TX_END

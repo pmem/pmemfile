@@ -98,6 +98,8 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 		inode_add_dirent(pfp, vparent->tinode, info.remaining, namelen,
 				tinode, inode->ctime);
 	} TX_ONABORT {
+		if (errno == ENOMEM)
+			errno = ENOSPC;
 		error = errno;
 	} TX_END
 

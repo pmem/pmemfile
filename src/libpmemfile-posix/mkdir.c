@@ -127,6 +127,8 @@ _pmemfile_mkdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		vinode_new_dir(pfp, parent, info.remaining, namelen, &cred,
 				mode);
 	} TX_ONABORT {
+		if (errno == ENOMEM)
+			errno = ENOSPC;
 		error = errno;
 	} TX_END
 

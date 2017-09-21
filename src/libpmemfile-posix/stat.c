@@ -87,7 +87,7 @@ vinode_stat(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		size_t sz = inode->allocated_space;
 		blks = (pmemfile_blkcnt_t)(sz / 512);
 	} else if (inode_is_dir(inode)) {
-		size_t sz = inode->size - sizeof(inode->file_data);
+		size_t sz = inode->size;
 		blks = (pmemfile_blkcnt_t)(sz / 512);
 	} else if (inode_is_symlink(inode)) {
 		blks = 0;

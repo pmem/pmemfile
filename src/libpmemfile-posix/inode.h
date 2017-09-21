@@ -40,6 +40,10 @@
 #include "layout.h"
 #include "os_thread.h"
 
+#define PMEMFILE_S_LONGSYMLINK 0x10000
+COMPILE_ERROR_ON((PMEMFILE_S_IFMT | PMEMFILE_ALLPERMS) &
+		PMEMFILE_S_LONGSYMLINK);
+
 /* volatile inode */
 struct pmemfile_vinode {
 	/* reference counter */
@@ -136,6 +140,19 @@ static inline bool vinode_is_root(struct pmemfile_vinode *vinode)
 {
 	return vinode_is_dir(vinode) && vinode->parent == vinode;
 }
+
+static inline bool inode_is_longsymlink(const struct pmemfile_inode *inode)
+{
+	return inode_is_symlink(inode) &&
+			(inode->flags & PMEMFILE_S_LONGSYMLINK);
+}
+
+static inline bool vinode_is_longsymlink(struct pmemfile_vinode *vinode)
+{
+	return inode_is_longsymlink(vinode->inode);
+}
+
+const char *get_symlink(PMEMfilepool *pfp, struct pmemfile_vinode *vinode);
 
 struct pmemfile_cred;
 TOID(struct pmemfile_inode) inode_alloc(PMEMfilepool *pfp,

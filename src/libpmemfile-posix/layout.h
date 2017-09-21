@@ -141,18 +141,8 @@ struct pmemfile_time {
 		((uint32_t)(a + '0') << 24))
 
 #define PMEMFILE_INODE_SIZE METADATA_BLOCK_SIZE
-#define PMEMFILE_IN_INODE_STORAGE (PMEMFILE_INODE_SIZE\
-				- 4  /* version */ \
-				- 4  /* uid */ \
-				- 4  /* gid */ \
-				- 4  /* suspeneded references */ \
-				- 16 /* atime */ \
-				- 16 /* ctime */ \
-				- 16 /* mtime */ \
-				- 8  /* nlink */ \
-				- 8  /* size */ \
-				- 8  /* allocated space */ \
-				- 8  /* flags */)
+#define PMEMFILE_IN_INODE_STORAGE \
+	(sizeof(struct pmemfile_dir) + 2 * sizeof(struct pmemfile_dirent))
 
 /* Inode */
 struct pmemfile_inode {
@@ -192,6 +182,8 @@ struct pmemfile_inode {
 	/* file flags */
 	uint64_t flags;
 
+	char padding[3432];
+
 	/* data! */
 	union {
 		/* file specific data */
@@ -200,7 +192,9 @@ struct pmemfile_inode {
 		/* directory specific data */
 		struct pmemfile_dir dir;
 
-		char data[PMEMFILE_IN_INODE_STORAGE];
+		TOID(char) long_symlink;
+
+		char short_symlink[PMEMFILE_IN_INODE_STORAGE];
 	} file_data;
 };
 

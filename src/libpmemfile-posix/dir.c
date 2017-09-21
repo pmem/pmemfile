@@ -452,8 +452,7 @@ resolve_pathat_nested(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 
 		/* XXX: handle protected_symlinks (see man 5 proc) */
 		if (PMEMFILE_S_ISLNK(child_perms.flags)) {
-			const char *symlink_target =
-					child->inode->file_data.data;
+			const char *symlink_target = get_symlink(pfp, child);
 			char *new_path = pf_malloc(strlen(symlink_target) + 1 +
 					strlen(slash + 1) + 1);
 			if (!new_path)
@@ -599,11 +598,13 @@ resolve_symlink(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 
 	/* XXX: handle protected_symlinks (see man 5 proc) */
 
-	char symlink_target[PMEMFILE_PATH_MAX];
-	COMPILE_ERROR_ON(sizeof(symlink_target) < PMEMFILE_IN_INODE_STORAGE);
-
 	os_rwlock_rdlock(&vinode->rwlock);
-	strcpy(symlink_target, vinode->inode->file_data.data);
+
+	char symlink_target[vinode->inode->size + 1];
+	memcpy(symlink_target, get_symlink(pfp, vinode),
+			vinode->inode->size + 1);
+	ASSERTeq(symlink_target[vinode->inode->size], 0);
+
 	os_rwlock_unlock(&vinode->rwlock);
 
 	vinode_unref(pfp, vinode);

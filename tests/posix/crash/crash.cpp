@@ -90,13 +90,13 @@ TEST(crash, 0)
 
 		EXPECT_TRUE(test_compare_dirs(pfp, "/",
 					      std::vector<pmemfile_ls>{
-						      {040777, 2, 4000, "."},
-						      {040777, 2, 4000, ".."},
+						      {040777, 2, 8192, "."},
+						      {040777, 2, 8192, ".."},
 						      {0100644, 1, 0, "aaa"},
 						      {0100644, 1, 0, "bbb"},
 					      }));
 
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 0));
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 1, 0, 0));
 
 		pmemfile_pool_close(pfp);
 	} else if (strcmp(op, "openclose3") == 0) {
@@ -105,12 +105,12 @@ TEST(crash, 0)
 
 		EXPECT_TRUE(test_compare_dirs(pfp, "/",
 					      std::vector<pmemfile_ls>{
-						      {040777, 2, 4000, "."},
-						      {040777, 2, 4000, ".."},
+						      {040777, 2, 8192, "."},
+						      {040777, 2, 8192, ".."},
 						      {0100644, 1, 0, "bbb"},
 					      }));
 
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0));
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 1, 0, 0));
 
 		pmemfile_pool_close(pfp);
 	} else

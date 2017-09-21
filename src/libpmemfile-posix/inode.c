@@ -319,7 +319,7 @@ inode_alloc(PMEMfilepool *pfp, struct pmemfile_cred *cred, uint64_t flags)
 				(sizeof(inode->file_data) -
 				sizeof(inode->file_data.dir)) /
 				sizeof(struct pmemfile_dirent);
-		inode->size = sizeof(inode->file_data);
+		inode->size = info->size;
 	}
 
 	return tinode;

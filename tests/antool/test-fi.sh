@@ -117,7 +117,7 @@ cd $DIR_NAME
 
 [ "$COVERAGE" == "1" -a -f ../$COVERAGE_REPORT ] && cp ../$COVERAGE_REPORT .
 
-BIN_LOG=output-bin-1531-14.log
+BIN_LOG=$FI_BIN_LOG
 OUT=output-$TEST_NUM.log
 ERR=output-err-$TEST_NUM.log
 EXPECTED_RV=0

@@ -218,10 +218,7 @@ acquire_new_entry(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 
 	ASSERT(is_zeroed(block, sizeof(*block)));
 
-	/* XXX, snapshot separated to let pmemobj use small object cache  */
-	pmemobj_tx_add_range_direct(block, 32);
-	pmemobj_tx_add_range_direct((char *)block + 32, 32);
-	COMPILE_ERROR_ON(sizeof(*block) != 64);
+	TX_ADD_DIRECT(block);
 
 	return block;
 }

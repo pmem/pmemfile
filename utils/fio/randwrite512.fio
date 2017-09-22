@@ -1,0 +1,15 @@
+[global]
+ioengine=sync
+size=7G
+thread=1
+runtime=30
+time_based
+bs=512
+direct=0
+sync=1
+
+filename=/tmp/mountpoint/test
+
+[rand_write]
+rw=randwrite
+

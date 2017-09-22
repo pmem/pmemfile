@@ -341,6 +341,16 @@ case $NUM in
 	replace_n_bytes $BIN_LOG 82392 4 '\x00\x10\x00\x00'
 	ANTOOL_OPTS="-m16 -s -d -p /etc"
 	;;
+37)	# inject BPF read error in the 1st packet of access (offset 81055)
+	replace_n_bytes $BIN_LOG 81061 1 '\x4' # offset +6
+	replace_n_bytes $BIN_LOG 81136 1 '\x0' # offset +81
+	ANTOOL_OPTS="-m 10 -s -d"
+	;;
+38)	# inject BPF read error in the 1st packet of access (offset 81055)
+	replace_n_bytes $BIN_LOG 81061 1 '\x4' # offset +6
+	replace_n_bytes $BIN_LOG 81136 1 '\x0' # offset +81
+	ANTOOL_OPTS="-m 10 -s -f -l"
+	;;
 esac
 
 ANTOOL_OPTS="-b $BIN_LOG $ANTOOL_OPTS"

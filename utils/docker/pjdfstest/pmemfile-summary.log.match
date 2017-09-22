@@ -76,5 +76,5 @@ $(S)/pjdfstest/tests/utimensat/06.t      (Wstat: 0 Tests: 13 Failed: 1)
   Failed test:  4
 $(S)/pjdfstest/tests/utimensat/07.t      (Wstat: 0 Tests: 17 Failed: 6)
   Failed tests:  5-7, 9-11
-Files=232, Tests=3074, $(N) wallclock secs ($(FP) usr  $(FP) sys + $(FP) cusr $(FP) csys = $(FP) CPU)
+Files=232, Tests=3074, $(*)
 Result: FAIL

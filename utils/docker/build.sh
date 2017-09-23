@@ -80,6 +80,10 @@ if [[ "$command" == "" ]]; then
 			command="external_tests/run-build-suite.sh ltp"
 			docker_opts="--ulimit nofile=1024:1024";
 			;;
+		xfs)
+			command="external_tests/run-build-suite.sh xfs"
+			docker_opts="--user=root"
+			;;
 		coverity)
 			command="./run-coverity.sh";
 			;;

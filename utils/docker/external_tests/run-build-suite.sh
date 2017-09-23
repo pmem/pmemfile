@@ -66,17 +66,25 @@ if [ "$COVERAGE" = "1" ]; then
 	PMEMFILE_SHARED_OPTS="${PMEMFILE_SHARED_OPTS} -DCMAKE_C_FLAGS=-coverage -DCMAKE_CXX_FLAGS=-coverage"
 fi
 
-if [[ "$SUITE" == "sqlite" ]]; then
-	SUITE_DIR=$HOME/sqlite
-	SUITE_UTILS_DIR=$TEST_UTILS_DIR/sqlite
-elif [[ "$SUITE" == "ltp" ]]; then
-	SUITE_DIR=$HOME/ltp_install
-	SUITE_UTILS_DIR=$TEST_UTILS_DIR/ltp
-else
-	echo "First argument doesn't match any existing test suites"\
-	"(sqlite|ltp)."
-	exit 1
-fi
+case $SUITE in
+	sqlite)
+		SUITE_DIR=$HOME/sqlite
+		SUITE_UTILS_DIR=$TEST_UTILS_DIR/sqlite
+		;;
+	ltp)
+		SUITE_DIR=$HOME/ltp_install
+		SUITE_UTILS_DIR=$TEST_UTILS_DIR/ltp
+		;;
+	xfs)
+		SUITE_DIR=$HOME/xfstests-dev
+		SUITE_UTILS_DIR=$TEST_UTILS_DIR/xfstests
+		;;
+	*)
+		echo "First argument doesn't match any existing test suites"\
+		"(sqlite|ltp|xfs)."
+		exit 1
+		;;
+esac
 
 TESTS=$SUITE_UTILS_DIR/short_tests
 FAILING_TESTS=$SUITE_UTILS_DIR/failing_short_tests
@@ -104,7 +112,6 @@ set +e
 
 $TEST_UTILS_DIR/run-suite.py $SUITE -i $SUITE_DIR -m $MOUNTPOINT -l $PMEMFILE_LIB_DIR \
 	-p $PF_POOL -t $TESTS -f $FAILING_TESTS --timeout 120 $VERBOSE
-
 
 EXIT_CODE=$?
 

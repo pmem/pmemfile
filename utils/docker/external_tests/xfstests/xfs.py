@@ -30,35 +30,33 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-from os import path, environ
+from os import path
+
+from suite import Suite
 
 
-class Config:
-    def __init__(self, pf_lib_dir, pf_pool, mountpoint):
-        self._mountpoint = mountpoint
-        self._pf_lib_dir = pf_lib_dir
-        self._pf_pool = pf_pool
-        self.process_switching = False
+class XfsTests(Suite):
+    def __init__(self, install_dir, config):
+        self.install_dir = install_dir
+        self.create_local_config_file(config)
+        config.process_switching = True
+        super().__init__(config)
 
-    @property
-    def pf_env(self):
-        self.update_env()
-        return self._pf_env
+        self.timeout = 60 * 10
+        self.cwd = install_dir
 
-    @property
-    def mountpoint(self):
-        return self._mountpoint
+    def get_run_cmd(self, test):
+        binary = path.join(self.install_dir, 'check')
+        arg = 'generic/{}'.format(test)
+        return [binary, arg]
 
-    @property
-    def pf_pool(self):
-        return self._pf_pool
+    def prepare_default_tests_to_run(self):
+        self.run_tests_from_file(path.join('xfstests', 'short_tests'))
 
-    def update_env(self):
-        self._pf_env = environ.copy()
-        self._pf_env.update({
-            'PMEM_IS_PMEM_FORCE': '1',
-            'LD_PRELOAD': path.join(self._pf_lib_dir, 'libpmemfile.so'),
-            'PMEMFILE_POOLS': '{0}:{1}'.format(self.mountpoint, self._pf_pool)
-        })
-        if self.process_switching:
-            self._pf_env.update({'PMEMFILE_PROCESS_SWITCHING': '1'})
+    def create_local_config_file(self, config):
+        local_config_path = path.join(self.install_dir, 'local.config')
+        with open(local_config_path, 'w') as f:
+            f.write('export FSTYP=tmpfs\n')
+            f.write('export TEST_DEV=pmemfile:{}\n'.format(config.pf_pool))
+            f.write('export TEST_DIR={}\n'.format(config.mountpoint))
+            f.write('export TEST_DEVX={}\n'.format(config.pf_pool))

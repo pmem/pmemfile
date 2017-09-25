@@ -175,6 +175,9 @@ else()
 	add_test(NAME "antool-analyze"
 		COMMAND ${TEST_ANTOOL} "${VLTRACE_BIN}" 126 "${TEST_APP}" 15)
 
+	add_test(NAME "antool-symlinks"
+		COMMAND ${TEST_ANTOOL} "${VLTRACE_BIN}" 126 "${TEST_APP}" 16)
+
 	if(NOT ("${ANTOOL_FI_TESTS}" STREQUAL "DISABLED"))
 		# fault-injection tests
 		foreach(FI_TEST_NUMBER

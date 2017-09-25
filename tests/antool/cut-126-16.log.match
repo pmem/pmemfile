@@ -1,0 +1,19 @@
+close                (0x0000000012345678)
+open                 "/tmp/antool $(S)"
+open                 "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+open                 "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+symlink              "/tmp/antool $(S)/nonp $(S)/tmp $(S)" "$(S)/tests/antool/$(S)/link1"
+symlink              "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM] "$(S)/tests/antool/$(S)/link2"
+INFO: new symlink added to pmem paths: "$(S)/tests/antool/$(S)/link2"
+symlinkat            "/tmp/antool $(S)/nonp $(S)/tmp $(S)" "$(S)/tests/antool/$(S)" "link3"
+symlinkat            "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM] "$(S)/tests/antool/$(S)" "link4" [PMEM]
+INFO: new symlink added to pmem paths: "$(S)/tests/antool/$(S)/link4"
+symlinkat            "/tmp/antool $(S)/nonp $(S)/tmp $(S)" "/tmp/antool $(S)" "link5"
+symlinkat            "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM] "/tmp/antool $(S)" "link6" [PMEM]
+INFO: new symlink added to pmem paths: "/tmp/antool $(S)/link6"
+dup2                 (305419896)
+fallocate            "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
+fallocate            "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
+newfstatat           "/tmp/antool $(S)/nonp $(S)/tmp $(S)" ""
+newfstatat           "/tmp/antool $(S)/pmem $(S)/tmp $(S)" "" [PMEM]
+close                (0x0000000087654321)

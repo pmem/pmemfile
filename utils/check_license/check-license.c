@@ -117,8 +117,9 @@ read_pattern(const char *path_pattern, char *pattern)
 		ERROR("read(): %s: %s", strerror(errno), path_pattern);
 		return -1;
 	} else if (ret != LICENSE_MAX_LEN) {
-		ERROR("read(): incorrect format of the license pattern"
-			" file (%s)", path_pattern);
+		ERROR(
+			"read(): incorrect format of the license pattern file (%s)",
+			path_pattern);
 		return -1;
 	}
 	return 0;
@@ -236,12 +237,12 @@ analyze_license(const char *path_to_check,
 	if (strstr2(buffer, LICENSE_BEG, LICENSE_END,
 				&beg_str, &end_str)) {
 		if (!beg_str)
-			ERROR2("%s:1: error: incorrect license"
-				" (license should start with the string '%s')",
+			ERROR2(
+				"%s:1: error: incorrect license (license should start with the string '%s')",
 				path_to_check, LICENSE_BEG);
 		else
-			ERROR2("%s:1: error: incorrect license"
-				" (license should end with the string '%s')",
+			ERROR2(
+				"%s:1: error: incorrect license (license should end with the string '%s')",
 				path_to_check, LICENSE_END);
 		return -1;
 	}

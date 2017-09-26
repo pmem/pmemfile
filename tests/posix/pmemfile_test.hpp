@@ -188,6 +188,14 @@ public:
 		pmemfile_pool_close(pfp);
 		(void)std::remove(path.c_str());
 	}
+
 };
+
+/* Tests expect a static count of 4 root directories */
+static constexpr unsigned root_count()
+{
+	return 4;
+}
+
 
 #endif

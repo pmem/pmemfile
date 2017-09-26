@@ -245,13 +245,26 @@ COMPILE_ERROR_ON(sizeof(struct pmemfile_inode_array) !=
 		((uint64_t)(a + '0') << 48) | ((uint64_t)(b + '0') << 56))
 #define PMEMFILE_SUPER_SIZE METADATA_BLOCK_SIZE
 
+/*
+ * Number of distinct directory trees. At the moment, a static compile time
+ * constant. But the client is required to get this by calling
+ * pmemfile_root_count(), therefore it can be a dynamic number later in later
+ * implementations.
+ */
+#define PMEMFILE_ROOT_COUNT 4
+
 /* superblock */
 struct pmemfile_super {
 	/* superblock version */
 	uint64_t version;
 
-	/* root directory inode */
-	TOID(struct pmemfile_inode) root_inode;
+	/*
+	 * The array of root directories. Each one of them is a root of a
+	 * separate directory tree. The path "/" resolves to root #0, all other
+	 * roots are only accessible via special values passed to pmemfile_at*
+	 * funcions.
+	 */
+	TOID(struct pmemfile_inode) root_inode[PMEMFILE_ROOT_COUNT];
 
 	/* list of arrays of inodes that were deleted, but are still opened */
 	TOID(struct pmemfile_inode_array) orphaned_inodes;
@@ -261,7 +274,7 @@ struct pmemfile_super {
 
 	char padding[PMEMFILE_SUPER_SIZE
 			- 8  /* version */
-			- 16 /* toid */
+			- 16 * (PMEMFILE_ROOT_COUNT) /* toid */
 			- 16 /* toid */
 			- 16 /* toid */];
 };

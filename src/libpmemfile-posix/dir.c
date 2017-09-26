@@ -371,7 +371,7 @@ vinode_lookup_dirent(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 	}
 
 	if ((flags & PMEMFILE_OPEN_PARENT_STOP_AT_ROOT) &&
-			parent == pfp->root &&
+			vinode_is_root(parent) &&
 			str_compare("..", name, namelen) == 0) {
 		errno = EXDEV;
 		return NULL;
@@ -416,7 +416,7 @@ resolve_pathat_nested(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 	if (path[0] == '/') {
 		while (path[0] == '/')
 			path++;
-		parent = pfp->root;
+		parent = pfp->root[0];
 	}
 
 	const char *ending_slash = NULL;
@@ -561,7 +561,7 @@ resolve_pathat_full(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		}
 
 		if (namelen == 0) {
-			ASSERT(path_info->parent == pfp->root);
+			ASSERT(vinode_is_root(path_info->parent));
 			vinode = vinode_ref(pfp, path_info->parent);
 		} else {
 			vinode = vinode_lookup_dirent(pfp, path_info->parent,
@@ -868,7 +868,7 @@ _pmemfile_get_dir_path(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		return NULL;
 	}
 
-	if (child == pfp->root)
+	if (vinode_is_root(child))
 		parent = NULL;
 	else
 		parent = vinode_ref(pfp, child->parent);
@@ -916,7 +916,7 @@ _pmemfile_get_dir_path(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		*(--curpos) = '/';
 
 		struct pmemfile_vinode *grandparent;
-		if (parent == pfp->root)
+		if (vinode_is_root(parent))
 			grandparent = NULL;
 		else
 			grandparent = vinode_ref(pfp, parent->parent);

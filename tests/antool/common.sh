@@ -35,3 +35,6 @@ SYSCALL_TABLE="syscalls_table.dat"
 ARCH_EXT="bz2"
 MASK_BIN="output-bin-*.log"
 ARCHIVES="*.$ARCH_EXT"
+
+FI_SRC_BIN_LOG=output-bin-1531-14.log
+FI_BIN_LOG=output-bin-fi.log

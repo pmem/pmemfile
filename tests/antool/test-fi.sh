@@ -117,7 +117,7 @@ cd $DIR_NAME
 
 [ "$COVERAGE" == "1" -a -f ../$COVERAGE_REPORT ] && cp ../$COVERAGE_REPORT .
 
-BIN_LOG=output-bin-1531-14.log
+BIN_LOG=$FI_BIN_LOG
 OUT=output-$TEST_NUM.log
 ERR=output-err-$TEST_NUM.log
 EXPECTED_RV=0
@@ -340,6 +340,16 @@ case $NUM in
 	# change fallocate's argument #4
 	replace_n_bytes $BIN_LOG 82392 4 '\x00\x10\x00\x00'
 	ANTOOL_OPTS="-m16 -s -d -p /etc"
+	;;
+37)	# inject BPF read error in the 1st packet of access (offset 81055)
+	replace_n_bytes $BIN_LOG 81061 1 '\x4' # offset +6
+	replace_n_bytes $BIN_LOG 81136 1 '\x0' # offset +81
+	ANTOOL_OPTS="-m 10 -s -d"
+	;;
+38)	# inject BPF read error in the 1st packet of access (offset 81055)
+	replace_n_bytes $BIN_LOG 81061 1 '\x4' # offset +6
+	replace_n_bytes $BIN_LOG 81136 1 '\x0' # offset +81
+	ANTOOL_OPTS="-m 10 -s -f -l"
 	;;
 esac
 

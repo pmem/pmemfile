@@ -86,7 +86,10 @@ MAX_DEC_FD = 0x10000000
 def realpath(path):
     len_path = len(path)
 
-    assert(len_path > 0 and path[0] == '/')
+    if len_path == 0:  # path is empty when BPF error occurs
+        return ""
+
+    assert(path[0] == '/')
 
     newpath = "/"
     newdirs = []

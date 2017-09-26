@@ -35,12 +35,16 @@ NAME=$(basename $0)
 
 if [ "$2" == "" ]; then
 	echo "ERROR($NAME): not enough arguments"
-	echo "Usage: $NAME <path-to-test-source-directory> <destination-directory>"
+	echo "Usage: $NAME <all|fi_only> <path-to-test-source-directory> <destination-directory>"
+	echo "      where:"
+	echo "            - all      -  all binary logs"
+	echo "            - fi_only  -  only one fault-injection binary log"
 	exit 1
 fi
 
-SRC_DIR=$1
-DEST_DIR=$2
+MODE=$1
+SRC_DIR=$2
+DEST_DIR=$3
 
 TEST_DIR=$(dirname $0)
 [ "$TEST_DIR" == "." ] && TEST_DIR=$(pwd)
@@ -52,13 +56,18 @@ COMMON=$TEST_DIR/common.sh
 
 source $COMMON
 
-FILES_ARCH=$(ls -1 $SRC_DIR/$ARCHIVES 2>/dev/null)
+if [ "$MODE" == "fi_only" ]; then
+	FILES_ARCH="$SRC_DIR/$FI_SRC_BIN_LOG.$ARCH_EXT $SRC_DIR/$SYSCALL_TABLE.$ARCH_EXT"
+else
+	FILES_ARCH=$(ls -1 $SRC_DIR/$ARCHIVES 2>/dev/null)
+fi
+
 if [ "$FILES_ARCH" == "" ]; then
 	echo "ERROR: no archives found"
 	exit 1
 fi
 
-echo -n "Decompressing vltrace's binary logs... "
+echo -n "Decompressing $MODE vltrace's binary logs... "
 
 for file in $FILES_ARCH; do
 	bzip2 -d -f -k $file
@@ -78,7 +87,12 @@ rm -f $TEMP_FILE
 echo "done."
 
 echo -n "-- Moving binary logs to the test directory... "
+if [ "$MODE" == "fi_only" ]; then
+	mv -f $SRC_DIR/$FI_SRC_BIN_LOG $SRC_DIR/$FI_BIN_LOG
+else
+	cp -f $SRC_DIR/$FI_SRC_BIN_LOG $SRC_DIR/$FI_BIN_LOG
+	cp -f $SRC_DIR/$FILE_DIR_PMEM $DEST_DIR
+fi
 mv -f $SRC_DIR/$MASK_BIN $DEST_DIR
-cp -f $SRC_DIR/$FILE_DIR_PMEM $DEST_DIR
 rm -f $SRC_DIR/$SYSCALL_TABLE
 echo "done."

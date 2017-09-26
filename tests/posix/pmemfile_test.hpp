@@ -171,7 +171,7 @@ public:
 
 		assert(test_empty_dir(pfp, "/"));
 
-		assert(test_pmemfile_stats_match(pfp, 1, 0, 0, 0));
+		assert(test_pmemfile_stats_match(pfp, 0, 0, 0, 0));
 	}
 
 	void
@@ -189,5 +189,12 @@ public:
 		(void)std::remove(path.c_str());
 	}
 };
+
+/* Tests expect a static count of 4 root directories */
+static constexpr unsigned
+root_count()
+{
+	return 4;
+}
 
 #endif

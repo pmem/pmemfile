@@ -96,7 +96,7 @@ TEST(crash, 0)
 						      {0100644, 1, 0, "bbb"},
 					      }));
 
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 0));
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0));
 
 		pmemfile_pool_close(pfp);
 	} else if (strcmp(op, "openclose3") == 0) {
@@ -110,7 +110,7 @@ TEST(crash, 0)
 						      {0100644, 1, 0, "bbb"},
 					      }));
 
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0));
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 0, 0, 0));
 
 		pmemfile_pool_close(pfp);
 	} else

@@ -135,7 +135,7 @@ TEST_F(basic, open_create_close)
 							{0100777, 1, 0, "bbb"},
 						}));
 
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 0));
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0));
 
 	pmemfile_pool_close(pfp);
 
@@ -149,7 +149,7 @@ TEST_F(basic, open_create_close)
 							{0100777, 1, 0, "bbb"},
 						}));
 
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 0));
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0));
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/aaa"), 0);
 	ASSERT_EQ(pmemfile_unlink(pfp, "/bbb"), 0);
@@ -351,7 +351,7 @@ TEST_F(basic, link)
 					      {0100777, 2, 0, "bbb2.link"},
 				      }));
 
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 3, 0, 0, 0));
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0));
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/aaa"), 0);
 	ASSERT_EQ(pmemfile_unlink(pfp, "/bbb"), 0);
@@ -445,7 +445,7 @@ TEST_F(basic, unlink)
 					      {0100777, 3, 0, "aaa2.link"},
 				      }));
 
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 0));
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 0, 0, 0));
 
 	ret = pmemfile_unlink(pfp, "/aaa");
 	ASSERT_EQ(ret, 0) << strerror(errno);
@@ -470,13 +470,13 @@ TEST_F(basic, tmpfile)
 
 	ASSERT_TRUE(test_empty_dir(pfp, "/"));
 
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 0, 0, 1));
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 0, 0, 1));
 
 	pmemfile_close(pfp, f);
 
 	ASSERT_TRUE(test_empty_dir(pfp, "/"));
 
-	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 0, 0, 0));
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 0, 0, 0, 0));
 }
 
 int

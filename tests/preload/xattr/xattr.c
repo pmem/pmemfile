@@ -80,7 +80,10 @@ main(int argc, char *argv[])
 	if (memcmp(lorem, value, sizeof(lorem)) != 0)
 		err(6, "unexpected attr1 value: %s", value);
 
-	sprintf(path, "%s/mount_point/../file", argv[1]);
+	const char *fmt = "%s/mount_point/../file";
+	if (strlen(argv[1]) + strlen(fmt) >= sizeof(path))
+		err(61, "too long path");
+	sprintf(path, fmt, argv[1]);
 
 	memset(value, 0, sizeof(value));
 	size = getxattr(path, "user.attr1", value, sizeof(value));

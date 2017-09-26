@@ -204,6 +204,9 @@ typedef struct flock pmemfile_flock_t;
 
 #define PMEMFILE_AT_CWD ((PMEMfile *)(((unsigned char *)0) - 1))
 
+/* guaranteed to return at least 1 for any opened pool */
+unsigned pmemfile_pool_root_count(PMEMfilepool *);
+
 PMEMfilepool *pmemfile_pool_create(const char *pathname, size_t poolsize,
 		pmemfile_mode_t mode);
 
@@ -215,6 +218,8 @@ PMEMfile *pmemfile_open(PMEMfilepool *pfp, const char *pathname, int flags,
 		...);
 PMEMfile *pmemfile_openat(PMEMfilepool *pfp, PMEMfile *dir,
 		const char *pathname, int flags, ...);
+PMEMfile *pmemfile_open_root(PMEMfilepool *pfp, unsigned index, int flags);
+
 PMEMfile *pmemfile_create(PMEMfilepool *pfp, const char *pathname,
 		pmemfile_mode_t mode);
 /* XXX Should we get rid of PMEMfilepool pointer? */

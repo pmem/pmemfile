@@ -50,6 +50,8 @@ test_pmemfile_stats_match(PMEMfilepool *pfp, unsigned inodes, unsigned dirs,
 	struct pmemfile_stats stats;
 	pmemfile_stats(pfp, &stats);
 
+	inodes += root_count();
+
 	EXPECT_EQ(stats.inodes, inodes);
 	EXPECT_EQ(stats.dirs, dirs);
 	EXPECT_EQ(stats.block_arrays, block_arrays);

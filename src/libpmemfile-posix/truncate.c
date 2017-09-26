@@ -205,7 +205,7 @@ pmemfile_truncate(PMEMfilepool *pfp, const char *path, pmemfile_off_t length)
 	struct pmemfile_path_info info;
 
 	if (path[0] == '/') {
-		vparent = pfp->root;
+		vparent = pfp->root[0];
 		unref_vparent = false;
 	} else {
 		vparent = pool_get_cwd(pfp);

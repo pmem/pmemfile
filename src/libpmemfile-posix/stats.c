@@ -72,17 +72,18 @@ stats_alloc_class(PMEMfilepool *pfp, PMEMoid oid, struct pmemfile_stats *stats)
 	if (size == METADATA_BLOCK_SIZE) {
 		uint32_t v = *((uint32_t *) pmemfile_direct(pfp, oid));
 
-	if (cmp(v, PMEMFILE_INODE_VERSION(0)))
-		stats->inodes++;
-	else if (cmp(v, PMEMFILE_DIR_VERSION(0)))
-		stats->dirs++;
-	else if (cmp(v, PMEMFILE_BLOCK_ARRAY_VERSION(0)))
-		stats->block_arrays++;
-	else if (cmp(v, PMEMFILE_INODE_ARRAY_VERSION(0)))
-		stats->inode_arrays++;
-	} else if (data_block_info(size, MAX_BLOCK_SIZE)->size
-				== size) {
-			stats->blocks++;
+		if (cmp(v, PMEMFILE_INODE_VERSION(0)))
+			stats->inodes++;
+		else if (cmp(v, PMEMFILE_DIR_VERSION(0)))
+			stats->dirs++;
+		else if (cmp(v, PMEMFILE_BLOCK_ARRAY_VERSION(0)))
+			stats->block_arrays++;
+		else if (cmp(v, PMEMFILE_INODE_ARRAY_VERSION(0)))
+			stats->inode_arrays++;
+		else
+			FATAL("unknown metadata 0x%x", v);
+	} else if (data_block_info(size, MAX_BLOCK_SIZE)->size == size) {
+		stats->blocks++;
 	} else {
 		FATAL("unknown block");
 	}

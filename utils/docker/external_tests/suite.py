@@ -49,6 +49,7 @@ class Suite(metaclass=ABCMeta):
         self.pf_env = config.pf_env
         self.mountpoint = config.mountpoint
         self.run_in_shell = False
+        self.cwd = config.mountpoint
 
     def __str__(self):
         if self.test not in self.results:
@@ -151,7 +152,7 @@ class Suite(metaclass=ABCMeta):
         cmd = self.get_run_cmd(self.test)
         env = self.pf_env if on_pf else None
         return check_output(cmd, timeout=self.timeout,
-                            stderr=STDOUT, env=env, cwd=self.mountpoint, shell=self.run_in_shell)
+                            stderr=STDOUT, env=env, cwd=self.cwd, shell=self.run_in_shell)
 
     def try_decode(self, output):
         try:

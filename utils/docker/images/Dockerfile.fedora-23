@@ -40,8 +40,10 @@ MAINTAINER marcin.slusarz@intel.com
 
 # Install basic tools
 RUN dnf install -y \
+	attr \
 	autoconf \
 	automake \
+	bc \
 	capstone-devel \
 	clang \
 	cmake \
@@ -49,9 +51,16 @@ RUN dnf install -y \
 	fuse-devel \
 	gcc \
 	gdb \
+	gettext \
 	git \
+	libacl-devel \
+	libaio-devel \
+	libattr-devel \
+	libblkid-devel \
 	libcap-devel \
 	libunwind-devel \
+	libuuid-devel \
+	libtool \
 	make \
 	man \
 	pandoc \
@@ -66,7 +75,8 @@ RUN dnf install -y \
 	tcl-devel \
 	wget \
 	which \
-	whois
+	whois \
+	xfsdump
 
 # Upgrade pip
 RUN pip install --upgrade pip
@@ -103,6 +113,11 @@ RUN gpasswd wheel -a $USER
 # Install ltp
 COPY install-ltp.sh install-ltp.sh
 RUN ./install-ltp.sh
+
+# Install xfs
+COPY 0001-enable-pmemfile.patch 0001-enable-pmemfile.patch
+COPY install-xfs.sh install-xfs.sh
+RUN ./install-xfs.sh
 
 RUN dnf remove -y \
 	autoconf \

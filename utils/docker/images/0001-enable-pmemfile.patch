@@ -1,0 +1,39 @@
+From b655a8f024ababe4d7e2fe2ffe37b65d3bac7222 Mon Sep 17 00:00:00 2001
+From: mramotowski <maciej.ramotowski@intel.com>
+Date: Wed, 20 Sep 2017 08:40:01 +0200
+Subject: [PATCH] common: added pmemfile handling
+
+---
+ common/config | 2 ++
+ common/rc     | 2 +-
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/common/config b/common/config
+index 71798f0a..b7868fac 100644
+--- a/common/config
++++ b/common/config
+@@ -465,6 +465,8 @@ _check_device()
+ 			_fatal "common/config: $name ($dev) is not a character device"
+ 		fi
+ 		;;
++        pmemfile)
++		;;
+ 	*)
+ 		_fatal "common/config: $name ($dev) is not a block device or a network filesystem"
+ 	esac
+diff --git a/common/rc b/common/rc
+index cd53a373..ec47680b 100644
+--- a/common/rc
++++ b/common/rc
+@@ -189,7 +189,7 @@ fi
+ 
+ _mount()
+ {
+-    $MOUNT_PROG `_mount_ops_filter $*`
++    pmemfile-mount $TEST_DEVX $TEST_DIR
+ }
+ 
+ # Call _mount to do mount operation but also save mountpoint to
+-- 
+2.11.0
+

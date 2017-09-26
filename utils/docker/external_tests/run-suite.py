@@ -38,6 +38,7 @@ from time import time, gmtime
 from config import Config
 from ltp.ltp import LinuxTestProject
 from sqlite.sqlite import Sqlite
+from xfstests.xfs import XfsTests
 from tester import Tester
 
 
@@ -56,8 +57,9 @@ def get_cmd_args():
         action='store_false')
 
     parser_sqlite = subparsers.add_parser('sqlite', help='Sqlite tests parser')
+    parser_xfs = subparsers.add_parser('xfs', help='XfsTests parser')
 
-    suite_parsers = [parser_ltp, parser_sqlite]
+    suite_parsers = [parser_ltp, parser_sqlite, parser_xfs]
     for suite_parser in suite_parsers:
         suite_parser.add_argument("-p", "--pf-pool", required=True,
                                   help="Path to pmemfile_pool.")
@@ -82,7 +84,9 @@ def get_cmd_args():
 if __name__ == "__main__":
     args = get_cmd_args()
 
-    suites = {'ltp': LinuxTestProject, 'sqlite': Sqlite}
+    suites = {'ltp': LinuxTestProject,
+              'sqlite': Sqlite,
+              'xfs': XfsTests}
 
     config = Config(args.pf_lib_dir, args.pf_pool, args.mountpoint)
     suite = suites[args.suite_name](args.install_dir, config)

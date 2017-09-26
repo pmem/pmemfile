@@ -1,3 +1,4 @@
+#!/bin/bash -xe
 #
 # Copyright 2017, Intel Corporation
 #
@@ -29,36 +30,20 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+USER_DIR=/home/user
 
-from os import path, environ
+cd $USER_DIR
+git clone https://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
+cd xfsprogs-dev
+git checkout 0602fbe880e59c3aff13a081632b79532a40a328
+make -j4
+make install-dev -j4
 
+cd $USER_DIR
+git clone https://git.kernel.org/pub/scm/fs/xfs/xfstests-dev.git
+cd xfstests-dev
+git checkout 11cf6e7a4a232308114d471a2b64ac4e35d76638
+make -j4
+patch -p1 < /0001-enable-pmemfile.patch
 
-class Config:
-    def __init__(self, pf_lib_dir, pf_pool, mountpoint):
-        self._mountpoint = mountpoint
-        self._pf_lib_dir = pf_lib_dir
-        self._pf_pool = pf_pool
-        self.process_switching = False
-
-    @property
-    def pf_env(self):
-        self.update_env()
-        return self._pf_env
-
-    @property
-    def mountpoint(self):
-        return self._mountpoint
-
-    @property
-    def pf_pool(self):
-        return self._pf_pool
-
-    def update_env(self):
-        self._pf_env = environ.copy()
-        self._pf_env.update({
-            'PMEM_IS_PMEM_FORCE': '1',
-            'LD_PRELOAD': path.join(self._pf_lib_dir, 'libpmemfile.so'),
-            'PMEMFILE_POOLS': '{0}:{1}'.format(self.mountpoint, self._pf_pool)
-        })
-        if self.process_switching:
-            self._pf_env.update({'PMEMFILE_PROCESS_SWITCHING': '1'})
+chown user $USER_DIR/xfstests-dev -R

@@ -111,7 +111,7 @@ _pmemfile_mkdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	/* mkdir("/") */
 	if (namelen == 0) {
-		ASSERT(parent == pfp->root);
+		ASSERT(vinode_is_root(parent)); /* XXX */
 		error = EEXIST;
 		goto end;
 	}

@@ -53,6 +53,17 @@
 #include "pool.h"
 #include "utils.h"
 
+COMPILE_ERROR_ON(PMEMFILE_ROOT_COUNT <= 0);
+
+unsigned
+pmemfile_pool_root_count(PMEMfilepool *pfp)
+{
+	if (pfp != NULL)
+		return PMEMFILE_ROOT_COUNT;
+	else
+		return 0;
+}
+
 #define PMEMFILE_CUR_VERSION \
 	PMEMFILE_SUPER_VERSION(PMEMFILE_MAJOR_VERSION, PMEMFILE_MINOR_VERSION)
 /*
@@ -70,7 +81,7 @@ initialize_super_block(PMEMfilepool *pfp)
 	int error = 0;
 	struct pmemfile_super *super = pfp->super;
 
-	if (!TOID_IS_NULL(super->root_inode) &&
+	if (!TOID_IS_NULL(super->root_inode[0]) &&
 			super->version != PMEMFILE_CUR_VERSION) {
 		ERR("unknown superblock version: 0x%lx", super->version);
 		errno = EINVAL;
@@ -101,11 +112,14 @@ initialize_super_block(PMEMfilepool *pfp)
 		goto inode_map_alloc_fail;
 	}
 
-	if (TOID_IS_NULL(super->root_inode)) {
+	if (TOID_IS_NULL(super->root_inode[0])) {
 		TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 			TX_ADD_DIRECT(super);
-			super->root_inode = vinode_new_dir(pfp, NULL, "/", 1,
+			for (unsigned i = 0; i < PMEMFILE_ROOT_COUNT; ++i) {
+				super->root_inode[i] =
+				    vinode_new_dir(pfp, NULL, "/", 1,
 					&cred, PMEMFILE_ACCESSPERMS);
+			}
 
 			super->version = PMEMFILE_CUR_VERSION;
 			super->orphaned_inodes = inode_array_alloc(pfp);
@@ -120,22 +134,28 @@ initialize_super_block(PMEMfilepool *pfp)
 		}
 	}
 
-	pfp->root = inode_ref(pfp, super->root_inode, NULL, NULL, 0);
-	if (!pfp->root) {
-		error = errno;
+	for (unsigned i = 0; i < PMEMFILE_ROOT_COUNT; ++i) {
+		pfp->root[i] = inode_ref(pfp, super->root_inode[i],
+							NULL, NULL, 0);
+		if (!pfp->root[i]) {
+			error = errno;
 
-		ERR("!cannot access root inode");
-		goto ref_err;
+			ERR("!cannot access root inode");
+			goto ref_err;
+		}
+
+		pfp->root[i]->parent = pfp->root[i];
 	}
 
-	pfp->root->parent = pfp->root;
 #ifdef DEBUG
-	pfp->root->path = strdup("/");
-	ASSERTne(pfp->root->path, NULL);
+	for (unsigned i = 0; i < PMEMFILE_ROOT_COUNT; ++i) {
+		pfp->root[i]->path = strdup("/");
+		ASSERTne(pfp->root[i]->path, NULL);
+	}
 #endif
 
-	pfp->cwd = vinode_ref(pfp, pfp->root);
-	pfp->dev = pfp->root->tinode.oid.pool_uuid_lo;
+	pfp->cwd = vinode_ref(pfp, pfp->root[0]);
+	pfp->dev = pfp->root[0]->tinode.oid.pool_uuid_lo;
 	cred_release(&cred);
 
 	return 0;
@@ -297,7 +317,8 @@ pmemfile_pool_close(PMEMfilepool *pfp)
 	pf_free(pfp->cred.groups);
 
 	vinode_unref(pfp, pfp->cwd);
-	vinode_unref(pfp, pfp->root);
+	for (unsigned i = 0; i < PMEMFILE_ROOT_COUNT; ++i)
+		vinode_unref(pfp, pfp->root[i]);
 	inode_map_free(pfp);
 	os_rwlock_destroy(&pfp->cred_rwlock);
 	os_rwlock_destroy(&pfp->super_rwlock);

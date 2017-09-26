@@ -132,6 +132,11 @@ static inline bool vinode_is_symlink(struct pmemfile_vinode *vinode)
 	return inode_is_symlink(vinode->inode);
 }
 
+static inline bool vinode_is_root(struct pmemfile_vinode *vinode)
+{
+	return vinode_is_dir(vinode) && vinode->parent == vinode;
+}
+
 struct pmemfile_cred;
 TOID(struct pmemfile_inode) inode_alloc(PMEMfilepool *pfp,
 		struct pmemfile_cred *cred, uint64_t flags);

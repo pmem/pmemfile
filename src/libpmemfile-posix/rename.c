@@ -159,6 +159,8 @@ vinode_exchange(PMEMfilepool *pfp,
 			}
 		}
 	} TX_ONABORT {
+		if (errno == ENOMEM)
+			errno = ENOSPC;
 		error = errno;
 	} TX_END
 

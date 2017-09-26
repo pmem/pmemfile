@@ -411,6 +411,8 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 					info.remaining, namelen, tinode,
 					PF_RO(pfp, tinode)->ctime);
 		} TX_ONABORT {
+			if (errno == ENOMEM)
+				errno = ENOSPC;
 			error = errno;
 		} TX_END
 

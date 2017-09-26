@@ -107,6 +107,8 @@ _pmemfile_linkat(PMEMfilepool *pfp,
 		inode_add_dirent(pfp, dst.parent->tinode, dst.remaining,
 				dst_namelen, src_vinode->tinode, t);
 	} TX_ONABORT {
+		if (errno == ENOMEM)
+			errno = ENOSPC;
 		error = errno;
 	} TX_END
 

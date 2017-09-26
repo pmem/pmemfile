@@ -294,7 +294,7 @@ dir_is_parent_of(PMEMfilepool *pfp, struct pmemfile_vinode *possible_parent,
 {
 	struct pmemfile_vinode *v = possible_child;
 
-	while (v != pfp->root) {
+	while (!vinode_is_root(v)) {
 		if (v == possible_parent)
 			return true;
 		v = v->parent;

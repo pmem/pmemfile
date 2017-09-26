@@ -39,6 +39,21 @@
 #include "preload.h"
 #include <inttypes.h>
 
+static inline unsigned
+wrapper_pmemfile_pool_root_count(PMEMfilepool *pfp)
+{
+	unsigned ret;
+
+	ret = pmemfile_pool_root_count(pfp);
+
+	log_write(
+	    "pmemfile_pool_root_count(%p) = %u",
+		pfp,
+		ret);
+
+	return ret;
+}
+
 static inline PMEMfilepool *
 wrapper_pmemfile_pool_create(const char *pathname,
 		size_t poolsize,
@@ -96,6 +111,27 @@ wrapper_pmemfile_pool_set_device(PMEMfilepool *pfp,
 
 	pmemfile_pool_set_device(pfp,
 		dev);
+}
+
+static inline PMEMfile *
+wrapper_pmemfile_open_root(PMEMfilepool *pfp,
+		unsigned index,
+		int flags)
+{
+	PMEMfile *ret;
+
+	ret = pmemfile_open_root(pfp,
+		index,
+		flags);
+
+	log_write(
+	    "pmemfile_open_root(%p, %u, %d) = %p",
+		pfp,
+		index,
+		flags,
+		ret);
+
+	return ret;
 }
 
 static inline PMEMfile *

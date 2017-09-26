@@ -231,7 +231,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		namelen = component_length(info.remaining);
 
 		if (namelen == 0) {
-			ASSERT(vparent == pfp->root);
+			ASSERT(vinode_is_root(vparent));
 			vinode = vinode_ref(pfp, vparent);
 		} else {
 			vinode = vinode_lookup_dirent(pfp, info.parent,
@@ -562,6 +562,24 @@ pmemfile_open(PMEMfilepool *pfp, const char *pathname, int flags, ...)
 
 	return pmemfile_openat(pfp, PMEMFILE_AT_CWD, pathname, flags, mode);
 }
+
+/*
+ * pmemfile_open_root -- opens a root directory
+ * Similar to pmemfile_open, but instead of a path argument, an index specifies
+ * which root to open.
+ * No flags are supported as of now.
+ */
+PMEMfile *
+pmemfile_open_root(PMEMfilepool *pfp, unsigned index, int flags)
+{
+	if (flags != 0 || index >= pmemfile_pool_root_count(pfp)) {
+		errno = EINVAL;
+		return NULL;
+	}
+
+	return _pmemfile_openat(pfp, pfp->root[index], ".", PMEMFILE_O_PATH);
+}
+
 
 PMEMfile *
 pmemfile_create(PMEMfilepool *pfp, const char *pathname, pmemfile_mode_t mode)

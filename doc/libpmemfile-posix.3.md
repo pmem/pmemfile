@@ -43,6 +43,7 @@ date: "pmemfile-posix API version 0.1.0
 [FILE I/O](#file-i/o)<br />
 [OFFSET MANAGEMENT](#offset-management)<br />
 [FILE STATUS](#file-status)<br />
+[ROOT DIRECTORIES](#root-directories)<br />
 
 # NAME #
 **libpmemfile-posix** - user space persistent memory aware file system API
@@ -313,3 +314,25 @@ int pmemfile_mknodat(PMEMfilepool *pfp, PMEMfile *dir, const char *path,
 
 For now only S_IFREG file type is supported. This function's API is subject
 to change. Don't use it yet.
+
+## Root directories ##
+
+**libpmemfile-posix** can operate with multiple, distinct directory trees. Each directory tree spans from a distinct root directory. At least one root directory is present in each pmemfile pool. The root directories of different directory trees are accessable using the *pmemfile_open_root* function. This function expects an ordinal as second argument, and this ordinal is referred to as the index of a directory tree. The number of distinct directory trees can be queried using the *pmemfile_root_count* function, which is guaranteed to return a number greater than zero, and smaller than UINT_MAX. The valid directory index numbers are ordinals smaller than the number returned by *pmemfile_root_count*.
+```c
+unsigned pmemfile_root_count(PMEMfilepool *pfp);
+
+PMEMfile *pmemfile_open_root(PMEMfilepool *pfp, unsigned index, int flags);
+```
+
+The third argument of *pmemfile_open_root* must be zero as of the current version of pmemfile. Later versions of pmemfile might support some flags.  A pointer returned by *pmemfile_open_root* can be used as a handle referring to a directory, passed as the "at directory" argument to the pmemfile_\*_at family of functions.  In the context of path resolution, the root directory #0 acts as the default root directory, .i.e the slash character at the beginning of an absolute path refers to the root directory with index zero.
+
+The following two functions calls yield equivalent results, returning handles to directories with the same inode numbers:
+```c
+PMEMFile *dir_a = pmemfile_open(pfp, "/", PMEMFILE_O_PATH);
+PMEMFile *dir_b = pmemfile_open_root(pfp, 0, 0);
+```
+
+The following function call returns a NULL pointer, and results in *errno* being set to EINVAL, as a valid root index is smaller than the value returned by *pmemfile_root_count*:
+```c
+pmemfile_open_root(pfp, pmemfile_root_count(pfp), 0);
+```

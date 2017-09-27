@@ -356,3 +356,56 @@ int\ pmemfile_mknodat(PMEMfilepool\ *pfp,\ PMEMfile\ *dir,\ const\ char\ *path,
 For now only S_IFREG file type is supported.
 This function\[aq]s API is subject to change.
 Don\[aq]t use it yet.
+.SS Root directories
+.PP
+\f[B]libpmemfile\-posix\f[] can operate with multiple, distinct
+directory trees.
+Each directory tree spans from a distinct root directory.
+At least one root directory is present in each pmemfile pool.
+The root directories of different directory trees are accessable using
+the \f[I]pmemfile_open_root\f[] function.
+This function expects an ordinal as second argument, and this ordinal is
+referred to as the index of a directory tree.
+The number of distinct directory trees can be queried using the
+\f[I]pmemfile_root_count\f[] function, which is guaranteed to return a
+number greater than zero, and smaller than UINT_MAX.
+The valid directory index numbers are ordinals smaller than the number
+returned by \f[I]pmemfile_root_count\f[].
+.IP
+.nf
+\f[C]
+unsigned\ pmemfile_root_count(void);
+
+PMEMfile\ *pmemfile_open_root(PMEMfilepool\ *pfp,\ unsigned\ index,\ int\ flags);
+\f[]
+.fi
+.PP
+The third argument of \f[I]pmemfile_open_root\f[] must be zero as of the
+current version of pmemfile.
+Later versions of pmemfile might support some flags.
+A pointer returned by \f[I]pmemfile_open_root\f[] can be used as a
+handle referring to a directory, passed as the "at directory" argument
+to the pmemfile_*_at family of functions.
+In the context of path resolution, the root directory #0 acts as the
+default root directory, .i.e the slash character at the beginning of an
+absolute path refers to the root directory with index zero.
+.PP
+The following two functions calls yield equivalent results, returning
+handles to directories with the same inode numbers:
+.IP
+.nf
+\f[C]
+PMEMFile\ *dir_a\ =\ pmemfile_open(pfp,\ "/",\ PMEMFILE_O_PATH);
+PMEMFile\ *dir_b\ =\ pmemfile_open_root(pfp,\ 0,\ 0);
+\f[]
+.fi
+.PP
+The following function call returns a NULL pointer, and results in
+\f[I]errno\f[] being set to EINVAL, as a valid root index is smaller
+than the value returned by \f[I]pmemfile_root_count\f[]:
+.IP
+.nf
+\f[C]
+pmemfile_open(pfp,\ pmemfile_root_count(pfp),\ 0);
+\f[]
+.fi

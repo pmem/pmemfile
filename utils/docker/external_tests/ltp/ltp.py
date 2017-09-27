@@ -44,9 +44,9 @@ class LinuxTestProject(Suite):
         self.suppress_tconf_errors = True
         self.tmp_dir = config.mountpoint
 
-        environ['PATH'] = self.test_dir + pathsep + environ['PATH']
-        environ['LTPROOT'] = self.install_dir
-        environ['TMPDIR'] = self.tmp_dir
+        self.add_env('PATH', self.test_dir)
+        self.add_env('LTPROOT', self.install_dir)
+        self.add_env('TMPDIR', self.tmp_dir)
 
         super().__init__(config)
 

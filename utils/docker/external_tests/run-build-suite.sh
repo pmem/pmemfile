@@ -113,7 +113,7 @@ $MKFS_PMEMFILE $PF_POOL 3G
 set +e
 
 $TEST_UTILS_DIR/run-suite.py $SUITE -i $SUITE_DIR -m $MOUNTPOINT -l $PMEMFILE_LIB_DIR \
-	-p $PF_POOL -t $TESTS -f $FAILING_TESTS --timeout 120 $VERBOSE
+	-p $PF_POOL --test-list $TESTS -f $FAILING_TESTS --timeout 120 $VERBOSE
 
 EXIT_CODE=$?
 

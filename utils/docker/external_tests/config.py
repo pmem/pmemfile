@@ -39,10 +39,21 @@ class Config:
         self._pf_lib_dir = pf_lib_dir
         self._pf_pool = pf_pool
         self.process_switching = False
+        self._pf_env = {
+            'PMEM_IS_PMEM_FORCE': '1',
+            'LD_PRELOAD': path.join(pf_lib_dir, 'libpmemfile.so'),
+            'PMEMFILE_POOLS': '{0}:{1}'.format(self.mountpoint, pf_pool)
+        }
+
+    @property
+    def all_env(self):
+        self.update_env()
+        return self._all_env
 
     @property
     def pf_env(self):
-        self.update_env()
+        if self.process_switching:
+            self._pf_env.update({'PMEMFILE_PROCESS_SWITCHING': '1'})
         return self._pf_env
 
     @property
@@ -54,11 +65,5 @@ class Config:
         return self._pf_pool
 
     def update_env(self):
-        self._pf_env = environ.copy()
-        self._pf_env.update({
-            'PMEM_IS_PMEM_FORCE': '1',
-            'LD_PRELOAD': path.join(self._pf_lib_dir, 'libpmemfile.so'),
-            'PMEMFILE_POOLS': '{0}:{1}'.format(self.mountpoint, self._pf_pool)
-        })
-        if self.process_switching:
-            self._pf_env.update({'PMEMFILE_PROCESS_SWITCHING': '1'})
+        self._all_env = environ.copy()
+        self._all_env.update(self._pf_env)

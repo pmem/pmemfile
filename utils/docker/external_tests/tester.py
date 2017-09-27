@@ -42,11 +42,15 @@ class Tester:
         self.failed_local_only = []
         self.failed_both = []
 
-    def test_pmemfile_against_local_fs(self, verbose=False, timeout=None):
+    def test_pmemfile_against_local_fs(self, tc=None, verbose=False, timeout=None):
+        """comparing test result on pmemfile and local filesystem"""
         if timeout:
             self.suite.timeout = timeout
         self.suite.verbose = verbose
-        for test in self.suite.tests_to_run:
+
+        tests_to_run = [tc] if tc else self.suite.tests_to_run
+
+        for test in tests_to_run:
             self.suite.run(test, on_pf=True)
             self.suite.run(test)
             print(self.suite)

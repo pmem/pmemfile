@@ -31,7 +31,8 @@
 
 
 from subprocess import check_output, STDOUT, TimeoutExpired, CalledProcessError
-from os import linesep
+from os import linesep, environ, pathsep
+from os.path import expanduser
 from time import perf_counter
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
@@ -46,10 +47,13 @@ class Suite(metaclass=ABCMeta):
         self.tests_to_run = []
         self.test = ''
         self.ran_tests = []
-        self.pf_env = config.pf_env
+        self.config = config
         self.mountpoint = config.mountpoint
         self.run_in_shell = False
         self.cwd = config.mountpoint
+
+        if not hasattr(self, 'suite_env_cmd'):
+            self.suite_env_cmd = {}
 
     def __str__(self):
         if self.test not in self.results:
@@ -60,7 +64,27 @@ class Suite(metaclass=ABCMeta):
                           self.test_entry[config]['time'], config_margin - len(config))
                    for config in self.test_entry.keys()]
 
-        return '{0}:{1}'.format(self.test, linesep) + linesep.join(results)
+        printed_info = ''
+        if (self.verbose):
+            printed_info = "{0}{1}".format(
+                self.get_equivalent_command(self.test), linesep)
+
+        return '{0}:{1}{2}'.format(self.test, linesep, printed_info) + linesep.join(results)
+
+    def get_equivalent_command(self, test):
+        cmd_env = {}
+        cmd_env.update(self.config.pf_env)
+        cmd_env.update(self.suite_env_cmd)
+
+        env_prefix = ' '.join(['{}={}'.format(env, env_val) for env, env_val in cmd_env.items(
+        )]) + ' PMEMFILE_CD={}'.format(self.cwd)
+        run_cmd = self.get_run_cmd(test)
+
+        if isinstance(run_cmd, list):
+            run_cmd = ' '.join(run_cmd)
+
+        home = expanduser('~')
+        return '{0} {1}'.format(env_prefix, run_cmd).replace(home, '~')
 
     @abstractmethod
     def get_run_cmd(self, test):
@@ -74,7 +98,7 @@ class Suite(metaclass=ABCMeta):
 
     def read_tests_from_file(self, path):
         with open(path, 'r') as f:
-            return [test.strip() for test in f.readlines() if not test.isspace()
+            return [test.split('#')[0].strip() for test in f.readlines() if not test.isspace()
                     and not test.startswith('#')]
 
     def run_tests_from_file(self, path):
@@ -150,7 +174,7 @@ class Suite(metaclass=ABCMeta):
 
     def exec_test(self, on_pf):
         cmd = self.get_run_cmd(self.test)
-        env = self.pf_env if on_pf else None
+        env = self.config.all_env if on_pf else None
         return check_output(cmd, timeout=self.timeout,
                             stderr=STDOUT, env=env, cwd=self.cwd, shell=self.run_in_shell)
 
@@ -159,6 +183,18 @@ class Suite(metaclass=ABCMeta):
             return output.decode('utf-8')
         except UnicodeDecodeError:
             return "Error. Output couldn't be decoded."
+
+    def add_env(self, env, value):
+        if not hasattr(self, 'suite_env_cmd'):
+            self.suite_env_cmd = {}
+
+        if env in environ:
+            self.suite_env_cmd[env] = '{0}:${{{1}}}'.format(value, env)
+            value = value + pathsep + environ[env]
+        else:
+            self.suite_env_cmd[env] = value
+
+        environ[env] = value
 
     def LOG(self, output):
         if self.verbose:

@@ -36,13 +36,19 @@ date: "pmemfile-posix API version 0.1.0
 [SYNOPSIS](#synopsis)<br />
 [DESCRIPTION](#description)<br />
 [ERROR HANDLING](#error-handling)<br />
-[SUPPORTED INTERFACES](#supported interfaces)<br />
+[SUPPORTED INTERFACES](#supported-interfaces)<br />
 [ACCESS MANAGEMENT](#access-management)<br />
 [FILE CREATION AND DELETION](#file-creation-and-deletion)<br />
+[OPEN/CREAT FLAGS SUPPORT DELETION](#opencreat-flags-support)<br />
 [FILE NAMING](#file-naming)<br />
 [FILE I/O](#file-i/o)<br />
 [OFFSET MANAGEMENT](#offset-management)<br />
 [FILE STATUS](#file-status)<br />
+[DIRECTORY MANAGEMENT](#directory-management)<br />
+[FILE DESCRIPTOR MANAGEMENT](#file-descriptor-management)<br />
+[SYMBOLIC LINK MANAGEMENT](#symbolic-link-management)<br >/
+[TIMESTAMP MANAGEMENT](#timestamp-management)<br >/
+[SPECIAL FILES](#special-files)<br >/
 [ROOT DIRECTORIES](#root-directories)<br />
 
 # NAME #
@@ -119,7 +125,7 @@ int pmemfile_unlinkat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
                 int flags);
 ```
 
-### open/creat Flags Support ###
+## open/creat Flags Support ##
 ```
 O_ASYNC
 	This flag is ignored.
@@ -190,7 +196,7 @@ int pmemfile_truncate(PMEMfilepool *pfp, const char *path, off_t length);
 int pmemfile_ftruncate(PMEMfilepool *pfp, PMEMfile *file, off_t length);
 ```
 
-## File Status
+## File Status ##
 ```c
 int pmemfile_stat(PMEMfilepool *, const char *path, struct stat *buf);
 int pmemfile_lstat(PMEMfilepool *, const char *path, struct stat *buf);
@@ -199,7 +205,7 @@ int pmemfile_fstatat(PMEMfilepool *, PMEMfile *dir, const char *path,
 		struct stat *buf, int flags);
 ```
 
-## Directory Management
+## Directory Management ##
 ```c
 int pmemfile_mkdir(PMEMfilepool *, const char *path, mode_t mode);
 int pmemfile_mkdirat(PMEMfilepool *, PMEMfile *dir, const char *path,
@@ -306,7 +312,7 @@ mode_t pmemfile_umask(PMEMfilepool *pfp, mode_t mask);
 
 ```
 
-## SPECIAL FILES ##
+## Special files ##
 ```c
 int pmemfile_mknodat(PMEMfilepool *pfp, PMEMfile *dir, const char *path,
 		pmemfile_mode_t mode, pmemfile_dev_t dev);

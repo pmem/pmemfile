@@ -1926,6 +1926,99 @@ TEST_F(dirs, O_PATH)
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file2"), 0);
 }
 
+/*
+ * Test using root directories other than the default root.
+ * This test assumes the number of root directories to be a compile time
+ * constant, greater than one.
+ */
+TEST_F(dirs, root_dirs)
+{
+	if (root_count() == 0)
+		return;
+
+	PMEMfile *default_root;
+	std::vector<PMEMfile*> roots;
+	std::vector<pmemfile_stat_t> root_stats;
+	pmemfile_stat_t default_root_stat;
+	pmemfile_stat_t statbuf;
+
+	ASSERT_EQ(pmemfile_pool_root_count(pfp), root_count());
+	ASSERT_EQ(pmemfile_pool_root_count(nullptr), 0u);
+
+	/* invalid pfp */
+	ASSERT_EQ(pmemfile_open_root(nullptr, 0, 0), nullptr);
+	ASSERT_EQ(errno, EINVAL);
+
+	/* open the default root, which is expected to be the same as root #0 */
+	default_root = pmemfile_open(pfp, "/", PMEMFILE_O_PATH);
+	ASSERT_NE(default_root, nullptr) << strerror(errno);
+
+	ASSERT_EQ(pmemfile_stat(pfp, "/", &statbuf), 0) << strerror(errno);
+	ASSERT_EQ(pmemfile_fstat(pfp, default_root, &default_root_stat), 0) <<
+	    strerror(errno);
+
+	ASSERT_EQ(PMEMFILE_S_ISDIR(statbuf.st_mode), 1);
+	ASSERT_EQ(PMEMFILE_S_ISDIR(default_root_stat.st_mode), 1);
+	ASSERT_EQ(statbuf.st_ino, default_root_stat.st_ino);
+
+	/* open all valid roots */
+	for (unsigned i = 0; i < root_count(); ++i) {
+		PMEMfile *root = pmemfile_open_root(pfp, i, 0);
+		pmemfile_stat_t rootstat;
+		ASSERT_NE(root, nullptr) << strerror(errno);
+
+		ASSERT_EQ(pmemfile_fstat(pfp, root, &rootstat), 0) <<
+		    strerror(errno);
+		ASSERT_EQ(PMEMFILE_S_ISDIR(rootstat.st_mode), 1);
+
+		/* No other root should have the same inode number */
+		for (auto other_stat : root_stats)
+			ASSERT_NE(other_stat.st_ino, rootstat.st_ino);
+
+		/* create a regular file in each directory */
+		PMEMfile *f = pmemfile_openat(pfp, root, "same_name",
+				PMEMFILE_O_CREAT | PMEMFILE_O_EXCL, 0700);
+		ASSERT_NE(f, nullptr) << strerror(errno);
+		ASSERT_EQ(pmemfile_fstat(pfp, f, &statbuf), 0) <<
+		    strerror(errno);
+		pmemfile_close(pfp, f);
+
+		/* No other "same_name" should have the same inode number */
+		for (auto other_root : roots) {
+			pmemfile_stat_t other_stat;
+			ASSERT_EQ(pmemfile_fstatat(pfp, other_root, "same_name",
+				  &other_stat, 0), 0);
+			ASSERT_NE(other_stat.st_ino, statbuf.st_ino);
+		}
+
+		roots.push_back(root);
+		root_stats.push_back(rootstat);
+
+		/* Make sure pmemfile doesn't pretend to support any flags */
+		ASSERT_EQ(pmemfile_open_root(pfp, i, 2), nullptr);
+		ASSERT_EQ(errno, EINVAL);
+
+		ASSERT_EQ(pmemfile_open_root(pfp, i, -1), nullptr);
+		ASSERT_EQ(errno, EINVAL);
+	}
+
+	/* root #0 is the default root */
+	ASSERT_EQ(root_stats[0].st_ino, default_root_stat.st_ino);
+
+	/* invalid root index */
+	ASSERT_EQ(pmemfile_open_root(pfp, root_count(), 0), nullptr);
+	ASSERT_EQ(errno, EINVAL);
+	ASSERT_EQ(pmemfile_open_root(pfp, root_count() + 0xffff, 0), nullptr);
+	ASSERT_EQ(errno, EINVAL);
+
+	/* cleanup */
+	pmemfile_close(pfp, default_root);
+	for (auto root : roots) {
+		ASSERT_EQ(pmemfile_unlinkat(pfp, root, "same_name", 0), 0);
+		pmemfile_close(pfp, root);
+	}
+}
+
 int
 main(int argc, char *argv[])
 {

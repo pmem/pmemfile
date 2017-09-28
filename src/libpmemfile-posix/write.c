@@ -138,35 +138,35 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 
 	vinode_snapshot(vinode);
 
+	if (file_flags & PFILE_APPEND)
+		offset = inode_get_size(inode);
+
+	size_t sum_len = 0;
+	for (int i = 0; i < iovcnt; ++i) {
+		size_t len = iov[i].iov_len;
+
+		if ((pmemfile_ssize_t)len < 0)
+			len = SSIZE_MAX;
+
+		if ((pmemfile_ssize_t)(sum_len + len) < 0)
+			len = SSIZE_MAX - sum_len;
+
+		/* overflow check */
+		if (offset + sum_len + len < offset)
+			len = SIZE_MAX - offset - sum_len;
+
+		sum_len += len;
+
+		if (len != iov[i].iov_len)
+			break;
+	}
+
+	if (sum_len == 0)
+		return 0;
+
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		if (file_flags & PFILE_APPEND)
-			offset = inode_get_size(inode);
-
-		size_t sum_len = 0;
-		for (int i = 0; i < iovcnt; ++i) {
-			size_t len = iov[i].iov_len;
-
-			if ((pmemfile_ssize_t)len < 0)
-				len = SSIZE_MAX;
-
-			if ((pmemfile_ssize_t)(sum_len + len) < 0)
-				len = SSIZE_MAX - sum_len;
-
-			/* overflow check */
-			if (offset + sum_len + len < offset)
-				len = SIZE_MAX - offset - sum_len;
-
-			sum_len += len;
-
-			if (len != iov[i].iov_len)
-				break;
-		}
-
-		size_t allocated_space = inode_get_allocated_space(inode);
-		if (sum_len > 0) {
-			allocated_space += vinode_allocate_interval(pfp,
-				vinode, offset, sum_len);
-		}
+		size_t allocated_space = inode_get_allocated_space(inode) +
+			vinode_allocate_interval(pfp, vinode, offset, sum_len);
 
 		for (int i = 0; i < iovcnt; ++i) {
 			size_t len = iov[i].iov_len;

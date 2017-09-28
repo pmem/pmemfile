@@ -130,15 +130,15 @@ fcntl                "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
 fcntl                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
 fcntl                "/tmp/antool $(S)/nonp $(S)/tmp $(S)"
 fcntl                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
-mmap                 (-1)
-mmap                 (-1)
-mmap                 (-1)
-mmap                 (-1)
-mmap                 (-1)
-mmap                 (-1)
-mmap                 (-1)
-mmap                 (-1)
-mmap                 (-1)
-mmap                 (-1)
+$(OPT)mmap                 (-1)
+$(OPT)mmap                 (-1)
+$(OPT)mmap                 (-1)
+$(OPT)mmap                 (-1)
+$(OPT)mmap                 (-1)
+$(OPT)mmap                 (-1)
+$(OPT)mmap                 (-1)
+$(OPT)mmap                 (-1)
+$(OPT)mmap                 (-1)
+$(OPT)mmap                 (-1)
 close                "/tmp/antool $(S)/pmem $(S)/tmp $(S)" [PMEM]
 close                (0x0000000087654321)

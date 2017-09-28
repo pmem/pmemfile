@@ -536,16 +536,26 @@ worker(void *arg)
 }
 
 /*
- * test_unsupported_by_pmemfile -- test syscalls unsupported  by pmemfile
+ * verify_and_open -- verify and open given paths:
+ *
+ * Input arguments:
+ *     dir  - an absolute path to the test directory
+ *     pmem - a relative path in the 'dir' test directory to the pmem FS
+ *     nonp - a relative path in the 'dir' test directory to the non-pmem FS
+ *
+ * Output arguments:
+ *     abspmem_p - concatenated path = <dir> + '/' + <pmem>
+ *     absnonp_p - concatenated path = <dir> + '/' + <nonp>
+ *     dirfd_p   - file descriptor of open(/<dir>)
+ *     fdpmem_p  - file descriptor of open(/<dir>/<pmem>)
+ *     fdnonp_p  - file descriptor of open(/<dir>/<nonp>)
+ *
  */
 static void
-test_unsupported_by_pmemfile(const char *dir, const char *pmem,
-				const char *nonp)
+verify_and_open(const char *dir, const char *pmem, const char *nonp,
+		char **abspmem_p, char **absnonp_p,
+		int *dirfd_p, int *fdpmem_p, int *fdnonp_p)
 {
-	char buf[BUF_SIZE];
-	char *const argv[2] = {"path1", "path2"};
-	int rv;
-
 	if (!dir || !pmem || !nonp) {
 		fprintf(stderr, "Error: Not enough parameters:\n");
 		if (!dir)
@@ -578,6 +588,31 @@ test_unsupported_by_pmemfile(const char *dir, const char *pmem,
 	int fdnonp = open(absnonp, O_RDWR);
 	if (fdnonp == -1)
 		perror(absnonp);
+
+	*abspmem_p = abspmem;
+	*absnonp_p = absnonp;
+	*dirfd_p = dirfd;
+	*fdpmem_p = fdpmem;
+	*fdnonp_p = fdnonp;
+
+}
+
+/*
+ * test_unsupported_by_pmemfile -- test syscalls unsupported  by pmemfile
+ */
+static void
+test_unsupported_by_pmemfile(const char *dir, const char *pmem,
+				const char *nonp)
+{
+	char buf[BUF_SIZE];
+	char *const argv[2] = {"path1", "path2"};
+	int rv;
+
+	char *abspmem, *absnonp;
+	int dirfd, fdpmem, fdnonp;
+
+	verify_and_open(dir, pmem, nonp,
+			&abspmem, &absnonp, &dirfd, &fdpmem, &fdnonp);
 
 	chdir(dir);
 	fchdir(dirfd);
@@ -772,6 +807,46 @@ test_15(char *dir, char *pmem, char *nonp)
 }
 
 /*
+ * test_symlinks_and_others -- test symlinks and some other syscalls
+ */
+static void
+test_symlinks_and_others(const char *dir, const char *pmem, const char *nonp)
+{
+	struct stat buf;
+	char *abspmem, *absnonp;
+	int dirfd, fdpmem, fdnonp;
+
+	verify_and_open(dir, pmem, nonp,
+			&abspmem, &absnonp, &dirfd, &fdpmem, &fdnonp);
+
+	syscall(SYS_symlink, absnonp, "link1");
+	syscall(SYS_symlink, abspmem, "link2");
+
+	syscall(SYS_symlinkat, absnonp, AT_FDCWD, "link3");
+	syscall(SYS_symlinkat, abspmem, AT_FDCWD, "link4");
+	syscall(SYS_symlinkat, absnonp, dirfd, "link5");
+	syscall(SYS_symlinkat, abspmem, dirfd, "link6");
+
+	/* check more syscalls */
+	dup2(PATTERN_START, PATTERN_END);
+	fallocate(fdnonp, 0, 0, 0);
+	fallocate(fdpmem, 0, 0, 0);
+	fstatat(fdnonp, "", &buf, AT_EMPTY_PATH);
+	fstatat(fdpmem, "", &buf, AT_EMPTY_PATH);
+}
+
+/*
+ * test_16 -- tests of symlinks
+ */
+static void
+test_16(char *dir, char *pmem, char *nonp)
+{
+	MARK_START();
+	test_symlinks_and_others(dir, pmem, nonp);
+	MARK_END();
+}
+
+/*
  * run_test -- array of tests
  */
 static void (*run_test[])(char *, char *, char *) = {
@@ -790,7 +865,8 @@ static void (*run_test[])(char *, char *, char *) = {
 	test_12,
 	test_13,
 	test_14,
-	test_15
+	test_15,
+	test_16
 };
 
 int

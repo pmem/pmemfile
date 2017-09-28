@@ -126,10 +126,10 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 
 		pmemobj_memcpy_persist(pfp->pop, buf, target, len + 1);
 
-		inode->size = len;
+		*inode_get_size_ptr(inode) = len;
 
 		inode_add_dirent(pfp, vparent->tinode, info.remaining, namelen,
-				tinode, inode->ctime);
+				tinode, inode_get_ctime(inode));
 	} TX_ONABORT {
 		if (errno == ENOMEM)
 			errno = ENOSPC;

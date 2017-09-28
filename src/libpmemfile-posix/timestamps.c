@@ -90,14 +90,12 @@ vinode_file_time_set(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (utm == UTIME_MACROS_DISABLED ||
 				tm[0].nsec != PMEMFILE_UTIME_OMIT) {
-			TX_ADD_DIRECT(&inode->atime);
-			inode->atime = tm[0];
+			inode_tx_set_atime(inode, tm[0]);
 		}
 
 		if (utm == UTIME_MACROS_DISABLED ||
 				tm[1].nsec != PMEMFILE_UTIME_OMIT) {
-			TX_ADD_DIRECT(&inode->mtime);
-			inode->mtime = tm[1];
+			inode_tx_set_mtime(inode, tm[1]);
 		}
 	} TX_ONABORT {
 		error = errno;

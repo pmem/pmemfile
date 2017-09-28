@@ -201,7 +201,7 @@ static bool
 is_append(struct pmemfile_vinode *vinode, struct pmemfile_inode *inode,
 		uint64_t offset, uint64_t size)
 {
-	if (inode->size >= offset + size)
+	if (inode_get_size(inode) >= offset + size)
 		return false; /* not writing past file size */
 
 	struct pmemfile_block_desc *block = find_last_block(vinode);

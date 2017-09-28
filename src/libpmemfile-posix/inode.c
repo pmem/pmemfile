@@ -218,7 +218,7 @@ vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 		struct pmemfile_vinode *parent = NULL;
 
 		if (__sync_sub_and_fetch(&vinode->ref, 1) == 0) {
-			uint64_t nlink = vinode->inode->nlink;
+			uint64_t nlink = inode_get_nlink(vinode->inode);
 			if (vinode->inode->suspended_references == 0 &&
 					nlink == 0)
 				vinode_free_pmem(pfp, vinode);
@@ -511,7 +511,7 @@ inode_free(PMEMfilepool *pfp, TOID(struct pmemfile_inode) tinode)
 	else if (inode_is_symlink(inode))
 		inode_free_symlink(pfp, inode);
 	else
-		FATAL("unknown inode type 0x%lx", inode->flags);
+		FATAL("unknown inode type 0x%lx", inode_get_flags(inode));
 
 	TX_FREE(tinode);
 }

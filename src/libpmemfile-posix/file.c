@@ -409,7 +409,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 			else
 				inode_add_dirent(pfp, vparent->tinode,
 					info.remaining, namelen, tinode,
-					PF_RO(pfp, tinode)->ctime);
+					inode_get_ctime(PF_RO(pfp, tinode)));
 		} TX_ONABORT {
 			if (errno == ENOMEM)
 				errno = ENOSPC;
@@ -459,12 +459,13 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 			uint64_t clrflags = PMEMFILE_S_ISUID | PMEMFILE_S_ISGID;
 
-			if ((inode->flags & clrflags) &&
+			uint64_t flags = inode_get_flags(inode);
+			if ((flags & clrflags) &&
 					cred.fsuid != inode->uid) {
 
 				TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-					TX_ADD_DIRECT(&inode->flags);
-					inode->flags &= ~clrflags;
+					inode_tx_set_flags(inode,
+							flags & ~clrflags);
 				} TX_ONABORT {
 					error = errno;
 				} TX_END

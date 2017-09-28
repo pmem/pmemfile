@@ -164,7 +164,7 @@ inode_add_dirent(PMEMfilepool *pfp,
 	struct pmemfile_inode *parent = PF_RW(pfp, parent_tinode);
 
 	/* don't create files in deleted directories */
-	if (parent->nlink == 0) {
+	if (inode_get_nlink(parent) == 0) {
 		/* but let directory creation succeed */
 		if (str_compare(".", name, namelen) != 0)
 			pmemfile_tx_abort(ENOENT);
@@ -199,8 +199,7 @@ inode_add_dirent(PMEMfilepool *pfp,
 
 			size_t sz = METADATA_BLOCK_SIZE;
 
-			TX_ADD_DIRECT(&parent->size);
-			parent->size += sz;
+			inode_tx_set_size(parent, inode_get_size(parent) + sz);
 
 			PF_RW(pfp, dir->next)->num_elements =
 				(uint32_t)(sz - sizeof(struct pmemfile_dir)) /
@@ -220,22 +219,21 @@ inode_add_dirent(PMEMfilepool *pfp,
 	dirent->name[namelen] = '\0';
 
 	struct pmemfile_inode *child_inode = PF_RW(pfp, child_tinode);
-	TX_ADD_DIRECT(&child_inode->nlink);
-	child_inode->nlink++;
+	inode_tx_inc_nlink(child_inode);
 
 	/*
 	 * From "stat" man page:
 	 * "The field st_ctime is changed by writing or by setting inode
 	 * information (i.e., owner, group, link count, mode, etc.)."
 	 */
-	TX_SET_DIRECT(child_inode, ctime, tm);
+	inode_tx_set_ctime(child_inode, tm);
 
 	/*
 	 * From "stat" man page:
 	 * "st_mtime of a directory is changed by the creation
 	 * or deletion of files in that directory."
 	 */
-	TX_SET_DIRECT(parent, mtime, tm);
+	inode_tx_set_mtime(parent, tm);
 
 	/*
 	 * From "open" man page:
@@ -243,7 +241,7 @@ inode_add_dirent(PMEMfilepool *pfp,
 	 * fields (...) are set to the current time, and so are the st_ctime
 	 * and st_mtime fields of the parent directory."
 	 */
-	TX_SET_DIRECT(parent, ctime, tm);
+	inode_tx_set_ctime(parent, tm);
 }
 
 /*
@@ -600,10 +598,10 @@ resolve_symlink(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 
 	os_rwlock_rdlock(&vinode->rwlock);
 
-	char symlink_target[vinode->inode->size + 1];
-	memcpy(symlink_target, get_symlink(pfp, vinode),
-			vinode->inode->size + 1);
-	ASSERTeq(symlink_target[vinode->inode->size], 0);
+	uint64_t size = inode_get_size(vinode->inode);
+	char symlink_target[size + 1];
+	memcpy(symlink_target, get_symlink(pfp, vinode), size + 1);
+	ASSERTeq(symlink_target[size], 0);
 
 	os_rwlock_unlock(&vinode->rwlock);
 

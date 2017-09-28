@@ -140,7 +140,7 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (file_flags & PFILE_APPEND)
-			offset = inode->size;
+			offset = inode_get_size(inode);
 
 		size_t sum_len = 0;
 		for (int i = 0; i < iovcnt; ++i) {
@@ -162,7 +162,7 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 				break;
 		}
 
-		size_t allocated_space = inode->allocated_space;
+		size_t allocated_space = inode_get_allocated_space(inode);
 		if (sum_len > 0) {
 			allocated_space += vinode_allocate_interval(pfp,
 				vinode, offset, sum_len);
@@ -199,19 +199,13 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 			struct pmemfile_time tm;
 			tx_get_current_time(&tm);
 
-			if (offset > inode->size) {
-				TX_ADD_FIELD_DIRECT(inode, size);
-				inode->size = offset;
-
-				TX_SET_DIRECT(inode, ctime, tm);
+			if (offset > inode_get_size(inode)) {
+				inode_tx_set_size(inode, offset);
+				inode_tx_set_ctime(inode, tm);
 			}
 
-			if (inode->allocated_space != allocated_space) {
-				TX_ADD_FIELD_DIRECT(inode, allocated_space);
-				inode->allocated_space = allocated_space;
-			}
-
-			TX_SET_DIRECT(inode, mtime, tm);
+			inode_tx_set_allocated_space(inode, allocated_space);
+			inode_tx_set_mtime(inode, tm);
 		}
 	} TX_ONABORT {
 		if (errno == ENOMEM)

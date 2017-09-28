@@ -74,7 +74,7 @@ vinode_fallocate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, int mode,
 	}
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		size_t allocated_space = inode->allocated_space;
+		size_t allocated_space = inode_get_allocated_space(inode);
 
 		if (mode & PMEMFILE_FALLOC_FL_PUNCH_HOLE) {
 			ASSERT(mode & PMEMFILE_FALLOC_FL_KEEP_SIZE);
@@ -83,18 +83,12 @@ vinode_fallocate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, int mode,
 		} else {
 			allocated_space += vinode_allocate_interval(pfp, vinode,
 				offset, length);
-			if ((mode & PMEMFILE_FALLOC_FL_KEEP_SIZE) == 0) {
-				if (inode->size < off_plus_len) {
-					TX_ADD_DIRECT(&inode->size);
-					inode->size = off_plus_len;
-				}
-			}
+			if ((mode & PMEMFILE_FALLOC_FL_KEEP_SIZE) == 0 &&
+					inode_get_size(inode) < off_plus_len)
+				inode_tx_set_size(inode, off_plus_len);
 		}
 
-		if (inode->allocated_space != allocated_space) {
-			TX_ADD_DIRECT(&inode->allocated_space);
-			inode->allocated_space = allocated_space;
-		}
+		inode_tx_set_allocated_space(inode, allocated_space);
 	} TX_ONABORT {
 		if (errno == ENOMEM)
 			errno = ENOSPC;

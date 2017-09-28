@@ -52,7 +52,7 @@ vinode_read(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, size_t offset,
 		struct pmemfile_block_desc **last_block, char *buf,
 		size_t count)
 {
-	uint64_t size = vinode->inode->size;
+	uint64_t size = inode_get_size(vinode->inode);
 
 	/*
 	 * Start reading at offset, stop reading
@@ -181,11 +181,12 @@ handle_atime(PMEMfilepool *pfp,
 
 	struct pmemfile_time tm1d = tm;
 	tm1d.sec -= 86400;
+	const struct pmemfile_time *atime = inode_get_atime_ptr(inode);
 
 	/* relatime */
-	if ((time_cmp(&inode->atime, &tm1d) >= 0) &&
-	    (time_cmp(&inode->atime, &inode->ctime) >= 0) &&
-	    (time_cmp(&inode->atime, &inode->mtime) >= 0))
+	if ((time_cmp(atime, &tm1d) >= 0) &&
+	    (time_cmp(atime, inode_get_ctime_ptr(inode)) >= 0) &&
+	    (time_cmp(atime, inode_get_mtime_ptr(inode)) >= 0))
 		return;
 
 	ASSERT_NOT_IN_TX();
@@ -193,7 +194,7 @@ handle_atime(PMEMfilepool *pfp,
 	os_rwlock_wrlock(&vinode->rwlock);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		TX_SET_DIRECT(inode, atime, tm);
+		inode_tx_set_atime(inode, tm);
 	} TX_ONABORT {
 		LOG(LINF, "can not update inode atime");
 	} TX_END

@@ -40,6 +40,10 @@
 #define ASSERT_IN_TX() ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK)
 #define ASSERT_NOT_IN_TX() ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE)
 
+#define pmemfile_flush(pfp, p) pmemobj_flush((pfp)->pop, (p), sizeof(*(p)))
+#define pmemfile_persist(pfp, p) pmemobj_persist((pfp)->pop, (p), sizeof(*(p)))
+#define pmemfile_drain(pfp) pmemobj_drain((pfp)->pop)
+
 static inline pf_noreturn void
 pmemfile_tx_abort(int err)
 {

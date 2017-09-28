@@ -298,11 +298,11 @@ inode_alloc(PMEMfilepool *pfp, struct pmemfile_cred *cred, uint64_t flags)
 	tx_get_current_time(&t);
 
 	inode->version = PMEMFILE_INODE_VERSION(2);
-	inode->flags = flags;
-	inode->ctime = t;
-	inode->mtime = t;
-	inode->atime = t;
-	inode->nlink = 0;
+	inode->flags[0] = flags;
+	inode->ctime[0] = t;
+	inode->mtime[0] = t;
+	inode->atime[0] = t;
+	inode->nlink[0] = 0;
 	inode->uid = cred->euid;
 	inode->gid = cred->egid;
 
@@ -319,7 +319,7 @@ inode_alloc(PMEMfilepool *pfp, struct pmemfile_cred *cred, uint64_t flags)
 				(sizeof(inode->file_data) -
 				sizeof(inode->file_data.dir)) /
 				sizeof(struct pmemfile_dirent);
-		inode->size = info->size;
+		inode->size[0] = info->size;
 	}
 
 	return tinode;

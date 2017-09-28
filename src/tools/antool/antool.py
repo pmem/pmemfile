@@ -430,7 +430,7 @@ def main():
                         help="converter mode - only converts vltrace log from binary to text format")
 
     parser.add_argument("-p", "--pmem", required=False, help="paths to colon-separated pmem filesystems")
-    parser.add_argument("-m", "--max_packets", required=False,
+    parser.add_argument("-m", "--max-packets", required=False,
                         help="maximum number of packets to be read from the vltrace binary log")
 
     parser.add_argument("-l", "--log", action='store_true', required=False, help="print converted log in analyze mode")

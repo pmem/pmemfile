@@ -579,6 +579,34 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 }
 
 /*
+ * vinode_is_interval_allocated -- return true if [offset, offset + size)
+ * interval is allocated
+ */
+bool
+vinode_is_interval_allocated(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+	uint64_t offset, uint64_t size,
+	const struct pmemfile_block_desc *block)
+{
+	ASSERT(size > 0);
+	ASSERT(offset + size > offset);
+
+	if (!is_offset_in_block(block, offset)) {
+		block = find_closest_block(vinode, offset);
+		if (!is_offset_in_block(block, offset))
+			return false;
+	}
+
+	uint64_t iterator;
+	do {
+		iterator = block->offset + block->size;
+		block = PF_RO(pfp, block->next);
+	} while (iterator < offset + size &&
+			is_offset_in_block(block, iterator));
+
+	return iterator >= offset + size;
+}
+
+/*
  * find_following_block
  * Returns the block following the one supplied as argument, according
  * to file offsets. A NULL pointer as argument is considered to mean the
@@ -630,7 +658,6 @@ static void
 write_block_range(PMEMfilepool *pfp, struct pmemfile_block_desc *block,
 	uint64_t offset, uint64_t len, const char *buf)
 {
-	ASSERT_IN_TX();
 	ASSERT(block != NULL);
 	ASSERT(len > 0);
 	ASSERT(offset < block->size);
@@ -641,27 +668,21 @@ write_block_range(PMEMfilepool *pfp, struct pmemfile_block_desc *block,
 	if (!is_block_data_initialized(block)) {
 		char *start_zero = data;
 		size_t count = offset;
-		if (count != 0) {
-			VALGRIND_ADD_TO_TX(start_zero, count);
+		if (count != 0)
 			pmemobj_memset_persist(pfp->pop, start_zero, 0, count);
-			VALGRIND_REMOVE_FROM_TX(start_zero, count);
-		}
 
 		start_zero = data + offset + len;
 		count = block->size - (offset + len);
-		if (count != 0) {
-			VALGRIND_ADD_TO_TX(start_zero, count);
+		if (count != 0)
 			pmemobj_memset_persist(pfp->pop, start_zero, 0, count);
-			VALGRIND_REMOVE_FROM_TX(start_zero, count);
-		}
-
-		TX_ADD_FIELD_DIRECT(block, flags);
-		block->flags |= BLOCK_INITIALIZED;
 	}
 
-	VALGRIND_ADD_TO_TX(data + offset, len);
 	pmemobj_memcpy_persist(pfp->pop, data + offset, buf, len);
-	VALGRIND_REMOVE_FROM_TX(data + offset, len);
+
+	if (!is_block_data_initialized(block)) {
+		block->flags |= BLOCK_INITIALIZED;
+		pmemfile_persist(pfp, &block->flags);
+	}
 }
 
 /*
@@ -678,8 +699,6 @@ iterate_on_file_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 {
 	struct pmemfile_block_desc *block = starting_block;
 	struct pmemfile_block_desc *last_block = starting_block;
-	if (dir == write_to_blocks)
-		ASSERT_IN_TX();
 
 	while (len > 0) {
 		/* Remember the pointer to block used last time */

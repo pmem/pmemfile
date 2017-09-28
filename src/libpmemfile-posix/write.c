@@ -52,8 +52,6 @@ vinode_write(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, size_t offset,
 		struct pmemfile_block_desc **last_block,
 		const char *buf, size_t count)
 {
-	ASSERT_IN_TX();
-
 	ASSERT(count > 0);
 
 	/*
@@ -113,6 +111,37 @@ pmemfile_pwritev_args_check(struct pmemfile_file *file,
 	return 0;
 }
 
+/*
+ * pmemfile_allocate_space -- allocates space between offset and offset + len
+ */
+static int
+pmemfile_allocate_space(PMEMfilepool *pfp,
+		struct pmemfile_vinode *vinode, size_t offset, size_t len)
+{
+	struct pmemfile_inode *inode = vinode->inode;
+	int error = 0;
+
+	vinode_snapshot(vinode);
+
+	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
+		size_t allocated_space = inode_get_allocated_space(inode) +
+			vinode_allocate_interval(pfp, vinode, offset, len);
+
+		/* Non-fatal condition we would like to know about. */
+		ASSERT(inode_get_allocated_space(inode) !=
+				allocated_space);
+
+		inode_tx_set_allocated_space(inode, allocated_space);
+	} TX_ONABORT {
+		if (errno == ENOMEM)
+			errno = ENOSPC;
+		error = errno;
+		vinode_restore_on_abort(vinode);
+	} TX_END
+
+	return error;
+}
+
 static pmemfile_ssize_t
 pmemfile_pwritev_internal(PMEMfilepool *pfp,
 		struct pmemfile_vinode *vinode,
@@ -135,8 +164,6 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 		if (error)
 			goto end;
 	}
-
-	vinode_snapshot(vinode);
 
 	if (file_flags & PFILE_APPEND)
 		offset = inode_get_size(inode);
@@ -164,55 +191,140 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 	if (sum_len == 0)
 		return 0;
 
-	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		size_t allocated_space = inode_get_allocated_space(inode) +
-			vinode_allocate_interval(pfp, vinode, offset, sum_len);
+	if (!vinode_is_interval_allocated(pfp, vinode, offset, sum_len,
+			*last_block)) {
+		error = pmemfile_allocate_space(pfp, vinode, offset, sum_len);
 
-		for (int i = 0; i < iovcnt; ++i) {
-			size_t len = iov[i].iov_len;
+		if (error)
+			goto end;
+	}
 
-			if ((pmemfile_ssize_t)len < 0)
-				len = SSIZE_MAX;
+	struct pmemfile_time tm;
+	if (get_current_time(&tm)) {
+		error = errno;
+		goto end;
+	}
 
-			if ((pmemfile_ssize_t)(ret + len) < 0)
-				len = SSIZE_MAX - ret;
+	/*
+	 * We have to update mtime before actually modifying file contents,
+	 * just in case of crash/power failure.
+	 */
+	inode_slot mtime_slot = inode_next_mtime_slot(inode);
+	inode->mtime[mtime_slot] = tm;
+	/*
+	 * Flush and sfence, because we can modify slot info only after data
+	 * has hit medium.
+	 */
+	pmemfile_persist(pfp, &inode->mtime[mtime_slot]);
 
-			if (offset + len < offset) /* overflow check */
-				len = SIZE_MAX - offset;
+	inode->slots.bits.mtime = mtime_slot;
+	/*
+	 * Again, flush and sfence. We can modify file contents only after we
+	 * are sure mtime has hit medium.
+	 */
+	pmemfile_persist(pfp, &inode->slots);
 
-			if (len > 0)
-				vinode_write(pfp, vinode, offset, last_block,
-						iov[i].iov_base, len);
+	/*
+	 * Now write the data. It uses pmemobj_memcpy_persist, which has
+	 * a built-in fence. We actually don't need its fence here, but there's
+	 * no way to opt out of it without introducing new API to pmemobj.
+	 */
+	for (int i = 0; i < iovcnt; ++i) {
+		size_t len = iov[i].iov_len;
 
-			ret += len;
-			offset += len;
+		if ((pmemfile_ssize_t)len < 0)
+			len = SSIZE_MAX;
 
-			if (len != iov[i].iov_len)
-				break;
+		if ((pmemfile_ssize_t)(ret + len) < 0)
+			len = SSIZE_MAX - ret;
+
+		if (offset + len < offset) /* overflow check */
+			len = SIZE_MAX - offset;
+
+		if (len > 0)
+			vinode_write(pfp, vinode, offset, last_block,
+					iov[i].iov_base, len);
+
+		ret += len;
+		offset += len;
+
+		if (len != iov[i].iov_len)
+			break;
+	}
+	ASSERT(ret > 0);
+
+	struct pmemfile_time starttm = tm;
+	if (get_current_time(&tm)) {
+		error = errno;
+		goto end;
+	}
+
+	int64_t tm_diff = (tm.sec - starttm.sec) * 1000000000 +
+			tm.nsec - starttm.nsec;
+	bool slots_changed = false;
+
+	/*
+	 * In theory we don't have to do update mtime here. We have a write lock
+	 * on vinode, so file changes can't be observed by another thread.
+	 * However if we performed long write which took more than, let's say,
+	 * 1ms we can update mtime. Time taken to do this will be negligible
+	 * comparing to time spent copying data.
+	 */
+	bool mtime_updated = false;
+	if (tm_diff >= 1000000) {
+		mtime_slot = inode_next_mtime_slot(inode);
+		inode->mtime[mtime_slot] = tm;
+		pmemfile_persist(pfp, &inode->mtime[mtime_slot]);
+		mtime_updated = true;
+
+		inode->slots.bits.mtime = mtime_slot;
+		slots_changed = true;
+	}
+
+	if (offset > inode_get_size(inode)) {
+		/*
+		 * If mtime was not updated, then do it here, because
+		 * mtime < ctime may confuse some applications into thinking
+		 * only non-content related metadata changed.
+		 * There's no penalty in updating mtime here because we are
+		 * going to update slot info anyway.
+		 */
+		if (!mtime_updated) {
+			mtime_slot = inode_next_mtime_slot(inode);
+			inode->mtime[mtime_slot] = tm;
+			pmemfile_flush(pfp, &inode->mtime[mtime_slot]);
+			mtime_updated = true;
 		}
+
+		bool size_slot = inode_next_size_slot(inode);
+		inode->size[size_slot] = offset;
+		pmemfile_flush(pfp, &inode->size[size_slot]);
+
+		bool ctime_slot = inode_next_ctime_slot(inode);
+		inode->ctime[ctime_slot] = tm;
+		pmemfile_flush(pfp, &inode->ctime[ctime_slot]);
 
 		/*
-		 * Update metadata only when any of the buffer lengths
-		 * was != 0.
+		 * We will update slot info now, so all slots must be on
+		 * the medium. Issue sfence to wait for that.
 		 */
-		if (ret > 0) {
-			struct pmemfile_time tm;
-			tx_get_current_time(&tm);
+		pmemfile_drain(pfp);
 
-			if (offset > inode_get_size(inode)) {
-				inode_tx_set_size(inode, offset);
-				inode_tx_set_ctime(inode, tm);
-			}
+		union pmemfile_inode_slots slots = inode->slots;
+		slots.bits.ctime = ctime_slot;
+		slots.bits.size = size_slot;
+		slots.bits.mtime = mtime_slot;
+		/*
+		 * All slot infos must be updated using one store. Force it by
+		 * using atomic store.
+		 */
+		__atomic_store_n(&inode->slots.value, slots.value,
+				__ATOMIC_RELEASE);
+		slots_changed = true;
+	}
 
-			inode_tx_set_allocated_space(inode, allocated_space);
-			inode_tx_set_mtime(inode, tm);
-		}
-	} TX_ONABORT {
-		if (errno == ENOMEM)
-			errno = ENOSPC;
-		error = errno;
-		vinode_restore_on_abort(vinode);
-	} TX_END
+	if (slots_changed)
+		pmemfile_persist(pfp, &inode->slots);
 
 end:
 	if (error) {

@@ -119,7 +119,7 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 					POBJ_XALLOC_NO_FLUSH |
 					block_info->class_id);
 
-			inode->flags |= PMEMFILE_S_LONGSYMLINK;
+			inode->flags[0] |= PMEMFILE_S_LONGSYMLINK;
 
 			buf = PF_RW(pfp, inode->file_data.long_symlink);
 		}

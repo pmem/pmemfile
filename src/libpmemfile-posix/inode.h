@@ -106,76 +106,127 @@ struct pmemfile_vinode {
 	} snapshot;
 };
 
+/*
+ * It's not actually a boolean. It's just a workaround for silly compiler,
+ * which complains when we try to assign unsigned to a bit field. It generates:
+ *
+ * "error: conversion to 'unsigned char:1' from 'unsigned char' may alter its
+ * value"
+ */
+typedef bool inode_slot;
+
+static inline inode_slot
+inode_next_atime_slot(struct pmemfile_inode *i)
+{
+	return (i->slots.bits.atime + 1) % 2;
+}
+
+static inline inode_slot
+inode_next_mtime_slot(struct pmemfile_inode *i)
+{
+	return (i->slots.bits.mtime + 1) % 2;
+}
+
+static inline inode_slot
+inode_next_ctime_slot(struct pmemfile_inode *i)
+{
+	return (i->slots.bits.ctime + 1) % 2;
+}
+
+static inline inode_slot
+inode_next_nlink_slot(struct pmemfile_inode *i)
+{
+	return (i->slots.bits.nlink + 1) % 2;
+}
+
+static inline inode_slot
+inode_next_size_slot(struct pmemfile_inode *i)
+{
+	return (i->slots.bits.size + 1) % 2;
+}
+
+static inline inode_slot
+inode_next_allocated_space_slot(struct pmemfile_inode *i)
+{
+	return (i->slots.bits.allocated_space + 1) % 2;
+}
+
+static inline inode_slot
+inode_next_flags_slot(struct pmemfile_inode *i)
+{
+	return (i->slots.bits.flags + 1) % 2;
+}
+
 static inline struct pmemfile_time *
 inode_get_atime_ptr(struct pmemfile_inode *i)
 {
-	return &i->atime;
+	return &i->atime[i->slots.bits.atime];
 }
 
 static inline struct pmemfile_time *
 inode_get_mtime_ptr(struct pmemfile_inode *i)
 {
-	return &i->mtime;
+	return &i->mtime[i->slots.bits.mtime];
 }
 
 static inline struct pmemfile_time *
 inode_get_ctime_ptr(struct pmemfile_inode *i)
 {
-	return &i->ctime;
+	return &i->ctime[i->slots.bits.ctime];
 }
 
 static inline struct pmemfile_time
 inode_get_ctime(const struct pmemfile_inode *i)
 {
-	return i->ctime;
+	return i->ctime[i->slots.bits.ctime];
 }
 
 static inline uint64_t *
 inode_get_nlink_ptr(struct pmemfile_inode *i)
 {
-	return &i->nlink;
+	return &i->nlink[i->slots.bits.nlink];
 }
 
 static inline uint64_t
 inode_get_nlink(const struct pmemfile_inode *i)
 {
-	return i->nlink;
+	return i->nlink[i->slots.bits.nlink];
 }
 
 static inline uint64_t *
 inode_get_size_ptr(struct pmemfile_inode *i)
 {
-	return &i->size;
+	return &i->size[i->slots.bits.size];
 }
 
 static inline uint64_t
 inode_get_size(const struct pmemfile_inode *i)
 {
-	return i->size;
+	return i->size[i->slots.bits.size];
 }
 
 static inline uint64_t *
 inode_get_allocated_space_ptr(struct pmemfile_inode *i)
 {
-	return &i->allocated_space;
+	return &i->allocated_space[i->slots.bits.allocated_space];
 }
 
 static inline uint64_t
 inode_get_allocated_space(const struct pmemfile_inode *i)
 {
-	return i->allocated_space;
+	return i->allocated_space[i->slots.bits.allocated_space];
 }
 
 static inline uint64_t *
 inode_get_flags_ptr(struct pmemfile_inode *i)
 {
-	return &i->flags;
+	return &i->flags[i->slots.bits.flags];
 }
 
 static inline uint64_t
 inode_get_flags(const struct pmemfile_inode *i)
 {
-	return i->flags;
+	return i->flags[i->slots.bits.flags];
 }
 
 static inline void

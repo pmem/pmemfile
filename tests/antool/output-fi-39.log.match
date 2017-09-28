@@ -1,0 +1,6 @@
+Unsupported syscall's flag detected:
+   fcntl <F_SETFL>
+
+Yet-unsupported syscalls detected (will be supported):
+   mmap
+

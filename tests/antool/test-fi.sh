@@ -351,6 +351,14 @@ case $NUM in
 	replace_n_bytes $BIN_LOG 81136 1 '\x0' # offset +81
 	ANTOOL_OPTS="-m 10 -s -f -l"
 	;;
+39)	# change syscall in packet #14 from close to fcntl
+	replace_n_bytes $BIN_LOG 82352 1 '\x48'
+	# change syscall in packet #15 from close to fcntl
+	replace_n_bytes $BIN_LOG 82436 1 '\x48'
+	# change fcntl's flag to F_SETFL (0x04) (2nd argument)
+	replace_n_bytes $BIN_LOG 82376 4 '\x04\x00\x00\x00'
+	ANTOOL_OPTS="-m16 -s -d -p /etc"
+	;;
 esac
 
 ANTOOL_OPTS="-b $BIN_LOG $ANTOOL_OPTS"

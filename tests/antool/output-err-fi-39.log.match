@@ -1,0 +1,31 @@
+DEBUG(main): convert_mode   = 0
+DEBUG(main): script_mode    = 1
+DEBUG(main): offline_mode   = 0
+DEBUG(main): verbose_mode   = 0
+DEBUG(main): debug_mode     = 1
+DEBUG(main): print_progress = 0
+DEBUG(syscalltable): format of syscall table OK, reading 1000 records...
+DEBUG(syscalltable): read 1000 records of syscall table.
+DEBUG(parser): 0x000447D4D13A8361 0x0000254E0000254E ------------------ ------------------ execve "/home/ldorau/work/pmemfile/build/tests/antool/test_syscalls" 0x00007FFC9E8BC528 0x00007FFC9E8BC540
+DEBUG(analysis): execve               "/home/ldorau/work/pmemfile/build/tests/antool/test_syscalls"
+DEBUG(parser): 0x000447D4D13F74C1 0x0000254E0000254E 0x0000000000000000 0x0000000000000000 execve
+DEBUG(parser): 0x000447D4D13FBA92 0x0000254E0000254E ------------------ ------------------ brk 0x0000000000000000
+DEBUG(parser): 0x000447D4D13FC18C 0x0000254E0000254E 0x0000000000000000 0x0000000001F0E000 brk
+DEBUG(parser): 0x000447D4D13FE878 0x0000254E0000254E ------------------ ------------------ mmap 0x0000000000000000 0x0000000000001000 0x0000000000000003 0x0000000000000022 0xFFFFFFFFFFFFFFFF 0x0000000000000000
+DEBUG(analysis): mmap                 (-1)
+DEBUG(parser): 0x000447D4D13FF72A 0x0000254E0000254E 0x0000000000000000 0x00007F6C96F25000 mmap
+DEBUG(parser): 0x000447D4D14012A2 0x0000254E0000254E ------------------ ------------------ access "/etc/ld.so.preload" 0x0000000000000004
+DEBUG(analysis): access               "/etc/ld.so.preload" [PMEM]
+DEBUG(parser): 0x000447D4D14027FE 0x0000254E0000254E 0x0000000000000002 0xFFFFFFFFFFFFFFFF access
+DEBUG(parser): 0x000447D4D1403BB4 0x0000254E0000254E ------------------ ------------------ open "/etc/ld.so.cache" 0x0000000000080000 0x0000000000000001
+DEBUG(analysis): open                 "/etc/ld.so.cache" [PMEM]
+DEBUG(parser): 0x000447D4D1404F48 0x0000254E0000254E 0x0000000000000000 0x0000000000000005 open
+DEBUG(parser): 0x000447D4D14054EC 0x0000254E0000254E ------------------ ------------------ newfstat 0x0000000000000005 0x00007FFCFA956EF0
+DEBUG(analysis): newfstat             "/etc/ld.so.cache" [PMEM]
+DEBUG(parser): 0x000447D4D1405BAC 0x0000254E0000254E 0x0000000000000000 0x0000000000000000 newfstat
+DEBUG(parser): 0x000447D4D1406134 0x0000254E0000254E ------------------ ------------------ mmap 0x0000000000000000 0x000000000001BF33 0x0000000000000001 0x0000000000000002 0x0000000000000005 0x0000000000000000
+DEBUG(analysis): mmap                 "/etc/ld.so.cache" [PMEM]
+DEBUG(parser): 0x000447D4D1406DE6 0x0000254E0000254E 0x0000000000000000 0x00007F6C96F09000 mmap
+DEBUG(parser): 0x000447D4D1407291 0x0000254E0000254E ------------------ ------------------ fcntl 0x0000000000000005 0x0000000000000004 0x0000000000000001
+DEBUG(analysis): fcntl                "/etc/ld.so.cache" [PMEM]
+DEBUG(parser): 0x000447D4D14075F7 0x0000254E0000254E 0x0000000000000000 0x0000000000000000 fcntl

@@ -156,7 +156,8 @@ static pmemfile_off_t
 lseek_seek_data_or_hole(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			pmemfile_off_t offset, int whence)
 {
-	pmemfile_ssize_t fsize = (pmemfile_ssize_t)vinode->inode->size;
+	pmemfile_ssize_t fsize =
+			(pmemfile_ssize_t)inode_get_size(vinode->inode);
 
 	if (vinode_is_symlink(vinode)) {
 		return -ENXIO;
@@ -305,7 +306,7 @@ pmemfile_lseek_locked(PMEMfilepool *pfp, PMEMfile *file, pmemfile_off_t offset,
 			if (vinode_is_dir(vinode))
 				ret = lseek_end_directory(pfp, inode, offset);
 			else
-				ret = add_off(inode->size, offset);
+				ret = add_off(inode_get_size(inode), offset);
 			os_rwlock_unlock(&vinode->rwlock);
 
 			if (ret < 0) {

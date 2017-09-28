@@ -203,14 +203,14 @@ pool_create:
 static void
 inode_trim_cb(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode)
 {
-	ASSERTeq(PF_RW(pfp, inode)->nlink, 0);
+	ASSERTeq(inode_get_nlink(PF_RW(pfp, inode)), 0);
 	inode_trim(pfp, inode);
 }
 
 static void
 inode_free_cb(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode)
 {
-	ASSERTeq(PF_RW(pfp, inode)->nlink, 0);
+	ASSERTeq(inode_get_nlink(PF_RW(pfp, inode)), 0);
 	inode_free(pfp, inode);
 }
 

@@ -72,7 +72,7 @@ vinode_new_dir(PMEMfilepool *pfp, struct pmemfile_vinode *parent,
 	TOID(struct pmemfile_inode) tchild =
 			inode_alloc(pfp, cred, PMEMFILE_S_IFDIR | mode);
 	struct pmemfile_inode *child = PF_RW(pfp, tchild);
-	struct pmemfile_time t = child->ctime;
+	struct pmemfile_time t = inode_get_ctime(child);
 
 	/* add . and .. to new directory */
 	inode_add_dirent(pfp, tchild, ".", 1, tchild, t);

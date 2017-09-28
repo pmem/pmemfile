@@ -104,30 +104,30 @@ vinode_unlink_dir(PMEMfilepool *pfp,
 	dirdotdot->name[0] = '\0';
 	dirdotdot->inode = TOID_NULL(struct pmemfile_inode);
 
-	ASSERTeq(idir->nlink, 2);
-	TX_ADD_DIRECT(&idir->nlink);
-	idir->nlink = 0;
+	uint64_t *nlink = inode_get_nlink_ptr(idir);
+	ASSERTeq(*nlink, 2);
+	TX_ADD_DIRECT(nlink);
+	*nlink = 0;
 
 	pmemobj_tx_add_range_direct(dirent, sizeof(dirent->inode) + 1);
 	dirent->name[0] = '\0';
 	dirent->inode = TOID_NULL(struct pmemfile_inode);
 
-	TX_ADD_DIRECT(&iparent->nlink);
-	iparent->nlink--;
+	inode_tx_dec_nlink(iparent);
 
 	/*
 	 * From "stat" man page:
 	 * "The field st_ctime is changed by writing or by setting inode
 	 * information (i.e., owner, group, link count, mode, etc.)."
 	 */
-	TX_SET_DIRECT(iparent, ctime, tm);
+	inode_tx_set_ctime(iparent, tm);
 
 	/*
 	 * From "stat" man page:
 	 * "st_mtime of a directory is changed by the creation
 	 * or deletion of files in that directory."
 	 */
-	TX_SET_DIRECT(iparent, mtime, tm);
+	inode_tx_set_mtime(iparent, tm);
 }
 
 int

@@ -71,18 +71,17 @@ vinode_chmod(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		struct pmemfile_time tm;
 		tx_get_current_time(&tm);
 
-		TX_ADD_DIRECT(&inode->ctime);
-		inode->ctime = tm;
+		inode_tx_set_ctime(inode, tm);
 
-		TX_ADD_DIRECT(&inode->flags);
-		inode->flags = (inode->flags & ~(uint64_t)PMEMFILE_ALLPERMS)
-				| mode;
+		uint64_t flags = inode_get_flags(inode);
+		flags = (flags & ~(uint64_t)PMEMFILE_ALLPERMS) | mode;
 
 		if (vinode->inode->gid != cred.fsgid &&
 				!gid_in_list(&cred, vinode->inode->gid) &&
 				!(cred.caps & (1 << PMEMFILE_CAP_FSETID)))
-			inode->flags &= ~(uint64_t)PMEMFILE_S_ISGID;
+			flags &= ~(uint64_t)PMEMFILE_S_ISGID;
 
+		inode_tx_set_flags(inode, flags);
 	} TX_ONABORT {
 		error = errno;
 	} TX_END

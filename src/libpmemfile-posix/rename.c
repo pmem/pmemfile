@@ -77,11 +77,8 @@ vinode_update_parent(PMEMfilepool *pfp,
 	ASSERT(TOID_EQUALS(dirent->inode, src_parent->tinode));
 	ASSERTeq(vinode->parent, src_parent);
 
-	TX_ADD_DIRECT(&src_parent->inode->nlink);
-	src_parent->inode->nlink--;
-
-	TX_ADD_DIRECT(&dst_parent->inode->nlink);
-	dst_parent->inode->nlink++;
+	inode_tx_dec_nlink(src_parent->inode);
+	inode_tx_inc_nlink(dst_parent->inode);
 
 	TX_ADD_DIRECT(&dirent->inode);
 	dirent->inode = dst_parent->tinode;
@@ -126,15 +123,12 @@ vinode_exchange(PMEMfilepool *pfp,
 			 * update both parent's link count.
 			 */
 			if (src_is_dir != dst_is_dir) {
-				TX_ADD_DIRECT(&src->parent->inode->nlink);
-				TX_ADD_DIRECT(&dst->parent->inode->nlink);
-
 				if (src_is_dir) {
-					src->parent->inode->nlink--;
-					dst->parent->inode->nlink++;
+					inode_tx_dec_nlink(src->parent->inode);
+					inode_tx_inc_nlink(dst->parent->inode);
 				} else {
-					src->parent->inode->nlink++;
-					dst->parent->inode->nlink--;
+					inode_tx_inc_nlink(src->parent->inode);
+					inode_tx_dec_nlink(dst->parent->inode);
 				}
 			}
 
@@ -233,7 +227,7 @@ vinode_rename(PMEMfilepool *pfp,
 						t);
 			}
 
-			if (dst_info->vinode->inode->nlink == 0)
+			if (inode_get_nlink(dst_info->vinode->inode) == 0)
 				vinode_orphan_unlocked(pfp, dst_info->vinode);
 		}
 
@@ -257,14 +251,14 @@ vinode_rename(PMEMfilepool *pfp,
 			 * "st_mtime of a directory is changed by the creation
 			 * or deletion of files in that directory."
 			 */
-			TX_SET_DIRECT(src->parent->inode, mtime, t);
+			inode_tx_set_mtime(src->parent->inode, t);
 
 			/*
 			 * Even though in this case we are not updating any
 			 * metadata we have to update ctime, because that's what
 			 * file system tests expect :/.
 			 */
-			TX_SET_DIRECT(src_info->vinode->inode, ctime, t);
+			inode_tx_set_ctime(src_info->vinode->inode, t);
 		} else {
 			inode_add_dirent(pfp, dst->parent->tinode,
 					dst->remaining, new_name_len,

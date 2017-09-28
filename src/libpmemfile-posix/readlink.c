@@ -81,7 +81,7 @@ _pmemfile_readlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	os_rwlock_rdlock(&vinode->rwlock);
 
 	const char *data = get_symlink(pfp, vinode);
-	size_t len = vinode->inode->size;
+	size_t len = inode_get_size(vinode->inode);
 
 	if (len > bufsiz)
 		len = bufsiz;

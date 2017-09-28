@@ -86,7 +86,7 @@ _vinode_get_perms(struct pmemfile_vinode *vinode)
 {
 	struct inode_perms perms;
 	struct pmemfile_inode *inode = vinode->inode;
-	perms.flags = inode->flags;
+	perms.flags = inode_get_flags(inode);
 	perms.uid = inode->uid;
 	perms.gid = inode->gid;
 	return perms;

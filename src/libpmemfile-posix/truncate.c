@@ -75,29 +75,26 @@ vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		 * Setting all the next and prev fields is pointless, when all
 		 * the blocks are removed.
 		 */
-		size_t allocated_space = inode->allocated_space;
+		size_t allocated_space = inode_get_allocated_space(inode);
 
 		allocated_space -= vinode_remove_interval(pfp, vinode, size,
 			UINT64_MAX - size);
 
-		if (inode->size < size)
+		uint64_t inode_size = inode_get_size(inode);
+		if (inode_size < size)
 			allocated_space += vinode_allocate_interval(pfp, vinode,
-			    inode->size, size - inode->size);
+			    inode_size, size - inode_size);
 
-		if (inode->size != size) {
-			TX_ADD_DIRECT(&inode->size);
-			inode->size = size;
+		if (inode_get_size(inode) != size) {
+			inode_tx_set_size(inode, size);
 
 			struct pmemfile_time tm;
 			tx_get_current_time(&tm);
-			TX_SET_DIRECT(inode, mtime, tm);
-			TX_SET_DIRECT(inode, ctime, tm);
+			inode_tx_set_mtime(inode, tm);
+			inode_tx_set_ctime(inode, tm);
 		}
 
-		if (inode->allocated_space != allocated_space) {
-			TX_ADD_DIRECT(&inode->allocated_space);
-			inode->allocated_space = allocated_space;
-		}
+		inode_tx_set_allocated_space(inode, allocated_space);
 	} TX_ONABORT {
 		error = errno;
 		if (error == ENOMEM)

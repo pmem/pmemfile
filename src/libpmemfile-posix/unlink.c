@@ -66,29 +66,30 @@ vinode_unlink_file(PMEMfilepool *pfp,
 	TOID(struct pmemfile_inode) tinode = dirent->inode;
 	struct pmemfile_inode *inode = PF_RW(pfp, tinode);
 
-	ASSERT(inode->nlink > 0);
+	uint64_t *nlink = inode_get_nlink_ptr(inode);
+	ASSERT(*nlink > 0);
 
-	TX_ADD_DIRECT(&inode->nlink);
+	TX_ADD_DIRECT(nlink);
 	/*
 	 * Snapshot inode and the first byte of a name (because we are going
 	 * to overwrite just one byte) using one call.
 	 */
 	pmemobj_tx_add_range_direct(dirent, sizeof(dirent->inode) + 1);
 
-	if (--inode->nlink > 0) {
+	if (-- *nlink > 0) {
 		/*
 		 * From "stat" man page:
 		 * "The field st_ctime is changed by writing or by setting inode
 		 * information (i.e., owner, group, link count, mode, etc.)."
 		 */
-		TX_SET_DIRECT(vinode->inode, ctime, tm);
+		inode_tx_set_ctime(vinode->inode, tm);
 	}
 	/*
 	 * From "stat" man page:
 	 * "st_mtime of a directory is changed by the creation
 	 * or deletion of files in that directory."
 	 */
-	TX_SET_DIRECT(parent->inode, mtime, tm);
+	inode_tx_set_mtime(parent->inode, tm);
 
 	dirent->name[0] = '\0';
 	dirent->inode = TOID_NULL(struct pmemfile_inode);
@@ -155,7 +156,7 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		vinode_unlink_file(pfp, info.parent, dirent_info.dirent,
 				dirent_info.vinode, t);
 
-		if (dirent_info.vinode->inode->nlink == 0)
+		if (inode_get_nlink(dirent_info.vinode->inode) == 0)
 			vinode_orphan(pfp, dirent_info.vinode);
 	} TX_ONABORT {
 		error = errno;

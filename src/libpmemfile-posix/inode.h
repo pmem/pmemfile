@@ -106,76 +106,80 @@ struct pmemfile_vinode {
 	} snapshot;
 };
 
+#define inode_next_slot(inode, field) \
+	((unsigned)((size_t)((inode)->slots.bits.field + 1) % \
+			ARRAY_SIZE((inode)->field)))
+
 static inline struct pmemfile_time *
 inode_get_atime_ptr(struct pmemfile_inode *i)
 {
-	return &i->atime;
+	return &i->atime[i->slots.bits.atime];
 }
 
 static inline struct pmemfile_time *
 inode_get_mtime_ptr(struct pmemfile_inode *i)
 {
-	return &i->mtime;
+	return &i->mtime[i->slots.bits.mtime];
 }
 
 static inline struct pmemfile_time *
 inode_get_ctime_ptr(struct pmemfile_inode *i)
 {
-	return &i->ctime;
+	return &i->ctime[i->slots.bits.ctime];
 }
 
 static inline struct pmemfile_time
 inode_get_ctime(const struct pmemfile_inode *i)
 {
-	return i->ctime;
+	return i->ctime[i->slots.bits.ctime];
 }
 
 static inline uint64_t *
 inode_get_nlink_ptr(struct pmemfile_inode *i)
 {
-	return &i->nlink;
+	return &i->nlink[i->slots.bits.nlink];
 }
 
 static inline uint64_t
 inode_get_nlink(const struct pmemfile_inode *i)
 {
-	return i->nlink;
+	return i->nlink[i->slots.bits.nlink];
 }
 
 static inline uint64_t *
 inode_get_size_ptr(struct pmemfile_inode *i)
 {
-	return &i->size;
+	return &i->size[i->slots.bits.size];
 }
 
 static inline uint64_t
 inode_get_size(const struct pmemfile_inode *i)
 {
-	return i->size;
+	return i->size[i->slots.bits.size];
 }
 
 static inline uint64_t *
 inode_get_allocated_space_ptr(struct pmemfile_inode *i)
 {
-	return &i->allocated_space;
+	return &i->allocated_space[i->slots.bits.allocated_space];
 }
 
 static inline uint64_t
 inode_get_allocated_space(const struct pmemfile_inode *i)
 {
-	return i->allocated_space;
+	return i->allocated_space[i->slots.bits.allocated_space];
 }
 
 static inline uint64_t *
 inode_get_flags_ptr(struct pmemfile_inode *i)
 {
-	return &i->flags;
+	return &i->flags[i->slots.bits.flags];
 }
 
 static inline uint64_t
 inode_get_flags(const struct pmemfile_inode *i)
 {
-	return i->flags;
+	return i->flags[i->slots.bits.flags];
 }
 
 static inline void

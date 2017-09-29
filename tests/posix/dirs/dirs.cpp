@@ -411,6 +411,22 @@ TEST_F(dirs, mkdirat)
 	EXPECT_EQ(errno, EFAULT);
 
 	errno = 0;
+	ASSERT_EQ(pmemfile_mkdirat(pfp, dir, "./", 0755), -1);
+	EXPECT_EQ(errno, EEXIST);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_mkdirat(pfp, dir, "../dir", 0755), -1);
+	EXPECT_EQ(errno, EEXIST);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_mkdirat(pfp, dir, "..", 0755), -1);
+	EXPECT_EQ(errno, EEXIST);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_mkdirat(pfp, dir, "../dir/", 0755), -1);
+	EXPECT_EQ(errno, EEXIST);
+
+	errno = 0;
 	ASSERT_EQ(pmemfile_mkdirat(pfp, NULL, "internal", 0755), -1);
 	EXPECT_EQ(errno, EFAULT);
 

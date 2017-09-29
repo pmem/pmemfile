@@ -61,14 +61,19 @@ def get_cmd_args():
 
     suite_parsers = [parser_ltp, parser_sqlite, parser_xfs]
     for suite_parser in suite_parsers:
+        one_or_from_file = suite_parser.add_mutually_exclusive_group()
+
+        one_or_from_file.add_argument(
+            "-t", "--test", help="Single test case to run.")
+        one_or_from_file.add_argument("--test-list",
+                                      help="File with list of test cases (in separate lines).")
+
         suite_parser.add_argument("-p", "--pf-pool", required=True,
                                   help="Path to pmemfile_pool.")
         suite_parser.add_argument("-m", "--mountpoint", required=True,
                                   help="Path to pmemfile mountpoint directory.")
         suite_parser.add_argument("-l", "--pf-lib-dir", required=True,
                                   help="Path to pmemfile installed lib directory.")
-        suite_parser.add_argument(
-            "-t", "--tests", help="File with list of test cases (in separate lines).")
         suite_parser.add_argument("-v", "--verbose", action='store_true',
                                   help="Print outputs of tests that failed.")
         suite_parser.add_argument(
@@ -94,15 +99,16 @@ if __name__ == "__main__":
     if args.suite_name == 'ltp':
         suite.suppress_tconf_errors = args.fail_on_tconf
 
-    if args.tests is not None:
-        suite.run_tests_from_file(args.tests)
+    if args.test_list:
+        suite.run_tests_from_file(args.test_list)
     else:
         suite.prepare_default_tests_to_run()
 
+    test = args.test
     tester = Tester(suite, config)
 
     start = time()
-    tester.test_pmemfile_against_local_fs(args.verbose, args.timeout)
+    tester.test_pmemfile_against_local_fs(test, args.verbose, args.timeout)
     elapsed = gmtime(time() - start)
 
     print("Total execution time: {0} hours, {1} minutes, {2} seconds.".format(

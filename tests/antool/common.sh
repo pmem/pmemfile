@@ -30,10 +30,12 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-FILE_DIR_PMEM="dir_pmem.txt"
 SYSCALL_TABLE="syscalls_table.dat"
-ARCH_EXT="bz2"
+
 MASK_BIN="output-bin-*.log"
+MASK_DIR_PMEM="dir_pmem-*.txt"
+
+ARCH_EXT="bz2"
 ARCHIVES="*.$ARCH_EXT"
 
 FI_SRC_BIN_LOG=output-bin-1531-14.log

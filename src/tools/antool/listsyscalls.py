@@ -81,50 +81,16 @@ MAX_DEC_FD = 0x10000000
 
 
 ########################################################################################################################
-# realpath -- get the resolved path (it does not resolve links YET)
-########################################################################################################################
-# noinspection PyShadowingBuiltins
-def realpath(path):
-    len_path = len(path)
-
-    if len_path == 0:  # path is empty when BPF error occurs
-        return ""
-
-    assert(path[0] == '/')
-
-    newpath = "/"
-    newdirs = []
-    dirs = path.split('/')
-
-    for dir in dirs:
-        if dir in ("", "."):
-            continue
-
-        if dir == "..":
-            len_newdirs = len(newdirs)
-            if len_newdirs > 0:
-                del newdirs[len_newdirs - 1]
-            continue
-
-        newdirs.append(dir)
-
-    newpath += "/".join(newdirs)
-
-    if path[len_path - 1] == '/':
-        newpath += "/"
-
-    return newpath
-
-
-########################################################################################################################
 # ListSyscalls
 ########################################################################################################################
 class ListSyscalls(list):
-    def __init__(self, pmem_paths, script_mode, debug_mode, verbose_mode, init_pmem=0):
+    def __init__(self, pmem_paths, slink_file, script_mode, debug_mode, verbose_mode, init_pmem=0):
 
         list.__init__(self)
 
         self.log_anls = logging.getLogger("analysis")
+
+        self.slink_file = slink_file
 
         self.script_mode = script_mode
         self.debug_mode = debug_mode
@@ -145,6 +111,22 @@ class ListSyscalls(list):
         self.all_strings = ["(stdin)", "(stdout)", "(stderr)"]
         self.path_is_pmem = [0, 0, 0]
 
+        self.symlinks = dict()
+
+        if init_pmem and slink_file:
+            fh = open_file(slink_file, 'r')
+            lines = fh.readlines()
+            fh.close()
+            for line in lines:
+                line = line.split('\n')[0]
+                paths = line.split(':')
+                assert_msg(len(paths) == 2, "wrong format of symlinks file: {0:s}".format(slink_file))
+                # append new symlink to the dictionary
+                self.symlinks[paths[0]] = paths[1]
+
+        self.slink_file = len(self.symlinks)
+        self.pmem_paths = []
+
         if init_pmem and pmem_paths:
             paths = str(pmem_paths)
             pmem_paths = paths.split(':')
@@ -154,10 +136,7 @@ class ListSyscalls(list):
                 pmem_paths.remove("")
 
             # add slash at the end and normalize all paths
-            self.pmem_paths = [realpath(path + "/") for path in pmem_paths]
-
-        else:
-            self.pmem_paths = []
+            self.pmem_paths = [self.realpath(path + "/") for path in pmem_paths]
 
         self.all_supported = 1  # all syscalls are supported
 
@@ -183,6 +162,52 @@ class ListSyscalls(list):
             if string.find(path) == 0:
                 return 1
         return 0
+
+    ####################################################################################################################
+    # realpath -- get the resolved path
+    ####################################################################################################################
+    def realpath(self, old_path):
+        from os import path
+        len_old_path = len(old_path)
+
+        if len_old_path == 0:  # path is empty when BPF error occurs
+            return ""
+
+        assert (old_path[0] == '/')
+
+        old_dirs = old_path.split('/')
+        new_dirs = []
+        new_path = ""
+
+        for one_dir in old_dirs:
+            if one_dir in ("", "."):
+                continue
+
+            if one_dir == "..":
+                len_new_dirs = len(new_dirs)
+                if len_new_dirs > 0:
+                    del new_dirs[len_new_dirs - 1]
+                continue
+
+            new_dirs.append(one_dir)
+            new_path = "/" + "/".join(new_dirs)
+
+            if path.islink(new_path):
+                new_path = path.realpath(new_path)
+
+            # if there is a file with symlinks given by the '--slink-file' CLI option
+            # and the current 'new_path' is saved as a symlink in this file,
+            # replace it with the target path saved also in this file.
+            if self.slink_file and new_path in self.symlinks:
+                new_path = self.symlinks[new_path]
+
+            new_dirs = new_path.split('/')
+            del new_dirs[0]
+
+        if old_path[len_old_path - 1] == '/':
+            new_path += "/"
+
+        return new_path
 
     ####################################################################################################################
     # all_strings_append -- append the string to the list of all strings
@@ -472,8 +497,13 @@ class ListSyscalls(list):
 
     ####################################################################################################################
     # handle_fileat -- helper function of match_fd_with_path() - handles *at syscalls
+    #    syscall        - current syscall
+    #    arg1           - number of the argument with a file descriptor
+    #    arg2           - number of the argument with a path
+    #    msg            - message to be printed out built so far
+    #    has_to_be_pmem - if set, force the new path to be pmem (in case of SyS_symlinkat)
     ####################################################################################################################
-    def handle_fileat(self, syscall, arg1, arg2, msg):
+    def handle_fileat(self, syscall, arg1, arg2, msg, has_to_be_pmem):
         assert_msg(syscall.has_mask(Arg_is_fd[arg1]), "argument #{0:d} is not a file descriptor".format(arg1))
         assert_msg(syscall.has_mask(Arg_is_path[arg2]), "argument #{0:d} is not a path".format(arg2))
 
@@ -527,9 +557,11 @@ class ListSyscalls(list):
         path = newpath
 
         if not unknown_dirfd:
-            is_pmem = self.is_path_pmem(realpath(path))
+            is_pmem = self.is_path_pmem(self.realpath(path))
         else:
             is_pmem = 0
+
+        is_pmem |= has_to_be_pmem
 
         # append new path to the global array of all strings
         str_ind = self.all_strings_append(path, is_pmem)
@@ -560,7 +592,7 @@ class ListSyscalls(list):
             elif path[0] != '/':
                 path = self.get_cwd(syscall) + "/" + path
 
-            is_pmem = self.is_path_pmem(realpath(path))
+            is_pmem = self.is_path_pmem(self.realpath(path))
             syscall.is_pmem |= is_pmem
 
         # append new path to the global array of all strings
@@ -591,10 +623,21 @@ class ListSyscalls(list):
                 # - new descriptor 'fd_out' points at the string of index 'str_ind' in the table of all strings
                 self.fd_table_assign(fd_table, fd_out, str_ind)
 
-        # handle all SyS_*at syscalls
+        # handle SyS_symlinkat
+        elif syscall.name == "symlinkat":
+            msg = "{0:20s}".format("symlinkat")
+            target_path, str_ind, target_is_pmem = self.handle_one_path(syscall, 0)
+            msg = self.log_build_msg(msg, target_is_pmem, target_path)
+            link_path, link_is_pmem, msg = self.handle_fileat(syscall, 1, 2, msg, target_is_pmem)
+            self.log_anls.debug(msg)
+            if link_is_pmem and syscall.iret == 0:
+                self.pmem_paths.append(link_path)
+                self.log_anls.debug("INFO: new symlink added to pmem paths: \"{0:s}\"".format(link_path))
+
+        # handle the rest of SyS_*at syscalls
         elif syscall.is_mask(EM_isfileat):
             msg = "{0:20s}".format(syscall.name)
-            path, is_pmem, msg = self.handle_fileat(syscall, 0, 1, msg)
+            path, is_pmem, msg = self.handle_fileat(syscall, 0, 1, msg, 0)
             fd_out = syscall.iret
 
             # handle SyS_openat
@@ -608,16 +651,8 @@ class ListSyscalls(list):
 
             # handle syscalls with second 'at' pair (e.g. linkat, renameat)
             if syscall.is_mask(EM_isfileat2):
-                path, is_pmem, msg = self.handle_fileat(syscall, 2, 3, msg)
+                path, is_pmem, msg = self.handle_fileat(syscall, 2, 3, msg, 0)
 
-            self.log_anls.debug(msg)
-
-        # handle SyS_symlinkat (it is a special case of SyS_*at syscalls)
-        elif syscall.name == "symlinkat":
-            msg = "{0:20s}".format(syscall.name)
-            path, str_ind, is_pmem = self.handle_one_path(syscall, 0)
-            msg = self.log_build_msg(msg, is_pmem, path)
-            path, is_pmem, msg = self.handle_fileat(syscall, 1, 2, msg)
             self.log_anls.debug(msg)
 
         # handle SyS_dup*
@@ -671,6 +706,36 @@ class ListSyscalls(list):
             else:
                 self.log_anls.debug("{0:20s} (0x{1:016X})".format(syscall.name, fd_in))
 
+        # handle SyS_symlink
+        elif syscall.name == "symlink":
+            msg = "{0:20s}".format("symlink")
+
+            # loop through all syscall's arguments
+            for narg in range(2):  # syscall.nargs of SyS_symlink == 2
+                path = syscall.strings[syscall.args[narg]]
+
+                # handle relative paths
+                if len(path) != 0 and path[0] != '/':
+                    self.all_strings_append(path, 0)  # add relative path as non-pmem
+                    path = self.get_cwd(syscall) + "/" + path
+                # handle empty paths
+                elif len(path) == 0 and not syscall.read_error:
+                    path = self.get_cwd(syscall)
+
+                is_pmem = self.is_path_pmem(self.realpath(path))
+                syscall.is_pmem |= is_pmem
+
+                # append new path to the global array of all strings
+                str_ind = self.all_strings_append(path, is_pmem)
+
+                # save index in the global array as the argument
+                syscall.args[narg] = str_ind
+
+                # if 1st path is pmem, 2nd one has to be pmem too
+                msg = self.log_build_msg(msg, syscall.is_pmem, path)
+
+            self.log_anls.debug(msg)
+
         # handle syscalls with a path or a file descriptor among arguments
         elif syscall.has_mask(EM_str_all | EM_fd_all):
             msg = "{0:20s}".format(syscall.name)
@@ -694,7 +759,7 @@ class ListSyscalls(list):
                         elif len(path) == 0 and not syscall.read_error:
                             path = self.get_cwd(syscall)
 
-                        is_pmem = self.is_path_pmem(realpath(path))
+                        is_pmem = self.is_path_pmem(self.realpath(path))
                         syscall.is_pmem |= is_pmem
 
                     # append new path to the global array of all strings
@@ -740,22 +805,37 @@ class ListSyscalls(list):
 
     ####################################################################################################################
     def post_match_action(self, syscall):
-        # change current working directory in case of SyS_chdir and SyS_fchdir
-        if syscall.ret == 0 and syscall.name in ("chdir", "fchdir"):
-            old_cwd = self.get_cwd(syscall)
-            new_cwd = self.all_strings[syscall.args[0]]
-            self.set_cwd(new_cwd, syscall)
-            self.log_anls.debug("INFO: current working directory changed:")
-            self.log_anls.debug("      from: \"{0:s}\"".format(old_cwd))
-            self.log_anls.debug("      to:   \"{0:s}\"".format(new_cwd))
-
-        # add new PID to the table in case of SyS_fork, SyS_vfork and SyS_clone
-        if syscall.name in ("fork", "vfork", "clone"):
-            if syscall.iret <= 0:
+        if syscall.iret == 0:
+            # change current working directory in case of SyS_chdir and SyS_fchdir
+            if syscall.name in ("chdir", "fchdir"):
+                old_cwd = self.get_cwd(syscall)
+                new_cwd = self.all_strings[syscall.args[0]]
+                self.set_cwd(new_cwd, syscall)
+                self.log_anls.debug("INFO: current working directory changed:")
+                self.log_anls.debug("      from: \"{0:s}\"".format(old_cwd))
+                self.log_anls.debug("      to:   \"{0:s}\"".format(new_cwd))
                 return
-            old_pid = syscall.pid_tid >> 32
-            new_pid = syscall.iret
-            self.add_pid(new_pid, old_pid)
+
+            # if target is pmem then new symlink is pmem too
+            if syscall.name == "symlink":
+                if self.path_is_pmem[syscall.args[0]]:
+                    str_ind = syscall.args[1]
+                    self.path_is_pmem[str_ind] = 1
+                    link_path = self.all_strings[str_ind]
+                    self.pmem_paths.append(link_path)
+                    self.log_anls.debug("INFO: new symlink added to pmem paths: \"{0:s}\"".format(link_path))
+                return
+
+            return
+
+        if syscall.iret > 0:
+            # add new PID to the table in case of SyS_fork, SyS_vfork and SyS_clone
+            if syscall.name in ("fork", "vfork", "clone"):
+                old_pid = syscall.pid_tid >> 32
+                new_pid = syscall.iret
+                self.add_pid(new_pid, old_pid)
+                return
+            return
 
     ####################################################################################################################
     # add_pid -- add new PID to the table and copy CWD and FD table for this PID

@@ -331,7 +331,10 @@ case $NUM in
 	replace_n_bytes $BIN_LOG 82436 2 '\x0A\x01'
 	# change SyS_symlinkat argument #2 to AT_FDCWD
 	replace_n_bytes $BIN_LOG 82376 4 '\x9C\xFF\xFF\xFF'
-	ANTOOL_OPTS="-m16 -s -d -p /etc"
+	# add test for resolving symlinks saved in a file
+	echo "/home:/etc" > symlinks.txt
+	echo "/mnt:/etc" >> symlinks.txt
+	ANTOOL_OPTS="-m16 -s -d -p /etc --slink-file=symlinks.txt"
 	;;
 36)	# change syscall in packet #14 from close to SyS_fstatat
 	replace_n_bytes $BIN_LOG 82352 2 '\x06\x01'
@@ -339,7 +342,10 @@ case $NUM in
 	replace_n_bytes $BIN_LOG 82436 2 '\x06\x01'
 	# change fallocate's argument #4
 	replace_n_bytes $BIN_LOG 82392 4 '\x00\x10\x00\x00'
-	ANTOOL_OPTS="-m16 -s -d -p /etc"
+	# add test for resolving OS symlinks
+	TEMP_DIR=$(mktemp -d)
+	ln -s /tmp $TEMP_DIR/link
+	ANTOOL_OPTS="-m16 -s -d -p /etc:$TEMP_DIR/link"
 	;;
 37)	# inject BPF read error in the 1st packet of access (offset 81055)
 	replace_n_bytes $BIN_LOG 81061 1 '\x4' # offset +6
@@ -367,6 +373,14 @@ set +e
 echo "$ $ANTOOL $ANTOOL_OPTS > $OUT 2> $ERR"
 $ANTOOL $ANTOOL_OPTS > $OUT 2> $ERR
 RV=$?
+
+# tests clean-up
+case $NUM in
+36)
+	rm -f $TEMP_DIR/link
+	rmdir $TEMP_DIR
+	;;
+esac
 set -e
 
 if [ $RV -ne $EXPECTED_RV ]; then

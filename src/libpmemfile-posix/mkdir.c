@@ -160,7 +160,8 @@ pmemfile_mkdirat(PMEMfilepool *pfp, PMEMfile *dir, const char *path,
 	}
 
 	if (!path) {
-		errno = ENOENT;
+		LOG(LUSR, "NULL path");
+		errno = EFAULT;
 		return -1;
 	}
 

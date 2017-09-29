@@ -282,7 +282,7 @@ TEST_F(dirs, mkdir_rmdir_unlink_errors)
 
 	errno = 0;
 	ASSERT_EQ(pmemfile_mkdir(pfp, NULL, 0755), -1);
-	EXPECT_EQ(errno, ENOENT);
+	EXPECT_EQ(errno, EFAULT);
 
 	errno = 0;
 	ASSERT_EQ(pmemfile_mkdir(NULL, "/dir", 0755), -1);
@@ -404,11 +404,27 @@ TEST_F(dirs, mkdirat)
 
 	errno = 0;
 	ASSERT_EQ(pmemfile_mkdirat(pfp, dir, NULL, 0755), -1);
-	EXPECT_EQ(errno, ENOENT);
+	EXPECT_EQ(errno, EFAULT);
 
 	errno = 0;
 	ASSERT_EQ(pmemfile_mkdirat(NULL, dir, "internal", 0755), -1);
 	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_mkdirat(pfp, dir, "./", 0755), -1);
+	EXPECT_EQ(errno, EEXIST);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_mkdirat(pfp, dir, "../dir", 0755), -1);
+	EXPECT_EQ(errno, EEXIST);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_mkdirat(pfp, dir, "..", 0755), -1);
+	EXPECT_EQ(errno, EEXIST);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_mkdirat(pfp, dir, "../dir/", 0755), -1);
+	EXPECT_EQ(errno, EEXIST);
 
 	errno = 0;
 	ASSERT_EQ(pmemfile_mkdirat(pfp, NULL, "internal", 0755), -1);

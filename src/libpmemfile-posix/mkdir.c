@@ -109,9 +109,8 @@ _pmemfile_mkdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	size_t namelen = component_length(info.remaining);
 
-	/* mkdir("/") */
-	if (namelen == 0) {
-		ASSERT(parent == pfp->root);
+	/* mkdir("/") or mkdirat(dir, ".", mode) */
+	if (namelen == 0 || (namelen == 1 && info.remaining[0] == '.')) {
 		error = EEXIST;
 		goto end;
 	}

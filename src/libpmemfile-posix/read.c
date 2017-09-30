@@ -189,15 +189,14 @@ handle_atime(PMEMfilepool *pfp,
 	    (time_cmp(atime, inode_get_mtime_ptr(inode)) >= 0))
 		return;
 
-	ASSERT_NOT_IN_TX();
-
 	os_rwlock_wrlock(&vinode->rwlock);
 
-	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		inode_tx_set_atime(inode, tm);
-	} TX_ONABORT {
-		LOG(LINF, "can not update inode atime");
-	} TX_END
+	inode_slot atime_slot = inode_next_atime_slot(inode);
+	inode->atime[atime_slot] = tm;
+	pmemfile_persist(pfp, &inode->atime[atime_slot]);
+
+	inode->slots.bits.atime = atime_slot;
+	pmemfile_persist(pfp, &inode->slots);
 
 	os_rwlock_unlock(&vinode->rwlock);
 }

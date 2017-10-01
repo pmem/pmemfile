@@ -213,6 +213,12 @@ TEST_F(symlinks, 0)
 		0);
 	ASSERT_EQ(pmemfile_unlink(pfp, "cwd-sym"), 0);
 
+	ASSERT_EQ(pmemfile_symlinkat(pfp, "whatever", NULL, "/sym"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/sym"), 0);
+
+	ASSERT_EQ(pmemfile_symlinkat(pfp, "whatever", BADF, "/sym"), 0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "/sym"), 0);
+
 	char buf[PMEMFILE_PATH_MAX];
 
 	ret = pmemfile_readlink(pfp, "/not-existing-dir/xxx", buf,
@@ -258,6 +264,12 @@ TEST_F(symlinks, 0)
 				      PMEMFILE_PATH_MAX),
 		  -1);
 	EXPECT_EQ(errno, EFAULT);
+
+	ASSERT_EQ(pmemfile_readlinkat(pfp, NULL, "/dir/sym1-exists", buf, 2),
+		  2);
+
+	ASSERT_EQ(pmemfile_readlinkat(pfp, BADF, "/dir/sym1-exists", buf, 2),
+		  2);
 
 	ASSERT_EQ(pmemfile_readlinkat(pfp, PMEMFILE_AT_CWD, "dir/sym1-exists",
 				      buf, 2),

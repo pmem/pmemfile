@@ -433,6 +433,10 @@ TEST_F(dirs, mkdirat)
 	ASSERT_EQ(pmemfile_mkdirat(pfp, dir, "internal", PMEMFILE_S_IRWXU), 0);
 	ASSERT_EQ(pmemfile_mkdirat(pfp, dir, "../external", PMEMFILE_S_IRWXU),
 		  0);
+	ASSERT_EQ(pmemfile_mkdirat(pfp, NULL, "/external3", PMEMFILE_S_IRWXU),
+		  0);
+	ASSERT_EQ(pmemfile_mkdirat(pfp, BADF, "/external4", PMEMFILE_S_IRWXU),
+		  0);
 
 	pmemfile_stat_t statbuf;
 	ASSERT_EQ(pmemfile_stat(pfp, "/dir/internal", &statbuf), 0);
@@ -474,6 +478,8 @@ TEST_F(dirs, mkdirat)
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/external"), 0);
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/external2"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/external3"), 0);
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/external4"), 0);
 }
 
 TEST_F(dirs, unlinkat)
@@ -488,6 +494,10 @@ TEST_F(dirs, unlinkat)
 
 	ASSERT_TRUE(
 		test_pmemfile_create(pfp, "/dir/file", PMEMFILE_O_EXCL, 0644));
+	ASSERT_TRUE(
+		test_pmemfile_create(pfp, "/dir/file2", PMEMFILE_O_EXCL, 0644));
+	ASSERT_TRUE(
+		test_pmemfile_create(pfp, "/dir/file3", PMEMFILE_O_EXCL, 0644));
 
 	errno = 0;
 	ASSERT_EQ(pmemfile_unlinkat(pfp, dir, NULL, 0), -1);
@@ -500,6 +510,10 @@ TEST_F(dirs, unlinkat)
 	errno = 0;
 	ASSERT_EQ(pmemfile_unlinkat(pfp, NULL, "file", 0), -1);
 	EXPECT_EQ(errno, EFAULT);
+
+	ASSERT_EQ(pmemfile_unlinkat(pfp, NULL, "/dir/file2", 0), 0);
+
+	ASSERT_EQ(pmemfile_unlinkat(pfp, BADF, "/dir/file3", 0), 0);
 
 	errno = 0;
 	ASSERT_EQ(pmemfile_unlinkat(pfp, dir, "file", ~PMEMFILE_AT_REMOVEDIR),
@@ -1283,6 +1297,18 @@ TEST_F(dirs, renameat)
 	ASSERT_EQ(pmemfile_renameat(pfp, dir1, "f1", dir2, "ff"), 0)
 		<< strerror(errno);
 
+	ASSERT_EQ(pmemfile_renameat(pfp, NULL, "/dir2/ff", dir1, "f1"), 0)
+		<< strerror(errno);
+
+	ASSERT_EQ(pmemfile_renameat(pfp, BADF, "/dir1/f1", dir2, "ff"), 0)
+		<< strerror(errno);
+
+	ASSERT_EQ(pmemfile_renameat(pfp, dir2, "ff", NULL, "/dir1/f1"), 0)
+		<< strerror(errno);
+
+	ASSERT_EQ(pmemfile_renameat(pfp, dir1, "f1", BADF, "/dir2/ff"), 0)
+		<< strerror(errno);
+
 	pmemfile_stat_t buf;
 	ASSERT_EQ(pmemfile_stat(pfp, "/dir1/f1", &buf), -1);
 	EXPECT_EQ(errno, ENOENT);
@@ -1536,6 +1562,18 @@ TEST_F(dirs, fchownat)
 	ASSERT_TRUE(is_owned(pfp, "/symlink", 1002));
 	ASSERT_TRUE(is_owned(pfp, "/dir/file1", 1001));
 
+	ASSERT_EQ(pmemfile_fchownat(pfp, NULL, "/symlink", 1003, 1003,
+				    PMEMFILE_AT_SYMLINK_NOFOLLOW),
+		  0);
+	ASSERT_TRUE(is_owned(pfp, "/symlink", 1003));
+	ASSERT_TRUE(is_owned(pfp, "/dir/file1", 1001));
+
+	ASSERT_EQ(pmemfile_fchownat(pfp, BADF, "/symlink", 1004, 1004,
+				    PMEMFILE_AT_SYMLINK_NOFOLLOW),
+		  0);
+	ASSERT_TRUE(is_owned(pfp, "/symlink", 1004));
+	ASSERT_TRUE(is_owned(pfp, "/dir/file1", 1001));
+
 #ifdef FAULT_INJECTION
 	pmemfile_gid_t groups[1] = {1002};
 	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
@@ -1577,6 +1615,14 @@ TEST_F(dirs, openat)
 	EXPECT_EQ(errno, ENOENT);
 
 	f = pmemfile_openat(pfp, dir, "../file2", PMEMFILE_O_RDONLY);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+	pmemfile_close(pfp, f);
+
+	f = pmemfile_openat(pfp, NULL, "/file2", PMEMFILE_O_RDONLY);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+	pmemfile_close(pfp, f);
+
+	f = pmemfile_openat(pfp, BADF, "/file2", PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
 	pmemfile_close(pfp, f);
 
@@ -1724,6 +1770,26 @@ TEST_F(dirs, linkat)
 	/* both paths are relative to cwd */
 	ASSERT_EQ(pmemfile_linkat(pfp, PMEMFILE_AT_CWD, "dir1/file1",
 				  PMEMFILE_AT_CWD, "file11", 0),
+		  0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "file11"), 0);
+
+	ASSERT_EQ(pmemfile_linkat(pfp, NULL, "/dir1/file1", PMEMFILE_AT_CWD,
+				  "file11", 0),
+		  0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "file11"), 0);
+
+	ASSERT_EQ(pmemfile_linkat(pfp, BADF, "/dir1/file1", PMEMFILE_AT_CWD,
+				  "file11", 0),
+		  0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "file11"), 0);
+
+	ASSERT_EQ(pmemfile_linkat(pfp, PMEMFILE_AT_CWD, "dir1/file1", NULL,
+				  "/file11", 0),
+		  0);
+	ASSERT_EQ(pmemfile_unlink(pfp, "file11"), 0);
+
+	ASSERT_EQ(pmemfile_linkat(pfp, PMEMFILE_AT_CWD, "dir1/file1", BADF,
+				  "/file11", 0),
 		  0);
 	ASSERT_EQ(pmemfile_unlink(pfp, "file11"), 0);
 
@@ -1904,6 +1970,10 @@ TEST_F(dirs, O_PATH)
 		0);
 
 	ASSERT_EQ(pmemfile_faccessat(pfp, dir, "file", PMEMFILE_W_OK, 0), 0);
+	ASSERT_EQ(pmemfile_faccessat(pfp, NULL, "/dir/file", PMEMFILE_W_OK, 0),
+		  0);
+	ASSERT_EQ(pmemfile_faccessat(pfp, BADF, "/dir/file", PMEMFILE_W_OK, 0),
+		  0);
 
 	ASSERT_EQ(pmemfile_ftruncate(pfp, file, 0), -1);
 	EXPECT_EQ(errno, EBADF);

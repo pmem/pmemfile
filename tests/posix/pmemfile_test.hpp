@@ -50,6 +50,19 @@
 #define COND_ERROR(ret) (ret < 0 ? strerror(errno) : "")
 
 /*
+ * A bad file pointer, for test cases where libpmemfile-posix is expected to
+ * ignore a file pointer.
+ *
+ * Note: it can't be a constexpr, that would result in:
+ * "error: reinterpret_cast from integer to pointer"
+ * Thanks, C++.
+ *
+ * Note: it can't be a simple variable either, that would result in:
+ * "error: ‘badf’ defined but not used"
+ */
+#define BADF ((PMEMfile *)(uintptr_t)0xbad)
+
+/*
  * is_zeroed -- check if given memory range is all zero
  */
 static inline int

@@ -455,6 +455,14 @@ TEST_F(permissions, fchmodat)
 				    PMEMFILE_ACCESSPERMS, 0),
 		  0);
 
+	ASSERT_EQ(pmemfile_fchmodat(pfp, NULL, "/dir/aaa", PMEMFILE_ACCESSPERMS,
+				    0),
+		  0);
+
+	ASSERT_EQ(pmemfile_fchmodat(pfp, BADF, "/dir/aaa", PMEMFILE_ACCESSPERMS,
+				    0),
+		  0);
+
 #ifdef FAULT_INJECTION
 	pmemfile_gid_t groups[1] = {1002};
 	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);

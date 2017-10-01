@@ -700,6 +700,8 @@ TEST_F(timestamps, utimensat)
 	tm[0] = {14, PMEMFILE_UTIME_OMIT};
 	tm[1] = {15, PMEMFILE_UTIME_OMIT};
 	ASSERT_EQ(pmemfile_utimensat(pfp, d, "fileXXX", tm, 0), 0);
+	ASSERT_EQ(pmemfile_utimensat(pfp, NULL, "/fileXXX", tm, 0), 0);
+	ASSERT_EQ(pmemfile_utimensat(pfp, BADF, "/fileXXX", tm, 0), 0);
 
 	ASSERT_EQ(pmemfile_fchmodat(pfp, d, "file", 0, 0), 0);
 	errno = 0;
@@ -748,6 +750,12 @@ TEST_F(timestamps, futimesat)
 	ASSERT_EQ(fst2.st_mtim.tv_nsec, tm[1].tv_usec * 1000);
 
 	ASSERT_EQ(pmemfile_futimesat(pfp, d, "file", NULL), 0);
+	ASSERT_EQ(pmemfile_futimesat(pfp, NULL, "/d/file", NULL), 0);
+	ASSERT_EQ(pmemfile_futimesat(pfp, BADF, "/d/file", NULL), 0);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_futimesat(pfp, NULL, "file", NULL), -1);
+	EXPECT_EQ(errno, EFAULT);
 
 	pmemfile_stat_t fst3;
 	ASSERT_EQ(pmemfile_stat(pfp, "/d/file", &fst3), 0);

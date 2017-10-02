@@ -237,6 +237,15 @@ struct pmemfile_inode {
  */
 COMPILE_ERROR_ON(sizeof(union pmemfile_inode_slots) != 8);
 
+/*
+ * Most constants used with the flags field of pmemfile_inode are defined in the
+ * public header.
+ *
+ * Use the most significant 16 bits for flags only used internally. Hopefully
+ * this is not going to conflict with any flags in a Kernel API in the future.
+ */
+#define PMEMFILE_I_SUSPENDED_REF (UINT64_C(1) << 48)
+
 COMPILE_ERROR_ON(sizeof(struct pmemfile_inode) != PMEMFILE_INODE_SIZE);
 
 #define PMEMFILE_INODE_ARRAY_VERSION(a) ((uint32_t)0x00414E49 | \
@@ -294,9 +303,6 @@ struct pmemfile_super {
 	/* list of arrays of inodes that were deleted, but are still opened */
 	TOID(struct pmemfile_inode_array) orphaned_inodes;
 
-	/* list of arrays of inodes that are suspended */
-	TOID(struct pmemfile_inode_array) suspended_inodes;
-
 	/*
 	 * The array of root directories. Each one of them is a root of a
 	 * separate directory tree. The path "/" resolves to root #0, all other
@@ -308,7 +314,6 @@ struct pmemfile_super {
 	char padding[PMEMFILE_SUPER_SIZE
 			- 8  /* version */
 			- 16 * (PMEMFILE_ROOT_COUNT) /* toid */
-			- 16 /* toid */
 			- 16 /* toid */];
 };
 

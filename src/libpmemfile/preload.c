@@ -138,6 +138,21 @@ static int pool_count;
 #endif
 
 /*
+ * Path where a special inode is created, to refer to suspended inodes.
+ * The format could be "proc/%d", but one needs to make sure the "proc"
+ * directory exists.
+ */
+static const unsigned suspended_refs_root_index = 1;
+static const char suspended_refs_f[] = "%d";
+
+static void
+print_suspended_refs_path(size_t size, char buffer[size])
+{
+	int pid = (int)syscall_no_intercept(SYS_getpid);
+	snprintf(buffer, size, suspended_refs_f, pid);
+}
+
+/*
  * pool_acquire -- acquires access to pool
  */
 void
@@ -150,7 +165,12 @@ pool_acquire(struct pool_description *pool)
 	pool->ref_cnt++;
 
 	if (pool->ref_cnt == 1 && pool->suspended) {
-		if (pmemfile_pool_resume(pool->pool, pool->poolfile_path))
+		char suspended[sizeof(suspended_refs_f) + 16];
+		print_suspended_refs_path(sizeof(suspended), suspended);
+
+		if (pmemfile_pool_resume(pool->pool, pool->poolfile_path,
+		    suspended_refs_root_index,
+		    (const char *[]) {suspended, NULL}, 0) != 0)
 			FATAL("could not restore pmemfile pool");
 		pool->suspended = false;
 	}
@@ -173,7 +193,12 @@ pool_release(struct pool_description *pool)
 	pool->ref_cnt--;
 
 	if (pool->ref_cnt == 0 && !pool->suspended) {
-		if (pmemfile_pool_suspend(pool->pool))
+		char suspended[sizeof(suspended_refs_f) + 16];
+		print_suspended_refs_path(sizeof(suspended), suspended);
+
+		if (pmemfile_pool_suspend(pool->pool,
+		    suspended_refs_root_index,
+		    (const char *[]) {suspended, NULL}, 0) != 0)
 			FATAL("could not suspend pmemfile pool");
 		pool->suspended = true;
 	}

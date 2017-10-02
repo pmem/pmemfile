@@ -406,8 +406,10 @@ PMEMfile *pmemfile_open_parent(PMEMfilepool *pfp, PMEMfile *at,
 
 const char *pmemfile_errormsg(void);
 
-int pmemfile_pool_resume(PMEMfilepool *pfp, const char *pathname);
-int pmemfile_pool_suspend(PMEMfilepool *pfp);
+int pmemfile_pool_resume(PMEMfilepool *pfp, const char *pool_path,
+		unsigned at_root, const char * const *paths, int flags);
+int pmemfile_pool_suspend(PMEMfilepool *pfp, unsigned at_root,
+		const char *const * paths, int flags);
 
 #include "libpmemfile-posix-stubs.h"
 

@@ -37,6 +37,7 @@
 #include <inttypes.h>
 
 #include "callbacks.h"
+#include "data.h"
 #include "dir.h"
 #include "libpmemfile-posix.h"
 #include "out.h"
@@ -93,6 +94,62 @@ vinode_unlink_file(PMEMfilepool *pfp,
 
 	dirent->name[0] = '\0';
 	dirent->inode = TOID_NULL(struct pmemfile_inode);
+}
+
+static struct pmemfile_inode *
+parse_inode_toid(PMEMfilepool *pfp, const char *buf)
+{
+	if (strchr(buf, '\n') != buf + SUSPENDED_INODE_LINE_LENGTH - 1)
+		pmemobj_tx_abort(EINVAL);
+
+	uint64_t raw[2];
+	TOID(struct pmemfile_inode) result;
+	COMPILE_ERROR_ON(sizeof(result) != sizeof(raw));
+
+	char *endptr;
+
+	buf += 2; /* "0x" */
+	uintmax_t n = strtoumax(buf, &endptr, 16);
+	if (n == 0 || n >= UINT64_MAX || *endptr != ':')
+		pmemobj_tx_abort(EINVAL);
+
+	raw[0] = (uint64_t)n;
+
+	buf = endptr;
+	++buf; /* ":" */
+	buf += 2; /* "0x" */
+
+	n = strtoumax(buf, &endptr, 16);
+	if (n == 0 || n >= UINT64_MAX || *endptr != '\n')
+		pmemobj_tx_abort(EINVAL);
+
+	raw[1] = (uint64_t)n;
+
+	memcpy(&result, raw, sizeof(result));
+
+	return PF_RW(pfp, result);
+}
+
+static void
+decrement_susp_ref_counts(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
+{
+	char line[SUSPENDED_INODE_LINE_LENGTH];
+	size_t offset = 0;
+	struct pmemfile_block_desc *last_block = NULL;
+	size_t r;
+
+	while ((r = vinode_read(pfp, vinode, offset, &last_block,
+			line, sizeof(line))) == sizeof(line)) {
+		struct pmemfile_inode *inode = parse_inode_toid(pfp, line);
+
+		TX_ADD_DIRECT(&inode->suspended_references);
+		inode->suspended_references--;
+
+		offset += sizeof(line);
+	}
+
+	if (r != 0) /* The file can't have a partial line */
+		pmemobj_tx_abort(EINVAL);
 }
 
 static int
@@ -152,15 +209,37 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		goto end_vinode;
 	}
 
+	struct pmemfile_vinode *vinode = dirent_info.vinode;
+
+	bool is_special_suspended_refs_inode =
+	    inode_has_suspended_refs(vinode->inode);
+
+	if (is_special_suspended_refs_inode) {
+		if (!vinode->blocks)
+			error = vinode_rebuild_block_tree(pfp, vinode);
+		if (error)
+			goto end_vinode;
+		os_rwlock_wrlock(&pfp->super_rwlock);
+	}
+
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		vinode_unlink_file(pfp, info.parent, dirent_info.dirent,
-				dirent_info.vinode, t);
+				vinode, t);
 
-		if (inode_get_nlink(dirent_info.vinode->inode) == 0)
-			vinode_orphan(pfp, dirent_info.vinode);
+		if (inode_get_nlink(vinode->inode) == 0) {
+			if (is_special_suspended_refs_inode) {
+				decrement_susp_ref_counts(pfp, vinode);
+				vinode_orphan_unlocked(pfp, vinode);
+			} else {
+				vinode_orphan(pfp, vinode);
+			}
+		}
 	} TX_ONABORT {
 		error = errno;
 	} TX_END
+
+	if (is_special_suspended_refs_inode)
+		os_rwlock_unlock(&pfp->super_rwlock);
 
 end_vinode:
 	vinode_unlock2(dirent_info.vinode, info.parent);

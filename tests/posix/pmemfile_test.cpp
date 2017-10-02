@@ -88,11 +88,11 @@ test_pmemfile_stats_match(PMEMfilepool *pfp, unsigned inodes, unsigned dirs,
 	EXPECT_EQ(stats.inodes, inodes);
 	EXPECT_EQ(stats.dirs, dirs);
 	EXPECT_EQ(stats.block_arrays, block_arrays);
-	EXPECT_EQ(stats.inode_arrays, 2u);
+	EXPECT_EQ(stats.inode_arrays, 1u);
 	EXPECT_EQ(stats.blocks, blocks);
 
 	return stats.inodes == inodes && stats.dirs == dirs &&
-		stats.block_arrays == block_arrays && stats.inode_arrays == 2 &&
+		stats.block_arrays == block_arrays && stats.inode_arrays == 1 &&
 		stats.blocks == blocks;
 }
 

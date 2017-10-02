@@ -622,7 +622,7 @@ read_block_range(PMEMfilepool *pfp, const struct pmemfile_block_desc *block,
 }
 
 /*
- * read_block_range - copy data from user supplied buffer
+ * write_block_range - copy data from user supplied buffer
  *
  * A corresponding block is expected to be already allocated.
  */

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2017, Intel Corporation
+ * Copyright 2017, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,37 +29,54 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef PMEMFILE_OFSSET_MAPPING_H
+#define PMEMFILE_OFSSET_MAPPING_H
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "libpmemfile-posix.h"
 
 /*
- * ctree.h -- internal definitions for crit-bit tree
+ * offset_map_entry maps certain range to blocks.
+ * If there is more than one block at this range,
+ * offset_map_entry holds a pointer to an array of
+ * next level offset_map_entries (with smaller range)
  */
 
-#ifndef LIBPMEMOBJ_CTREE_H
-#define LIBPMEMOBJ_CTREE_H 1
+struct offset_map_entry {
 
-#include <stdint.h>
-#include "compiler_utils.h"
+	void *child;
 
-struct ctree;
+	/*
+	 * child points to pmemfile_block_desc when internal == false
+	 * or to offset_map_entry array otherwise
+	 */
 
-struct ctree *ctree_new(void);
-void ctree_delete(struct ctree *t);
-typedef void (*ctree_destroy_cb)(uint64_t key, uint64_t value, void *ctx);
-void ctree_delete_cb(struct ctree *t, ctree_destroy_cb cb, void *ctx);
+	bool internal;
+};
 
-void ctree_clear(struct ctree *t);
+struct offset_map {
 
-pf_warn_unused_result int ctree_insert(struct ctree *t, uint64_t key,
-		uint64_t value);
+	struct offset_map_entry entry;
 
-uint64_t ctree_find(struct ctree *t, uint64_t key);
+	PMEMfilepool *pfp;
 
-uint64_t ctree_find_le(struct ctree *t, uint64_t *key);
+	unsigned top_level;
+};
 
-uint64_t ctree_remove(struct ctree *t, uint64_t key, int eq);
+struct pmemfile_block_desc;
 
-int ctree_remove_max(struct ctree *t, uint64_t *key, uint64_t *value);
 
-int ctree_is_empty(struct ctree *t);
+struct offset_map *offset_map_new(PMEMfilepool *pfp);
+
+void offset_map_delete(struct offset_map *m);
+
+struct pmemfile_block_desc *block_find_closest(struct offset_map *map,
+						uint64_t offset);
+
+int insert_block(struct offset_map *map, struct pmemfile_block_desc *block);
+
+int remove_block(struct offset_map *map, struct pmemfile_block_desc *block);
 
 #endif

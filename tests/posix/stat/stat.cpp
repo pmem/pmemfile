@@ -259,6 +259,16 @@ TEST_F(stat_test, fstatat)
 	EXPECT_EQ(errno, EFAULT);
 
 	errno = 0;
+	EXPECT_EQ(test_fstatat(pfp, NULL, "/dir/file1", 0, 0100644, 1, 0, 1, 0),
+		  0);
+	EXPECT_EQ(errno, 0);
+
+	errno = 0;
+	EXPECT_EQ(test_fstatat(pfp, BADF, "/dir/file1", 0, 0100644, 1, 0, 1, 0),
+		  0);
+	EXPECT_EQ(errno, 0);
+
+	errno = 0;
 	EXPECT_EQ(test_fstatat(NULL, dir, "file1", 0), -1);
 	EXPECT_EQ(errno, EFAULT);
 

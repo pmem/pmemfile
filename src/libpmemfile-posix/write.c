@@ -301,27 +301,42 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 	 * only non-content related metadata changed, so it's safer to do it.
 	 */
 	bool update_mtime = (tm_diff >= 1000000) || update_size;
+	bool update_atime = vinode->atime_dirty &&
+				(update_mtime || update_size);
 
 	inode_slot size_slot = inode->slots.bits.size;
 	inode_slot ctime_slot = inode->slots.bits.ctime;
+	inode_slot atime_slot = inode->slots.bits.atime;
 
 	if (update_mtime) {
 		mtime_slot = inode_next_mtime_slot(inode);
 		inode->mtime[mtime_slot] = tm;
-		pmemfile_flush(pfp, &inode->mtime[mtime_slot]);
+	}
+
+	if (update_atime) {
+		atime_slot = inode_next_atime_slot(inode);
+		inode->atime[atime_slot] = vinode->atime;
+		vinode->atime_dirty = false;
 	}
 
 	if (update_size) {
 		size_slot = inode_next_size_slot(inode);
 		inode->size[size_slot] = offset;
-		pmemfile_flush(pfp, &inode->size[size_slot]);
 
 		ctime_slot = inode_next_ctime_slot(inode);
 		inode->ctime[ctime_slot] = tm;
-		pmemfile_flush(pfp, &inode->ctime[ctime_slot]);
 	}
 
-	if (update_mtime || update_size) {
+	if (update_mtime || update_size || update_atime) {
+		if (update_atime)
+			pmemfile_flush(pfp, &inode->atime[atime_slot]);
+		if (update_mtime)
+			pmemfile_flush(pfp, &inode->mtime[mtime_slot]);
+		if (update_size) {
+			pmemfile_flush(pfp, &inode->ctime[ctime_slot]);
+			pmemfile_flush(pfp, &inode->size[size_slot]);
+		}
+
 		/*
 		 * We will update slot info now, so all slots must be on
 		 * the medium. Issue sfence to wait for that.
@@ -329,6 +344,7 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 		pmemfile_drain(pfp);
 
 		union pmemfile_inode_slots slots = inode->slots;
+		slots.bits.atime = atime_slot;
 		slots.bits.ctime = ctime_slot;
 		slots.bits.size = size_slot;
 		slots.bits.mtime = mtime_slot;

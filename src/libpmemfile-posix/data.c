@@ -32,9 +32,9 @@
 
 #include "block_array.h"
 #include "blocks.h"
-#include "ctree.h"
 #include "data.h"
 #include "out.h"
+#include "offset_mapping.h"
 #include "pool.h"
 #include "valgrind_internal.h"
 #include "utils.h"
@@ -43,13 +43,14 @@
  * block_cache_insert_block -- inserts block into the tree
  */
 static int
-block_cache_insert_block(struct ctree *c, struct pmemfile_block_desc *block)
+block_cache_insert_block(struct offset_map *c,
+	struct pmemfile_block_desc *block)
 {
-	return ctree_insert(c, block->offset, (uintptr_t)block);
+	return insert_block(c, block);
 }
 
 static void
-block_cache_insert_block_in_tx(struct ctree *c,
+block_cache_insert_block_in_tx(struct offset_map *c,
 		struct pmemfile_block_desc *block)
 {
 	ASSERT_IN_TX();
@@ -63,8 +64,7 @@ block_cache_insert_block_in_tx(struct ctree *c,
 static struct pmemfile_block_desc *
 find_last_block(const struct pmemfile_vinode *vinode)
 {
-	uint64_t off = UINT64_MAX;
-	return (void *)(uintptr_t)ctree_find_le(vinode->blocks, &off);
+	return block_find_closest(vinode->blocks, UINT64_MAX);
 }
 
 /*
@@ -75,7 +75,7 @@ vinode_rebuild_block_tree(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 {
 	ASSERT_NOT_IN_TX();
 
-	struct ctree *c = ctree_new();
+	struct offset_map *c = offset_map_new(pfp);
 	if (!c)
 		return -errno;
 	struct pmemfile_block_array *block_array =
@@ -92,7 +92,7 @@ vinode_rebuild_block_tree(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 
 			int err = block_cache_insert_block(c, block);
 			if (err) {
-				ctree_delete(c);
+				offset_map_delete(c);
 				return err;
 			}
 			if (first == NULL || block->offset < first->offset)
@@ -143,7 +143,7 @@ is_block_data_initialized(const struct pmemfile_block_desc *block)
 struct pmemfile_block_desc *
 find_closest_block(struct pmemfile_vinode *vinode, uint64_t off)
 {
-	return (void *)(uintptr_t)ctree_find_le(vinode->blocks, &off);
+	return block_find_closest(vinode->blocks, off);
 }
 
 /*
@@ -415,7 +415,7 @@ vinode_allocate_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	size_t allocated_space = 0;
 
 	bool over = pmemfile_overallocate_on_append &&
-	    is_append(vinode, inode, offset, size);
+		is_append(vinode, inode, offset, size);
 
 	if (over)
 		size = overallocate_size(size);
@@ -687,7 +687,7 @@ iterate_on_file_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			ASSERT(dir == read_from_blocks);
 
 		if ((block == NULL) ||
-		    !is_offset_in_block(block, offset)) {
+			!is_offset_in_block(block, offset)) {
 			/*
 			 * The offset points into a hole in the file, or
 			 * into a region fallocate-ed, but not yet initialized.
@@ -700,7 +700,7 @@ iterate_on_file_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			ASSERT(dir == read_from_blocks);
 
 			struct pmemfile_block_desc *next_block =
-			    find_following_block(pfp, vinode, block);
+				find_following_block(pfp, vinode, block);
 
 			/*
 			 * How many zero bytes should be read?
@@ -770,10 +770,10 @@ iterate_on_file_range(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 
 		if (dir == read_from_blocks)
 			read_block_range(pfp, block,
-			    in_block_start, in_block_len, buf);
+				in_block_start, in_block_len, buf);
 		else
 			write_block_range(pfp, block,
-			    in_block_start, in_block_len, buf);
+				in_block_start, in_block_len, buf);
 
 		offset += in_block_len;
 		len -= in_block_len;
@@ -890,7 +890,7 @@ vinode_remove_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			 *           | block |
 			 */
 			deallocated_space += block->size;
-			ctree_remove(vinode->blocks, block->offset, 1);
+			remove_block(vinode->blocks, block);
 			block = block_list_remove(pfp, vinode, block);
 
 		} else if (is_interval_contained_by_block(block, offset, len)) {
@@ -907,9 +907,9 @@ vinode_remove_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 				uint64_t block_offset = offset - block->offset;
 
 				pmemobj_tx_add_range(block->data.oid,
-				    block_offset, len);
+					block_offset, len);
 				memset(PF_RW(pfp, block->data) + block_offset,
-				    0, len);
+					0, len);
 			}
 
 			/* definitely handled the whole interval already */
@@ -929,7 +929,7 @@ vinode_remove_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 
 			if (is_block_data_initialized(block))
 				TX_MEMSET(PF_RW(pfp, block->data), 0,
-				    offset + len - block->offset);
+					offset + len - block->offset);
 
 			block = PF_RW(pfp, block->prev);
 		} else {
@@ -949,9 +949,9 @@ vinode_remove_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 				uint64_t zero_len = block->size - block_offset;
 
 				pmemobj_tx_add_range(block->data.oid,
-				    block_offset, zero_len);
+					block_offset, zero_len);
 				memset(PF_RW(pfp, block->data) + block_offset,
-				    0, zero_len);
+					0, zero_len);
 			}
 
 			block = PF_RW(pfp, block->prev);

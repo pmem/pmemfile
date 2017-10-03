@@ -780,10 +780,13 @@ test_unsupported_by_pmemfile(const char *dir, const char *pmem,
 	pthread_t workers[N_WORKERS];
 	for (i = 0; i < N_WORKERS; ++i) {
 		rvs[i] = pthread_create(&workers[i], NULL, worker, NULL);
+		if (rvs[i])
+			perror("pthread_create");
 	}
 	for (i = i - 1; i >= 0; --i) {
 		if (rvs[i] == 0)
-			pthread_join(workers[i], NULL);
+			if (pthread_join(workers[i], NULL))
+				perror("pthread_join");
 	}
 
 	fork();

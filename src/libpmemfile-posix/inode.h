@@ -104,6 +104,9 @@ struct pmemfile_vinode {
 		struct block_info first_free_block;
 		struct pmemfile_block_desc *first_block;
 	} snapshot;
+
+	struct pmemfile_time atime;
+	bool atime_dirty;
 };
 
 /*
@@ -173,6 +176,12 @@ static inline struct pmemfile_time *
 inode_get_ctime_ptr(struct pmemfile_inode *i)
 {
 	return &i->ctime[i->slots.bits.ctime];
+}
+
+static inline struct pmemfile_time
+inode_get_atime(const struct pmemfile_inode *i)
+{
+	return i->atime[i->slots.bits.atime];
 }
 
 static inline struct pmemfile_time

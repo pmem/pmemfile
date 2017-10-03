@@ -131,6 +131,7 @@ inode_ref(PMEMfilepool *pfp, TOID(struct pmemfile_inode) inode,
 		os_rwlock_init(&vinode->rwlock);
 		vinode->tinode = inode;
 		vinode->inode = PF_RW(pfp, inode);
+		vinode->atime = inode_get_atime(vinode->inode);
 		if (inode_is_dir(vinode->inode) && parent)
 			vinode->parent = vinode_ref(pfp, parent);
 
@@ -222,6 +223,16 @@ vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 			if (vinode->inode->suspended_references == 0 &&
 					nlink == 0)
 				vinode_free_pmem(pfp, vinode);
+			else if (vinode->atime_dirty) {
+				struct pmemfile_inode *inode = vinode->inode;
+				bool atime_slot = inode_next_atime_slot(inode);
+				inode->atime[atime_slot] = vinode->atime;
+				pmemfile_persist(pfp,
+						&inode->atime[atime_slot]);
+
+				inode->slots.bits.atime = atime_slot;
+				pmemfile_persist(pfp, &inode->slots);
+			}
 
 			to_unregister = vinode;
 			/*
@@ -716,6 +727,12 @@ vinode_suspend(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 	TX_ADD_DIRECT(&vinode->inode->suspended_references);
 	vinode->inode->suspended_references++;
 
+	if (vinode->atime_dirty) {
+		struct pmemfile_time *tm = inode_get_atime_ptr(vinode->inode);
+		TX_ADD_DIRECT(tm);
+		*tm = vinode->atime;
+	}
+
 	_inode_array_add(pfp, pfp->super->suspended_inodes, vinode->tinode,
 			&vinode->suspended.arr, &vinode->suspended.idx,
 			INODE_ARRAY_NOLOCK);
@@ -784,4 +801,8 @@ vinode_resume(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			vinode->orphaned.arr =
 					add_off(vinode->orphaned.arr, diff);
 	}
+	if (vinode->atime_dirty)
+		/* we did it at suspend time */
+		vinode->atime_dirty = false;
+	vinode->atime = inode_get_atime(vinode->inode);
 }

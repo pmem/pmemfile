@@ -181,7 +181,7 @@ handle_atime(PMEMfilepool *pfp,
 
 	struct pmemfile_time tm1d = tm;
 	tm1d.sec -= 86400;
-	const struct pmemfile_time *atime = inode_get_atime_ptr(inode);
+	const struct pmemfile_time *atime = &vinode->atime;
 
 	/* relatime */
 	if ((time_cmp(atime, &tm1d) >= 0) &&
@@ -190,14 +190,8 @@ handle_atime(PMEMfilepool *pfp,
 		return;
 
 	os_rwlock_wrlock(&vinode->rwlock);
-
-	bool atime_slot = inode_next_atime_slot(inode);
-	inode->atime[atime_slot] = tm;
-	pmemfile_persist(pfp, &inode->atime[atime_slot]);
-
-	inode->slots.bits.atime = atime_slot;
-	pmemfile_persist(pfp, &inode->slots);
-
+	vinode->atime = tm;
+	vinode->atime_dirty = true;
 	os_rwlock_unlock(&vinode->rwlock);
 }
 

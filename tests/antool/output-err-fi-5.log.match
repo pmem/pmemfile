@@ -18,6 +18,7 @@ DEBUG(parser): 0x000447D4D1403BB4 0x0000254E0000254E ------------------ --------
 DEBUG(parser): 0x000447D4D1404F48 0x0000254E0000254E 0x0000000000000000 0x0000000000000005 open
 DEBUG(analysis): PID[0] = 0x000000000000254E
 DEBUG(analysis): execve               "$(*)/tests/antool/test_syscalls"
+DEBUG(analysis): brk
 DEBUG(analysis): mmap                 (-1)
 DEBUG(analysis): access               "/etc/ld.so.preload"
 DEBUG(analysis): open                 "/etc/ld.so.cache"

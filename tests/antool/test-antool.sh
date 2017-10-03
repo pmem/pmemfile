@@ -44,9 +44,10 @@ fi
 
 if [ "$4" == "" ]; then
 	echo "ERROR($NAME): not enough arguments"
-	echo "Usage: $0 [-f] <path-to-vltrace> <max-string-length> <test-app> <test-number>"
-	echo "   -f                   -  turn on follow-fork"
-	echo "   <max-string-length>  -  parameter of vltrace (see the man page of vltrace)"
+	echo "Usage: $0 [-f] <path-to-vltrace> <max-string-length> <test-app> <test-number> [extra-antool-options]"
+	echo "   -f                      -  turn on follow-fork"
+	echo "   <max-string-length>     -  parameter of vltrace (see the man page of vltrace)"
+	echo "   [extra-antool-options]  -  extra options for antool (optional)"
 	exit 1
 fi
 
@@ -54,6 +55,7 @@ VLTRACE=$1
 MAX_STR_LEN=$2
 TEST_FILE=$3
 TEST_NUM=$4
+EXTRA_ANTOOL_OPTIONS=$5
 
 TEST_DIR=$(dirname $0)
 [ "$TEST_DIR" == "." ] && TEST_DIR=$(pwd)
@@ -152,7 +154,7 @@ else
 	cp ../$OUTBIN .
 fi
 
-COMMON_OPTS="-b $OUTBIN -s -o $OUT_ANTOOL"
+COMMON_OPTS="-b $OUTBIN -s -o $OUT_ANTOOL $EXTRA_ANTOOL_OPTIONS"
 ANTOOL="$ANTOOL $COMMON_OPTS"
 
 echo "$ $ANTOOL -p "$DIR_PMEM" > $OUT"

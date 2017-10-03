@@ -96,7 +96,7 @@ vinode_stat(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		ASSERT(0);
 	}
 	buf->st_blocks = blks;
-	buf->st_atim = pmemfile_time_to_timespec(inode_get_atime_ptr(inode));
+	buf->st_atim = pmemfile_time_to_timespec(&vinode->atime);
 	buf->st_ctim = pmemfile_time_to_timespec(inode_get_ctime_ptr(inode));
 	buf->st_mtim = pmemfile_time_to_timespec(inode_get_mtime_ptr(inode));
 

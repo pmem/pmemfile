@@ -86,16 +86,21 @@ vinode_file_time_set(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 
 	int error = 0;
 	struct pmemfile_inode *inode = vinode->inode;
+	bool set_atime = utm == UTIME_MACROS_DISABLED ||
+			tm[0].nsec != PMEMFILE_UTIME_OMIT;
+	bool set_mtime = utm == UTIME_MACROS_DISABLED ||
+			tm[1].nsec != PMEMFILE_UTIME_OMIT;
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		if (utm == UTIME_MACROS_DISABLED ||
-				tm[0].nsec != PMEMFILE_UTIME_OMIT) {
+		if (set_atime)
 			inode_tx_set_atime(inode, tm[0]);
-		}
 
-		if (utm == UTIME_MACROS_DISABLED ||
-				tm[1].nsec != PMEMFILE_UTIME_OMIT) {
+		if (set_mtime)
 			inode_tx_set_mtime(inode, tm[1]);
+	} TX_ONCOMMIT {
+		if (set_atime) {
+			vinode->atime = tm[0];
+			vinode->atime_dirty = false;
 		}
 	} TX_ONABORT {
 		error = errno;

@@ -230,7 +230,7 @@ case $NUM in
 	;;
 21)	# move first packet of 'open' to the end of log
 	move_part_to_end $BIN_LOG 88863 89331
-	ANTOOL_OPTS="-d"
+	ANTOOL_OPTS="-d --print-only-syscalls-with-path-or-fd"
 	;;
 22)	# cut out some packets from the log in order to get
 	# the 'list_no_exit' and 'list_others' lists not empty
@@ -239,7 +239,7 @@ case $NUM in
 	cut_out_from_file $BIN_LOG 181951 181995
 	cut_out_from_file $BIN_LOG 216599 216643
 	cut_out_from_file $BIN_LOG 220771 220815
-	ANTOOL_OPTS="-d -f -l"
+	ANTOOL_OPTS="-d -f -l --print-only-syscalls-with-path-or-fd"
 	;;
 23)	# zero pid_tid of packet in STATE_IN_ENTRY state of SyS_open
 	replace_n_bytes $BIN_LOG 89340 8 '\x0\x0\x0\x0\x0\x0\x0\x0'
@@ -249,7 +249,7 @@ case $NUM in
 	replace_n_bytes $BIN_LOG 80368 1 '\x00'
 	# set file descriptor of newfstat to 0x00000000F0FFFFFF
 	replace_n_bytes $BIN_LOG 82112 4 '\xFF\xFF\xFF\xF0'
-	ANTOOL_OPTS="-s -d"
+	ANTOOL_OPTS="-s -d --print-only-syscalls-with-path-or-fd"
 	;;
 24)	# inject BPF read error in the 1st packet of open (offset 81567)
 	replace_n_bytes $BIN_LOG 81573 1 '\x4' # offset +6
@@ -271,7 +271,7 @@ case $NUM in
 	;;
 28)	# change size of SyS_open packet (offset 89331)
 	replace_n_bytes $BIN_LOG 89332 2 '\x4B\x00'
-	ANTOOL_OPTS="-s -d"
+	ANTOOL_OPTS="-s -d --print-only-syscalls-with-path-or-fd"
 	;;
 29)	# change syscall in packet #14 from close to dup
 	replace_n_bytes $BIN_LOG 82352 1 '\x20'
@@ -301,7 +301,7 @@ case $NUM in
 	;;
 32)	# change return value of openat to 0x12345678 (packet #107)
 	replace_n_bytes $BIN_LOG 92684 8 '\x00\x00\x00\x00\x78\x56\x34\x12'
-	ANTOOL_OPTS="-m108 -s -d"
+	ANTOOL_OPTS="-m108 -s -d --print-only-syscalls-with-path-or-fd"
 	;;
 33)	# change syscall in packet #14 from close to fcntl
 	replace_n_bytes $BIN_LOG 82352 1 '\x48'

@@ -173,7 +173,7 @@ else()
 		COMMAND ${TEST_PARSER} -f "${VLTRACE_BIN}" 1531 "${TEST_APP}" 14)
 
 	add_test(NAME "antool-analyze"
-		COMMAND ${TEST_ANTOOL} "${VLTRACE_BIN}" 126 "${TEST_APP}" 15)
+		COMMAND ${TEST_ANTOOL} "${VLTRACE_BIN}" 126 "${TEST_APP}" 15 "--print-only-syscalls-with-path-or-fd")
 
 	add_test(NAME "antool-symlinks"
 		COMMAND ${TEST_ANTOOL} "${VLTRACE_BIN}" 126 "${TEST_APP}" 16)

@@ -160,7 +160,7 @@ case $NUM in
 	ANTOOL_OPTS="-m 10 -l -s -f"
 	;;
 5)
-	ANTOOL_OPTS="-m 10 -l -s -f -d"
+	ANTOOL_OPTS="-m 10 -l -s -f -d --print-syscalls-without-path-or-fd"
 	;;
 6)
 	# non-existing input file

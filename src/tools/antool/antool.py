@@ -56,9 +56,9 @@ DO_REINIT = 1
 ########################################################################################################################
 class AnalyzingTool(ListSyscalls):
     def __init__(self, convert_mode, pmem_paths, slink_file, fileout, max_packets, offline_mode,
-                 script_mode, debug_mode, print_log_mode, verbose_mode):
+                 script_mode, debug_mode, print_log_mode, verbose_mode, print_all):
 
-        ListSyscalls.__init__(self, pmem_paths, slink_file, script_mode, debug_mode, verbose_mode,
+        ListSyscalls.__init__(self, pmem_paths, slink_file, script_mode, debug_mode, verbose_mode, print_all,
                               init_pmem=(not offline_mode))
 
         self.convert_mode = convert_mode
@@ -104,10 +104,10 @@ class AnalyzingTool(ListSyscalls):
         self.log_main.debug("debug_mode     = {0:d}".format(self.debug_mode))
         self.log_main.debug("print_progress = {0:d}".format(self.print_progress))
 
-        self.list_ok = ListSyscalls(pmem_paths, slink_file, script_mode, debug_mode, verbose_mode,
+        self.list_ok = ListSyscalls(pmem_paths, slink_file, script_mode, debug_mode, verbose_mode, print_all,
                                     init_pmem=offline_mode)
-        self.list_no_exit = ListSyscalls(pmem_paths, slink_file, script_mode, debug_mode, verbose_mode)
-        self.list_others = ListSyscalls(pmem_paths, slink_file, script_mode, debug_mode, verbose_mode)
+        self.list_no_exit = ListSyscalls(pmem_paths, slink_file, script_mode, debug_mode, verbose_mode, print_all)
+        self.list_others = ListSyscalls(pmem_paths, slink_file, script_mode, debug_mode, verbose_mode, print_all)
 
     ####################################################################################################################
     def read_syscall_table(self, fh):
@@ -445,9 +445,13 @@ def main():
     parser.add_argument("-d", "--debug", action='store_true', required=False, help="debug mode")
     parser.add_argument("-f", "--offline", action='store_true', required=False, help="offline analysis mode")
 
+    parser.add_argument("-t", "--print-syscalls-without-path-or-fd", action='store_true', required=False,
+                        help="print also syscalls without path or file descriptor among arguments to the analysis log")
+
     parser.add_argument("--slink-file", required=False, help="resolve symlinks saved in the given file")
 
     args = parser.parse_args()
+    print_all = args.print_syscalls_without_path_or_fd
 
     if args.verbose:
         verbose = args.verbose
@@ -455,7 +459,7 @@ def main():
         verbose = 0
 
     at = AnalyzingTool(args.convert, args.pmem, args.slink_file, args.output, args.max_packets, args.offline,
-                       args.script, args.debug, args.log, verbose)
+                       args.script, args.debug, args.log, verbose, print_all)
 
     at.read_and_parse_data(args.binlog)
 

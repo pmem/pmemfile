@@ -587,9 +587,7 @@ class ListSyscalls(list):
             is_pmem = 0
         else:
             # handle relative paths
-            if len(path) == 0:
-                path = self.get_cwd(syscall)
-            elif path[0] != '/':
+            if len(path) > 0 and path[0] != '/':
                 path = self.get_cwd(syscall) + "/" + path
 
             is_pmem = self.is_path_pmem(self.realpath(path))
@@ -718,9 +716,6 @@ class ListSyscalls(list):
                 if len(path) != 0 and path[0] != '/':
                     self.all_strings_append(path, 0)  # add relative path as non-pmem
                     path = self.get_cwd(syscall) + "/" + path
-                # handle empty paths
-                elif len(path) == 0 and not syscall.read_error:
-                    path = self.get_cwd(syscall)
 
                 is_pmem = self.is_path_pmem(self.realpath(path))
                 syscall.is_pmem |= is_pmem
@@ -754,10 +749,6 @@ class ListSyscalls(list):
                         if len(path) != 0 and path[0] != '/':
                             self.all_strings_append(path, 0)  # add relative path as non-pmem
                             path = self.get_cwd(syscall) + "/" + path
-
-                        # handle empty paths
-                        elif len(path) == 0 and not syscall.read_error:
-                            path = self.get_cwd(syscall)
 
                         is_pmem = self.is_path_pmem(self.realpath(path))
                         syscall.is_pmem |= is_pmem

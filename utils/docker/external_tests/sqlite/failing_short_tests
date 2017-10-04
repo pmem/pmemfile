@@ -12,7 +12,7 @@ exists.test # ?, broken pipe
 fallocate.test # mmap
 incrvacuum2.test # mmap
 incrvacuum3.test # mmap
-lock2.test # fcntl F_SETFL
+lock2.test # ?, broken pipe
 lock5.test # utime(, NULL)
 mmap1.test # mmap? broken pipe
 mmap2.test # mmap

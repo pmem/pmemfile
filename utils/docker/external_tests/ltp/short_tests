@@ -249,7 +249,7 @@ getpeername01
 getrusage01
 getrusage02
 getrusage03
-getrusage04
+#getrusage04 normally skips on Travis, because it can't work under KVM, but sometimes KVM detection doesn't work correctly (?)
 getsid01
 getsid02
 gettid01

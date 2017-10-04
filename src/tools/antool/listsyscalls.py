@@ -84,7 +84,7 @@ MAX_DEC_FD = 0x10000000
 # ListSyscalls
 ########################################################################################################################
 class ListSyscalls(list):
-    def __init__(self, pmem_paths, slink_file, script_mode, debug_mode, verbose_mode, init_pmem=0):
+    def __init__(self, pmem_paths, slink_file, script_mode, debug_mode, verbose_mode, print_all, init_pmem=0):
 
         list.__init__(self)
 
@@ -95,6 +95,7 @@ class ListSyscalls(list):
         self.script_mode = script_mode
         self.debug_mode = debug_mode
         self.verbose_mode = verbose_mode
+        self.print_all = print_all
 
         self.print_progress = not (self.debug_mode or self.script_mode)
 
@@ -791,6 +792,10 @@ class ListSyscalls(list):
                             msg += " (0x{0:016X})".format(fd)
 
             self.log_anls.debug(msg)
+
+        else:
+            if self.print_all:
+                self.log_anls.debug("{0:s}".format(syscall.name))
 
         self.post_match_action(syscall)
 

@@ -1,60 +1,60 @@
-attach4.test
-crash8.test
-dbstatus2.test
-delete_db.test
-eqp.test
-e_vacuum.test
-e_walauto.test
-e_walckpt.test
-e_walhook.test
-e_wal.test
-exists.test
-fallocate.test
-incrvacuum2.test
-incrvacuum3.test
-lock2.test
-lock5.test
-mmap1.test
-mmap2.test
-mmap3.test
-multiplex2.test
-multiplex.test
-nockpt.test
-nolock.test
-pager1.test
-pragma3.test
-rowallock.test
-savepoint.test
-schema3.test
-shared2.test
-shared9.test
-superlock.test
-symlink.test
-sync2.test
-syscall.test
-tkt-2d1a5c67d.test
-tkt-313723c356.test
-tkt4018.test
-tkt-5d863f876e.test
-tkt-fc62af4523.test
-unixexcl.test
-wal2.test
-wal3.test
-wal4.test
-wal5.test
-wal64k.test
-wal6.test
-wal7.test
-wal8.test
-wal9.test
-walbak.test
-walbig.test
-walcksum.test
-walcrash4.test
-walhook.test
-walmode.test
-waloverwrite.test
-walpersist.test
-walro.test
-walshared.test
-wal.test
+attach4.test # mmap
+crash8.test # ???
+dbstatus2.test # mmap
+delete_db.test # mmap
+eqp.test # multiprocess?
+e_vacuum.test # mmap
+e_walauto.test # mmap
+e_walckpt.test # mmap
+e_walhook.test # mmap
+e_wal.test # mmap
+exists.test # ?, broken pipe
+fallocate.test # mmap
+incrvacuum2.test # mmap
+incrvacuum3.test # mmap
+lock2.test # fcntl F_SETFL
+lock5.test # utime(, NULL)
+mmap1.test # mmap? broken pipe
+mmap2.test # mmap
+mmap3.test # mmap
+multiplex2.test # ?, broken pipe
+multiplex.test # ?, works for me
+nockpt.test # mmap
+nolock.test # mmap
+pager1.test # ?, broken pipe
+pragma3.test # mmap
+rowallock.test # ?, broken pipe
+savepoint.test # ?, broken pipe
+schema3.test # ?, broken pipe
+shared2.test # ?, broken pipe
+shared9.test # ?, broken pipe
+superlock.test # mmap
+symlink.test # mmap
+sync2.test # mmap
+syscall.test # mmap
+tkt-2d1a5c67d.test # mmap
+tkt-313723c356.test # mmap
+tkt4018.test # multiprocess?
+tkt-5d863f876e.test # ?, broken pipe
+tkt-fc62af4523.test # ?, broken pipe
+unixexcl.test # ?, broken pipe
+wal2.test # mmap
+wal3.test # mmap
+wal4.test # mmap
+wal5.test # ?, broken pipe
+wal64k.test # mmap
+wal6.test # mmap
+wal7.test # mmap
+wal8.test # mmap
+wal9.test # mmap
+walbak.test # mmap
+walbig.test # mmap
+walcksum.test # mmap
+walcrash4.test # mmap
+walhook.test # mmap
+walmode.test # mmap
+waloverwrite.test # mmap
+walpersist.test # mmap
+walro.test # ?, broken pipe
+walshared.test # mmap
+wal.test # mmap

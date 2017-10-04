@@ -140,7 +140,6 @@ symlinkat01 # symlinkat fails when it shouldn't
 unlink06    # mkfifo
 unlink07    # unlink("") fails with wrong errno, unlink for invalid pointer
 unlinkat01  # unlinkat fails with invalid errno
-symlink01 -T utime01 # utime with NULL times
 vmsplice01  # splice not supported
 write03     # write for invalid pointer
 write04     # mknod

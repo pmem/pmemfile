@@ -39,7 +39,6 @@ set(SOURCES
 	chown.c
 	copy_file_range.c
 	creds.c
-	ctree.c
 	data.c
 	dir.c
 	fallocate.c
@@ -56,6 +55,7 @@ set(SOURCES
 	mkdir.c
 	mknod.c
 	mmap.c
+	offset_mapping.c
 	os_thread_pthread.c
 	os_util_linux.c
 	out.c
@@ -79,7 +79,6 @@ set(HEADERS
 	blocks.h
 	callbacks.h
 	creds.h
-	ctree.h
 	data.h
 	dir.h
 	file.h
@@ -90,6 +89,7 @@ set(HEADERS
 	layout.h
 	locks.h
 	mkdir.h
+	offset_mapping.h
 	out.h
 	pool.h
 	rmdir.h

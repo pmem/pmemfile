@@ -166,7 +166,7 @@ pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	}
 
 	if (namelen == 0) {
-		ASSERT(info.parent == pfp->root);
+		ASSERT(vinode_is_root(info.parent));
 		error = EBUSY;
 		goto end;
 	}

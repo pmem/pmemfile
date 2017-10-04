@@ -232,7 +232,12 @@ vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 			parent = vinode->parent;
 		}
 
-		if (vinode != pfp->root)
+		/*
+		 * Can't use vinode_is_root here, as that function dereferences
+		 * vinode->inode, which might point to already deallocated
+		 * memory -- see vinode_free_pmem call above.
+		 */
+		if (vinode->parent != vinode)
 			vinode = parent;
 		else
 			vinode = NULL;

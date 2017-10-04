@@ -146,11 +146,13 @@ set(EXPORTED_SYMBOLS
 	pmemfile_mknodat
 	pmemfile_open_parent
 	pmemfile_open
+	pmemfile_open_root
 	pmemfile_openat
 	pmemfile_pool_close
 	pmemfile_pool_create
 	pmemfile_pool_open
 	pmemfile_pool_resume
+	pmemfile_pool_root_count
 	pmemfile_pool_set_device
 	pmemfile_pool_suspend
 	pmemfile_posix_fallocate

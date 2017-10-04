@@ -84,10 +84,15 @@ pmemfile_fcntl(PMEMfilepool *pfp, PMEMfile *file, int cmd, ...)
 		}
 		case PMEMFILE_F_GETFL:
 		{
-			if (file->flags & PFILE_PATH)
-				return PMEMFILE_O_PATH;
-
 			int ret = 0;
+
+			os_mutex_lock(&file->mutex);
+
+			if (file->flags & PFILE_PATH) {
+				ret = PMEMFILE_O_PATH;
+				goto fl_end;
+			}
+
 			ret |= PMEMFILE_O_LARGEFILE;
 			if (file->flags & PFILE_APPEND)
 				ret |= PMEMFILE_O_APPEND;
@@ -102,7 +107,60 @@ pmemfile_fcntl(PMEMfilepool *pfp, PMEMfile *file, int cmd, ...)
 			else if ((file->flags & PFILE_WRITE) == PFILE_WRITE)
 				ret |= PMEMFILE_O_WRONLY;
 
+fl_end:
+			os_mutex_unlock(&file->mutex);
 			return ret;
+		}
+		case PMEMFILE_F_SETFL:
+		{
+			va_list ap;
+			va_start(ap, cmd);
+			int fl_flags = va_arg(ap, int);
+			va_end(ap);
+
+			fl_flags &= ~(PMEMFILE_O_ACCMODE | PMEMFILE_O_CREAT |
+					PMEMFILE_O_EXCL | PMEMFILE_O_NOCTTY |
+					PMEMFILE_O_TRUNC | PMEMFILE_O_SYNC |
+					PMEMFILE_O_DSYNC);
+
+			if (fl_flags & PMEMFILE_O_ASYNC) {
+				ERR("setting O_ASYNC is not supported");
+				errno = EINVAL;
+				return -1;
+			}
+
+			static const int supported_flags = PMEMFILE_O_APPEND |
+					PMEMFILE_O_DIRECT | PMEMFILE_O_NOATIME |
+					PMEMFILE_O_NONBLOCK;
+
+			if (fl_flags & ~supported_flags) {
+				ERR("unknown flag %d",
+						fl_flags & ~supported_flags);
+				errno = EINVAL;
+				return -1;
+
+			}
+
+			os_mutex_lock(&file->mutex);
+
+			if (fl_flags & PMEMFILE_O_APPEND)
+				file->flags |= PFILE_APPEND;
+			else
+				file->flags &= ~PFILE_APPEND;
+
+			if (fl_flags & PMEMFILE_O_NOATIME)
+				file->flags |= PFILE_NOATIME;
+			else
+				file->flags &= ~PFILE_NOATIME;
+
+			if (fl_flags & PMEMFILE_O_DIRECT)
+				LOG(LUSR, "O_DIRECT ignored");
+			if (fl_flags & PMEMFILE_O_NONBLOCK)
+				LOG(LUSR, "O_NONBLOCK ignored");
+
+			os_mutex_unlock(&file->mutex);
+
+			return 0;
 		}
 		case PMEMFILE_F_GETFD:
 			return PMEMFILE_FD_CLOEXEC;

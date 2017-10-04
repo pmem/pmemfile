@@ -11,12 +11,10 @@ execlp01   # multiprocess?
 execv01    # multiprocess?
 execve04   # mmap
 execvp01   # multiprocess?
-fcntl01    # fcntl(F_SETFL)
-fcntl01_64 # fcntl(F_SETFL)
+fcntl01    # fcntl(F_GETFD) returns unexpected O_CLOEXEC
+fcntl01_64 # fcntl(F_GETFD) returns unexpected O_CLOEXEC
 fcntl07    # mkfifo
 fcntl07_64 # mkfifo
-fcntl08    # fcntl(F_SETFL)
-fcntl08_64 # fcntl(F_SETFL)
 fcntl11    # advisory record locks
 fcntl11_64 # advisory record locks
 fcntl14    # advisory record locks

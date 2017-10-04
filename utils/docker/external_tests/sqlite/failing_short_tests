@@ -13,7 +13,6 @@ fallocate.test # mmap
 incrvacuum2.test # mmap
 incrvacuum3.test # mmap
 lock2.test # fcntl F_SETFL
-lock5.test # utime(, NULL)
 mmap1.test # mmap? broken pipe
 mmap2.test # mmap
 mmap3.test # mmap

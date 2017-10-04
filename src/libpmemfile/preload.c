@@ -1081,17 +1081,21 @@ static long
 hook_utime(const char *path, const struct utimbuf *times)
 {
 	struct timespec timespec[2];
+	struct timespec *timespec_arg = NULL;
 
 	if (path == NULL)
 		return -EFAULT;
 
-	timespec[0].tv_sec = times->actime;
-	timespec[0].tv_nsec = 0;
-	timespec[1].tv_sec = times->modtime;
-	timespec[1].tv_nsec = 0;
+	if (times) {
+		timespec[0].tv_sec = times->actime;
+		timespec[0].tv_nsec = 0;
+		timespec[1].tv_sec = times->modtime;
+		timespec[1].tv_nsec = 0;
+		timespec_arg = timespec;
+	}
 
 	struct vfd_reference at = pmemfile_vfd_at_ref(AT_FDCWD);
-	long ret = utimensat_helper(SYS_utime, at, path, timespec, 0);
+	long ret = utimensat_helper(SYS_utime, at, path, timespec_arg, 0);
 	pmemfile_vfd_unref(at);
 
 	return ret;
@@ -1101,17 +1105,21 @@ static long
 hook_utimes(const char *path, const struct timeval times[2])
 {
 	struct timespec timespec[2];
+	struct timespec *timespec_arg = NULL;
 
 	if (path == NULL)
 		return -EFAULT;
 
-	timespec[0].tv_sec = times[0].tv_sec;
-	timespec[0].tv_nsec = times[0].tv_usec * 1000;
-	timespec[1].tv_sec = times[1].tv_sec;
-	timespec[1].tv_nsec = times[1].tv_usec * 1000;
+	if (times) {
+		timespec[0].tv_sec = times[0].tv_sec;
+		timespec[0].tv_nsec = times[0].tv_usec * 1000;
+		timespec[1].tv_sec = times[1].tv_sec;
+		timespec[1].tv_nsec = times[1].tv_usec * 1000;
+		timespec_arg = timespec;
+	}
 
 	struct vfd_reference at = pmemfile_vfd_at_ref(AT_FDCWD);
-	long ret = utimensat_helper(SYS_utimes, at, path, timespec, 0);
+	long ret = utimensat_helper(SYS_utimes, at, path, timespec_arg, 0);
 	pmemfile_vfd_unref(at);
 
 	return ret;

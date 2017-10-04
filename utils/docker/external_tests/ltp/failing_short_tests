@@ -1,71 +1,71 @@
-bind01
-chdir04
-chroot03
-creat07
-dup05
-dup203
-dup205
-dup3_01
-execl01
-execlp01
-execv01
-execve04
-execvp01
-fcntl01
-fcntl01_64
-fcntl07
-fcntl07_64
-fcntl08
-fcntl08_64
-fcntl11
-fcntl11_64
-fcntl14
-fcntl14_64
-fcntl17
-fcntl17_64
-fcntl19
-fcntl19_64
-fcntl20
-fcntl20_64
-fcntl21
-fcntl21_64
-fcntl22
-fcntl22_64
-fcntl23
-fcntl23_64
-fcntl24
-fcntl24_64
-fcntl25
-fcntl25_64
-fcntl26
-fcntl26_64
-fcntl32
-fcntl32_64
-fcntl34
-fcntl34_64
-flock01
-flock02
-flock03
-flock04
-flock05
-flock06
-fork10
-getcwd03
-getrusage03
-test_ioctl
-inotify01
-inotify04
-inotify05
-symlink01 -T link01
-link04
-linkat01
-llseek01
-llseek02
-lseek03
-lseek04
-lseek10
-mkdir01
-mkdir09
+bind01     # bind on invalid pointer
+chdir04    # chdir on invalid pointer
+chroot03   # unsupported syscall, chroot on invalid pointer
+creat07    # multiprocess
+dup05      # mkfifo
+dup203     # fcntl F_GETFD
+dup205     # assert in libpmemfile, too many fds?
+dup3_01    # dup3(O_CLOEXEC)
+execl01    # multiprocess?
+execlp01   # multiprocess?
+execv01    # multiprocess?
+execve04   # mmap
+execvp01   # multiprocess?
+fcntl01    # fcntl(F_SETFL)
+fcntl01_64 # fcntl(F_SETFL)
+fcntl07    # mkfifo
+fcntl07_64 # mkfifo
+fcntl08    # fcntl(F_SETFL)
+fcntl08_64 # fcntl(F_SETFL)
+fcntl11    # advisory record locks
+fcntl11_64 # advisory record locks
+fcntl14    # advisory record locks
+fcntl14_64 # advisory record locks
+fcntl17    # advisory record locks
+fcntl17_64 # advisory record locks
+fcntl19    # advisory record locks
+fcntl19_64 # advisory record locks
+fcntl20    # advisory record locks
+fcntl20_64 # advisory record locks
+fcntl21    # advisory record locks
+fcntl21_64 # advisory record locks
+fcntl22    # advisory record locks
+fcntl22_64 # advisory record locks
+fcntl23    # leases
+fcntl23_64 # leases
+fcntl24    # leases
+fcntl24_64 # leases
+fcntl25    # leases
+fcntl25_64 # leases
+fcntl26    # leases
+fcntl26_64 # leases
+fcntl32    # leases
+fcntl32_64 # leases
+fcntl34    # OFD locks
+fcntl34_64 # OFD locks
+flock01    # flock
+flock02    # flock
+flock03    # mmap
+flock04    # flock
+flock05    # flock
+flock06    # flock, mmap
+fork10     # ?
+getcwd03   # double free or corruption
+getrusage03 # multiprocess?
+test_ioctl # multiprocess?
+inotify01  # inotify_add_watch
+inotify04  # inotify_add_watch
+inotify05  # inotify_add_watch
+symlink01 -T link01 # something about lstat and st_ino
+link04     # link("", ...) and link for invalid pointer
+linkat01   # mkfifo
+llseek01   # "write successful after file size limit"
+llseek02   # invalid errno for lseek with invalid whence
+lseek03    # invalid errno for lseek with invalid whence
+lseek04    # mkfifo
+lseek10    # mknod
+mkdir01    # mkdir for invalid pointer
+mkdir09    # mkdir with mode=07770 fails
 mmap001 -m 1
 mmap01
 mmap02
@@ -83,36 +83,36 @@ msync02
 msync03
 munmap01
 munmap02
-nftw01
-nftw6401
-open06
-open07
-open13
-openat02
-mincore01
-mincore02
-pread03
+nftw01     # ?
+nftw6401   # ?
+open06     # mknod
+open07     # open(O_NOFOLLOW) fails when it shouldn't
+open13     # fgetxattr succeeds when it shouldn't
+openat02   # open(O_APPEND) + lseek
+mincore01  # mmap
+mincore02  # mmap
+pread03    # pread(dirfd) returns wrong errno
 pread03_64
-preadv01
+preadv01   # preadv fails with EFAULT
 preadv01_64
-pwrite02
+pwrite02   # pwrite on invalid pointer
 pwrite02_64
-pwritev01
+pwritev01  # pwritev fails with EFAULT
 pwritev01_64
-pwritev02
+pwritev02  # pwritev fails with wrong errnos, crash with invalid pointer
 pwritev02_64
-read02
-read03
-readlinkat02
-readv01
-readv02
-readv03
-recvmsg01
-remap_file_pages02
-rename08
-rmdir05
-select03
-sendfile02
+read02     # read fails with wrong errnos, crash with invalid pointer
+read03     # mknod
+readlinkat02 # readlinkat succeeds unexpectedly
+readv01    # "readv failed reading 64 bytes, followed by two NULL vectors"
+readv02    # readv succeeds when it shouldn't, also SIGABRTs
+readv03    # readv returns invalid errno
+recvmsg01  # bind not supported(?)
+remap_file_pages02 # mmap
+rename08   # rename for invalid pointers
+rmdir05    # rmdir for invalid pointer
+select03   # mkfifo
+sendfile02 # sendfile fails
 sendfile02_64
 sendfile04
 sendfile04_64
@@ -125,31 +125,31 @@ sendfile07_64
 sendfile08
 sendfile08_64
 sendfile09
-signal06
-sockioctl01
-splice01
-seq 1 20000 | splice02 splice02-temp
-splice03
-tee01
-stat06
+signal06    # ?
+sockioctl01 # mknod
+splice01    # splice not supported
+seq 1 20000 | splice02 splice02-temp # multiprocess?
+splice03    # splice not supported
+tee01       # splice not supported
+stat06      # stat("") returns wrong errno
 stat06_64
-statfs01
+statfs01    # statfs returns ENOENT
 statfs01_64
-statfs02
+statfs02    # statfs returns ENOENT
 statfs02_64
-statvfs02
-symlinkat01
-unlink06
-unlink07
-unlinkat01
-symlink01 -T utime01
-vmsplice01
-write03
-write04
-write05
-writev01
-writev07
-memfd_create01
+statvfs02   # statvfs crashes on NULL pointer
+symlinkat01 # symlinkat fails when it shouldn't
+unlink06    # mkfifo
+unlink07    # unlink("") fails with wrong errno, unlink for invalid pointer
+unlinkat01  # unlinkat fails with invalid errno
+symlink01 -T utime01 # utime with NULL times
+vmsplice01  # splice not supported
+write03     # write for invalid pointer
+write04     # mknod
+write05     # write for invalid pointer
+writev01    # writev returns wrong errno
+writev07    # writev for invalid pointer
+memfd_create01 # ?
 #growfiles -W gf27 -b -D 0 -w -g 8b -C 1 -b -i 1000 -u -f gfsparse-1-$$ -d $TMPDIR
 #growfiles -W gf28 -b -D 0 -w -g 16b -C 1 -b -i 1000 -u -f gfsparse-2-$$ -d $TMPDIR
-rwtest -N rwtest05 -c -q -i 50 -T 64b 500b:$TMPDIR/rwtest01%f
+rwtest -N rwtest05 -c -q -i 50 -T 64b 500b:$TMPDIR/rwtest01%f # multiprocess?

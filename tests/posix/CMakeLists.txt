@@ -184,6 +184,15 @@ function(add_test_with_filter name filter tracer executable)
 	set_tests_properties(${name}${filter_postfix}_${tracer} PROPERTIES
 		ENVIRONMENT "LC_ALL=C;PATH=$ENV{PATH};${ARGV4}"
 		FAIL_REGULAR_EXPRESSION Sanitizer)
+
+	# pmemcheck is a special snowflake and it doesn't set exit code when it
+	# detects an error, so we have to look at its output
+	if (${tracer} STREQUAL pmemcheck)
+		set_tests_properties(${name}${filter_postfix}_${tracer} PROPERTIES
+			PASS_REGULAR_EXPRESSION "ERROR SUMMARY: 0")
+	endif()
+
+
 endfunction()
 
 function(add_test_generic name tracer)

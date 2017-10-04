@@ -38,6 +38,7 @@
 
 #include "libpmemfile-posix.h"
 #include "layout.h"
+#include "offset_mapping.h"
 #include "os_thread.h"
 
 /* volatile inode */
@@ -93,7 +94,7 @@ struct pmemfile_vinode {
 	struct pmemfile_block_desc *first_block;
 
 	/* tree mapping offsets to blocks */
-	struct ctree *blocks;
+	struct offset_map *blocks;
 
 	/* space for volatile snapshots */
 	struct {

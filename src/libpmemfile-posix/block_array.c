@@ -31,10 +31,10 @@
  */
 
 #include "blocks.h"
-#include "ctree.h"
 #include "layout.h"
 #include "inode.h"
 #include "out.h"
+#include "offset_mapping.h"
 #include "block_array.h"
 #include "utils.h"
 
@@ -472,10 +472,9 @@ block_list_remove(PMEMfilepool *pfp,
 	if (moving_block != block) {
 		if (vinode->first_block == moving_block)
 			vinode->first_block = block;
-		ctree_remove(vinode->blocks, moving_block->offset, 1);
+		remove_block(vinode->blocks, moving_block);
 		relocate_block(pfp, block, moving_block);
-		if (ctree_insert(vinode->blocks, block->offset,
-		    (uint64_t)block))
+		if (insert_block(vinode->blocks, block))
 			pmemfile_tx_abort(errno);
 	}
 

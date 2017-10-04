@@ -7,7 +7,7 @@ DEBUG(main): print_progress = 0
 DEBUG(syscalltable): format of syscall table OK, reading 1000 records...
 DEBUG(syscalltable): read 1000 records of syscall table.
 DEBUG(parser): 0x000447D4D13A8361 0x0000254E0000254E ------------------ ------------------ execve "" 0x00007FFC9E8BC528 0x00007FFC9E8BC540
-DEBUG(analysis): execve               "$(*)/tests/antool/logs-test-parser.sh-14-1531-2017-07-27_09:05:31_242116266-9110"
+DEBUG(analysis): execve               ""
 DEBUG(parser): 0x000447D4D13F74C1 0x0000254E0000254E 0x0000000000000000 0x0000000000000000 execve
 DEBUG(parser): 0x000447D4D13FBA92 0x0000254E0000254E ------------------ ------------------ brk 0x0000000000000000
 DEBUG(parser): 0x000447D4D13FC18C 0x0000254E0000254E 0x0000000000000000 0x0000000001F0E000 brk

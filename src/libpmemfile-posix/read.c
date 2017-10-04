@@ -181,7 +181,7 @@ handle_atime(PMEMfilepool *pfp,
 
 	struct pmemfile_time tm1d = tm;
 	tm1d.sec -= 86400;
-	const struct pmemfile_time *atime = inode_get_atime_ptr(inode);
+	const struct pmemfile_time *atime = &vinode->atime;
 
 	/* relatime */
 	if ((time_cmp(atime, &tm1d) >= 0) &&
@@ -189,16 +189,9 @@ handle_atime(PMEMfilepool *pfp,
 	    (time_cmp(atime, inode_get_mtime_ptr(inode)) >= 0))
 		return;
 
-	ASSERT_NOT_IN_TX();
-
 	os_rwlock_wrlock(&vinode->rwlock);
-
-	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
-		inode_tx_set_atime(inode, tm);
-	} TX_ONABORT {
-		LOG(LINF, "can not update inode atime");
-	} TX_END
-
+	vinode->atime = tm;
+	vinode->atime_dirty = true;
 	os_rwlock_unlock(&vinode->rwlock);
 }
 

@@ -184,6 +184,13 @@ function(add_test_with_filter name filter tracer executable)
 	set_tests_properties(${name}${filter_postfix}_${tracer} PROPERTIES
 		ENVIRONMENT "LC_ALL=C;PATH=$ENV{PATH};${ARGV4}"
 		FAIL_REGULAR_EXPRESSION Sanitizer)
+	if (${tracer} STREQUAL pmemcheck)
+		set_tests_properties(${name}${filter_postfix}_${tracer} PROPERTIES
+			COST 100)
+	elseif(${tracer} IN_LIST vg_tracers)
+		set_tests_properties(${name}${filter_postfix}_${tracer} PROPERTIES
+			COST 50)
+	endif()
 endfunction()
 
 function(add_test_generic name tracer)

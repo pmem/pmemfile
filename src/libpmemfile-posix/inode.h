@@ -239,7 +239,7 @@ inode_get_flags(const struct pmemfile_inode *i)
 }
 
 static inline void
-pmemfile_tx_time_set(struct pmemfile_time *time, struct pmemfile_time tm)
+time_tx_set(struct pmemfile_time *time, struct pmemfile_time tm)
 {
 	TX_ADD_DIRECT(time);
 	*time = tm;
@@ -248,19 +248,19 @@ pmemfile_tx_time_set(struct pmemfile_time *time, struct pmemfile_time tm)
 static inline void
 inode_tx_set_atime(struct pmemfile_inode *i, struct pmemfile_time tm)
 {
-	pmemfile_tx_time_set(inode_get_atime_ptr(i), tm);
+	time_tx_set(inode_get_atime_ptr(i), tm);
 }
 
 static inline void
 inode_tx_set_mtime(struct pmemfile_inode *i, struct pmemfile_time tm)
 {
-	pmemfile_tx_time_set(inode_get_mtime_ptr(i), tm);
+	time_tx_set(inode_get_mtime_ptr(i), tm);
 }
 
 static inline void
 inode_tx_set_ctime(struct pmemfile_inode *i, struct pmemfile_time tm)
 {
-	pmemfile_tx_time_set(inode_get_ctime_ptr(i), tm);
+	time_tx_set(inode_get_ctime_ptr(i), tm);
 }
 
 static inline void

@@ -141,18 +141,8 @@ struct pmemfile_time {
 		((uint32_t)(a + '0') << 24))
 
 #define PMEMFILE_INODE_SIZE METADATA_BLOCK_SIZE
-#define PMEMFILE_IN_INODE_STORAGE (PMEMFILE_INODE_SIZE\
-				- 4  /* version */ \
-				- 4  /* uid */ \
-				- 4  /* gid */ \
-				- 4  /* suspeneded references */ \
-				- 16 /* atime */ \
-				- 16 /* ctime */ \
-				- 16 /* mtime */ \
-				- 8  /* nlink */ \
-				- 8  /* size */ \
-				- 8  /* allocated space */ \
-				- 8  /* flags */)
+#define PMEMFILE_IN_INODE_STORAGE \
+	(sizeof(struct pmemfile_dir) + 2 * sizeof(struct pmemfile_dirent) + 8)
 
 /* Inode */
 struct pmemfile_inode {
@@ -171,26 +161,61 @@ struct pmemfile_inode {
 	 */
 	uint32_t suspended_references;
 
-	/* time of last access */
-	struct pmemfile_time atime;
+	uint8_t padding1[48];
 
-	/* time of last status change */
-	struct pmemfile_time ctime;
-
-	/* time of last modification */
-	struct pmemfile_time mtime;
-
-	/* hard link counter */
-	uint64_t nlink;
-
-	/* size of file */
-	uint64_t size;
-
-	/* allocated space in file (for regular files) */
-	uint64_t allocated_space;
+	/* ---- cacheline boundary ----- */
 
 	/* file flags */
-	uint64_t flags;
+	uint64_t flags[2];
+
+	/* allocated space in file (for regular files) */
+	uint64_t allocated_space[2];
+
+	/* size of file */
+	uint64_t size[2];
+
+	/* hard link counter */
+	uint64_t nlink[2];
+
+	/* ---- cacheline boundary ----- */
+
+	/* time of last access */
+	struct pmemfile_time atime[2];
+
+	/* time of last status change */
+	struct pmemfile_time ctime[2];
+
+	/* ---- cacheline boundary ----- */
+
+	/* time of last modification */
+	struct pmemfile_time mtime[2];
+
+	uint8_t padding2[32];
+
+	/* ---- cacheline boundary ----- */
+
+	union pmemfile_inode_slots {
+		struct {
+			unsigned atime : 1;
+			unsigned ctime : 1;
+			unsigned mtime : 1;
+			unsigned nlink : 1;
+			unsigned size : 1;
+			unsigned allocated_space : 1;
+			unsigned flags : 1;
+			unsigned bit_padding : 25;
+			char byte_padding[4];
+		} bits;
+		uint64_t value;
+	} slots;
+
+	char byte_padding[56];
+
+	/* ---- cacheline boundary ---- */
+
+	uint8_t padding3[3200];
+
+	/* ---- cacheline boundary ---- */
 
 	/* data! */
 	union {
@@ -200,9 +225,17 @@ struct pmemfile_inode {
 		/* directory specific data */
 		struct pmemfile_dir dir;
 
-		char data[PMEMFILE_IN_INODE_STORAGE];
+		TOID(char) long_symlink;
+
+		char short_symlink[PMEMFILE_IN_INODE_STORAGE];
 	} file_data;
 };
+
+/*
+ * Sizeof(slots) must be equal to the size for which architecture guarantees
+ * store atomicity.
+ */
+COMPILE_ERROR_ON(sizeof(union pmemfile_inode_slots) != 8);
 
 COMPILE_ERROR_ON(sizeof(struct pmemfile_inode) != PMEMFILE_INODE_SIZE);
 

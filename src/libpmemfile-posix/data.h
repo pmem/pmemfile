@@ -42,6 +42,9 @@ size_t vinode_remove_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		uint64_t offset, uint64_t len);
 size_t vinode_allocate_interval(PMEMfilepool *pfp,
 		struct pmemfile_vinode *vinode, uint64_t offset, uint64_t size);
+bool vinode_is_interval_allocated(PMEMfilepool *pfp,
+		struct pmemfile_vinode *vinode, uint64_t offset, uint64_t size,
+		const struct pmemfile_block_desc *last_block);
 
 struct pmemfile_block_desc *find_closest_block(struct pmemfile_vinode *vinode,
 		uint64_t off);

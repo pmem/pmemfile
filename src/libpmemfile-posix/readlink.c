@@ -80,8 +80,9 @@ _pmemfile_readlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	os_rwlock_rdlock(&vinode->rwlock);
 
-	const char *data = vinode->inode->file_data.data;
-	size_t len = strlen(data);
+	const char *data = get_symlink(pfp, vinode);
+	size_t len = inode_get_size(vinode->inode);
+
 	if (len > bufsiz)
 		len = bufsiz;
 	memcpy(buf, data, len);

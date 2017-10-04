@@ -149,7 +149,8 @@ TEST_F(getdents, 1)
 	ASSERT_NE(f, nullptr) << strerror(errno);
 
 	/* 4 entries in directory and '.' '..' */
-	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_END), 6);
+	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_END),
+		  (1LL << 32) + 4);
 
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 0, PMEMFILE_SEEK_SET), 0);
 
@@ -257,8 +258,8 @@ TEST_F(getdents, 2)
 
 	auto files = test_list_files(pfp, f, buf, (unsigned)r);
 	ASSERT_TRUE(test_compare_dirs(files, std::vector<pmemfile_ls>{
-						     {040755, 2, 4000, "."},
-						     {040777, 3, 4000, ".."},
+						     {040755, 2, 8192, "."},
+						     {040777, 3, 8192, ".."},
 						     {0100644, 1, 0, "file1"},
 						     {0100644, 1, 0, "file2"},
 						     {0100644, 1, 0, "file3"},

@@ -97,8 +97,7 @@ vinode_chown(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 		struct pmemfile_time tm;
 		tx_get_current_time(&tm);
 
-		TX_ADD_DIRECT(&inode->ctime);
-		inode->ctime = tm;
+		inode_tx_set_ctime(inode, tm);
 	} TX_ONABORT {
 		error = errno;
 	} TX_END

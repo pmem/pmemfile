@@ -40,6 +40,10 @@
 #include "layout.h"
 #include "os_thread.h"
 
+#define PMEMFILE_S_LONGSYMLINK 0x10000
+COMPILE_ERROR_ON((PMEMFILE_S_IFMT | PMEMFILE_ALLPERMS) &
+		PMEMFILE_S_LONGSYMLINK);
+
 /* volatile inode */
 struct pmemfile_vinode {
 	/* reference counter */
@@ -102,9 +106,199 @@ struct pmemfile_vinode {
 	} snapshot;
 };
 
+/*
+ * It's not actually a boolean. It's just a workaround for silly compiler,
+ * which complains when we try to assign unsigned to a bit field. It generates:
+ *
+ * "error: conversion to 'unsigned char:1' from 'unsigned char' may alter its
+ * value"
+ */
+typedef bool inode_slot;
+
+static inline inode_slot
+inode_next_atime_slot(struct pmemfile_inode *i)
+{
+	return (i->slots.bits.atime + 1) % 2;
+}
+
+static inline inode_slot
+inode_next_mtime_slot(struct pmemfile_inode *i)
+{
+	return (i->slots.bits.mtime + 1) % 2;
+}
+
+static inline inode_slot
+inode_next_ctime_slot(struct pmemfile_inode *i)
+{
+	return (i->slots.bits.ctime + 1) % 2;
+}
+
+static inline inode_slot
+inode_next_nlink_slot(struct pmemfile_inode *i)
+{
+	return (i->slots.bits.nlink + 1) % 2;
+}
+
+static inline inode_slot
+inode_next_size_slot(struct pmemfile_inode *i)
+{
+	return (i->slots.bits.size + 1) % 2;
+}
+
+static inline inode_slot
+inode_next_allocated_space_slot(struct pmemfile_inode *i)
+{
+	return (i->slots.bits.allocated_space + 1) % 2;
+}
+
+static inline inode_slot
+inode_next_flags_slot(struct pmemfile_inode *i)
+{
+	return (i->slots.bits.flags + 1) % 2;
+}
+
+static inline struct pmemfile_time *
+inode_get_atime_ptr(struct pmemfile_inode *i)
+{
+	return &i->atime[i->slots.bits.atime];
+}
+
+static inline struct pmemfile_time *
+inode_get_mtime_ptr(struct pmemfile_inode *i)
+{
+	return &i->mtime[i->slots.bits.mtime];
+}
+
+static inline struct pmemfile_time *
+inode_get_ctime_ptr(struct pmemfile_inode *i)
+{
+	return &i->ctime[i->slots.bits.ctime];
+}
+
+static inline struct pmemfile_time
+inode_get_ctime(const struct pmemfile_inode *i)
+{
+	return i->ctime[i->slots.bits.ctime];
+}
+
+static inline uint64_t *
+inode_get_nlink_ptr(struct pmemfile_inode *i)
+{
+	return &i->nlink[i->slots.bits.nlink];
+}
+
+static inline uint64_t
+inode_get_nlink(const struct pmemfile_inode *i)
+{
+	return i->nlink[i->slots.bits.nlink];
+}
+
+static inline uint64_t *
+inode_get_size_ptr(struct pmemfile_inode *i)
+{
+	return &i->size[i->slots.bits.size];
+}
+
+static inline uint64_t
+inode_get_size(const struct pmemfile_inode *i)
+{
+	return i->size[i->slots.bits.size];
+}
+
+static inline uint64_t *
+inode_get_allocated_space_ptr(struct pmemfile_inode *i)
+{
+	return &i->allocated_space[i->slots.bits.allocated_space];
+}
+
+static inline uint64_t
+inode_get_allocated_space(const struct pmemfile_inode *i)
+{
+	return i->allocated_space[i->slots.bits.allocated_space];
+}
+
+static inline uint64_t *
+inode_get_flags_ptr(struct pmemfile_inode *i)
+{
+	return &i->flags[i->slots.bits.flags];
+}
+
+static inline uint64_t
+inode_get_flags(const struct pmemfile_inode *i)
+{
+	return i->flags[i->slots.bits.flags];
+}
+
+static inline void
+pmemfile_tx_time_set(struct pmemfile_time *time, struct pmemfile_time tm)
+{
+	TX_ADD_DIRECT(time);
+	*time = tm;
+}
+
+static inline void
+inode_tx_set_atime(struct pmemfile_inode *i, struct pmemfile_time tm)
+{
+	pmemfile_tx_time_set(inode_get_atime_ptr(i), tm);
+}
+
+static inline void
+inode_tx_set_mtime(struct pmemfile_inode *i, struct pmemfile_time tm)
+{
+	pmemfile_tx_time_set(inode_get_mtime_ptr(i), tm);
+}
+
+static inline void
+inode_tx_set_ctime(struct pmemfile_inode *i, struct pmemfile_time tm)
+{
+	pmemfile_tx_time_set(inode_get_ctime_ptr(i), tm);
+}
+
+static inline void
+inode_tx_inc_nlink(struct pmemfile_inode *i)
+{
+	uint64_t *nlink = inode_get_nlink_ptr(i);
+	TX_ADD_DIRECT(nlink);
+	(*nlink)++;
+}
+
+static inline void
+inode_tx_dec_nlink(struct pmemfile_inode *i)
+{
+	uint64_t *nlink = inode_get_nlink_ptr(i);
+	TX_ADD_DIRECT(nlink);
+	(*nlink)--;
+}
+
+static inline void
+inode_tx_set_size(struct pmemfile_inode *i, uint64_t sz)
+{
+	uint64_t *size = inode_get_size_ptr(i);
+	TX_ADD_DIRECT(size);
+	*size = sz;
+}
+
+static inline void
+inode_tx_set_allocated_space(struct pmemfile_inode *i, uint64_t sz)
+{
+	uint64_t *size = inode_get_allocated_space_ptr(i);
+	if (*size == sz)
+		return;
+	TX_ADD_DIRECT(size);
+	*size = sz;
+}
+
+static inline void
+inode_tx_set_flags(struct pmemfile_inode *i, uint64_t f)
+{
+	uint64_t *flags = inode_get_flags_ptr(i);
+	TX_ADD_DIRECT(flags);
+	*flags = f;
+}
+
 static inline bool inode_is_dir(const struct pmemfile_inode *inode)
 {
-	return PMEMFILE_S_ISDIR(inode->flags);
+	return PMEMFILE_S_ISDIR(inode_get_flags(inode));
 }
 
 static inline bool vinode_is_dir(struct pmemfile_vinode *vinode)
@@ -114,7 +308,7 @@ static inline bool vinode_is_dir(struct pmemfile_vinode *vinode)
 
 static inline bool inode_is_regular_file(const struct pmemfile_inode *inode)
 {
-	return PMEMFILE_S_ISREG(inode->flags);
+	return PMEMFILE_S_ISREG(inode_get_flags(inode));
 }
 
 static inline bool vinode_is_regular_file(struct pmemfile_vinode *vinode)
@@ -124,7 +318,7 @@ static inline bool vinode_is_regular_file(struct pmemfile_vinode *vinode)
 
 static inline bool inode_is_symlink(const struct pmemfile_inode *inode)
 {
-	return PMEMFILE_S_ISLNK(inode->flags);
+	return PMEMFILE_S_ISLNK(inode_get_flags(inode));
 }
 
 static inline bool vinode_is_symlink(struct pmemfile_vinode *vinode)
@@ -136,6 +330,19 @@ static inline bool vinode_is_root(struct pmemfile_vinode *vinode)
 {
 	return vinode_is_dir(vinode) && vinode->parent == vinode;
 }
+
+static inline bool inode_is_longsymlink(const struct pmemfile_inode *inode)
+{
+	return inode_is_symlink(inode) &&
+			(inode_get_flags(inode) & PMEMFILE_S_LONGSYMLINK);
+}
+
+static inline bool vinode_is_longsymlink(struct pmemfile_vinode *vinode)
+{
+	return inode_is_longsymlink(vinode->inode);
+}
+
+const char *get_symlink(PMEMfilepool *pfp, struct pmemfile_vinode *vinode);
 
 struct pmemfile_cred;
 TOID(struct pmemfile_inode) inode_alloc(PMEMfilepool *pfp,

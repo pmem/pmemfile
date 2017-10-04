@@ -34,12 +34,27 @@
  * symlink.c -- pmemfile_symlink* implementation
  */
 
+#include "blocks.h"
 #include "callbacks.h"
 #include "dir.h"
 #include "libpmemfile-posix.h"
 #include "out.h"
 #include "pool.h"
 #include "utils.h"
+
+const char *
+get_symlink(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
+{
+	const char *symlink_target;
+	struct pmemfile_inode *inode = vinode->inode;
+
+	if (inode_is_longsymlink(inode))
+		symlink_target = PF_RO(pfp, inode->file_data.long_symlink);
+	else
+		symlink_target = inode->file_data.short_symlink;
+
+	return symlink_target;
+}
 
 static int
 _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
@@ -75,7 +90,10 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 
 	size_t len = strlen(target);
 
-	if (len >= PMEMFILE_IN_INODE_STORAGE) {
+	const struct pmem_block_info *block_info =
+			data_block_info(len + 1, MAX_BLOCK_SIZE);
+
+	if (len + 1 > block_info->size) {
 		error = ENAMETOOLONG;
 		goto end;
 	}
@@ -91,12 +109,27 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 		TOID(struct pmemfile_inode) tinode = inode_alloc(pfp, &cred,
 				PMEMFILE_S_IFLNK | PMEMFILE_ACCESSPERMS);
 		struct pmemfile_inode *inode = PF_RW(pfp, tinode);
-		pmemobj_memcpy_persist(pfp->pop, inode->file_data.data, target,
-				len);
-		inode->size = len;
+		char *buf;
+
+		if (len + 1 <= sizeof(inode->file_data.short_symlink)) {
+			buf = inode->file_data.short_symlink;
+		} else {
+			inode->file_data.long_symlink =
+				TX_XALLOC(char, block_info->size,
+					POBJ_XALLOC_NO_FLUSH |
+					block_info->class_id);
+
+			inode->flags[0] |= PMEMFILE_S_LONGSYMLINK;
+
+			buf = PF_RW(pfp, inode->file_data.long_symlink);
+		}
+
+		pmemobj_memcpy_persist(pfp->pop, buf, target, len + 1);
+
+		*inode_get_size_ptr(inode) = len;
 
 		inode_add_dirent(pfp, vparent->tinode, info.remaining, namelen,
-				tinode, inode->ctime);
+				tinode, inode_get_ctime(inode));
 	} TX_ONABORT {
 		if (errno == ENOMEM)
 			errno = ENOSPC;

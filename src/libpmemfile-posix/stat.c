@@ -70,24 +70,25 @@ vinode_stat(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 	memset(buf, 0, sizeof(*buf));
 	buf->st_dev = pfp->dev;
 	buf->st_ino = vinode->tinode.oid.off;
-	buf->st_mode = inode->flags & (PMEMFILE_S_IFMT | PMEMFILE_ALLPERMS);
-	buf->st_nlink = inode->nlink;
+	buf->st_mode = inode_get_flags(inode) &
+			(PMEMFILE_S_IFMT | PMEMFILE_ALLPERMS);
+	buf->st_nlink = inode_get_nlink(inode);
 	buf->st_uid = inode->uid;
 	buf->st_gid = inode->gid;
 	buf->st_rdev = 0;
-	if ((pmemfile_off_t)inode->size < 0)
+	if ((pmemfile_off_t)inode_get_size(inode) < 0)
 		return EOVERFLOW;
-	buf->st_size = (pmemfile_off_t)inode->size;
+	buf->st_size = (pmemfile_off_t)inode_get_size(inode);
 	buf->st_blksize = 1;
-	if ((pmemfile_blkcnt_t)inode->size < 0)
+	if ((pmemfile_blkcnt_t)inode_get_size(inode) < 0)
 		return EOVERFLOW;
 
 	pmemfile_blkcnt_t blks = 0;
 	if (inode_is_regular_file(inode)) {
-		size_t sz = inode->allocated_space;
+		size_t sz = inode_get_allocated_space(inode);
 		blks = (pmemfile_blkcnt_t)(sz / 512);
 	} else if (inode_is_dir(inode)) {
-		size_t sz = inode->size - sizeof(inode->file_data);
+		size_t sz = inode_get_size(inode);
 		blks = (pmemfile_blkcnt_t)(sz / 512);
 	} else if (inode_is_symlink(inode)) {
 		blks = 0;
@@ -95,9 +96,9 @@ vinode_stat(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		ASSERT(0);
 	}
 	buf->st_blocks = blks;
-	buf->st_atim = pmemfile_time_to_timespec(&inode->atime);
-	buf->st_ctim = pmemfile_time_to_timespec(&inode->ctime);
-	buf->st_mtim = pmemfile_time_to_timespec(&inode->mtime);
+	buf->st_atim = pmemfile_time_to_timespec(inode_get_atime_ptr(inode));
+	buf->st_ctim = pmemfile_time_to_timespec(inode_get_ctime_ptr(inode));
+	buf->st_mtim = pmemfile_time_to_timespec(inode_get_mtime_ptr(inode));
 
 	return 0;
 }

@@ -250,8 +250,8 @@ TEST_F(dirs, lots_of_files)
 	if (ops == 100)
 		EXPECT_TRUE(test_compare_dirs(pfp, "/",
 					      std::vector<pmemfile_ls>{
-						      {040777, 2, 32672, "."},
-						      {040777, 2, 32672, ".."},
+						      {040777, 2, 36864, "."},
+						      {040777, 2, 36864, ".."},
 					      }));
 }
 
@@ -824,22 +824,22 @@ TEST_F(dirs, file_renames)
 
 	EXPECT_TRUE(
 		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
-						    {040777, 4, 4000, "."},
-						    {040777, 4, 4000, ".."},
-						    {040755, 2, 4000, "dir1"},
-						    {040755, 2, 4000, "dir2"},
+						    {040777, 4, 8192, "."},
+						    {040777, 4, 8192, ".."},
+						    {040755, 2, 8192, "dir1"},
+						    {040755, 2, 8192, "dir2"},
 						    {0100755, 1, 0, "file3"},
 					    }));
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1",
 				      std::vector<pmemfile_ls>{
-					      {040755, 2, 4000, "."},
-					      {040777, 4, 4000, ".."},
+					      {040755, 2, 8192, "."},
+					      {040777, 4, 8192, ".."},
 					      {0100755, 1, 0, "file1"},
 				      }));
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir2",
 				      std::vector<pmemfile_ls>{
-					      {040755, 2, 4000, "."},
-					      {040777, 4, 4000, ".."},
+					      {040755, 2, 8192, "."},
+					      {040777, 4, 8192, ".."},
 					      {0100755, 1, 0, "file2"},
 				      }));
 
@@ -858,52 +858,52 @@ TEST_F(dirs, file_renames)
 	ASSERT_EQ(pmemfile_rename(pfp, "/file3", "file4"), 0);
 	EXPECT_TRUE(
 		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
-						    {040777, 4, 4000, "."},
-						    {040777, 4, 4000, ".."},
-						    {040755, 2, 4000, "dir1"},
-						    {040755, 2, 4000, "dir2"},
+						    {040777, 4, 8192, "."},
+						    {040777, 4, 8192, ".."},
+						    {040755, 2, 8192, "dir1"},
+						    {040755, 2, 8192, "dir2"},
 						    {0100755, 1, 0, "file4"},
 					    }));
 	ASSERT_EQ(pmemfile_rename(pfp, "/dir1/file1", "/dir1/file11"), 0);
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1",
 				      std::vector<pmemfile_ls>{
-					      {040755, 2, 4000, "."},
-					      {040777, 4, 4000, ".."},
+					      {040755, 2, 8192, "."},
+					      {040777, 4, 8192, ".."},
 					      {0100755, 1, 0, "file11"},
 				      }));
 	ASSERT_EQ(pmemfile_rename(pfp, "/dir2/file2", "/dir2/file22"), 0);
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir2",
 				      std::vector<pmemfile_ls>{
-					      {040755, 2, 4000, "."},
-					      {040777, 4, 4000, ".."},
+					      {040755, 2, 8192, "."},
+					      {040777, 4, 8192, ".."},
 					      {0100755, 1, 0, "file22"},
 				      }));
 
 	ASSERT_EQ(pmemfile_rename(pfp, "/file4", "/dir2/file4"), 0);
 	EXPECT_TRUE(
 		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
-						    {040777, 4, 4000, "."},
-						    {040777, 4, 4000, ".."},
-						    {040755, 2, 4000, "dir1"},
-						    {040755, 2, 4000, "dir2"},
+						    {040777, 4, 8192, "."},
+						    {040777, 4, 8192, ".."},
+						    {040755, 2, 8192, "dir1"},
+						    {040755, 2, 8192, "dir2"},
 					    }));
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir2",
 				      std::vector<pmemfile_ls>{
-					      {040755, 2, 4000, "."},
-					      {040777, 4, 4000, ".."},
+					      {040755, 2, 8192, "."},
+					      {040777, 4, 8192, ".."},
 					      {0100755, 1, 0, "file4"},
 					      {0100755, 1, 0, "file22"},
 				      }));
 	ASSERT_EQ(pmemfile_rename(pfp, "/dir1/file11", "/dir2/file11"), 0);
 	EXPECT_TRUE(
 		test_compare_dirs(pfp, "/dir1", std::vector<pmemfile_ls>{
-							{040755, 2, 4000, "."},
-							{040777, 4, 4000, ".."},
+							{040755, 2, 8192, "."},
+							{040777, 4, 8192, ".."},
 						}));
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir2",
 				      std::vector<pmemfile_ls>{
-					      {040755, 2, 4000, "."},
-					      {040777, 4, 4000, ".."},
+					      {040755, 2, 8192, "."},
+					      {040777, 4, 8192, ".."},
 					      {0100755, 1, 0, "file4"},
 					      {0100755, 1, 0, "file22"},
 					      {0100755, 1, 0, "file11"},
@@ -911,8 +911,8 @@ TEST_F(dirs, file_renames)
 	ASSERT_EQ(pmemfile_rename(pfp, "/dir2/file11", "/dir2/file22"), 0);
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir2",
 				      std::vector<pmemfile_ls>{
-					      {040755, 2, 4000, "."},
-					      {040777, 4, 4000, ".."},
+					      {040755, 2, 8192, "."},
+					      {040777, 4, 8192, ".."},
 					      {0100755, 1, 0, "file4"},
 					      {0100755, 1, 0, "file22"},
 				      }));
@@ -1059,31 +1059,31 @@ TEST_F(dirs, rename_dir)
 
 	EXPECT_TRUE(
 		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
-						    {040777, 3, 4000, "."},
-						    {040777, 3, 4000, ".."},
-						    {040755, 3, 4000, "dir1"},
+						    {040777, 3, 8192, "."},
+						    {040777, 3, 8192, ".."},
+						    {040755, 3, 8192, "dir1"},
 					    }));
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1",
 				      std::vector<pmemfile_ls>{
-					      {040755, 3, 4000, "."},
-					      {040777, 3, 4000, ".."},
-					      {040755, 3, 4000, "dir2"},
+					      {040755, 3, 8192, "."},
+					      {040777, 3, 8192, ".."},
+					      {040755, 3, 8192, "dir2"},
 					      {0100644, 1, 0, "f1"},
 				      }));
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1/dir2",
 				      std::vector<pmemfile_ls>{
-					      {040755, 3, 4000, "."},
-					      {040755, 3, 4000, ".."},
-					      {040755, 2, 4000, "dir3"},
+					      {040755, 3, 8192, "."},
+					      {040755, 3, 8192, ".."},
+					      {040755, 2, 8192, "dir3"},
 					      {0100644, 1, 0, "f2"},
 				      }));
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1/dir2/dir3",
 				      std::vector<pmemfile_ls>{
-					      {040755, 2, 4000, "."},
-					      {040755, 3, 4000, ".."},
+					      {040755, 2, 8192, "."},
+					      {040755, 3, 8192, ".."},
 					      {0100644, 1, 0, "f3"},
 				      }));
 
@@ -1095,16 +1095,16 @@ TEST_F(dirs, rename_dir)
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1/dir2",
 				      std::vector<pmemfile_ls>{
-					      {040755, 3, 4000, "."},
-					      {040755, 3, 4000, ".."},
-					      {040755, 2, 4000, "dir31"},
+					      {040755, 3, 8192, "."},
+					      {040755, 3, 8192, ".."},
+					      {040755, 2, 8192, "dir31"},
 					      {0100644, 1, 0, "f2"},
 				      }));
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1/dir2/dir31",
 				      std::vector<pmemfile_ls>{
-					      {040755, 2, 4000, "."},
-					      {040755, 3, 4000, ".."},
+					      {040755, 2, 8192, "."},
+					      {040755, 3, 8192, ".."},
 					      {0100644, 1, 0, "f3"},
 				      }));
 
@@ -1118,17 +1118,17 @@ TEST_F(dirs, rename_dir)
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1",
 				      std::vector<pmemfile_ls>{
-					      {040755, 3, 4000, "."},
-					      {040777, 3, 4000, ".."},
-					      {040755, 3, 4000, "dir21"},
+					      {040755, 3, 8192, "."},
+					      {040777, 3, 8192, ".."},
+					      {040755, 3, 8192, "dir21"},
 					      {0100644, 1, 0, "f1"},
 				      }));
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1/dir21",
 				      std::vector<pmemfile_ls>{
-					      {040755, 3, 4000, "."},
-					      {040755, 3, 4000, ".."},
-					      {040755, 2, 4000, "dir31"},
+					      {040755, 3, 8192, "."},
+					      {040755, 3, 8192, ".."},
+					      {040755, 2, 8192, "dir31"},
 					      {0100644, 1, 0, "f2"},
 				      }));
 
@@ -1141,16 +1141,16 @@ TEST_F(dirs, rename_dir)
 
 	EXPECT_TRUE(
 		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
-						    {040777, 3, 4000, "."},
-						    {040777, 3, 4000, ".."},
-						    {040755, 3, 4000, "dir11"},
+						    {040777, 3, 8192, "."},
+						    {040777, 3, 8192, ".."},
+						    {040755, 3, 8192, "dir11"},
 					    }));
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir11",
 				      std::vector<pmemfile_ls>{
-					      {040755, 3, 4000, "."},
-					      {040777, 3, 4000, ".."},
-					      {040755, 3, 4000, "dir21"},
+					      {040755, 3, 8192, "."},
+					      {040777, 3, 8192, ".."},
+					      {040755, 3, 8192, "dir21"},
 					      {0100644, 1, 0, "f1"},
 				      }));
 
@@ -1188,9 +1188,9 @@ TEST_F(dirs, move_dirs_between_dirs)
 
 	EXPECT_TRUE(
 		test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
-						    {040777, 3, 4000, "."},
-						    {040777, 3, 4000, ".."},
-						    {040755, 3, 4000, "dir1"},
+						    {040777, 3, 8192, "."},
+						    {040777, 3, 8192, ".."},
+						    {040755, 3, 8192, "dir1"},
 					    }));
 
 	ASSERT_EQ(pmemfile_rename(pfp, "/dir1/dir2/dir3", "/dir1/dir3"), 0)
@@ -1198,11 +1198,11 @@ TEST_F(dirs, move_dirs_between_dirs)
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir1",
 				      std::vector<pmemfile_ls>{
-					      {040755, 4, 4000, "."},
-					      {040777, 3, 4000, ".."},
-					      {040755, 2, 4000, "dir2"},
+					      {040755, 4, 8192, "."},
+					      {040777, 3, 8192, ".."},
+					      {040755, 2, 8192, "dir2"},
 					      {0100644, 1, 0, "f1"},
-					      {040755, 2, 4000, "dir3"},
+					      {040755, 2, 8192, "dir3"},
 				      }));
 
 	EXPECT_TRUE(same_inode(pfp, "/dir1/dir3", &dir3_stat));
@@ -1234,23 +1234,23 @@ TEST_F(dirs, rename_dir_to_empty)
 
 	EXPECT_TRUE(test_compare_dirs(
 		pfp, "/", std::vector<pmemfile_ls>{
-				  {040777, 4, 4000, "."},
-				  {040777, 4, 4000, ".."},
-				  {040755, 2, 4000, "dir_empty"},
-				  {040755, 2, 4000, "dir_not_empty"},
+				  {040777, 4, 8192, "."},
+				  {040777, 4, 8192, ".."},
+				  {040755, 2, 8192, "dir_empty"},
+				  {040755, 2, 8192, "dir_not_empty"},
 			  }));
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir_empty",
 				      std::vector<pmemfile_ls>{
-					      {040755, 2, 4000, "."},
-					      {040777, 4, 4000, ".."},
+					      {040755, 2, 8192, "."},
+					      {040777, 4, 8192, ".."},
 					      {0100644, 1, 0, "f1"},
 				      }));
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/dir_not_empty",
 				      std::vector<pmemfile_ls>{
-					      {040755, 2, 4000, "."},
-					      {040777, 4, 4000, ".."},
+					      {040755, 2, 8192, "."},
+					      {040777, 4, 8192, ".."},
 					      {0100644, 1, 0, "f2"},
 				      }));
 }

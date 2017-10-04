@@ -95,6 +95,12 @@ function(execute name)
 		match(${BIN_DIR}/${TRACER}.err ${SRC_DIR}/${TRACER}.err.match)
 	endif()
 
+	# pmemcheck is a special snowflake and it doesn't set exit code when it
+	# detects an error, so we have to look at its output
+	if (${TRACER} STREQUAL pmemcheck AND NOT ERR MATCHES "ERROR SUMMARY: 0")
+		message(FATAL_ERROR "Test ${name} failed with pmemcheck")
+	endif()
+
 	if ($ENV{DUMP_STDOUT})
 		file(READ ${BIN_DIR}/${TRACER}.out OUT)
 		message(STATUS "Stdout:\n${OUT}")

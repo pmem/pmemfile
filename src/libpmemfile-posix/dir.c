@@ -191,6 +191,7 @@ inode_add_dirent(PMEMfilepool *pfp,
 			const struct pmem_block_info *info =
 				metadata_block_info();
 
+			TX_ADD_DIRECT(&dir->next);
 			dir->next = TX_XALLOC(struct pmemfile_dir, info->size,
 				POBJ_XALLOC_ZERO | info->class_id);
 

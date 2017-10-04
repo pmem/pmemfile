@@ -36,7 +36,7 @@ setup()
 if(LONG_TESTS OR NOT (TRACER STREQUAL "pmemcheck"))
 	execute(${TEST_EXECUTABLE})
 else()
-	execute(${TEST_EXECUTABLE} --gtest_filter=-rw.huge_file)
+	execute(${TEST_EXECUTABLE} --gtest_filter=-rw.huge_file:rw.failed_write)
 endif()
 
 cleanup()

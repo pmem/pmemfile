@@ -62,4 +62,12 @@ struct pmemfile_block_desc *iterate_on_file_range(PMEMfilepool *pfp,
 		struct pmemfile_block_desc *starting_block, uint64_t offset,
 		uint64_t len, char *buf, enum cpy_direction dir);
 
+void vinode_write(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+		size_t offset, struct pmemfile_block_desc **last_block,
+		const char *buf, size_t count);
+
+size_t vinode_read(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
+		size_t offset, struct pmemfile_block_desc **last_block,
+		char *buf, size_t count);
+
 #endif

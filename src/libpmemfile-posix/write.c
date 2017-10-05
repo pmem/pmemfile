@@ -45,35 +45,6 @@
 #include "utils.h"
 
 /*
- * vinode_write -- writes to file
- */
-static void
-vinode_write(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, size_t offset,
-		struct pmemfile_block_desc **last_block,
-		const char *buf, size_t count)
-{
-	ASSERT(count > 0);
-
-	/*
-	 * Two steps:
-	 * - Zero Fill some new blocks, in case the file is extended by
-	 *   writing to the file after seeking past file size ( optionally )
-	 * - Copy the data from the users buffer
-	 */
-
-	/* All blocks needed for writing are properly allocated at this point */
-
-	struct pmemfile_block_desc *block =
-		find_closest_block_with_hint(vinode, offset, *last_block);
-
-	block = iterate_on_file_range(pfp, vinode, block, offset,
-			count, (char *)buf, write_to_blocks);
-
-	if (block)
-		*last_block = block;
-}
-
-/*
  * pmemfile_pwritev_args_check - checks some write arguments
  * The arguments here can be examined while holding the mutex for the
  * PMEMfile instance, while there is no need to hold the lock for the

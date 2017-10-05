@@ -44,40 +44,6 @@
 #include "pool.h"
 #include "utils.h"
 
-/*
- * vinode_read -- reads file
- */
-static size_t
-vinode_read(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, size_t offset,
-		struct pmemfile_block_desc **last_block, char *buf,
-		size_t count)
-{
-	uint64_t size = inode_get_size(vinode->inode);
-
-	/*
-	 * Start reading at offset, stop reading
-	 * when end of file is reached, or count bytes were read.
-	 * The following two branches compute how many bytes are
-	 * going to be read.
-	 */
-	if (offset >= size)
-		return 0; /* EOF already */
-
-	if (size - offset < count)
-		count = size - offset;
-
-	struct pmemfile_block_desc *block =
-		find_closest_block_with_hint(vinode, offset, *last_block);
-
-	block = iterate_on_file_range(pfp, vinode, block, offset,
-			count, buf, read_from_blocks);
-
-	if (block)
-		*last_block = block;
-
-	return count;
-}
-
 static int
 time_cmp(const struct pmemfile_time *t1, const struct pmemfile_time *t2)
 {

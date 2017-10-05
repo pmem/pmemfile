@@ -71,10 +71,6 @@
 #include "out.h"
 #include "utils.h"
 
-/* branching factor is 2^N_CHILDREN_POW */
-#define N_CHILDREN_POW 4
-#define N_CHILDREN (1 << N_CHILDREN_POW)
-
 /*
  * create new offset_map
  */

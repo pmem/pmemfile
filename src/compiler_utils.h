@@ -65,9 +65,13 @@ extern "C" {
 #define DIR_SEPARATOR '\\'
 #endif
 
+#ifdef __cplusplus
+#define COMPILE_ERROR_ON(cond)
+#else
 #define COMPILE_ERROR_ON(cond)\
 	extern int (*compile_error_dummy_symbol(void))\
 	[!!sizeof(struct { int dummy: (1 + (1 / (!(cond)))); })]
+#endif
 
 #define pf_always_inline __attribute__((always_inline)) inline
 #define pf_printf_like(fmt_arg_num, arg_num) \

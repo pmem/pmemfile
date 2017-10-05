@@ -979,3 +979,66 @@ vinode_remove_interval(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 
 	return deallocated_space;
 }
+
+/*
+ * vinode_read -- reads file
+ */
+size_t
+vinode_read(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, size_t offset,
+		struct pmemfile_block_desc **last_block, char *buf,
+		size_t count)
+{
+	uint64_t size = inode_get_size(vinode->inode);
+
+	/*
+	 * Start reading at offset, stop reading
+	 * when end of file is reached, or count bytes were read.
+	 * The following two branches compute how many bytes are
+	 * going to be read.
+	 */
+	if (offset >= size)
+		return 0; /* EOF already */
+
+	if (size - offset < count)
+		count = size - offset;
+
+	struct pmemfile_block_desc *block =
+		find_closest_block_with_hint(vinode, offset, *last_block);
+
+	block = iterate_on_file_range(pfp, vinode, block, offset,
+			count, buf, read_from_blocks);
+
+	if (block)
+		*last_block = block;
+
+	return count;
+}
+
+/*
+ * vinode_write -- writes to file
+ */
+void
+vinode_write(PMEMfilepool *pfp, struct pmemfile_vinode *vinode, size_t offset,
+		struct pmemfile_block_desc **last_block,
+		const char *buf, size_t count)
+{
+	ASSERT(count > 0);
+
+	/*
+	 * Two steps:
+	 * - Zero Fill some new blocks, in case the file is extended by
+	 *   writing to the file after seeking past file size ( optionally )
+	 * - Copy the data from the users buffer
+	 */
+
+	/* All blocks needed for writing are properly allocated at this point */
+
+	struct pmemfile_block_desc *block =
+		find_closest_block_with_hint(vinode, offset, *last_block);
+
+	block = iterate_on_file_range(pfp, vinode, block, offset,
+			count, (char *)buf, write_to_blocks);
+
+	if (block)
+		*last_block = block;
+}

@@ -43,6 +43,39 @@
 
 std::string global_path;
 
+/*
+ * is_zeroed -- check if given memory range is all zero
+ */
+bool
+is_zeroed(const void *addr, size_t len)
+{
+	const char *a = (const char *)addr;
+	while (len-- > 0)
+		if (*a++)
+			return false;
+	return true;
+}
+
+std::ostream &
+operator<<(std::ostream &stream, const file_attrs &attrs)
+{
+	stream << " mode " << std::hex << "0x" << attrs.stat.st_mode << std::dec
+	       << " nlink " << attrs.stat.st_nlink << " size "
+	       << attrs.stat.st_size << " uid " << attrs.stat.st_uid << " gid "
+	       << attrs.stat.st_gid << " link " << attrs.link;
+
+	return stream;
+}
+
+std::ostream &
+operator<<(std::ostream &stream, const std::map<std::string, file_attrs> &files)
+{
+	for (auto it = files.cbegin(); it != files.cend(); ++it)
+		stream << "name " << it->first << it->second << '\n';
+
+	return stream;
+}
+
 bool
 test_pmemfile_stats_match(PMEMfilepool *pfp, unsigned inodes, unsigned dirs,
 			  unsigned block_arrays, unsigned blocks)
@@ -302,4 +335,48 @@ test_empty_dir(PMEMfilepool *pfp, const char *path)
 			{040777, 2, 4000, "."}, {040777, 2, 4000, ".."},
 		},
 		false, false);
+}
+
+pmemfile_test::pmemfile_test(size_t poolsize)
+    : path(global_path + "/poolfile"),
+      pfp(nullptr),
+      poolsize(poolsize),
+      test_empty_dir_on_teardown(true)
+{
+}
+
+void
+pmemfile_test::SetUp()
+{
+	(void)std::remove(path.c_str());
+
+	pfp = pmemfile_pool_create(path.c_str(), poolsize,
+				   PMEMFILE_S_IWUSR | PMEMFILE_S_IRUSR);
+	EXPECT_NE(pfp, nullptr) << strerror(errno);
+	/*
+	 * Lower-case asserts are here on purpose. ASSERTs return
+	 * internally - they stop this function, but don't stop
+	 * test execution, so gtest happily performs a test on not
+	 * fully set up environment.
+	 */
+	assert(pfp != nullptr);
+
+	assert(test_empty_dir(pfp, "/"));
+
+	assert(test_pmemfile_stats_match(pfp, 0, 0, 0, 0));
+}
+
+void
+pmemfile_test::TearDown()
+{
+	if (HasFatalFailure())
+		return;
+
+	// XXX always enable
+	if (test_empty_dir_on_teardown)
+		/* Again. Lower-case assert on purpose. */
+		assert(test_empty_dir(pfp, "/"));
+
+	pmemfile_pool_close(pfp);
+	(void)std::remove(path.c_str());
 }

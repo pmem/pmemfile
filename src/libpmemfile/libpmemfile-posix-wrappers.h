@@ -1755,6 +1755,26 @@ wrapper_pmemfile_stats(PMEMfilepool *pfp,
 }
 
 static inline int
+wrapper_pmemfile_statfs(PMEMfilepool *pfp,
+		pmemfile_statfs_t *buf)
+{
+	int ret;
+
+	ret = pmemfile_statfs(pfp,
+		buf);
+	if (ret < 0)
+		ret = -errno;
+
+	log_write(
+	    "pmemfile_statfs(%p, %p) = %d",
+		pfp,
+		buf,
+		ret);
+
+	return ret;
+}
+
+static inline int
 wrapper_pmemfile_truncate(PMEMfilepool *pfp,
 		const char *path,
 		pmemfile_off_t length)

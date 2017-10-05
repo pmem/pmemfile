@@ -66,6 +66,7 @@ set(SOURCES
 	rename.c
 	rmdir.c
 	stat.c
+	statfs.c
 	stats.c
 	symlink.c
 	timestamps.c
@@ -179,6 +180,7 @@ set(EXPORTED_SYMBOLS
 	pmemfile_setgid
 	pmemfile_setuid
 	pmemfile_stat
+	pmemfile_statfs
 	pmemfile_symlink
 	pmemfile_symlinkat
 	pmemfile_truncate

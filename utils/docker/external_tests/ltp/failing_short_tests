@@ -119,7 +119,6 @@ sendfile07
 sendfile07_64
 sendfile08
 sendfile08_64
-sendfile09
 signal06    # ?
 sockioctl01 # mknod
 splice01    # splice not supported
@@ -128,8 +127,8 @@ splice03    # splice not supported
 tee01       # splice not supported
 stat06      # stat("") returns wrong errno
 stat06_64
-statfs01    # statfs returns ENOENT
-statfs01_64
+fstatfs02   # fstatfs for invalid buffer
+fstatfs02_64
 statfs02    # statfs returns ENOENT
 statfs02_64
 statvfs02   # statvfs crashes on NULL pointer

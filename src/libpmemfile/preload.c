@@ -1604,6 +1604,44 @@ hook_bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 }
 
 static long
+hook_statfs(const char *path, struct statfs *buf)
+{
+	long ret;
+	struct resolved_path where;
+
+	struct vfd_reference at = pmemfile_vfd_at_ref(AT_FDCWD);
+
+	resolve_path(at, path, &where, RESOLVE_LAST_SLINK | NO_AT_PATH);
+
+	if (where.error_code != 0) {
+		ret = where.error_code;
+	} else if (where.at_pool == NULL) {
+		ret = syscall_no_intercept(SYS_statfs, where.path, buf);
+	} else {
+		pool_acquire(where.at_pool);
+
+		int r = wrapper_pmemfile_statfs(where.at_pool->pool, buf);
+
+		pool_release(where.at_pool);
+
+		ret = check_errno(r, SYS_statfs);
+	}
+
+	pmemfile_vfd_unref(at);
+
+	return ret;
+}
+
+static long
+hook_fstatfs(struct vfd_reference *vfd, struct statfs *buf)
+{
+	int ret = pmemfile_statfs(vfd->pool->pool, buf);
+	if (ret < 0)
+		return -errno;
+	return 0;
+}
+
+static long
 dispatch_syscall(long syscall_number,
 			long arg0, long arg1,
 			long arg2, long arg3,
@@ -1862,6 +1900,9 @@ dispatch_syscall(long syscall_number,
 	case SYS_dup3:
 		return pmemfile_vfd_dup3((int)arg0, (int)arg1, (int)arg2);
 
+	case SYS_statfs:
+		return hook_statfs((const char *)arg0, (struct statfs *)arg1);
+
 	default:
 		/* Did we miss something? */
 		assert(false);
@@ -1939,6 +1980,9 @@ dispatch_syscall_fd_first(long syscall_number,
 
 	case SYS_fstat:
 		return fd_first_pmemfile_fstat(arg0, arg1);
+
+	case SYS_fstatfs:
+		return hook_fstatfs(arg0, (struct statfs *)arg1);
 
 	default:
 		/* Did we miss something? */

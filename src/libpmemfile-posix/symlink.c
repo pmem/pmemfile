@@ -93,6 +93,11 @@ _pmemfile_symlinkat(PMEMfilepool *pfp, const char *target,
 	const struct pmem_block_info *block_info =
 			data_block_info(len + 1, MAX_BLOCK_SIZE);
 
+	if (len + 1 > PMEMFILE_PATH_MAX) {
+		error = ENAMETOOLONG;
+		goto end;
+	}
+
 	if (len + 1 > block_info->size) {
 		error = ENAMETOOLONG;
 		goto end;

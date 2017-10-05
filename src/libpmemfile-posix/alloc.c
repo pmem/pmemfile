@@ -38,6 +38,7 @@
 #include "libpmemfile-posix.h"
 #include "out.h"
 
+#ifdef FAULT_INJECTION
 static __thread int malloc_num;
 static __thread int fail_malloc_num;
 static __thread const char *fail_malloc_from;
@@ -115,3 +116,4 @@ pmemfile_inject_fault_at(enum pf_allocation_type type, int nth, const char *at)
 			FATAL("unknown allocation type");
 	}
 }
+#endif

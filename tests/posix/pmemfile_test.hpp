@@ -62,19 +62,7 @@
  */
 #define BADF ((PMEMfile *)(uintptr_t)0xbad)
 
-/*
- * is_zeroed -- check if given memory range is all zero
- */
-static inline int
-is_zeroed(const void *addr, size_t len)
-{
-	/* XXX optimize */
-	const char *a = (const char *)addr;
-	while (len-- > 0)
-		if (*a++)
-			return 0;
-	return 1;
-}
+bool is_zeroed(const void *addr, size_t len);
 
 /* XXX move these functions to pmemfile_test class and get rid of pfp arg */
 
@@ -83,7 +71,7 @@ bool test_pmemfile_create(PMEMfilepool *pfp, const char *path, int flags = 0,
 			  pmemfile_mode_t mode = 0777);
 /* utilities */
 
-class pmemfile_ls {
+struct pmemfile_ls {
 public:
 	pmemfile_mode_t mode;
 	pmemfile_nlink_t nlink;
@@ -101,7 +89,7 @@ bool test_pmemfile_stats_match(PMEMfilepool *pfp, unsigned inodes,
 pmemfile_ssize_t test_pmemfile_file_size(PMEMfilepool *pfp, PMEMfile *file);
 pmemfile_ssize_t test_pmemfile_path_size(PMEMfilepool *pfp, const char *path);
 
-class file_attrs {
+struct file_attrs {
 public:
 	pmemfile_stat_t stat;
 	std::string link;
@@ -112,25 +100,10 @@ public:
 	}
 };
 
-static inline std::ostream &
-operator<<(std::ostream &stream, const file_attrs &attrs)
-{
-	stream << " mode " << std::hex << "0x" << attrs.stat.st_mode << std::dec
-	       << " nlink " << attrs.stat.st_nlink << " size "
-	       << attrs.stat.st_size << " uid " << attrs.stat.st_uid << " gid "
-	       << attrs.stat.st_gid << " link " << attrs.link;
+std::ostream &operator<<(std::ostream &stream, const file_attrs &attrs);
 
-	return stream;
-}
-
-static inline std::ostream &
-operator<<(std::ostream &stream, const std::map<std::string, file_attrs> &files)
-{
-	for (auto it = files.cbegin(); it != files.cend(); ++it)
-		stream << "name " << it->first << it->second << '\n';
-
-	return stream;
-}
+std::ostream &operator<<(std::ostream &stream,
+			 std::map<std::string, file_attrs> &files);
 
 std::map<std::string, file_attrs> test_list_files(PMEMfilepool *pfp,
 						  PMEMfile *dir,
@@ -158,49 +131,9 @@ protected:
 	bool test_empty_dir_on_teardown;
 
 public:
-	pmemfile_test(size_t poolsize = 16 * 1024 * 1024)
-	    : path(global_path + "/poolfile"),
-	      pfp(NULL),
-	      poolsize(poolsize),
-	      test_empty_dir_on_teardown(true)
-	{
-	}
-
-	void
-	SetUp()
-	{
-		(void)std::remove(path.c_str());
-
-		pfp = pmemfile_pool_create(path.c_str(), poolsize,
-					   PMEMFILE_S_IWUSR | PMEMFILE_S_IRUSR);
-		EXPECT_NE(pfp, nullptr) << strerror(errno);
-		/*
-		 * Lower-case asserts are here on purpose. ASSERTs return
-		 * internally - they stop this function, but don't stop
-		 * test execution, so gtest happily performs a test on not
-		 * fully set up environment.
-		 */
-		assert(pfp != NULL);
-
-		assert(test_empty_dir(pfp, "/"));
-
-		assert(test_pmemfile_stats_match(pfp, 0, 0, 0, 0));
-	}
-
-	void
-	TearDown()
-	{
-		if (HasFatalFailure())
-			return;
-
-		// XXX always enable
-		if (test_empty_dir_on_teardown)
-			/* Again. Lower-case assert on purpose. */
-			assert(test_empty_dir(pfp, "/"));
-
-		pmemfile_pool_close(pfp);
-		(void)std::remove(path.c_str());
-	}
+	pmemfile_test(size_t poolsize = 16 * 1024 * 1024);
+	void SetUp() override;
+	void TearDown() override;
 };
 
 /* Tests expect a static count of 4 root directories */

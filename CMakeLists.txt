@@ -63,6 +63,9 @@ option(AUTO_GENERATE_SOURCES
 option(BUILD_PMEMFILE_FUSE
 	"build pmemfile-fuse (requires libfuse)" ON)
 
+option(LIBPMEMFILE_VALIDATE_POINTERS
+	"compiles in support for PMEMFILE_PRELOAD_VALIDATE_POINTERS environment variable" OFF)
+
 set(TEST_DIR ${CMAKE_CURRENT_BINARY_DIR}/test
 	CACHE STRING "working directory for tests")
 
@@ -280,6 +283,10 @@ endif(DEVELOPER_MODE)
 
 if(FAULT_INJECTION)
 	add_definitions(-DFAULT_INJECTION)
+endif()
+
+if(LIBPMEMFILE_VALIDATE_POINTERS)
+	add_definitions(-DVALIDATE_POINTERS)
 endif()
 
 add_executable(check_license EXCLUDE_FROM_ALL utils/check_license/check-license.c)

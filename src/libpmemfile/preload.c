@@ -67,6 +67,7 @@
 #include <sys/fsuid.h>
 #include <sys/capability.h>
 #include <dlfcn.h>
+#include <limits.h>
 
 #include <asm-generic/errno.h>
 
@@ -225,9 +226,173 @@ exit_with_msg(int ret, const char *msg)
 	__builtin_unreachable();
 }
 
-static long
-hook_linkat(int fd0, long arg0, int fd1, long arg1, long flags)
+static size_t page_size;
+
+#ifdef VALIDATE_POINTERS
+
+static bool validate_pointers;
+
+static void
+initialize_validate_pointers(void)
 {
+	const char *env_str = getenv("PMEMFILE_PRELOAD_VALIDATE_POINTERS");
+	if (env_str)
+		validate_pointers = env_str[0] == '1';
+}
+
+/*
+ * returns true when [buf, buf+len] is accessible
+ */
+static bool
+is_accessible(const void *ptr, size_t len)
+{
+	if (!validate_pointers)
+		return true;
+	if (!ptr || len == 0)
+		return true;
+
+	int pipes[2];
+	bool ret = true;
+
+	long r = syscall_no_intercept(SYS_pipe, pipes);
+	if (r < 0) {
+		log_write("pipe failure %ld", r);
+		return true;
+	}
+
+	while (len) {
+		size_t tmplen = len > page_size ? page_size : len;
+		r = syscall_no_intercept(SYS_write, pipes[1], ptr,
+				tmplen);
+		if (r == -EFAULT) {
+			ret = false;
+			goto end;
+		}
+
+		if (r < 0 || (size_t)r != tmplen) {
+			errno = -(int)r;
+			FATAL("!write to pipe returned unexpected value");
+		}
+
+		char c[page_size];
+		(void) syscall_no_intercept(SYS_read, pipes[0], c, tmplen);
+
+		ptr = (const char *)ptr + tmplen;
+		len -= tmplen;
+	}
+
+end:
+	syscall_no_intercept(SYS_close, pipes[0]);
+	syscall_no_intercept(SYS_close, pipes[1]);
+	return ret;
+}
+
+/*
+ * returns true when null terminated string str is accessible
+ */
+static bool
+is_str_accessible(const char *str)
+{
+	if (!validate_pointers)
+		return true;
+	if (!str)
+		return true;
+
+	int pipes[2];
+	bool ret;
+
+	long r = syscall_no_intercept(SYS_pipe, pipes);
+	if (r < 0) {
+		log_write("pipe failure %ld", r);
+		return true;
+	}
+
+	while (1) {
+		r = syscall_no_intercept(SYS_write, pipes[1], str, 1);
+		if (r == -EFAULT) {
+			ret = false;
+			goto end;
+		}
+
+		if (r != 1) {
+			errno = -(int)r;
+			FATAL("!write to pipe returned unexpected value");
+		}
+
+		if (*str == 0) {
+			ret = true;
+			goto end;
+		}
+
+		char c;
+		(void) syscall_no_intercept(SYS_read, pipes[0], &c, 1);
+		str++;
+	}
+
+end:
+	syscall_no_intercept(SYS_close, pipes[0]);
+	syscall_no_intercept(SYS_close, pipes[1]);
+	return ret;
+}
+
+static int
+verify_iovec(long lvec, long cnt)
+{
+	if (!validate_pointers)
+		return 0;
+
+	const pmemfile_iovec_t *vec = (void *)lvec;
+	if (cnt < 0 || cnt > IOV_MAX)
+		return -EINVAL;
+
+	if (!is_accessible(vec, (size_t)cnt * sizeof(vec[0])))
+		return -EFAULT;
+
+	for (long i = 0; i < cnt; ++i) {
+		if (vec[i].iov_len > INT64_MAX)
+			return -EINVAL;
+		if (!is_accessible(vec[i].iov_base, vec[i].iov_len))
+			return -EFAULT;
+	}
+
+	return 0;
+}
+
+#else
+
+static inline void
+initialize_validate_pointers(void)
+{
+}
+
+static inline bool
+is_accessible(const void *ptr, size_t len)
+{
+	return true;
+}
+
+static inline bool
+is_str_accessible(const char *str)
+{
+	return true;
+}
+
+static inline int
+verify_iovec(long lvec, long cnt)
+{
+	return 0;
+}
+
+#endif
+
+static long
+hook_linkat(int fd0, const char *arg0, int fd1, const char * arg1, long flags)
+{
+	if (!is_str_accessible(arg0))
+		return -EFAULT;
+	if (!is_str_accessible(arg1))
+		return -EFAULT;
+
 	long ret;
 	struct resolved_path where_old;
 	struct resolved_path where_new;
@@ -235,9 +400,8 @@ hook_linkat(int fd0, long arg0, int fd1, long arg1, long flags)
 	struct vfd_reference at0 = pmemfile_vfd_at_ref(fd0);
 	struct vfd_reference at1 = pmemfile_vfd_at_ref(fd1);
 
-	resolve_path(at0, (const char *)arg0, &where_old, RESOLVE_LAST_SLINK);
-	resolve_path(at1, (const char *)arg1, &where_new,
-			NO_RESOLVE_LAST_SLINK);
+	resolve_path(at0, arg0, &where_old, RESOLVE_LAST_SLINK);
+	resolve_path(at1, arg1, &where_new, NO_RESOLVE_LAST_SLINK);
 
 	if (where_old.error_code != 0) {
 		ret = where_old.error_code;
@@ -271,15 +435,17 @@ hook_linkat(int fd0, long arg0, int fd1, long arg1, long flags)
 }
 
 static long
-hook_unlinkat(int fd, long path_arg, long flags)
+hook_unlinkat(int fd, const char *path, long flags)
 {
+	if (!is_str_accessible(path))
+		return -EFAULT;
+
 	long ret;
 	struct resolved_path where;
 
 	struct vfd_reference at = pmemfile_vfd_at_ref(fd);
 
-	resolve_path(at, (const char *)path_arg,
-	    &where, NO_RESOLVE_LAST_SLINK);
+	resolve_path(at, path, &where, NO_RESOLVE_LAST_SLINK);
 
 	if (where.error_code != 0) {
 		ret = where.error_code;
@@ -307,6 +473,9 @@ hook_unlinkat(int fd, long path_arg, long flags)
 static long
 hook_chdir(const char *path)
 {
+	if (!is_str_accessible(path))
+		return -EFAULT;
+
 	util_mutex_lock(&cwd_mutex);
 	struct resolved_path where;
 
@@ -365,6 +534,9 @@ hook_pool_getcwd(struct pool_description *pool, char *buf, size_t size)
 	if (mlen >= size)
 		return -ERANGE;
 
+	if (!is_accessible(buf, size))
+		return -EFAULT;
+
 	strcpy(buf, pool->mount_point);
 
 	long ret = 0;
@@ -382,6 +554,9 @@ hook_pool_getcwd(struct pool_description *pool, char *buf, size_t size)
 static long
 hook_getcwd(char *buf, size_t size)
 {
+	if (!is_accessible(buf, size))
+		return -EFAULT;
+
 	util_mutex_lock(&cwd_mutex);
 	struct vfd_reference at = pmemfile_vfd_at_ref(AT_FDCWD);
 
@@ -394,28 +569,31 @@ hook_getcwd(char *buf, size_t size)
 }
 
 static long
-hook_newfstatat(int fd, long arg0, long arg1, long arg2)
+hook_newfstatat(int fd, const char *path, pmemfile_stat_t *st, long arg2)
 {
+	if (!is_str_accessible(path))
+		return -EFAULT;
+	if (!is_accessible(st, sizeof(*st)))
+		return -EFAULT;
+
 	long ret;
 	struct resolved_path where;
 
 	struct vfd_reference at = pmemfile_vfd_at_ref(fd);
 
-	resolve_path(at, (const char *)arg0, &where,
-	    (arg2 & AT_SYMLINK_NOFOLLOW)
+	resolve_path(at, path, &where, (arg2 & AT_SYMLINK_NOFOLLOW)
 	    ? NO_RESOLVE_LAST_SLINK : RESOLVE_LAST_SLINK);
 
 	if (where.error_code != 0) {
 		ret = where.error_code;
 	} else if (where.at_pool == NULL) {
 		ret = syscall_no_intercept(SYS_newfstatat,
-		    where.at_kernel, where.path, arg1, arg2);
+		    where.at_kernel, where.path, st, arg2);
 	} else {
 		pool_acquire(where.at_pool);
 
 		int r = wrapper_pmemfile_fstatat(where.at_pool->pool,
-			where.at_dir, where.path,
-			(pmemfile_stat_t *)arg1, (int)arg2);
+			where.at_dir, where.path, st, (int)arg2);
 
 		pool_release(where.at_pool);
 
@@ -428,14 +606,17 @@ hook_newfstatat(int fd, long arg0, long arg1, long arg2)
 }
 
 static long
-hook_faccessat(int fd, long path_arg, long mode)
+hook_faccessat(int fd, const char *path, long mode)
 {
+	if (!is_str_accessible(path))
+		return -EFAULT;
+
 	long ret;
 	struct resolved_path where;
 
 	struct vfd_reference at = pmemfile_vfd_at_ref(fd);
 
-	resolve_path(at, (const char *)path_arg, &where, NO_RESOLVE_LAST_SLINK);
+	resolve_path(at, path, &where, NO_RESOLVE_LAST_SLINK);
 
 	if (where.error_code != 0) {
 		ret = where.error_code;
@@ -459,16 +640,18 @@ hook_faccessat(int fd, long path_arg, long mode)
 }
 
 static long
-hook_getxattr(long arg0, long arg1, long arg2, long arg3,
+hook_getxattr(const char *path, long arg1, long arg2, long arg3,
 		int resolve_last)
 {
+	if (!is_str_accessible(path))
+		return -EFAULT;
+
 	long result;
 	struct resolved_path where;
 
 	struct vfd_reference at = pmemfile_vfd_at_ref(AT_FDCWD);
 
-	resolve_path(at, (const char *)arg0, &where,
-			resolve_last | NO_AT_PATH);
+	resolve_path(at, path, &where, resolve_last | NO_AT_PATH);
 
 	if (where.error_code != 0)
 		result = where.error_code;
@@ -484,16 +667,18 @@ hook_getxattr(long arg0, long arg1, long arg2, long arg3,
 }
 
 static long
-hook_setxattr(long arg0, long arg1, long arg2, long arg3, long arg4,
+hook_setxattr(const char *path, long arg1, long arg2, long arg3, long arg4,
 		int resolve_last)
 {
+	if (!is_str_accessible(path))
+		return -EFAULT;
+
 	long result;
 	struct resolved_path where;
 
 	struct vfd_reference at = pmemfile_vfd_at_ref(AT_FDCWD);
 
-	resolve_path(at, (const char *)arg0, &where,
-			resolve_last | NO_AT_PATH);
+	resolve_path(at, path, &where, resolve_last | NO_AT_PATH);
 
 	if (where.error_code != 0)
 		result = where.error_code;
@@ -509,14 +694,17 @@ hook_setxattr(long arg0, long arg1, long arg2, long arg3, long arg4,
 }
 
 static long
-hook_mkdirat(int fd, long path_arg, long mode)
+hook_mkdirat(int fd, const char *path, long mode)
 {
+	if (!is_str_accessible(path))
+		return -EFAULT;
+
 	long ret;
 	struct resolved_path where;
 
 	struct vfd_reference at = pmemfile_vfd_at_ref(fd);
 
-	resolve_path(at, (const char *)path_arg, &where, NO_RESOLVE_LAST_SLINK);
+	resolve_path(at, path, &where, NO_RESOLVE_LAST_SLINK);
 
 	if (where.error_code != 0) {
 		ret = where.error_code;
@@ -580,14 +768,16 @@ openat_helper(struct resolved_path *where, long flags, long mode)
 }
 
 static long
-hook_openat(int fd_at, long arg0, long flags, long mode)
+hook_openat(int fd_at, const char *path, long flags, long mode)
 {
+	if (!is_str_accessible(path))
+		return -EFAULT;
+
 	long ret = 0;
 	struct resolved_path where;
-	const char *path_arg = (const char *)arg0;
 	int follow_last;
 
-	log_write("%s(\"%s\")", __func__, path_arg);
+	log_write("%s(\"%s\")", __func__, path);
 
 	if ((flags & O_NOFOLLOW) != 0)
 		follow_last = NO_RESOLVE_LAST_SLINK;
@@ -598,7 +788,7 @@ hook_openat(int fd_at, long arg0, long flags, long mode)
 
 	struct vfd_reference at = pmemfile_vfd_at_ref(fd_at);
 
-	resolve_path(at, path_arg, &where, follow_last);
+	resolve_path(at, path, &where, follow_last);
 
 	if (where.error_code != 0) {
 		/* path resolution failed */
@@ -641,10 +831,25 @@ hook_fcntl(struct vfd_reference *file, int cmd, long arg)
 	}
 
 	if (r == 0) {
-		r = pmemfile_fcntl(file->pool->pool, file->file, cmd, arg);
+		size_t sz = 0;
+		switch (cmd) {
+			case PMEMFILE_F_GETLK:
+				sz = sizeof(pmemfile_flock_t);
+				break;
+			default:
+				break;
 
-		if (r < 0)
-			r = -errno;
+		}
+
+		if (sz && !is_accessible((void *)arg, sz)) {
+			r = -EFAULT;
+		} else {
+			r = pmemfile_fcntl(file->pool->pool, file->file, cmd,
+					arg);
+
+			if (r < 0)
+				r = -errno;
+		}
 	}
 
 	log_write("pmemfile_fcntl(%p, %p, 0x%x, 0x%lx) = %d",
@@ -657,6 +862,11 @@ static long
 hook_renameat2(int fd_old, const char *path_old, int fd_new,
 		const char *path_new, unsigned flags)
 {
+	if (!is_str_accessible(path_old))
+		return -EFAULT;
+	if (!is_str_accessible(path_new))
+		return -EFAULT;
+
 	long ret;
 	struct resolved_path where_old;
 	struct resolved_path where_new;
@@ -707,6 +917,9 @@ hook_renameat2(int fd_old, const char *path_old, int fd_new,
 static long
 hook_truncate(const char *path, off_t length)
 {
+	if (!is_str_accessible(path))
+		return -EFAULT;
+
 	long result;
 	struct resolved_path where;
 
@@ -737,6 +950,11 @@ hook_truncate(const char *path, off_t length)
 static long
 hook_symlinkat(const char *target, int fd, const char *linkpath)
 {
+	if (!is_str_accessible(target))
+		return -EFAULT;
+	if (!is_str_accessible(linkpath))
+		return -EFAULT;
+
 	long ret;
 	struct resolved_path where;
 
@@ -768,6 +986,9 @@ hook_symlinkat(const char *target, int fd, const char *linkpath)
 static long
 hook_fchmodat(int fd, const char *path, mode_t mode)
 {
+	if (!is_str_accessible(path))
+		return -EFAULT;
+
 	long ret;
 	struct resolved_path where;
 
@@ -800,6 +1021,9 @@ static long
 hook_fchownat(int fd, const char *path,
 				uid_t owner, gid_t group, int flags)
 {
+	if (!is_str_accessible(path))
+		return -EFAULT;
+
 	long ret;
 	struct resolved_path where;
 
@@ -854,6 +1078,12 @@ hook_sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
 static long
 hook_readlinkat(int fd, const char *path, char *buf, size_t bufsiz)
 {
+	if (!is_str_accessible(path))
+		return -EFAULT;
+
+	if (!is_accessible(buf, bufsiz))
+		return -EFAULT;
+
 	long ret;
 	struct resolved_path where;
 
@@ -890,6 +1120,9 @@ static long
 nosup_syscall_with_path(long syscall_number, const char *path, int resolve_last,
 			long arg1, long arg2, long arg3, long arg4, long arg5)
 {
+	if (!is_str_accessible(path))
+		return -EFAULT;
+
 	long ret;
 	struct resolved_path where;
 
@@ -938,12 +1171,17 @@ hook_splice(int fd_in, loff_t *off_in, int fd_out,
 static long
 hook_futimesat(int fd, const char *path, const struct timeval times[2])
 {
+	if (!is_str_accessible(path))
+		return -EFAULT;
+	if (times && !is_accessible(times, 2 * sizeof(times[0])))
+		return -EFAULT;
+
 	long ret;
 	struct resolved_path where;
 
 	struct vfd_reference at = pmemfile_vfd_at_ref(fd);
 
-	resolve_path(at, (const char *)path, &where, NO_RESOLVE_LAST_SLINK);
+	resolve_path(at, path, &where, NO_RESOLVE_LAST_SLINK);
 
 	if (where.error_code != 0) {
 		ret = where.error_code;
@@ -987,8 +1225,12 @@ static long
 utimensat_helper(int sc, struct vfd_reference at, const char *path,
 		const struct timespec times[2], int flags)
 {
-	struct resolved_path where;
+	if (!is_str_accessible(path))
+		return -EFAULT;
+	if (times && !is_accessible(times, 2 * sizeof(times[0])))
+		return -EFAULT;
 
+	struct resolved_path where;
 
 	/*
 	 * Handle non-pmem file descriptor with NULL path earlier. resolve_path
@@ -1087,6 +1329,9 @@ hook_utime(const char *path, const struct utimbuf *times)
 		return -EFAULT;
 
 	if (times) {
+		if (!is_accessible(times, sizeof(*times)))
+			return -EFAULT;
+
 		timespec[0].tv_sec = times->actime;
 		timespec[0].tv_nsec = 0;
 		timespec[1].tv_sec = times->modtime;
@@ -1111,6 +1356,9 @@ hook_utimes(const char *path, const struct timeval times[2])
 		return -EFAULT;
 
 	if (times) {
+		if (!is_accessible(times, sizeof(*times)))
+			return -EFAULT;
+
 		timespec[0].tv_sec = times[0].tv_sec;
 		timespec[0].tv_nsec = times[0].tv_usec * 1000;
 		timespec[1].tv_sec = times[1].tv_sec;
@@ -1140,6 +1388,9 @@ static long
 hook_name_to_handle_at(int fd, const char *path,
 		struct file_handle *handle, int *mount_id, int flags)
 {
+	if (!is_str_accessible(path))
+		return -EFAULT;
+
 	long ret;
 	struct resolved_path where;
 
@@ -1216,6 +1467,9 @@ static long
 hook_execveat(int fd, const char *path, char *const argv[],
 		char *const envp[], int flags)
 {
+	if (!is_str_accessible(path))
+		return -EFAULT;
+
 	long ret = 0;
 
 	struct vfd_reference at = pmemfile_vfd_at_ref(fd);
@@ -1301,6 +1555,9 @@ hook_mmap(long arg0, long arg1, long arg2,
 static long
 hook_mknodat(int fd, const char *path, mode_t mode, dev_t dev)
 {
+	if (!is_str_accessible(path))
+		return -EFAULT;
+
 	long ret;
 	struct resolved_path where;
 
@@ -1561,12 +1818,20 @@ hook_umask(mode_t mask)
 static long
 hook_bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 {
+	if (!is_accessible(addr, sizeof(*addr)))
+		return -EFAULT;
+
 	if (addr->sa_family != AF_UNIX ||
 			addrlen < sizeof(struct sockaddr_un)) {
 		return syscall_no_intercept(SYS_bind, sockfd, addr, addrlen);
 	}
 
 	const struct sockaddr_un *uaddr = (struct sockaddr_un *)addr;
+
+	if (!is_accessible(uaddr, sizeof(*uaddr)))
+		return -EFAULT;
+	if (!is_str_accessible(uaddr->sun_path))
+		return -EFAULT;
 
 	long ret;
 	struct resolved_path where;
@@ -1606,6 +1871,11 @@ hook_bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 static long
 hook_statfs(const char *path, struct statfs *buf)
 {
+	if (!is_str_accessible(path))
+		return -EFAULT;
+	if (!is_accessible(buf, sizeof(*buf)))
+		return -EFAULT;
+
 	long ret;
 	struct resolved_path where;
 
@@ -1635,6 +1905,9 @@ hook_statfs(const char *path, struct statfs *buf)
 static long
 hook_fstatfs(struct vfd_reference *vfd, struct statfs *buf)
 {
+	if (!is_accessible(buf, sizeof(*buf)))
+		return -EFAULT;
+
 	int ret = pmemfile_statfs(vfd->pool->pool, buf);
 	if (ret < 0)
 		return -errno;
@@ -1652,14 +1925,14 @@ dispatch_syscall(long syscall_number,
 
 	/* Use pmemfile_openat to implement open, create, openat */
 	case SYS_open:
-		return hook_openat(AT_FDCWD, arg0, arg1, arg2);
+		return hook_openat(AT_FDCWD, (const char *)arg0, arg1, arg2);
 
 	case SYS_creat:
-		return hook_openat(AT_FDCWD, arg0,
+		return hook_openat(AT_FDCWD, (const char *)arg0,
 			O_WRONLY | O_CREAT | O_TRUNC, arg1);
 
 	case SYS_openat:
-		return hook_openat((int)arg0, arg1, arg2, arg3);
+		return hook_openat((int)arg0, (const char *)arg1, arg2, arg3);
 
 	case SYS_rename:
 		return hook_renameat2(AT_FDCWD, (const char *)arg0,
@@ -1675,35 +1948,38 @@ dispatch_syscall(long syscall_number,
 
 	case SYS_link:
 		/* Use pmemfile_linkat to implement link */
-		return hook_linkat(AT_FDCWD, arg0, AT_FDCWD, arg1, 0);
+		return hook_linkat(AT_FDCWD, (const char *)arg0,
+				AT_FDCWD, (const char *)arg1, 0);
 
 	case SYS_linkat:
-		return hook_linkat((int)arg0, arg1, (int)arg2, arg3, arg4);
+		return hook_linkat((int)arg0, (const char *)arg1, (int)arg2,
+				(const char *)arg3, arg4);
 
 	case SYS_unlink:
 		/* Use pmemfile_unlinkat to implement unlink */
-		return hook_unlinkat(AT_FDCWD, arg0, 0);
+		return hook_unlinkat(AT_FDCWD, (const char *)arg0, 0);
 
 	case SYS_unlinkat:
-		return hook_unlinkat((int)arg0, arg1, arg2);
+		return hook_unlinkat((int)arg0, (const char *)arg1, arg2);
 
 	case SYS_rmdir:
 		/* Use pmemfile_unlinkat to implement rmdir */
-		return hook_unlinkat(AT_FDCWD, arg0, AT_REMOVEDIR);
+		return hook_unlinkat(AT_FDCWD, (const char *)arg0,
+				AT_REMOVEDIR);
 
 	case SYS_mkdir:
 		/* Use pmemfile_mkdirat to implement mkdir */
-		return hook_mkdirat(AT_FDCWD, arg0, arg1);
+		return hook_mkdirat(AT_FDCWD, (const char *)arg0, arg1);
 
 	case SYS_mkdirat:
-		return hook_mkdirat((int)arg0, arg1, arg2);
+		return hook_mkdirat((int)arg0, (const char *)arg1, arg2);
 
 	case SYS_access:
 		/* Use pmemfile_faccessat to implement access */
-		return hook_faccessat(AT_FDCWD, arg0, arg1);
+		return hook_faccessat(AT_FDCWD, (const char *)arg0, arg1);
 
 	case SYS_faccessat:
-		return hook_faccessat((int)arg0, arg1, arg2);
+		return hook_faccessat((int)arg0, (const char *)arg1, arg2);
 
 	/*
 	 * The newfstatat syscall implements both stat and lstat.
@@ -1714,14 +1990,16 @@ dispatch_syscall(long syscall_number,
 	 * fstat is unique.
 	 */
 	case SYS_stat:
-		return hook_newfstatat(AT_FDCWD, arg0, arg1, 0);
+		return hook_newfstatat(AT_FDCWD, (const char *)arg0,
+				(pmemfile_stat_t *)arg1, 0);
 
 	case SYS_lstat:
-		return hook_newfstatat(AT_FDCWD, arg0, arg1,
-		    AT_SYMLINK_NOFOLLOW);
+		return hook_newfstatat(AT_FDCWD, (const char *)arg0,
+				(pmemfile_stat_t *)arg1, AT_SYMLINK_NOFOLLOW);
 
 	case SYS_newfstatat:
-		return hook_newfstatat((int)arg0, arg1, arg2, arg3);
+		return hook_newfstatat((int)arg0, (const char *)arg1,
+				(pmemfile_stat_t *)arg2, arg3);
 
 	case SYS_close:
 		return pmemfile_vfd_close((int)arg0);
@@ -1735,19 +2013,19 @@ dispatch_syscall(long syscall_number,
 	 * fgetxattr and fsetxattr don't.
 	 */
 	case SYS_getxattr:
-		return hook_getxattr(arg0, arg1, arg2, arg3,
+		return hook_getxattr((const char *)arg0, arg1, arg2, arg3,
 		    RESOLVE_LAST_SLINK);
 
 	case SYS_lgetxattr:
-		return hook_getxattr(arg0, arg1, arg2, arg3,
+		return hook_getxattr((const char *)arg0, arg1, arg2, arg3,
 		    NO_RESOLVE_LAST_SLINK);
 
 	case SYS_setxattr:
-		return hook_setxattr(arg0, arg1, arg2, arg3, arg4,
+		return hook_setxattr((const char *)arg0, arg1, arg2, arg3, arg4,
 		    RESOLVE_LAST_SLINK);
 
 	case SYS_lsetxattr:
-		return hook_setxattr(arg0, arg1, arg2, arg3, arg4,
+		return hook_setxattr((const char *)arg0, arg1, arg2, arg3, arg4,
 		    NO_RESOLVE_LAST_SLINK);
 
 	case SYS_truncate:
@@ -1919,46 +2197,89 @@ dispatch_syscall_fd_first(long syscall_number,
 {
 	switch (syscall_number) {
 
-	case SYS_write:
+	case SYS_write: {
+		if (!is_accessible((void *)arg1, (size_t)arg2))
+			return -EFAULT;
+
 		return fd_first_pmemfile_write(arg0, arg1, arg2);
+	}
 
-	case SYS_writev:
+	case SYS_writev: {
+		int ret;
+		if ((ret = verify_iovec(arg1, arg2)))
+			return ret;
+
 		return fd_first_pmemfile_writev(arg0, arg1, arg2);
+	}
 
-	case SYS_read:
+	case SYS_read: {
+		if (!is_accessible((void *)arg1, (size_t)arg2))
+			return -EFAULT;
+
 		return fd_first_pmemfile_read(arg0, arg1, arg2);
+	}
 
-	case SYS_readv:
+	case SYS_readv: {
+		int ret;
+		if ((ret = verify_iovec(arg1, arg2)))
+			return ret;
+
 		return fd_first_pmemfile_readv(arg0, arg1, arg2);
+	}
 
 	case SYS_lseek:
 		return fd_first_pmemfile_lseek(arg0, arg1, arg2);
 
-	case SYS_pread64:
-		return fd_first_pmemfile_pread(arg0, arg1, arg2, arg3);
+	case SYS_pread64: {
+		if (!is_accessible((void *)arg1, (size_t)arg2))
+			return -EFAULT;
 
-	case SYS_pwrite64:
+		return fd_first_pmemfile_pread(arg0, arg1, arg2, arg3);
+	}
+
+	case SYS_pwrite64: {
+		if (!is_accessible((void *)arg1, (size_t)arg2))
+			return -EFAULT;
+
 		return fd_first_pmemfile_pwrite(arg0, arg1, arg2, arg3);
+	}
 
 	case SYS_preadv2:
 		if (arg4 & ~(RWF_DSYNC | RWF_HIPRI | RWF_SYNC))
 			return -EINVAL;
 		/* fallthrough */
-	case SYS_preadv:
-		return fd_first_pmemfile_preadv(arg0, arg1, arg2, arg3);
+	case SYS_preadv: {
+		int ret;
+		if ((ret = verify_iovec(arg1, arg2)))
+			return ret;
 
+		return fd_first_pmemfile_preadv(arg0, arg1, arg2, arg3);
+	}
 	case SYS_pwritev2:
 		if (arg4 & ~(RWF_DSYNC | RWF_HIPRI | RWF_SYNC))
 			return -EINVAL;
 		/* fallthrough */
-	case SYS_pwritev:
+	case SYS_pwritev: {
+		int ret;
+		if ((ret = verify_iovec(arg1, arg2)))
+			return ret;
+
 		return fd_first_pmemfile_pwritev(arg0, arg1, arg2, arg3);
+	}
 
-	case SYS_getdents:
+	case SYS_getdents: {
+		if (!is_accessible((void *)arg1, (size_t)arg2))
+			return -EFAULT;
+
 		return fd_first_pmemfile_getdents(arg0, arg1, arg2);
+	}
 
-	case SYS_getdents64:
+	case SYS_getdents64: {
+		if (!is_accessible((void *)arg1, (size_t)arg2))
+			return -EFAULT;
+
 		return fd_first_pmemfile_getdents64(arg0, arg1, arg2);
+	}
 
 	case SYS_fcntl:
 		return hook_fcntl(arg0, (int)arg1, arg2);
@@ -1978,8 +2299,12 @@ dispatch_syscall_fd_first(long syscall_number,
 	case SYS_fallocate:
 		return fd_first_pmemfile_fallocate(arg0, arg1, arg2, arg3);
 
-	case SYS_fstat:
+	case SYS_fstat: {
+		if (!is_accessible((void *)arg1, sizeof(struct stat)))
+			return -EFAULT;
+
 		return fd_first_pmemfile_fstat(arg0, arg1);
+	}
 
 	case SYS_fstatfs:
 		return hook_fstatfs(arg0, (struct statfs *)arg1);
@@ -2627,6 +2952,11 @@ pmemfile_preload_constructor(void)
 	if (!syscall_hook_in_process_allowed())
 		return;
 
+	long ps_sys = sysconf(_SC_PAGE_SIZE);
+	if (ps_sys < 0)
+		FATAL("!sysconf PAGE_SIZE");
+	page_size = (size_t)ps_sys;
+
 	pmemfile_vfd_table_init();
 
 	log_init(getenv("PMEMFILE_PRELOAD_LOG"),
@@ -2640,7 +2970,10 @@ pmemfile_preload_constructor(void)
 	if (env_str)
 		process_switching = env_str[0] == '1';
 
-	if (getenv("PMEMFILE_PRELOAD_PAUSE_AT_START")) {
+	initialize_validate_pointers();
+
+	env_str = getenv("PMEMFILE_PRELOAD_PAUSE_AT_START");
+	if (env_str && env_str[0] == '1') {
 		pause_at_start = 1;
 		while (pause_at_start)
 			;

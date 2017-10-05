@@ -47,6 +47,7 @@ class LinuxTestProject(Suite):
         self.add_env('PATH', self.test_dir)
         self.add_env('LTPROOT', self.install_dir)
         self.add_env('TMPDIR', self.tmp_dir)
+        self.add_env('PMEMFILE_PRELOAD_VALIDATE_POINTERS', '1')
 
         super().__init__(config)
 

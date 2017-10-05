@@ -44,6 +44,7 @@ Pmemfile-specific cmake variables:
 * TESTS_USE_FORCED_PMEM=1 - allows tests to force enable or force disable use of optimized flush in libpmemobj (to speed them up)
 * USE_ASAN=1 - enables AddressSanitizer (only for debugging)
 * USE_UBSAN=1 - enables UndefinedBehaviorSanitizer (only for debugging)
+* LIBPMEMFILE_VALIDATE_POINTERS=1 - build-in support for PMEMFILE_PRELOAD_VALIDATE_POINTERS environment variable
 
 # Package for Debian-based distros
 ```sh
@@ -143,6 +144,7 @@ libpmemfile.so:
 * PMEMFILE_PRELOAD_PROCESS_SWITCHING - when set to 1, enables VERY slow
   emulation of multi-process support, used for testing pmemfile with file system
   test suites (default: 0)
+* PMEMFILE_PRELOAD_VALIDATE_POINTERS - when set to 1, verifies memory reaching libpmemfile through syscall arguments is accessible; it's very slow, so it should never be used in production for non-buggy applications
 
 # Other stuff #
 * vltrace - tool for tracing applications and evaluating whether libpmemfile.so

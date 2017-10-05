@@ -43,6 +43,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/uio.h>
+#include <sys/vfs.h>
 #include <utime.h>
 
 #define PMEMFILE_PATH_MAX 4096
@@ -171,6 +172,19 @@
 
 #define PMEMFILE_MAP_FAILED	((void *) -1)
 
+#define PMEMFILE_ST_RDONLY	1
+#define PMEMFILE_ST_NOSUID	2
+#define PMEMFILE_ST_NODEV	4
+#define PMEMFILE_ST_NOEXEC	8
+#define PMEMFILE_ST_SYNCHRONOUS	16
+#define PMEMFILE_ST_MANDLOCK	64
+#define PMEMFILE_ST_WRITE	128
+#define PMEMFILE_ST_APPEND	256
+#define PMEMFILE_ST_IMMUTABLE	512
+#define PMEMFILE_ST_NOATIME	1024
+#define PMEMFILE_ST_NODIRATIME	2048
+#define PMEMFILE_ST_RELATIME	4096
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -201,6 +215,7 @@ typedef struct utimbuf pmemfile_utimbuf_t;
 typedef struct timeval pmemfile_timeval_t;
 typedef struct stat pmemfile_stat_t;
 typedef struct flock pmemfile_flock_t;
+typedef struct statfs pmemfile_statfs_t;
 
 #define PMEMFILE_AT_CWD ((PMEMfile *)(((unsigned char *)0) - 1))
 
@@ -359,6 +374,7 @@ struct pmemfile_stats {
 	unsigned blocks;
 };
 void pmemfile_stats(PMEMfilepool *pfp, struct pmemfile_stats *stats);
+int pmemfile_statfs(PMEMfilepool *pfp, pmemfile_statfs_t *buf);
 
 int pmemfile_truncate(PMEMfilepool *, const char *path, pmemfile_off_t length);
 int pmemfile_ftruncate(PMEMfilepool *, PMEMfile *file, pmemfile_off_t length);

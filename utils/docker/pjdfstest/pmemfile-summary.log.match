@@ -1,38 +1,24 @@
 Test Summary Report
 -------------------
-$(S)/pjdfstest/tests/chmod/02.t          (Wstat: 0 Tests: 5 Failed: 1)
-  Failed test:  5
 $(S)/pjdfstest/tests/chmod/10.t          (Wstat: 0 Tests: 2 Failed: 1)
   Failed test:  2
 $(S)/pjdfstest/tests/chown/00.t          (Wstat: 0 Tests: 467 Failed: 8)
   Failed tests:  230, 234, 245-246, 251-252, 266, 270
   TODO passed:   385, 389, 395, 400, 404, 410, 415
-$(S)/pjdfstest/tests/chown/02.t          (Wstat: 0 Tests: 10 Failed: 2)
-  Failed tests:  5, 10
 $(S)/pjdfstest/tests/chown/10.t          (Wstat: 0 Tests: 4 Failed: 2)
   Failed tests:  2, 4
-$(S)/pjdfstest/tests/ftruncate/02.t      (Wstat: 0 Tests: 5 Failed: 1)
-  Failed test:  5
 $(S)/pjdfstest/tests/ftruncate/14.t      (Wstat: 0 Tests: 2 Failed: 1)
   Failed test:  2
-$(S)/pjdfstest/tests/link/02.t           (Wstat: 0 Tests: 10 Failed: 2)
-  Failed tests:  8, 10
 $(S)/pjdfstest/tests/link/17.t           (Wstat: 0 Tests: 8 Failed: 4)
   Failed tests:  3, 6-8
-$(S)/pjdfstest/tests/mkdir/02.t          (Wstat: 0 Tests: 3 Failed: 1)
-  Failed test:  3
 $(S)/pjdfstest/tests/mkdir/12.t          (Wstat: 0 Tests: 2 Failed: 1)
   Failed test:  2
-$(S)/pjdfstest/tests/open/02.t           (Wstat: 0 Tests: 4 Failed: 1)
-  Failed test:  4
 $(S)/pjdfstest/tests/open/06.t           (Wstat: 0 Tests: 144 Failed: 47)
   Failed tests:  65-111
 $(S)/pjdfstest/tests/open/21.t           (Wstat: 0 Tests: 2 Failed: 1)
   Failed test:  2
 $(S)/pjdfstest/tests/open/24.t           (Wstat: 0 Tests: 5 Failed: 5)
   Failed tests:  1-5
-$(S)/pjdfstest/tests/rename/01.t         (Wstat: 0 Tests: 8 Failed: 3)
-  Failed tests:  6-8
 $(S)/pjdfstest/tests/rename/09.t         (Wstat: 0 Tests: 441 Failed: 72)
   Failed tests:  140-142, 144-145, 150-151, 154, 158-160
                 162-163, 168-169, 172, 306-308, 310-311
@@ -47,25 +33,17 @@ $(S)/pjdfstest/tests/rename/17.t         (Wstat: 0 Tests: 8 Failed: 4)
   Failed tests:  3, 6-8
 $(S)/pjdfstest/tests/rmdir/01.t          (Wstat: 0 Tests: 14 Failed: 3)
   Failed tests:  12-14
-$(S)/pjdfstest/tests/rmdir/02.t          (Wstat: 0 Tests: 4 Failed: 1)
-  Failed test:  4
 $(S)/pjdfstest/tests/rmdir/11.t          (Wstat: 0 Tests: 47 Failed: 6)
   Failed tests:  36-38, 43-45
 $(S)/pjdfstest/tests/rmdir/15.t          (Wstat: 0 Tests: 2 Failed: 1)
   Failed test:  2
-$(S)/pjdfstest/tests/symlink/02.t        (Wstat: 0 Tests: 7 Failed: 1)
-  Failed test:  5
 $(S)/pjdfstest/tests/symlink/12.t        (Wstat: 0 Tests: 6 Failed: 3)
   Failed tests:  2, 4-5
-$(S)/pjdfstest/tests/truncate/02.t       (Wstat: 0 Tests: 5 Failed: 1)
-  Failed test:  5
 $(S)/pjdfstest/tests/truncate/14.t       (Wstat: 0 Tests: 2 Failed: 1)
   Failed test:  2
 $(S)/pjdfstest/tests/unlink/00.t         (Wstat: 0 Tests: 112 Failed: 66)
   Failed tests:  10-12, 14-16, 18-20, 22-24, 31-50, 55-70
                 75, 78-81, 84-87, 90-93, 96-99, 105
-$(S)/pjdfstest/tests/unlink/02.t         (Wstat: 0 Tests: 4 Failed: 1)
-  Failed test:  4
 $(S)/pjdfstest/tests/unlink/11.t         (Wstat: 0 Tests: 94 Failed: 12)
   Failed tests:  39-41, 46-48, 83-85, 90-92
 $(S)/pjdfstest/tests/unlink/13.t         (Wstat: 0 Tests: 2 Failed: 1)

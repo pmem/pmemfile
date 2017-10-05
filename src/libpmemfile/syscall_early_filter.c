@@ -117,6 +117,10 @@ static struct syscall_early_filter_entry filter_table[] = {
 		.must_handle = true,
 		.fd_first_arg = true,
 	},
+	[SYS_fstatfs] = {
+		.must_handle = true,
+		.fd_first_arg = true,
+	},
 	[SYS_fsync] = {
 		.must_handle = true,
 		.fd_first_arg = true,
@@ -267,6 +271,9 @@ static struct syscall_early_filter_entry filter_table[] = {
 		.must_handle = true,
 	},
 	[SYS_stat] = {
+		.must_handle = true,
+	},
+	[SYS_statfs] = {
 		.must_handle = true,
 	},
 	[SYS_symlinkat] = {

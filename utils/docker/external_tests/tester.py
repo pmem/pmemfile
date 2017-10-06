@@ -105,6 +105,13 @@ class Tester:
             for fail in new_fails:
                 print(fail)
 
+            print('')
+            self.suite.verbose = True
+            for fail in new_fails:
+                print('Rerunning test {0}:'.format(fail))
+                self.suite.run(fail, on_pf=True)
+                print('End out output for {0}\n'.format(fail));
+
         removed_fails = sorted(set(past_fails) -
                                (set(self.failed_pf_only) | set(self.failed_both)))
         if removed_fails:

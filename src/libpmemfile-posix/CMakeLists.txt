@@ -75,30 +75,6 @@ set(SOURCES
 	write.c
 )
 
-set(HEADERS
-	blocks.h
-	callbacks.h
-	creds.h
-	ctree.h
-	data.h
-	dir.h
-	file.h
-	hash_map.h
-	inode_array.h
-	inode.h
-	internal.h
-	layout.h
-	locks.h
-	mkdir.h
-	out.h
-	pool.h
-	rmdir.h
-	truncate.h
-	unlink.h
-	utils.h
-	valgrind_internal.h
-)
-
 set(EXPORTED_SYMBOLS
 	pmemfile_access
 	pmemfile_chdir

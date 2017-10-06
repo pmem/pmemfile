@@ -37,6 +37,7 @@ Note that in Debug mode "make install" installs only debug libraries.
 
 Pmemfile-specific cmake variables:
 * BUILD_LIBPMEMFILE=0 - disables building of libpmemfile.so
+* BUILD_LIBPMEMFILE_POP=1 - builds tests using with libpmemfile-posix-over-POSIX library which imitates libpmemfile-posix.so, but uses POSIX functions provided by OS
 * DEVELOPER_MODE=1 - enables coding style, whitespace, license checks and enables fail-on-warning flags
 * LONG_TESTS=1 - enables tests which take much more time
 * TEST_DIR=/mnt/pmem/test_dir - provides directory where tests will create its pools

@@ -34,6 +34,10 @@
 
 #include "libpmemobj.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef void (*cb_basic)(void *, void *);
 
 void cb_queue(PMEMobjpool *pop, enum pobj_tx_stage stage, void *arg);
@@ -44,4 +48,7 @@ int cb_push_front(enum pobj_tx_stage stage, cb_basic func, void *arg);
 void cb_init(void);
 void cb_fini(void);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

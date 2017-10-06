@@ -34,6 +34,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct hash_map;
 typedef void (*hash_map_cb)(uint64_t, void *, void *);
 
@@ -48,4 +52,8 @@ void *hash_map_get(struct hash_map *map, uint64_t key);
 
 void *hash_map_put(struct hash_map *map,
 		uint64_t key, void *value);
+
+#ifdef __cplusplus
+}
+#endif
 #endif

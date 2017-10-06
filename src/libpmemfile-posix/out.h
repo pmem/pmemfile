@@ -43,6 +43,10 @@
 
 #include "compiler_utils.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define LUSR 2  /* user error */
 #define LINF 3  /* information */
 #define LDBG 4  /* debug info */
@@ -221,4 +225,7 @@ void out_set_vsnprintf_func(int (*vsnprintf_func)(char *str, size_t size,
 	const char *format, va_list ap));
 const char *out_get_errormsg(void);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

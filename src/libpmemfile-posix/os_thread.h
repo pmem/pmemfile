@@ -37,6 +37,10 @@
 #ifndef PMEMFILE_OS_LOCKS_H
 #define PMEMFILE_OS_LOCKS_H 1
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct {
 	long long data[8];
 } os_mutex_t;
@@ -119,4 +123,7 @@ typedef int os_once_t;
 
 void os_once(os_once_t *once, void (*init_routine)(void));
 
+#ifdef __cplusplus
+}
+#endif
 #endif

@@ -35,7 +35,14 @@
 #include "inode.h"
 #include "pool.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int vinode_truncate(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 			uint64_t size);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

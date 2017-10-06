@@ -35,6 +35,10 @@
 
 #include "libpmemfile-posix.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct pmemfile_block_desc;
 struct pmemfile_vinode;
 
@@ -62,4 +66,7 @@ block_list_remove(PMEMfilepool *pfp,
 		struct pmemfile_vinode *vinode,
 		struct pmemfile_block_desc *block);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

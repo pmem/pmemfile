@@ -38,6 +38,10 @@
 #include "libpmemfile-posix.h"
 #include "pool.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define ASSERT_IN_TX() ASSERTeq(pmemobj_tx_stage(), TX_STAGE_WORK)
 #define ASSERT_NOT_IN_TX() ASSERTeq(pmemobj_tx_stage(), TX_STAGE_NONE)
 
@@ -87,4 +91,7 @@ static inline const char *pmfi_path(struct pmemfile_vinode *vinode)
 }
 #endif
 
+#ifdef __cplusplus
+}
+#endif
 #endif

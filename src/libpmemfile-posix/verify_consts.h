@@ -48,6 +48,10 @@
 #include <sys/statvfs.h>
 #include <unistd.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define VERIFY(f) COMPILE_ERROR_ON(PMEMFILE_##f != f);
 
 VERIFY(O_RDONLY);
@@ -193,4 +197,7 @@ VERIFY(ST_RELATIME);
 
 #undef VERIFY
 
+#ifdef __cplusplus
+}
+#endif
 #endif

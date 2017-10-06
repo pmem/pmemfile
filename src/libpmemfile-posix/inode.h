@@ -41,6 +41,10 @@
 #include "offset_mapping.h"
 #include "os_thread.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define PMEMFILE_S_LONGSYMLINK 0x10000
 COMPILE_ERROR_ON((PMEMFILE_S_IFMT | PMEMFILE_ALLPERMS) &
 		PMEMFILE_S_LONGSYMLINK);
@@ -388,12 +392,15 @@ void vinode_restore_on_abort(struct pmemfile_vinode *vinode);
 void vinode_rdlock2(struct pmemfile_vinode *v1, struct pmemfile_vinode *v2);
 void vinode_wrlock2(struct pmemfile_vinode *v1, struct pmemfile_vinode *v2);
 void vinode_unlock2(struct pmemfile_vinode *v1, struct pmemfile_vinode *v2);
+
+#ifndef __cplusplus
 void vinode_wrlockN(struct pmemfile_vinode *v[static 5],
 		struct pmemfile_vinode *v1,
 		struct pmemfile_vinode *v2,
 		struct pmemfile_vinode *v3,
 		struct pmemfile_vinode *v4);
 void vinode_unlockN(struct pmemfile_vinode *v[static 5]);
+#endif
 
 static inline TOID(struct pmemfile_block_desc)
 blockp_as_oid(struct pmemfile_block_desc *block)
@@ -409,4 +416,7 @@ void inode_resume(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 void vinode_resume(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		PMEMobjpool *old_pop);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

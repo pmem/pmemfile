@@ -42,6 +42,10 @@
 #include "layout.h"
 #include "os_thread.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Pool */
 struct pmemfilepool {
 	/* pmemobj pool pointer */
@@ -70,4 +74,7 @@ struct pmemfilepool {
 	os_rwlock_t cred_rwlock;
 };
 
+#ifdef __cplusplus
+}
+#endif
 #endif

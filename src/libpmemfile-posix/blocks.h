@@ -37,6 +37,10 @@
 #ifndef PMEMFILE_BLOCKS_H
 #define PMEMFILE_BLOCKS_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct pmem_block_info {
 
 	size_t size;
@@ -76,4 +80,7 @@ const struct pmem_block_info *data_block_info(size_t size, size_t limit);
 
 int initialize_alloc_classes(PMEMobjpool *pop);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

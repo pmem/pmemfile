@@ -35,6 +35,10 @@
 
 #include <stdlib.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef FAULT_INJECTION
 
 void *_pf_malloc(size_t, const char *);
@@ -53,4 +57,7 @@ void *_pf_realloc(void *, size_t, const char *);
 #define pf_realloc(ptr, size) realloc(ptr, size)
 #endif
 
+#ifdef __cplusplus
+}
+#endif
 #endif

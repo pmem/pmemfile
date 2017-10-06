@@ -34,6 +34,10 @@
 
 #include "inode.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern bool pmemfile_overallocate_on_append;
 
 int vinode_rebuild_block_tree(PMEMfilepool *pfp,
@@ -62,4 +66,7 @@ struct pmemfile_block_desc *iterate_on_file_range(PMEMfilepool *pfp,
 		struct pmemfile_block_desc *starting_block, uint64_t offset,
 		uint64_t len, char *buf, enum cpy_direction dir);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

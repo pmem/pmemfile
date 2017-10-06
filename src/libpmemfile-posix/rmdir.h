@@ -34,6 +34,10 @@
 
 #include "inode.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void vinode_unlink_dir(PMEMfilepool *pfp,
 		struct pmemfile_vinode *vparent,
 		struct pmemfile_dirent *dirent,
@@ -44,4 +48,7 @@ void vinode_unlink_dir(PMEMfilepool *pfp,
 int pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		const char *path);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

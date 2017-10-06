@@ -32,6 +32,10 @@
 #ifndef OS_UTIL_H
 #define OS_UTIL_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int os_getpid(void);
 void os_describe_errno(int errnum, char *buf, size_t buflen);
 
@@ -49,4 +53,7 @@ const char *os_getexecname(void);
 
 int os_usleep(unsigned usec);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

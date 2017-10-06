@@ -38,6 +38,10 @@
 #include "pool.h"
 #include "os_thread.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void rwlock_tx_wlock(os_rwlock_t *l);
 void rwlock_tx_unlock_on_commit(os_rwlock_t *l);
 
@@ -76,4 +80,7 @@ pmemobj_mutex_unlock_nofail(PMEMobjpool *pop, PMEMmutex *mutexp)
 	}
 }
 
+#ifdef __cplusplus
+}
+#endif
 #endif

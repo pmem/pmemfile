@@ -43,6 +43,10 @@
 #include "compiler_utils.h"
 #include "libpmemobj.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 POBJ_LAYOUT_BEGIN(pmemfile);
 POBJ_LAYOUT_ROOT(pmemfile, struct pmemfile_super);
 POBJ_LAYOUT_TOID(pmemfile, struct pmemfile_inode);
@@ -314,4 +318,7 @@ struct pmemfile_super {
 
 COMPILE_ERROR_ON(sizeof(struct pmemfile_super) != PMEMFILE_SUPER_SIZE);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

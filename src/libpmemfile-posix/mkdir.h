@@ -35,9 +35,16 @@
 #include "creds.h"
 #include "inode.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 TOID(struct pmemfile_inode) vinode_new_dir(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent, const char *name,
 		size_t namelen, struct pmemfile_cred *cred,
 		pmemfile_mode_t mode);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

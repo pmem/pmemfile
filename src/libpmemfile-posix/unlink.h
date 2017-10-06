@@ -34,10 +34,17 @@
 
 #include "inode.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void vinode_unlink_file(PMEMfilepool *pfp,
 		struct pmemfile_vinode *parent,
 		struct pmemfile_dirent *dirent,
 		struct pmemfile_vinode *vinode,
 		struct pmemfile_time tm);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

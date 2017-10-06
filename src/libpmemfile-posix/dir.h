@@ -34,6 +34,10 @@
 
 #include "inode.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* path resolution information */
 struct pmemfile_path_info {
 	/*
@@ -120,4 +124,7 @@ int lock_parents_and_children(PMEMfilepool *pfp,
 
 		struct pmemfile_vinode *vinodes[static 5]);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

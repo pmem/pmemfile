@@ -41,6 +41,10 @@
 #include "layout.h"
 #include "os_thread.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define PFILE_READ (1ULL << 0)
 #define PFILE_WRITE (1ULL << 1)
 #define PFILE_NOATIME (1ULL << 2)
@@ -78,4 +82,7 @@ struct pmemfile_file {
 	} dir_pos;
 };
 
+#ifdef __cplusplus
+}
+#endif
 #endif

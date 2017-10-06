@@ -36,6 +36,10 @@
 #include "inode.h"
 #include "libpmemfile-posix.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define PFILE_WANT_READ (1<<0)
 #define PFILE_WANT_WRITE (1<<1)
 #define PFILE_WANT_EXECUTE (1<<2)
@@ -117,4 +121,7 @@ bool gid_in_list(const struct pmemfile_cred *cred, pmemfile_gid_t gid);
 int cred_acquire(PMEMfilepool *pfp, struct pmemfile_cred *cred);
 void cred_release(struct pmemfile_cred *cred);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

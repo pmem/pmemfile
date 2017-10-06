@@ -36,6 +36,10 @@
 #include "inode.h"
 #include "layout.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum inode_array_lock { INODE_ARRAY_LOCK, INODE_ARRAY_NOLOCK };
 
 void _inode_array_add(PMEMfilepool *pfp,
@@ -74,4 +78,7 @@ bool inode_array_empty(PMEMfilepool *pfp,
 bool inode_array_is_small(PMEMfilepool *pfp,
 		TOID(struct pmemfile_inode_array) tarr);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

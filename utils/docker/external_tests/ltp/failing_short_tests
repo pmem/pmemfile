@@ -89,8 +89,6 @@ open13     # fgetxattr succeeds when it shouldn't
 openat02   # open(O_APPEND) + lseek
 mincore01  # mmap
 mincore02  # mmap
-pread03    # pread(dirfd) returns wrong errno
-pread03_64
 preadv01   # preadv fails with EFAULT
 preadv01_64
 pwrite02   # pwrite on invalid pointer
@@ -104,7 +102,6 @@ read03     # mknod
 readlinkat02 # readlinkat succeeds unexpectedly
 readv01    # "readv failed reading 64 bytes, followed by two NULL vectors"
 readv02    # readv succeeds when it shouldn't, also SIGABRTs
-readv03    # readv returns invalid errno
 recvmsg01  # bind not supported(?)
 remap_file_pages02 # mmap
 rename08   # rename for invalid pointers

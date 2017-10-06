@@ -389,7 +389,7 @@ TEST_F(dirs, read_write_dir)
 
 	errno = 0;
 	ASSERT_EQ(pmemfile_read(pfp, dir, buf, sizeof(buf)), -1);
-	EXPECT_EQ(errno, EINVAL);
+	EXPECT_EQ(errno, EISDIR);
 
 	pmemfile_close(pfp, dir);
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);

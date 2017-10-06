@@ -55,8 +55,6 @@ $(S)/pjdfstest/tests/rmdir/15.t          (Wstat: 0 Tests: 2 Failed: 1)
   Failed test:  2
 $(S)/pjdfstest/tests/symlink/02.t        (Wstat: 0 Tests: 7 Failed: 1)
   Failed test:  5
-$(S)/pjdfstest/tests/symlink/03.t        (Wstat: 0 Tests: 6 Failed: 2)
-  Failed tests:  1-2
 $(S)/pjdfstest/tests/symlink/12.t        (Wstat: 0 Tests: 6 Failed: 3)
   Failed tests:  2, 4-5
 $(S)/pjdfstest/tests/truncate/02.t       (Wstat: 0 Tests: 5 Failed: 1)

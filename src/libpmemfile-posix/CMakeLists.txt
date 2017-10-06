@@ -195,7 +195,7 @@ set(EXPORTED_SYMBOLS
 
 if(FAULT_INJECTION)
 	set(SOURCES ${SOURCES} alloc.c)
-	set(EXPORTED_SYMBOLS ${EXPORTED_SYMBOLS} pmemfile_inject_fault_at)
+	set(EXPORTED_SYMBOLS ${EXPORTED_SYMBOLS} _pmemfile_inject_fault_at _pmemfile_fault_injection_enabled)
 endif()
 
 if(PKG_CONFIG_FOUND)

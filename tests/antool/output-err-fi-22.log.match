@@ -231,8 +231,6 @@ DEBUG(parser): 0x000447D4D14C908F 0x00004A6000004A60 ------------------ --------
 DEBUG(parser): 0x000447D4D14C74B9 0x00004A5F00004A5F ------------------ ------------------ write 0x0000000000000001 0x0000000001F0E010 0x0000000000000025
 DEBUG(parser): 0x000447D4D14C832A 0x00004A5F00004A5F 0x0000000000000000 0x0000000000000025 write
 DEBUG(parser): 0x000447D4D14C96AC 0x00004A5F00004A5F ------------------ ------------------ exit_group 0x0000000000000000
-DEBUG(parser): DEBUG(print_always): state = 1
-DEBUG(parser): DEBUG(print_always): state = 1
 DEBUG(analysis): DEBUG WARNING(set_pid_index): added new _empty_ FD table for new PID 0x00004A5F
 DEBUG(analysis): DEBUG WARNING(set_pid_index): added new _empty_ FD table for new PID 0x00004A60
 DEBUG(analysis): DEBUG WARNING(set_pid_index): added new _empty_ FD table for new PID 0x00004A61

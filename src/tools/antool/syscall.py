@@ -238,7 +238,7 @@ class Syscall(SyscallInfo):
     ####################################################################################################################
     def print_always(self):
         if self.debug_mode and self.state not in (STATE_ENTRY_COMPLETED, STATE_COMPLETED):
-            self.log_parse.debug("DEBUG(print_always): state = {0:d}".format(self.state))
+            print("DEBUG(print_always): syscall: {0:s}, state: {1:d}".format(self.name, self.state))
 
         self.print_entry(DEBUG_OFF)
 
@@ -246,9 +246,8 @@ class Syscall(SyscallInfo):
             self.print_exit(DEBUG_OFF)
 
         if not (self.content & (CNT_ENTRY | CNT_EXIT)):
-            self.log_print("0x{0:016X} 0x{1:016X} {2:s} {3:s} [corrupted packet]".
-                           format(self.time_start, self.pid_tid, self.str_entry, self.name),
-                           DEBUG_OFF)
+            print("0x{0:016X} 0x{1:016X} {2:s} {3:s} [corrupted packet]".
+                  format(self.time_start, self.pid_tid, self.str_entry, self.name))
 
     ####################################################################################################################
     def log_print(self, msg, debug):

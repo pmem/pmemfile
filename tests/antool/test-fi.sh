@@ -39,8 +39,8 @@ function cut_out_from_file() { # file offset1 offset2
 	OFFSET_1=$2
 	OFFSET_2=$3
 	OUTPUT=$(mktemp)
-	dd if=$FILE of=$OUTPUT  bs=$OFFSET_1 count=1 status=noxfer 2>/dev/null
-	dd if=$FILE of=$OUTPUT ibs=$OFFSET_2 skip=1 obs=$OFFSET_1 seek=1 status=noxfer 2>/dev/null
+	dd if=$FILE count=1 bs=$OFFSET_1                      status=noxfer 2>/dev/null >  $OUTPUT
+	dd if=$FILE seek=1 ibs=$OFFSET_2 skip=1 obs=$OFFSET_1 status=noxfer 2>/dev/null >> $OUTPUT
 	mv $OUTPUT $FILE
 }
 
@@ -49,8 +49,8 @@ function move_part_to_end() { # file offset1 offset2
 	OFFSET_1=$2
 	OFFSET_2=$3
 	OUTPUT=$(mktemp)
-	dd if=$FILE of=$OUTPUT  bs=$OFFSET_1 count=1 status=noxfer 2>/dev/null
-	dd if=$FILE of=$OUTPUT ibs=$OFFSET_2 skip=1 obs=$OFFSET_1 seek=1 status=noxfer 2>/dev/null
+	dd if=$FILE count=1 bs=$OFFSET_1                                  status=noxfer 2>/dev/null >  $OUTPUT
+	dd if=$FILE seek=1 ibs=$OFFSET_2 skip=1 obs=$OFFSET_1             status=noxfer 2>/dev/null >> $OUTPUT
 	dd if=$FILE ibs=1 skip=$OFFSET_1 count=$(($OFFSET_2 - $OFFSET_1)) status=noxfer 2>/dev/null >> $OUTPUT
 	mv $OUTPUT $FILE
 }

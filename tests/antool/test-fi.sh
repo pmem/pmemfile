@@ -55,6 +55,30 @@ function move_part_to_end() { # file offset1 offset2
 	mv $OUTPUT $FILE
 }
 
+
+function move_part_forward() { # file offset1 offset2 offset3
+	FILE=$1
+	OFFSET_1=$2
+	OFFSET_2=$3
+	OFFSET_3=$4
+	OUTPUT=$(mktemp)
+
+	SIZE1=$(stat -c %s $FILE)
+
+	dd if=$FILE count=1 bs=$OFFSET_1                                  status=noxfer 2>/dev/null >  $OUTPUT
+	dd if=$FILE ibs=1 skip=$OFFSET_2 count=$(($OFFSET_3 - $OFFSET_2)) status=noxfer 2>/dev/null >> $OUTPUT
+	dd if=$FILE ibs=1 skip=$OFFSET_1 count=$(($OFFSET_2 - $OFFSET_1)) status=noxfer 2>/dev/null >> $OUTPUT
+	dd if=$FILE ibs=1 skip=$OFFSET_3                                  status=noxfer 2>/dev/null >> $OUTPUT
+
+	mv $OUTPUT $FILE
+
+	SIZE2=$(stat -c %s $FILE)
+	if [ $SIZE1 -ne $SIZE2 ]; then
+		echo "move_part_forward(): size mismatch: $SIZE1 => $SIZE2"
+		exit 1
+	fi
+}
+
 function replace_n_bytes() { # file offset N new_bytes
 	FILE=$1
 	OFFSET=$(($2 - 1))
@@ -364,6 +388,14 @@ case $NUM in
 	# change fcntl's flag to F_SETFL (0x04) (2nd argument)
 	replace_n_bytes $BIN_LOG 82376 4 '\x04\x00\x00\x00'
 	ANTOOL_OPTS="-m16 -s -d -p /etc"
+	;;
+40)	# move entry packet of SyS_mmap forward (before SyS_open)
+	move_part_forward $BIN_LOG 80927 81011 81567
+	ANTOOL_OPTS="-m10 -s -d"
+	;;
+41)	# move exit packet of SyS_brk and entry packet of SyS_mmap forward (before SyS_open)
+	move_part_forward $BIN_LOG 80883 81011 81567
+	ANTOOL_OPTS="-m10 -s -d"
 	;;
 esac
 

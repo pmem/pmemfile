@@ -337,9 +337,6 @@ class Syscall(SyscallInfo):
             wrong_id = 1
 
         if self.state == STATE_ENTRY_COMPLETED:
-            if debug_on and self.debug_mode and (is_entry(etype) or (is_exit(etype) and wrong_id)):
-                self.log_parse.debug("Notice: no exit info found for syscall: {0:016X} {1:s}"
-                                     .format(self.pid_tid, self.name))
             if is_entry(etype):
                 return CHECK_NO_EXIT
 
@@ -504,14 +501,12 @@ class Syscall(SyscallInfo):
         return retval
 
     ####################################################################################################################
-    # add_exit -- add the exit info to the syscall record
+    # save_exit -- save the exit info to the syscall record
     ####################################################################################################################
-    def add_exit(self, bdata, timestamp):
+    def save_exit(self, retval, timestamp):
         if self.state == STATE_INIT:
             self.time_start = timestamp
         self.time_end = timestamp
-
-        retval = self.get_return_value(bdata)
 
         # split return value into result and errno
         if retval >= 0:
@@ -524,6 +519,12 @@ class Syscall(SyscallInfo):
             self.err = -retval
 
         self.content |= CNT_EXIT
-        self.state = STATE_COMPLETED
 
+    ####################################################################################################################
+    # add_exit -- add the exit info to the syscall record and mark as completed
+    ####################################################################################################################
+    def add_exit(self, bdata, timestamp):
+        retval = self.get_return_value(bdata)
+        self.save_exit(retval, timestamp)
+        self.state = STATE_COMPLETED
         return self.state

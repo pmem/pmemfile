@@ -107,6 +107,7 @@ class AnalyzingTool(ListSyscalls):
         self.list_ok = ListSyscalls(pmem_paths, slink_file, script_mode, debug_mode, verbose_mode, print_all,
                                     init_pmem=offline_mode)
         self.list_no_exit = ListSyscalls(pmem_paths, slink_file, script_mode, debug_mode, verbose_mode, print_all)
+        self.list_no_entry = ListSyscalls(pmem_paths, slink_file, script_mode, debug_mode, verbose_mode, print_all)
         self.list_others = ListSyscalls(pmem_paths, slink_file, script_mode, debug_mode, verbose_mode, print_all)
 
     ####################################################################################################################
@@ -127,9 +128,41 @@ class AnalyzingTool(ListSyscalls):
                 self.list_others.print_always()
 
     ####################################################################################################################
+    def analyze_or_append(self, syscall):
+        if self.offline_mode:
+            self.list_ok.append(syscall)
+        elif not self.convert_mode:
+            syscall = self.analyse_if_supported(syscall)
+
+        return syscall
+
+    ####################################################################################################################
     # decide_what_to_do_next - decide what to do next basing on the check done
     ####################################################################################################################
-    def decide_what_to_do_next(self, check, info_all, pid_tid, sc_id, name, retval):
+    def decide_what_to_do_next(self, check, info_all, pid_tid, sc_id, name, retval, timestamp):
+
+        if check in (CHECK_NO_EXIT, CHECK_WRONG_EXIT):
+            if self.list_no_entry:
+                syscall = self.list_no_entry.look_for_matching_record(self.syscall.info_all, self.syscall.pid_tid,
+                                                                      self.syscall.sc_id, self.syscall.name,
+                                                                      self.syscall.ret)
+                if syscall == -1 and self.debug_mode:
+                    self.syscall.log_parse.debug("Notice: no exit info found for syscall: {0:016X} {1:s}"
+                                                 .format(self.syscall.pid_tid, self.syscall.name))
+                else:
+                    self.syscall.log_parse.debug("Notice: found matching exit for syscall: {0:016X} {1:s}"
+                                                 .format(self.syscall.pid_tid, self.syscall.name))
+
+                    self.syscall.save_exit(syscall.ret, syscall.time_end)
+                    self.syscall.state = STATE_COMPLETED
+
+                    self.syscall = self.analyze_or_append(self.syscall)
+
+                    return DO_REINIT
+
+            elif self.debug_mode:
+                    self.syscall.log_parse.debug("Notice: no exit info found for syscall: {0:016X} {1:s}"
+                                                 .format(self.syscall.pid_tid, self.syscall.name))
 
         if CHECK_NO_EXIT == check:
             self.list_no_exit.append(self.syscall)
@@ -160,6 +193,10 @@ class AnalyzingTool(ListSyscalls):
                 if self.syscall == -1:
                     old_syscall.log_parse.debug("WARNING: no entry found: exit without entry info found: {0:016X} {1:s}"
                                                 .format(pid_tid, name))
+                    old_syscall.save_exit(retval, timestamp)
+                    self.list_no_entry.append(old_syscall)
+                    old_syscall.log_parse.debug("Notice: packet saved (to 'list_no_entry'): {0:016X} {1:s}"
+                                                .format(old_syscall.pid_tid, old_syscall.name))
                 else:
                     self.syscall.log_parse.debug("Notice: found matching entry for syscall: {0:016X} {1:s}"
                                                  .format(pid_tid, name))
@@ -205,7 +242,7 @@ class AnalyzingTool(ListSyscalls):
     ####################################################################################################################
     # analyse_read_data - analyse the read data
     ####################################################################################################################
-    def analyse_read_data(self, state, info_all, pid_tid, sc_id, bdata):
+    def analyse_read_data(self, state, info_all, pid_tid, sc_id, bdata, timestamp):
         sc_info = self.syscall_table.get(sc_id)
         name = self.syscall_table.name(sc_id)
         retval = self.syscall.get_return_value(bdata)
@@ -220,7 +257,7 @@ class AnalyzingTool(ListSyscalls):
                 self.syscall = Syscall(pid_tid, sc_id, sc_info, self.buf_size, self.debug_mode)
 
             check = self.syscall.check_read_data(info_all, pid_tid, sc_id, name, retval, DEBUG_ON)
-            result = self.decide_what_to_do_next(check, info_all, pid_tid, sc_id, name, retval)
+            result = self.decide_what_to_do_next(check, info_all, pid_tid, sc_id, name, retval, timestamp)
 
             if result == DO_REINIT:
                 if state == STATE_INIT:
@@ -358,16 +395,13 @@ class AnalyzingTool(ListSyscalls):
                     print("\r{0:d} ({1:d}% bytes) ".format(n, int((100 * fh.tell()) / file_size)), end=' ')
 
                 # analyse the read data and assign 'self.syscall' appropriately
-                state, self.syscall = self.analyse_read_data(state, info_all, pid_tid, sc_id, bdata)
+                state, self.syscall = self.analyse_read_data(state, info_all, pid_tid, sc_id, bdata, timestamp)
 
                 # add the read data to the syscall record
                 state = self.syscall.add_data(info_all, bdata, timestamp)
 
                 if state == STATE_COMPLETED:
-                    if self.offline_mode:
-                        self.list_ok.append(self.syscall)
-                    elif not self.convert_mode:
-                        self.syscall = self.analyse_if_supported(self.syscall)
+                    self.syscall = self.analyze_or_append(self.syscall)
 
                 if not self.offline_mode and (self.convert_mode or self.print_log_mode):
                     self.syscall.print_single_record(DEBUG_OFF)

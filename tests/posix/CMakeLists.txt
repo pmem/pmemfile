@@ -132,6 +132,7 @@ build_test_using_shared(file_rw rw/rw.cpp)
 build_test_using_shared(file_stat stat/stat.cpp)
 build_test_using_shared(file_symlinks symlinks/symlinks.cpp)
 build_test_using_shared(file_timestamps timestamps/timestamps.cpp)
+build_test_using_shared(file_suspend_resume suspend_resume/suspend_resume.cpp)
 
 # Configures test ${name} using tracer ${tracer} and gtest filter ${filter}
 # Optional next argument is passed as is to test.
@@ -279,6 +280,10 @@ add_test_generic(symlinks memcheck)
 
 add_test_generic(timestamps none)
 add_test_generic(timestamps memcheck)
+
+add_test_generic(suspend_resume none)
+add_test_generic(suspend_resume memcheck)
+add_test_generic(suspend_resume pmemcheck)
 
 if(NOT LONG_TESTS)
 	add_test(NAME SOME_TESTS_WERE_SKIPPED_BECAUSE_LONG_TESTS_ARE_DISABLED

@@ -107,6 +107,7 @@ class AnalyzingTool(ListSyscalls):
         self.list_ok = ListSyscalls(pmem_paths, slink_file, script_mode, debug_mode, verbose_mode, print_all,
                                     init_pmem=offline_mode)
         self.list_no_exit = ListSyscalls(pmem_paths, slink_file, script_mode, debug_mode, verbose_mode, print_all)
+        self.list_no_entry = ListSyscalls(pmem_paths, slink_file, script_mode, debug_mode, verbose_mode, print_all)
         self.list_others = ListSyscalls(pmem_paths, slink_file, script_mode, debug_mode, verbose_mode, print_all)
 
     ####################################################################################################################
@@ -118,6 +119,10 @@ class AnalyzingTool(ListSyscalls):
         self.list_ok.print_always()
 
         if self.debug_mode:
+            if len(self.list_no_entry):
+                print("\nWARNING: list 'list_no_entry' is not empty!")
+                self.list_no_entry.print_always()
+
             if len(self.list_no_exit):
                 print("\nWARNING: list 'list_no_exit' is not empty!")
                 self.list_no_exit.print_always()
@@ -127,67 +132,69 @@ class AnalyzingTool(ListSyscalls):
                 self.list_others.print_always()
 
     ####################################################################################################################
+    def analyze_or_append(self, syscall):
+        if self.offline_mode:
+            self.list_ok.append(syscall)
+        elif not self.convert_mode:
+            syscall = self.analyse_if_supported(syscall)
+
+        return syscall
+
+    ####################################################################################################################
     # decide_what_to_do_next - decide what to do next basing on the check done
     ####################################################################################################################
-    def decide_what_to_do_next(self, check, info_all, pid_tid, sc_id, name, retval):
+    def decide_what_to_do_next(self, check, info_all, pid_tid, sc_id, name, retval, timestamp):
 
         if CHECK_NO_EXIT == check:
-            self.list_no_exit.append(self.syscall)
-            self.syscall.log_parse.debug("Notice: packet saved (to 'list_no_exit'): {0:016X} {1:s}"
+            syscall = self.list_no_entry.look_for_matching_record(self.syscall.info_all, self.syscall.pid_tid,
+                                                                  self.syscall.sc_id, self.syscall.name,
+                                                                  self.syscall.ret)
+            if syscall == SYSCALL_NOT_FOUND:
+                self.list_no_exit.append(self.syscall)
+                self.syscall.log_parse.debug("Notice: no exit info found, packet saved to 'list_no_exit': "
+                                             "{0:016X} {1:s}".format(self.syscall.pid_tid, self.syscall.name))
+                return DO_REINIT
+
+            self.syscall.log_parse.debug("Notice: found matching exit for syscall: {0:016X} {1:s}"
                                          .format(self.syscall.pid_tid, self.syscall.name))
+            self.syscall.save_exit(syscall.ret, syscall.time_end)
+            self.syscall.state = STATE_COMPLETED
+            self.syscall = self.analyze_or_append(self.syscall)
             return DO_REINIT
 
-        if check in (CHECK_NO_ENTRY, CHECK_SAVE_IN_ENTRY, CHECK_WRONG_EXIT):
-            old_syscall = self.syscall
-
-            if CHECK_SAVE_IN_ENTRY == check:
-                self.list_others.append(self.syscall)
-                self.syscall.log_parse.debug("Notice: packet saved (to 'list_others'): {0:016X} {1:s}"
+        if CHECK_NO_ENTRY == check:
+            syscall = self.list_no_exit.look_for_matching_record(info_all, pid_tid, sc_id, name, retval)
+            if syscall == SYSCALL_NOT_FOUND:
+                self.syscall.log_parse.debug("WARNING: no entry found: exit without entry info found: {0:016X} {1:s}"
+                                             .format(pid_tid, name))
+                self.syscall.save_exit(retval, timestamp)
+                self.list_no_entry.append(self.syscall)
+                self.syscall.log_parse.debug("Notice: packet saved (to 'list_no_entry'): {0:016X} {1:s}"
                                              .format(self.syscall.pid_tid, self.syscall.name))
-
-            if retval != 0 or name not in ("clone", "fork", "vfork"):
-                self.syscall = self.list_no_exit.look_for_matching_record(info_all, pid_tid, sc_id, name, retval)
-
-            if CHECK_WRONG_EXIT == check:
-                self.list_no_exit.append(old_syscall)
-                old_syscall.log_parse.debug("Notice: packet saved (to 'list_no_exit'): {0:016X} {1:s}"
-                                            .format(old_syscall.pid_tid, old_syscall.name))
-
-            if retval == 0 and name in ("clone", "fork", "vfork"):
                 return DO_REINIT
 
-            if self.debug_mode and check == CHECK_NO_ENTRY:
-                if self.syscall == -1:
-                    old_syscall.log_parse.debug("WARNING: no entry found: exit without entry info found: {0:016X} {1:s}"
-                                                .format(pid_tid, name))
-                else:
-                    self.syscall.log_parse.debug("Notice: found matching entry for syscall: {0:016X} {1:s}"
-                                                 .format(pid_tid, name))
-
-            if self.syscall == -1:
-                return DO_REINIT
-
+            self.syscall = syscall
+            self.syscall.log_parse.debug("Notice: found matching entry for syscall: {0:016X} {1:s}"
+                                         .format(pid_tid, name))
             return DO_GO_ON
 
-        if CHECK_WRONG_ID == check:
+        if CHECK_NOT_FIRST_PACKET == check:
+            syscall = self.list_others.look_for_matching_record(info_all, pid_tid, sc_id, name, retval)
+            if syscall == SYSCALL_NOT_FOUND:
+                self.syscall.log_parse.debug("WARNING: no matching first packet found: {0:016X} {1:s}"
+                                            .format(pid_tid, name))
+                return DO_REINIT
+
+            self.syscall = syscall
+            self.syscall.log_parse.debug("Notice: found matching first packet for syscall: {0:016X} {1:s}"
+                                         .format(pid_tid, name))
+            return DO_GO_ON
+
+        if check in (CHECK_SAVE_IN_ENTRY, CHECK_WRONG_ID):
             self.list_others.append(self.syscall)
             self.syscall.log_parse.debug("Notice: packet saved (to 'list_others'): {0:016X} {1:s}"
                                          .format(self.syscall.pid_tid, self.syscall.name))
             return DO_REINIT
-
-        if CHECK_NOT_FIRST_PACKET == check:
-            old_syscall = self.syscall
-            self.syscall = self.list_others.look_for_matching_record(info_all, pid_tid, sc_id, name, retval)
-            if self.debug_mode:
-                if self.syscall == -1:
-                    old_syscall.log_parse.debug("WARNING: no matching first packet found: {0:016X} {1:s}"
-                                                .format(pid_tid, name))
-                else:
-                    self.syscall.log_parse.debug("Notice: found matching first packet for syscall: {0:016X} {1:s}"
-                                                 .format(pid_tid, name))
-            if self.syscall == -1:
-                return DO_REINIT
-            return DO_GO_ON
 
         return DO_GO_ON
 
@@ -205,7 +212,7 @@ class AnalyzingTool(ListSyscalls):
     ####################################################################################################################
     # analyse_read_data - analyse the read data
     ####################################################################################################################
-    def analyse_read_data(self, state, info_all, pid_tid, sc_id, bdata):
+    def analyse_read_data(self, state, info_all, pid_tid, sc_id, bdata, timestamp):
         sc_info = self.syscall_table.get(sc_id)
         name = self.syscall_table.name(sc_id)
         retval = self.syscall.get_return_value(bdata)
@@ -220,7 +227,7 @@ class AnalyzingTool(ListSyscalls):
                 self.syscall = Syscall(pid_tid, sc_id, sc_info, self.buf_size, self.debug_mode)
 
             check = self.syscall.check_read_data(info_all, pid_tid, sc_id, name, retval, DEBUG_ON)
-            result = self.decide_what_to_do_next(check, info_all, pid_tid, sc_id, name, retval)
+            result = self.decide_what_to_do_next(check, info_all, pid_tid, sc_id, name, retval, timestamp)
 
             if result == DO_REINIT:
                 if state == STATE_INIT:
@@ -358,16 +365,13 @@ class AnalyzingTool(ListSyscalls):
                     print("\r{0:d} ({1:d}% bytes) ".format(n, int((100 * fh.tell()) / file_size)), end=' ')
 
                 # analyse the read data and assign 'self.syscall' appropriately
-                state, self.syscall = self.analyse_read_data(state, info_all, pid_tid, sc_id, bdata)
+                state, self.syscall = self.analyse_read_data(state, info_all, pid_tid, sc_id, bdata, timestamp)
 
                 # add the read data to the syscall record
                 state = self.syscall.add_data(info_all, bdata, timestamp)
 
-                if state == STATE_COMPLETED:
-                    if self.offline_mode:
-                        self.list_ok.append(self.syscall)
-                    elif not self.convert_mode:
-                        self.syscall = self.analyse_if_supported(self.syscall)
+                if state == STATE_COMPLETED and self.syscall.is_complete():
+                    self.syscall = self.analyze_or_append(self.syscall)
 
                 if not self.offline_mode and (self.convert_mode or self.print_log_mode):
                     self.syscall.print_single_record(DEBUG_OFF)
@@ -394,6 +398,8 @@ class AnalyzingTool(ListSyscalls):
         if self.print_progress:
             print("\rDone (read {0:d} packets).".format(n))
 
+        if len(self.list_no_entry):
+            self.list_ok += self.list_no_entry
         if len(self.list_no_exit):
             self.list_ok += self.list_no_exit
         if len(self.list_others):

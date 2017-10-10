@@ -207,6 +207,10 @@ DEBUG(print_always): syscall: open, state: 1
 0x000447D4D14C9412 0x00004A6100004A61 ------------------ ------------------ exit_group 0x0000000000000000
 0x000447D4D14C96AC 0x00004A5F00004A5F ------------------ ------------------ exit_group 0x0000000000000000
 
+WARNING: list 'list_no_entry' is not empty!
+0x000447D4D13FC18C 0x0000254E0000254E 0x0000000000000000 0x0000000001F0E000 brk
+0x000447D4D1483A1D 0x00004A5F00004A5F 0x0000000000000024 0xFFFFFFFFFFFFFFFF open
+
 WARNING: list 'list_no_exit' is not empty!
 0x000447D4D13A8361 0x0000254E0000254E ------------------ ------------------ execve "$(*)/tests/antool/test_syscalls" 0x00007FFC9E8BC528 0x00007FFC9E8BC540
 0x000447D4D1472A15 0x0000254E0000254E ------------------ ------------------ fork

@@ -39,8 +39,8 @@ function cut_out_from_file() { # file offset1 offset2
 	OFFSET_1=$2
 	OFFSET_2=$3
 	OUTPUT=$(mktemp)
-	dd if=$FILE of=$OUTPUT  bs=$OFFSET_1 count=1 status=noxfer 2>/dev/null
-	dd if=$FILE of=$OUTPUT ibs=$OFFSET_2 skip=1 obs=$OFFSET_1 seek=1 status=noxfer 2>/dev/null
+	dd if=$FILE count=1 ibs=$OFFSET_1 status=none >  $OUTPUT
+	dd if=$FILE skip=1  ibs=$OFFSET_2 status=none >> $OUTPUT
 	mv $OUTPUT $FILE
 }
 
@@ -49,9 +49,9 @@ function move_part_to_end() { # file offset1 offset2
 	OFFSET_1=$2
 	OFFSET_2=$3
 	OUTPUT=$(mktemp)
-	dd if=$FILE of=$OUTPUT  bs=$OFFSET_1 count=1 status=noxfer 2>/dev/null
-	dd if=$FILE of=$OUTPUT ibs=$OFFSET_2 skip=1 obs=$OFFSET_1 seek=1 status=noxfer 2>/dev/null
-	dd if=$FILE ibs=1 skip=$OFFSET_1 count=$(($OFFSET_2 - $OFFSET_1)) status=noxfer 2>/dev/null >> $OUTPUT
+	dd if=$FILE count=1 ibs=$OFFSET_1 status=none >  $OUTPUT
+	dd if=$FILE skip=1  ibs=$OFFSET_2 status=none >> $OUTPUT
+	dd if=$FILE ibs=1  skip=$OFFSET_1 count=$(($OFFSET_2 - $OFFSET_1)) status=none >> $OUTPUT
 	mv $OUTPUT $FILE
 }
 
@@ -63,12 +63,14 @@ function replace_n_bytes() { # file offset N new_bytes
 	OUTPUT=$(mktemp)
 
 	SIZE1=$(stat -c %s $FILE)
-	dd if=$FILE of=$OUTPUT  bs=$OFFSET count=1 status=noxfer 2>/dev/null
-	# echo -n "Appending bytes: '$NEW_BYTES' == '" && echo -e $NEW_BYTES\'
+
+	dd if=$FILE of=$OUTPUT count=1 bs=$OFFSET status=none
 	echo -n -e $NEW_BYTES >> $OUTPUT
 	OFFSET=$(($OFFSET + $N_BYTES))
-	dd if=$FILE ibs=$OFFSET skip=1 status=noxfer 2>/dev/null >> $OUTPUT
+	dd if=$FILE skip=1 ibs=$OFFSET status=none >> $OUTPUT
 	mv $OUTPUT $FILE
+
+	# verify the file's size
 	SIZE2=$(stat -c %s $FILE)
 	if [ $SIZE1 -ne $SIZE2 ]; then
 		echo "replace_n_bytes(): size mismatch: $SIZE1 => $SIZE2"

@@ -61,9 +61,8 @@ CHECK_OK = 0
 CHECK_NO_ENTRY = 1
 CHECK_NO_EXIT = 2
 CHECK_WRONG_ID = 3
-CHECK_WRONG_EXIT = 4
-CHECK_SAVE_IN_ENTRY = 5
-CHECK_NOT_FIRST_PACKET = 6
+CHECK_SAVE_IN_ENTRY = 4
+CHECK_NOT_FIRST_PACKET = 5
 
 EM_no_ret = 1 << 20  # syscall does not return
 
@@ -237,18 +236,17 @@ class Syscall(SyscallInfo):
 
     ####################################################################################################################
     def print_always(self):
-        if self.debug_mode and self.state not in (STATE_ENTRY_COMPLETED, STATE_COMPLETED):
-            self.log_parse.debug("DEBUG(print_always): state = {0:d}".format(self.state))
+        if self.debug_mode and self.state not in (STATE_INIT, STATE_ENTRY_COMPLETED, STATE_COMPLETED):
+            print("DEBUG(print_always): syscall: {0:s}, state: {1:d}".format(self.name, self.state))
 
         self.print_entry(DEBUG_OFF)
 
-        if (self.state == STATE_COMPLETED) and (self.mask & EM_no_ret == 0):
+        if (self.content & CNT_EXIT) and (self.mask & EM_no_ret == 0):
             self.print_exit(DEBUG_OFF)
 
         if not (self.content & (CNT_ENTRY | CNT_EXIT)):
-            self.log_print("0x{0:016X} 0x{1:016X} {2:s} {3:s} [corrupted packet]".
-                           format(self.time_start, self.pid_tid, self.str_entry, self.name),
-                           DEBUG_OFF)
+            print("0x{0:016X} 0x{1:016X} {2:s} {3:s} [corrupted packet]".
+                  format(self.time_start, self.pid_tid, self.str_entry, self.name))
 
     ####################################################################################################################
     def log_print(self, msg, debug):
@@ -317,10 +315,7 @@ class Syscall(SyscallInfo):
             return CHECK_NOT_FIRST_PACKET
 
         if self.state == STATE_INIT and is_exit(etype):
-            if sc_id == RT_SIGRETURN_SYS_EXIT:  # sys_exit of rt_sigreturn
-                return CHECK_OK
-
-            if retval == 0 and name in ("clone", "fork", "vfork"):
+            if sc_id == RT_SIGRETURN_SYS_EXIT or (retval == 0 and name in ("clone", "fork", "vfork")):
                 return CHECK_OK
 
             return CHECK_NO_ENTRY
@@ -332,23 +327,10 @@ class Syscall(SyscallInfo):
                 self.print_mismatch_info(etype, pid_tid, sc_id, name)
             return CHECK_SAVE_IN_ENTRY
 
-        if pid_tid == self.pid_tid and sc_id == self.sc_id:
-            wrong_id = 0
-        else:
-            wrong_id = 1
+        wrong_id = not (pid_tid == self.pid_tid and sc_id == self.sc_id)
 
-        if self.state == STATE_ENTRY_COMPLETED:
-            if debug_on and self.debug_mode and (is_entry(etype) or (is_exit(etype) and wrong_id)):
-                self.log_parse.debug("Notice: no exit info found for syscall: {0:016X} {1:s}"
-                                     .format(self.pid_tid, self.name))
-            if is_entry(etype):
-                return CHECK_NO_EXIT
-
-            if is_exit(etype) and wrong_id:
-                if retval == 0 and sc_id == self.sc_id and self.name in ("clone", "fork", "vfork"):
-                    # clone/fork/vfork returned 0 first
-                    return CHECK_NO_EXIT
-                return CHECK_WRONG_EXIT
+        if self.state == STATE_ENTRY_COMPLETED and (is_entry(etype) or (is_exit(etype) and wrong_id)):
+            return CHECK_NO_EXIT
 
         if wrong_id:
             if debug_on:
@@ -505,14 +487,12 @@ class Syscall(SyscallInfo):
         return retval
 
     ####################################################################################################################
-    # add_exit -- add the exit info to the syscall record
+    # save_exit -- save the exit info to the syscall record
     ####################################################################################################################
-    def add_exit(self, bdata, timestamp):
+    def save_exit(self, retval, timestamp):
         if self.state == STATE_INIT:
             self.time_start = timestamp
         self.time_end = timestamp
-
-        retval = self.get_return_value(bdata)
 
         # split return value into result and errno
         if retval >= 0:
@@ -525,6 +505,21 @@ class Syscall(SyscallInfo):
             self.err = -retval
 
         self.content |= CNT_EXIT
-        self.state = STATE_COMPLETED
 
+    ####################################################################################################################
+    # add_exit -- add the exit info to the syscall record and mark as completed
+    ####################################################################################################################
+    def add_exit(self, bdata, timestamp):
+        retval = self.get_return_value(bdata)
+        self.save_exit(retval, timestamp)
+        self.state = STATE_COMPLETED
         return self.state
+
+    ####################################################################################################################
+    # is_complete -- check if syscall has both entry and exit info completed
+    ####################################################################################################################
+    def is_complete(self):
+        all_data = CNT_ENTRY | CNT_EXIT
+        has_only_entry = (self.content & CNT_ENTRY) and (self.mask & EM_no_ret == EM_no_ret)
+        has_only_exit  = (self.content & CNT_EXIT) and self.ret == 0 and self.name in ("clone", "fork", "vfork")
+        return (self.content & all_data == all_data) or has_only_entry or has_only_exit

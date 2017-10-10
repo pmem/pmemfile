@@ -33,6 +33,8 @@
 from syscall import *
 from utils import *
 
+SYSCALL_NOT_FOUND = -1
+
 RESULT_UNSUPPORTED_YET = 1
 RESULT_UNSUPPORTED_FLAG = 2
 RESULT_UNSUPPORTED_AT_ALL = 3
@@ -248,7 +250,7 @@ class ListSyscalls(list):
             if check == CHECK_OK:
                 self.remove(syscall)
                 return syscall
-        return -1
+        return SYSCALL_NOT_FOUND
 
     ####################################################################################################################
     # set_pid_index -- set PID index and create a new FD table for each PID

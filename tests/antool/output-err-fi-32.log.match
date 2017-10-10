@@ -118,8 +118,7 @@ DEBUG(parser): 0x000447D4D145ECA3 0x0000254E0000254E 0x0000000000000000 0x000000
 DEBUG(parser): 0x000447D4D145F151 0x0000254E0000254E ------------------ ------------------ brk 0x0000000000000000
 DEBUG(parser): 0x000447D4D145F40E 0x0000254E0000254E 0x0000000000000000 0x0000000001F30000 brk
 DEBUG(parser): 0x000447D4D1462555 0x0000254E0000254E ------------------ ------------------ fork
-DEBUG(parser): Notice: no exit info found for syscall: 0000254E0000254E fork
-DEBUG(parser): Notice: packet saved (to 'list_no_exit'): 0000254E0000254E fork
+DEBUG(parser): Notice: no exit info found, packet saved to 'list_no_exit': 0000254E0000254E fork
 DEBUG(analysis): DEBUG WARNING(set_pid_index): added new _empty_ FD table for new PID 0x00004A5F
 DEBUG(parser): 0x000447D4D1472078 0x00004A5F00004A5F 0x0000000000000000 0x0000000000000000 fork
 DEBUG(parser): 0x000447D4D1474B55 0x00004A5F00004A5F ------------------ ------------------ fork
@@ -133,11 +132,11 @@ DEBUG(parser): WARNING: current packet does not match the previous one:
 DEBUG(parser):          previous packet: 00004A5F00004A5F open (sc_id:2) state 1
 DEBUG(parser):          current packet:  0000254E0000254E fork (sc_id:57) etype 3
 DEBUG(parser): Notice: packet saved (to 'list_others'): 00004A5F00004A5F open
+DEBUG(parser): Notice: found matching entry for syscall: 0000254E0000254E fork
 DEBUG(analysis): DEBUG Notice(add_pid): copied CWD and FD table from: old PID 0x0000254E to: new PID 0x00004A5F
 DEBUG(parser): 0x000447D4D1470B95 0x0000254E0000254E 0x0000000000000000 0x0000000000004A5F fork
 DEBUG(parser): 0x000447D4D1472A15 0x0000254E0000254E ------------------ ------------------ fork
-DEBUG(parser): Notice: no exit info found for syscall: 0000254E0000254E fork
-DEBUG(parser): Notice: packet saved (to 'list_no_exit'): 0000254E0000254E fork
+DEBUG(parser): Notice: no exit info found, packet saved to 'list_no_exit': 0000254E0000254E fork
 DEBUG(analysis): DEBUG WARNING(set_pid_index): added new _empty_ FD table for new PID 0x00004A61
 DEBUG(parser): 0x000447D4D14832F6 0x00004A6100004A61 0x0000000000000000 0x0000000000000000 fork
 DEBUG(parser): 0x000447D4D1488315 0x00004A6100004A61 ------------------ ------------------ close 0x0000000012345678

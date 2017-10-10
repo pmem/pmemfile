@@ -1,6 +1,5 @@
-bind01     # bind on invalid pointer
-chdir04    # chdir on invalid pointer
-chroot03   # unsupported syscall, chroot on invalid pointer
+bind01     # bind on unix socket in pmemfile dir
+chroot03   # unsupported syscall
 creat07    # multiprocess
 dup05      # mkfifo
 dup203     # fcntl F_GETFD
@@ -55,14 +54,13 @@ inotify01  # inotify_add_watch
 inotify04  # inotify_add_watch
 inotify05  # inotify_add_watch
 symlink01 -T link01 # something about lstat and st_ino
-link04     # link("", ...) and link for invalid pointer
+link04     # link("", ...)
 linkat01   # mkfifo
 llseek01   # "write successful after file size limit"
 llseek02   # invalid errno for lseek with invalid whence
 lseek03    # invalid errno for lseek with invalid whence
 lseek04    # mkfifo
 lseek10    # mknod
-mkdir01    # mkdir for invalid pointer
 mkdir09    # mkdir with mode=07770 fails
 mmap001 -m 1
 mmap01
@@ -89,26 +87,15 @@ open13     # fgetxattr succeeds when it shouldn't
 openat02   # open(O_APPEND) + lseek
 mincore01  # mmap
 mincore02  # mmap
-pread03    # pread(dirfd) returns wrong errno
-pread03_64
 preadv01   # preadv fails with EFAULT
 preadv01_64
-pwrite02   # pwrite on invalid pointer
-pwrite02_64
 pwritev01  # pwritev fails with EFAULT
 pwritev01_64
-pwritev02  # pwritev fails with wrong errnos, crash with invalid pointer
-pwritev02_64
-read02     # read fails with wrong errnos, crash with invalid pointer
 read03     # mknod
 readlinkat02 # readlinkat succeeds unexpectedly
 readv01    # "readv failed reading 64 bytes, followed by two NULL vectors"
-readv02    # readv succeeds when it shouldn't, also SIGABRTs
-readv03    # readv returns invalid errno
 recvmsg01  # bind not supported(?)
 remap_file_pages02 # mmap
-rename08   # rename for invalid pointers
-rmdir05    # rmdir for invalid pointer
 select03   # mkfifo
 sendfile02 # sendfile fails
 sendfile02_64
@@ -122,7 +109,6 @@ sendfile07
 sendfile07_64
 sendfile08
 sendfile08_64
-sendfile09
 signal06    # ?
 sockioctl01 # mknod
 splice01    # splice not supported
@@ -131,21 +117,13 @@ splice03    # splice not supported
 tee01       # splice not supported
 stat06      # stat("") returns wrong errno
 stat06_64
-statfs01    # statfs returns ENOENT
-statfs01_64
-statfs02    # statfs returns ENOENT
-statfs02_64
-statvfs02   # statvfs crashes on NULL pointer
 symlinkat01 # symlinkat fails when it shouldn't
 unlink06    # mkfifo
-unlink07    # unlink("") fails with wrong errno, unlink for invalid pointer
+unlink07    # unlink("") fails with wrong errno
 unlinkat01  # unlinkat fails with invalid errno
 vmsplice01  # splice not supported
-write03     # write for invalid pointer
 write04     # mknod
-write05     # write for invalid pointer
 writev01    # writev returns wrong errno
-writev07    # writev for invalid pointer
 memfd_create01 # ?
 #growfiles -W gf27 -b -D 0 -w -g 8b -C 1 -b -i 1000 -u -f gfsparse-1-$$ -d $TMPDIR
 #growfiles -W gf28 -b -D 0 -w -g 16b -C 1 -b -i 1000 -u -f gfsparse-2-$$ -d $TMPDIR

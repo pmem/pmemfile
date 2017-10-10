@@ -44,6 +44,8 @@
 #include <linux/fs.h>
 #include <sys/capability.h>
 #include <sys/mman.h>
+#include <sys/vfs.h>
+#include <sys/statvfs.h>
 #include <unistd.h>
 
 #define VERIFY(f) COMPILE_ERROR_ON(PMEMFILE_##f != f);
@@ -175,6 +177,19 @@ VERIFY(MAP_FAILED);
 VERIFY(CAP_FOWNER);
 VERIFY(CAP_CHOWN);
 VERIFY(CAP_FSETID);
+
+VERIFY(ST_RDONLY);
+VERIFY(ST_NOSUID);
+VERIFY(ST_NODEV);
+VERIFY(ST_NOEXEC);
+VERIFY(ST_SYNCHRONOUS);
+VERIFY(ST_MANDLOCK);
+VERIFY(ST_WRITE);
+VERIFY(ST_APPEND);
+VERIFY(ST_IMMUTABLE);
+VERIFY(ST_NOATIME);
+VERIFY(ST_NODIRATIME);
+VERIFY(ST_RELATIME);
 
 #undef VERIFY
 

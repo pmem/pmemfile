@@ -106,7 +106,10 @@ pmemfile_preadv_args_check(PMEMfile *file,
 	LOG(LDBG, "vinode %p iov %p iovcnt %d", file->vinode, iov, iovcnt);
 
 	if (!vinode_is_regular_file(file->vinode)) {
-		errno = EINVAL;
+		if (vinode_is_dir(file->vinode))
+			errno = EISDIR;
+		else
+			errno = EINVAL;
 		return -1;
 	}
 

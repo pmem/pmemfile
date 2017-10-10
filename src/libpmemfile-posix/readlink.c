@@ -119,6 +119,11 @@ pmemfile_readlinkat(PMEMfilepool *pfp, PMEMfile *dir, const char *pathname,
 		return -1;
 	}
 
+	if (!buf) {
+		errno = EFAULT;
+		return -1;
+	}
+
 	if (!pathname) {
 		errno = ENOENT;
 		return -1;

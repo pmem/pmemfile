@@ -198,7 +198,7 @@ vinode_free_pmem(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 			LOG(LINF, "Freeing inode %lu failed!",
 				vinode->tinode.oid.off);
 		else
-			FATAL("!vinode_unref");
+			FATAL("!vinode_free_pmem");
 	} TX_END
 }
 
@@ -214,63 +214,53 @@ vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 
 	os_rwlock_wrlock(&pfp->inode_map_rwlock);
 
-	while (vinode) {
-		struct pmemfile_vinode *to_unregister = NULL;
-		struct pmemfile_vinode *parent = NULL;
+	while (vinode && __sync_sub_and_fetch(&vinode->ref, 1) == 0) {
+		struct pmemfile_vinode *to_unregister;
+		struct pmemfile_inode *inode = vinode->inode;
 
-		if (__sync_sub_and_fetch(&vinode->ref, 1) == 0) {
-			uint64_t nlink = inode_get_nlink(vinode->inode);
-			if (vinode->inode->suspended_references == 0 &&
-					nlink == 0)
-				vinode_free_pmem(pfp, vinode);
-			else if (vinode->atime_dirty) {
-				struct pmemfile_inode *inode = vinode->inode;
-				bool atime_slot = inode_next_atime_slot(inode);
-				inode->atime[atime_slot] = vinode->atime;
-				pmemfile_persist(pfp,
-						&inode->atime[atime_slot]);
+		uint64_t nlink = inode_get_nlink(inode);
+		if (inode->suspended_references == 0 && nlink == 0) {
+			vinode_free_pmem(pfp, vinode);
+			inode = vinode->inode = NULL;
+		} else if (vinode->atime_dirty) {
+			bool atime_slot = inode_next_atime_slot(inode);
+			inode->atime[atime_slot] = vinode->atime;
+			pmemfile_persist(pfp, &inode->atime[atime_slot]);
 
-				inode->slots.bits.atime = atime_slot;
-				pmemfile_persist(pfp, &inode->slots);
-			}
-
-			to_unregister = vinode;
-			/*
-			 * We don't need to take the vinode lock to read parent
-			 * because at this point (when ref count drops to 0)
-			 * nobody should have access to this vinode.
-			 */
-			parent = vinode->parent;
+			inode->slots.bits.atime = atime_slot;
+			pmemfile_persist(pfp, &inode->slots);
 		}
 
+		to_unregister = vinode;
 		/*
+		 * We don't need to take the vinode lock to read parent because
+		 * at this point (when ref count drops to 0) nobody should have
+		 * access to this vinode.
+		 *
 		 * Can't use vinode_is_root here, as that function dereferences
 		 * vinode->inode, which might point to already deallocated
 		 * memory -- see vinode_free_pmem call above.
 		 */
-		if (vinode->parent != vinode)
-			vinode = parent;
+		if (vinode->parent && vinode->parent != vinode)
+			vinode = vinode->parent;
 		else
 			vinode = NULL;
 
-		if (to_unregister) {
-			struct hash_map *map = pfp->inode_map;
+		struct hash_map *map = pfp->inode_map;
 
-			if (hash_map_remove(map,
-					to_unregister->tinode.oid.off,
-					to_unregister))
-				FATAL("vinode not found");
+		if (hash_map_remove(map, to_unregister->tinode.oid.off,
+				to_unregister))
+			FATAL("vinode not found");
 
-			if (to_unregister->blocks)
-				ctree_delete(to_unregister->blocks);
+		if (to_unregister->blocks)
+			ctree_delete(to_unregister->blocks);
 
 #ifdef DEBUG
-			/* "path" field is defined only in DEBUG builds */
-			pf_free(to_unregister->path);
+		/* "path" field is defined only in DEBUG builds */
+		pf_free(to_unregister->path);
 #endif
-			os_rwlock_destroy(&to_unregister->rwlock);
-			pf_free(to_unregister);
-		}
+		os_rwlock_destroy(&to_unregister->rwlock);
+		pf_free(to_unregister);
 	}
 
 	os_rwlock_unlock(&pfp->inode_map_rwlock);

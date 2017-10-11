@@ -50,6 +50,8 @@ Archs = ["Unknown", "x86_64"]
 DO_GO_ON = 0
 DO_REINIT = 1
 
+SYSCALL_NOT_FOUND = -1
+
 
 ########################################################################################################################
 # AnalyzingTool
@@ -115,21 +117,27 @@ class AnalyzingTool(ListSyscalls):
         self.syscall_table.read_syscall_table(fh)
 
     ####################################################################################################################
+    @staticmethod
+    def print_always(alist):
+        for syscall in alist:
+            syscall.print_always()
+
+    ####################################################################################################################
     def print_log(self):
-        self.list_ok.print_always()
+        self.print_always(self.list_ok)
 
         if self.debug_mode:
             if len(self.list_no_entry):
                 print("\nWARNING: list 'list_no_entry' is not empty!")
-                self.list_no_entry.print_always()
+                self.print_always(self.list_no_entry)
 
             if len(self.list_no_exit):
                 print("\nWARNING: list 'list_no_exit' is not empty!")
-                self.list_no_exit.print_always()
+                self.print_always(self.list_no_exit)
 
             if len(self.list_others):
                 print("\nWARNING: list 'list_others' is not empty!")
-                self.list_others.print_always()
+                self.print_always(self.list_others)
 
     ####################################################################################################################
     def analyze_or_append(self, syscall):
@@ -141,14 +149,25 @@ class AnalyzingTool(ListSyscalls):
         return syscall
 
     ####################################################################################################################
+    # look_for_matching_record -- look for matching record in a list of incomplete syscalls
+    ####################################################################################################################
+    @staticmethod
+    def look_for_matching_record(alist, info_all, pid_tid, sc_id, name, retval):
+        for syscall in alist:
+            check = syscall.check_read_data(info_all, pid_tid, sc_id, name, retval, DEBUG_OFF)
+            if check == CHECK_OK:
+                alist.remove(syscall)
+                return syscall
+        return SYSCALL_NOT_FOUND
+
+    ####################################################################################################################
     # decide_what_to_do_next - decide what to do next basing on the check done
     ####################################################################################################################
     def decide_what_to_do_next(self, check, info_all, pid_tid, sc_id, name, retval, timestamp):
 
         if CHECK_NO_EXIT == check:
-            syscall = self.list_no_entry.look_for_matching_record(self.syscall.info_all, self.syscall.pid_tid,
-                                                                  self.syscall.sc_id, self.syscall.name,
-                                                                  self.syscall.ret)
+            syscall = self.look_for_matching_record(self.list_no_entry, self.syscall.info_all, self.syscall.pid_tid,
+                                                    self.syscall.sc_id, self.syscall.name, self.syscall.ret)
             if syscall == SYSCALL_NOT_FOUND:
                 self.list_no_exit.append(self.syscall)
                 self.syscall.log_parse.debug("Notice: no exit info found, packet saved to 'list_no_exit': "
@@ -163,7 +182,7 @@ class AnalyzingTool(ListSyscalls):
             return DO_REINIT
 
         if CHECK_NO_ENTRY == check:
-            syscall = self.list_no_exit.look_for_matching_record(info_all, pid_tid, sc_id, name, retval)
+            syscall = self.look_for_matching_record(self.list_no_exit, info_all, pid_tid, sc_id, name, retval)
             if syscall == SYSCALL_NOT_FOUND:
                 self.syscall.log_parse.debug("WARNING: no entry found: exit without entry info found: {0:016X} {1:s}"
                                              .format(pid_tid, name))
@@ -179,7 +198,7 @@ class AnalyzingTool(ListSyscalls):
             return DO_GO_ON
 
         if CHECK_NOT_FIRST_PACKET == check:
-            syscall = self.list_others.look_for_matching_record(info_all, pid_tid, sc_id, name, retval)
+            syscall = self.look_for_matching_record(self.list_others, info_all, pid_tid, sc_id, name, retval)
             if syscall == SYSCALL_NOT_FOUND:
                 self.syscall.log_parse.debug("WARNING: no matching first packet found: {0:016X} {1:s}"
                                              .format(pid_tid, name))

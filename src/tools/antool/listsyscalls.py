@@ -33,8 +33,6 @@
 from syscall import *
 from utils import *
 
-SYSCALL_NOT_FOUND = -1
-
 RESULT_UNSUPPORTED_YET = 1
 RESULT_UNSUPPORTED_FLAG = 2
 RESULT_UNSUPPORTED_AT_ALL = 3
@@ -235,22 +233,6 @@ class ListSyscalls(list):
         for i in range(fd_table_length, fd + 1):
             table.append(-1)
         table[fd] = val
-
-    ####################################################################################################################
-    def print_always(self):
-        for syscall in self:
-            syscall.print_always()
-
-    ####################################################################################################################
-    # look_for_matching_record -- look for matching record in a list of incomplete syscalls
-    ####################################################################################################################
-    def look_for_matching_record(self, info_all, pid_tid, sc_id, name, retval):
-        for syscall in self:
-            check = syscall.check_read_data(info_all, pid_tid, sc_id, name, retval, DEBUG_OFF)
-            if check == CHECK_OK:
-                self.remove(syscall)
-                return syscall
-        return SYSCALL_NOT_FOUND
 
     ####################################################################################################################
     # set_pid_index -- set PID index and create a new FD table for each PID

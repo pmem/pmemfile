@@ -182,7 +182,7 @@ class AnalyzingTool(ListSyscalls):
             syscall = self.list_others.look_for_matching_record(info_all, pid_tid, sc_id, name, retval)
             if syscall == SYSCALL_NOT_FOUND:
                 self.syscall.log_parse.debug("WARNING: no matching first packet found: {0:016X} {1:s}"
-                                            .format(pid_tid, name))
+                                             .format(pid_tid, name))
                 return DO_REINIT
 
             self.syscall = syscall

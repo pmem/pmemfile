@@ -986,3 +986,21 @@ class ListSyscalls(list):
         for syscall in self:
             self.add_to_unsupported_lists_or_print(syscall)
         self.print_unsupported_syscalls()
+
+    ####################################################################################################################
+    # analyse_if_supported_syscall - check if the syscall is supported by pmemfile
+    ####################################################################################################################
+    def analyse_if_supported_syscall(self, syscall):
+        self.set_pid_index(syscall)
+        if self.has_entry_content(syscall):
+            self.match_fd_with_path(syscall)
+            syscall.unsupported_type = self.is_supported(syscall)
+            self.add_to_unsupported_lists_or_print(syscall)
+        return syscall
+
+    ####################################################################################################################
+    # analyse_if_supported_list - check if all syscalls in the list are supported by pmemfile
+    ####################################################################################################################
+    def analyse_if_supported_list(self):
+        for i in range(len(self)):
+            self[i] = self.analyse_if_supported_syscall(self[i])

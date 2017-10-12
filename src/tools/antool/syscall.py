@@ -521,5 +521,6 @@ class Syscall(SyscallInfo):
     def is_complete(self):
         all_data = CNT_ENTRY | CNT_EXIT
         has_only_entry = (self.content & CNT_ENTRY) and (self.mask & EM_no_ret == EM_no_ret)
-        has_only_exit = (self.content & CNT_EXIT) and self.ret == 0 and self.name in ("clone", "fork", "vfork")
+        has_only_exit = (self.content & CNT_EXIT) and ((self.ret == 0 and self.name in ("clone", "fork", "vfork")) or
+                                                       self.sc_id == RT_SIGRETURN_SYS_EXIT)
         return (self.content & all_data == all_data) or has_only_entry or has_only_exit

@@ -29,13 +29,13 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-#include <stdlib.h>
-#include "libpmemfile-posix.h"
-#include "pool.h"
-
 #ifndef PMEMFILE_BLOCKS_H
 #define PMEMFILE_BLOCKS_H
+
+#include <stdlib.h>
+#include "layout.h"
+#include "libpmemfile-posix.h"
+#include "libpmemobj.h"
 
 struct pmem_block_info {
 

@@ -6,8 +6,8 @@ DEBUG(main): debug_mode     = 1
 DEBUG(main): print_progress = 0
 DEBUG(syscalltable): format of syscall table OK, reading 1000 records...
 DEBUG(syscalltable): read 1000 records of syscall table.
-INFO(main): Command line: vltrace -f -l bin -r -s 1531 -f -o output-bin-14.log $(*)/tests/antool/test_syscalls 14 
-INFO(main): Current working directory: $(*)/tests/antool/logs-test-parser.sh-14-1531-2017-07-27_09:05:31_242116266-9110
+INFO(converter): Command line: vltrace -f -l bin -r -s 1531 -f -o output-bin-14.log $(*)/tests/antool/test_syscalls 14 
+INFO(converter): Current working directory: $(*)/tests/antool/logs-test-parser.sh-14-1531-2017-07-27_09:05:31_242116266-9110
 
 DEBUG(parser): 0x000447D4D13A8361 0x0000254E0000254E ------------------ ------------------ execve "$(*)/tests/antool/test_syscalls" 0x00007FFC9E8BC528 0x00007FFC9E8BC540
 DEBUG(analysis): execve               "$(*)/tests/antool/test_syscalls"

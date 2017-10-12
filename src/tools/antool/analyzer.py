@@ -106,16 +106,6 @@ class Analyzer(Converter):
         return syscall
 
     ####################################################################################################################
-    def link_lists(self):
-        if len(self.list_no_entry):
-            self.list_ok += self.list_no_entry
-        if len(self.list_no_exit):
-            self.list_ok += self.list_no_exit
-        if len(self.list_others):
-            self.list_ok += self.list_others
-        self.list_ok.sort()
-
-    ####################################################################################################################
     def analyse_and_print_unsupported_online(self):
         assert(not self.convert_mode and not self.offline_mode)
 

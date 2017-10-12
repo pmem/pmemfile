@@ -80,13 +80,14 @@ def main():
                   args.script, args.debug, args.log, verbose, print_all)
 
     at.read_and_parse_data(args.binlog)
-    at.link_lists()
 
     if not args.convert and not args.offline:
         at.analyse_and_print_unsupported_online()
 
     if args.offline and (args.convert or args.log):
         at.print_log()
+        if args.debug:
+            at.print_other_lists()
 
     if args.convert or not args.offline:
         return

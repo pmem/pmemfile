@@ -479,6 +479,32 @@ TEST_F(basic, tmpfile)
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 0, 0, 0, 0));
 }
 
+TEST_F(basic, tmpfile_not_in_root)
+{
+	pmemfile_ssize_t written;
+
+	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir", 0777), 0);
+
+	PMEMfile *f = pmemfile_open(
+		pfp, "/dir", PMEMFILE_O_TMPFILE | PMEMFILE_O_WRONLY, 0644);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+
+	written = pmemfile_write(pfp, f, "qwerty", 6);
+	ASSERT_EQ(written, 6) << COND_ERROR(written);
+
+	ASSERT_TRUE(test_empty_dir(pfp, "/dir"));
+
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 2, 1, 0, 1));
+
+	pmemfile_close(pfp, f);
+
+	ASSERT_TRUE(test_empty_dir(pfp, "/dir"));
+
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 1, 0, 0));
+
+	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
+}
+
 int
 main(int argc, char *argv[])
 {

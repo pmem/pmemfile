@@ -208,8 +208,8 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	PMEMfile *file = NULL;
 
 	struct pmemfile_path_info info;
-	struct pmemfile_vinode *vinode;
-	struct pmemfile_vinode *vparent;
+	struct pmemfile_vinode *vinode = NULL;
+	struct pmemfile_vinode *vparent = NULL;
 	bool path_info_changed;
 	size_t namelen;
 	struct pmemfile_cred cred;
@@ -220,13 +220,14 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 	do {
 		path_info_changed = false;
-		vparent = info.parent;
-		vinode = NULL;
 
 		if (info.error) {
 			error = info.error;
 			goto end;
 		}
+
+		vparent = vinode_ref(pfp, info.parent);
+		vinode = NULL;
 
 		namelen = component_length(info.remaining);
 
@@ -260,6 +261,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 			/* XXX handle infinite symlink loop */
 			resolve_symlink(pfp, &cred, vinode, &info);
+			vinode_unref(pfp, vparent);
 			path_info_changed = true;
 		}
 	} while (path_info_changed);
@@ -484,6 +486,8 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		file->dir_pos.dir = &vinode->inode->file_data.dir;
 
 end:
+	if (vparent)
+		vinode_unref(pfp, vparent);
 	path_info_cleanup(pfp, &info);
 	cred_release(&cred);
 

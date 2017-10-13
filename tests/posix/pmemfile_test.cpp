@@ -328,13 +328,8 @@ bool
 test_empty_dir(PMEMfilepool *pfp, const char *path)
 {
 	std::map<std::string, file_attrs> files = test_list_files(pfp, path);
-
-	return test_compare_dirs(
-		files,
-		std::vector<pmemfile_ls>{
-			{040777, 2, 4000, "."}, {040777, 2, 4000, ".."},
-		},
-		false, false);
+	return files.size() == 2 && files.count(".") == 1 &&
+		files.count("..") == 1;
 }
 
 pmemfile_test::pmemfile_test(size_t poolsize)

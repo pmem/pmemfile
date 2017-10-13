@@ -42,6 +42,22 @@ public:
 	}
 };
 
+/*
+ * ext4 seems to use kernel's timer to get current time, used in utime and other
+ * timestamp related functions. This is not always accurate, as timer frequency
+ * is 250Hz by default, which means timer is updated every 4 ms.
+ * Default config values include: 100Hz, 250Hz, 500Hz, 1000Hz.
+ * In worst case timer would be updated every 10 ms.
+ * This function will wait 11 ms to ensure, that new timestamp is different than
+ * previous one.
+ */
+static inline void
+pmemfile_pop_sleep()
+{
+	if (is_pmemfile_pop)
+		usleep(11000);
+}
+
 TEST_F(timestamps, utime)
 {
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/file"));
@@ -63,6 +79,8 @@ TEST_F(timestamps, utime)
 
 	ASSERT_EQ(st2.st_mtim.tv_sec, tm.modtime);
 	ASSERT_EQ(st2.st_mtim.tv_nsec, 0);
+
+	pmemfile_pop_sleep();
 
 	ASSERT_EQ(pmemfile_utime(pfp, "/file", NULL), 0);
 
@@ -89,14 +107,14 @@ TEST_F(timestamps, utime)
 	tm.modtime = -456;
 	ASSERT_EQ(pmemfile_utime(pfp, "/file", &tm), 0);
 
-#ifdef FAULT_INJECTION
-	pmemfile_gid_t groups[1] = {1002};
-	ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
-	pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
-	errno = 0;
-	ASSERT_EQ(pmemfile_utime(pfp, "/file", &tm), -1);
-	EXPECT_EQ(errno, ENOMEM);
-#endif
+	if (_pmemfile_fault_injection_enabled()) {
+		pmemfile_gid_t groups[1] = {1002};
+		ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
+		_pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+		errno = 0;
+		ASSERT_EQ(pmemfile_utime(pfp, "/file", &tm), -1);
+		EXPECT_EQ(errno, ENOMEM);
+	}
 
 	memset(&st2, 0, sizeof(st2));
 	ASSERT_EQ(pmemfile_stat(pfp, "/file", &st2), 0);
@@ -143,6 +161,8 @@ TEST_F(timestamps, utimes)
 
 	ASSERT_EQ(st2.st_mtim.tv_sec, tm[1].tv_sec);
 	ASSERT_EQ(st2.st_mtim.tv_nsec, tm[1].tv_usec * 1000);
+
+	pmemfile_pop_sleep();
 
 	ASSERT_EQ(pmemfile_utimes(pfp, "/file", NULL), 0);
 
@@ -253,6 +273,8 @@ TEST_F(timestamps, futimes)
 
 	ASSERT_EQ(st2.st_mtim.tv_sec, tm[1].tv_sec);
 	ASSERT_EQ(st2.st_mtim.tv_nsec, tm[1].tv_usec * 1000);
+
+	pmemfile_pop_sleep();
 
 	ASSERT_EQ(pmemfile_futimes(pfp, f, NULL), 0);
 
@@ -378,6 +400,8 @@ TEST_F(timestamps, futimens)
 
 	ASSERT_EQ(st2.st_mtim.tv_sec, tm[1].tv_sec);
 	ASSERT_EQ(st2.st_mtim.tv_nsec, tm[1].tv_nsec);
+
+	pmemfile_pop_sleep();
 
 	ASSERT_EQ(pmemfile_futimens(pfp, f, NULL), 0);
 
@@ -579,6 +603,8 @@ TEST_F(timestamps, utimensat)
 	ASSERT_EQ(fst2.st_mtim.tv_sec, tm[1].tv_sec);
 	ASSERT_EQ(fst2.st_mtim.tv_nsec, tm[1].tv_nsec);
 
+	pmemfile_pop_sleep();
+
 	ASSERT_EQ(pmemfile_utimensat(pfp, d, "file", NULL, 0), 0);
 
 	memset(&fst2, 0, sizeof(fst2));
@@ -595,6 +621,8 @@ TEST_F(timestamps, utimensat)
 	ASSERT_LT(fst2.st_mtim.tv_nsec, 1000000000);
 	if (fst2.st_mtim.tv_sec == fst.st_mtim.tv_sec)
 		ASSERT_GT(fst2.st_mtim.tv_nsec, fst.st_mtim.tv_nsec);
+
+	pmemfile_pop_sleep();
 
 	tm[0] = {7, PMEMFILE_UTIME_NOW};
 	tm[1] = {9, PMEMFILE_UTIME_OMIT};

@@ -38,6 +38,7 @@
 #include <string>
 #include <vector>
 
+#include "../../src/libpmemfile-posix/fault_injection.h"
 #include "../test_backtrace.h"
 #include "libpmemfile-posix.h"
 #include "gtest/gtest.h"
@@ -48,6 +49,8 @@
 	} while (0)
 #define T_OUT(...) fprintf(stderr, __VA_ARGS__)
 #define COND_ERROR(ret) (ret < 0 ? strerror(errno) : "")
+
+extern bool is_pmemfile_pop;
 
 /*
  * A bad file pointer, for test cases where libpmemfile-posix is expected to

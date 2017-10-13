@@ -60,6 +60,8 @@ option(LONG_TESTS "build long running tests as well" OFF)
 option(AUTO_GENERATE_SOURCES
 	"Use libclang to (re)generate certain source files -- this is required for the modification of some sources (e.g. libpmemfile-posix-wrappers.h must be regenerated each time libpmemfile-posix.h is modified" OFF)
 
+option(BUILD_LIBPMEMFILE_POP "build libpmemfile_pop (libpmemfile_posix_over_posix) library" OFF)
+
 option(BUILD_PMEMFILE_FUSE
 	"build pmemfile-fuse (requires libfuse)" ON)
 
@@ -486,7 +488,12 @@ if(AUTO_GENERATE_SOURCES)
 	add_subdirectory(utils/transform)
 endif()
 
+if (BUILD_LIBPMEMFILE_POP)
+	add_subdirectory(tests/libpmemfile-pop)
+endif()
+
 add_subdirectory(src/libpmemfile-posix)
+
 if(BUILD_LIBPMEMFILE)
 	add_subdirectory(src/libpmemfile)
 endif()

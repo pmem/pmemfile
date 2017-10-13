@@ -262,6 +262,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 			/* XXX handle infinite symlink loop */
 			resolve_symlink(pfp, &cred, vinode, &info);
 			vinode_unref(pfp, vparent);
+			vinode = NULL;
 			path_info_changed = true;
 		}
 	} while (path_info_changed);

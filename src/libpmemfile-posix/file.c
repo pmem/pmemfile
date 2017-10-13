@@ -430,8 +430,11 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 		 * thread may unlink this file before we ref it and make our
 		 * tinode invalid.
 		 */
-		vinode = inode_ref(pfp, tinode, vparent, info.remaining,
-				namelen);
+		if (tmpfile)
+			vinode = inode_ref(pfp, tinode, vparent, ".tmpfile", 8);
+		else
+			vinode = inode_ref(pfp, tinode, vparent, info.remaining,
+					namelen);
 		if (vinode == NULL) {
 			error = errno;
 			os_rwlock_unlock(&vparent->rwlock);

@@ -404,10 +404,7 @@ TEST_F(rw, huge_file)
 					      {0100644, 1, 209714688, "file1"},
 				      }));
 
-	if (env_block_size == 0x4000)
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 1, 203, 12800));
-	else
-		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 1, 204, 12800));
+	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 1, 204, 12800));
 
 	f = pmemfile_open(pfp, "/file1", PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);
@@ -826,8 +823,10 @@ TEST_F(rw, fallocate)
 	if (env_block_size == 0x4000)
 		ASSERT_EQ(stat_block_count(f), (0x40000 / 512));
 
-	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 1, 1, 0, (env_block_size == 0x4000) ? 16 : 1));
+	if (env_block_size == 0x4000)
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 1, 1, 16));
+	else
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 1, 0, 1));
 
 	/*
 	 * Allocate the same range, file size is expected to change,
@@ -839,8 +838,11 @@ TEST_F(rw, fallocate)
 
 	if (env_block_size == 0x4000)
 		ASSERT_EQ(stat_block_count(f), (0x40000 / 512));
-	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 1, 1, 0, (env_block_size == 0x4000) ? 16 : 1));
+
+	if (env_block_size == 0x4000)
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 1, 1, 16));
+	else
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 1, 0, 1));
 
 	/*
 	 * Now remove an interval, that overlaps with the previously
@@ -864,8 +866,11 @@ TEST_F(rw, fallocate)
 
 	if (env_block_size == 0x4000)
 		ASSERT_EQ(stat_block_count(f), (13 * 0x4000 / 512));
-	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 1, 1, 0, (env_block_size == 0x4000) ? 13 : 1));
+
+	if (env_block_size == 0x4000)
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 1, 1, 13));
+	else
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 1, 0, 1));
 
 	/*
 	 * Writing some bytes -- this should allocate two new blocks when
@@ -880,8 +885,11 @@ TEST_F(rw, fallocate)
 
 	if (env_block_size == 0x4000)
 		ASSERT_EQ(stat_block_count(f), (15 * 0x4000 / 512));
-	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 1, 1, 0, (env_block_size == 0x4000) ? 13 + 2 : 1));
+
+	if (env_block_size == 0x4000)
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 1, 1, 13 + 2));
+	else
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 1, 0, 1));
 
 	/*
 	 * Try to read the test data, there should be zeroes around it.
@@ -910,8 +918,11 @@ TEST_F(rw, fallocate)
 
 	if (env_block_size == 0x4000)
 		ASSERT_EQ(stat_block_count(f), (14 * 0x4000 / 512));
-	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 1, 1, 0, (env_block_size == 0x4000) ? 13 + 1 : 1));
+
+	if (env_block_size == 0x4000)
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 1, 1, 13 + 1));
+	else
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 1, 0, 1));
 
 	/*
 	 * Try to read the test data, there should be only the first character
@@ -941,8 +952,11 @@ TEST_F(rw, fallocate)
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 0x4000 + 0x40000);
 	if (env_block_size == 0x4000)
 		ASSERT_EQ(stat_block_count(f), (18 * 0x4000 / 512));
-	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 1, 1, 0, (env_block_size == 0x4000) ? 14 + 4 : 1 + 1));
+
+	if (env_block_size == 0x4000)
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 1, 1, 14 + 4));
+	else
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 1, 0, 1 + 1));
 
 	/*
 	 * So, the file size should remain as it was.
@@ -955,8 +969,11 @@ TEST_F(rw, fallocate)
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), 0x4000 + 0x40000);
 	if (env_block_size == 0x4000)
 		ASSERT_EQ(stat_block_count(f), (14 * 0x4000 / 512));
-	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 1, 1, 0, (env_block_size == 0x4000) ? 14 : 1));
+
+	if (env_block_size == 0x4000)
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 1, 1, 14));
+	else
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 1, 0, 1));
 
 	/*
 	 * Allocate the same new blocks beyond current file size again.
@@ -971,8 +988,11 @@ TEST_F(rw, fallocate)
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), size);
 	if (env_block_size == 0x4000)
 		ASSERT_EQ(stat_block_count(f), (bc_4k * 0x4000 / 512));
-	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 1, 1, 0, (env_block_size == 0x4000) ? bc_4k : bc));
+
+	if (env_block_size == 0x4000)
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 1, 1, bc_4k));
+	else
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 1, 0, bc));
 
 	/*
 	 * There should be a hole somewhere between offsets 0x40000 and
@@ -987,8 +1007,11 @@ TEST_F(rw, fallocate)
 	ASSERT_EQ(test_pmemfile_path_size(pfp, "/file1"), size);
 	if (env_block_size == 0x4000)
 		ASSERT_EQ(stat_block_count(f), (bc_4k * 0x4000 / 512));
-	EXPECT_TRUE(test_pmemfile_stats_match(
-		pfp, 1, 1, 0, (env_block_size == 0x4000) ? bc_4k : bc));
+
+	if (env_block_size == 0x4000)
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 1, 1, bc_4k));
+	else
+		EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 1, 0, bc));
 
 	/*
 	 * How about allocating a lot of single byte intervals?

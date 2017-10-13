@@ -1382,9 +1382,18 @@ TEST_F(rw, sparse_files_using_lseek)
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 16382, PMEMFILE_SEEK_DATA), 16382);
 	ASSERT_EQ(pmemfile_lseek(pfp, f, hole - 1, PMEMFILE_SEEK_DATA),
 		  hole - 1);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, hole, PMEMFILE_SEEK_DATA), size);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, hole + 1, PMEMFILE_SEEK_DATA), size);
-	ASSERT_EQ(pmemfile_lseek(pfp, f, size - 1, PMEMFILE_SEEK_DATA), size);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole, PMEMFILE_SEEK_DATA), -1);
+	EXPECT_EQ(errno, ENXIO);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, hole + 1, PMEMFILE_SEEK_DATA), -1);
+	EXPECT_EQ(errno, ENXIO);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_lseek(pfp, f, size - 1, PMEMFILE_SEEK_DATA), -1);
+	EXPECT_EQ(errno, ENXIO);
 
 	errno = 0;
 	ASSERT_EQ(pmemfile_lseek(pfp, f, size, PMEMFILE_SEEK_DATA), -1);

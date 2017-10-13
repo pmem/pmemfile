@@ -52,7 +52,7 @@
 #define PMEMFILE_POSIX_LOG_LEVEL_VAR "PMEMFILE_POSIX_LOG_LEVEL"
 #define PMEMFILE_POSIX_LOG_FILE_VAR "PMEMFILE_POSIX_LOG_FILE"
 
-bool pmemfile_overallocate_on_append = true;
+bool pmemfile_overallocate_on_append = false;
 
 #ifdef ANY_VG_TOOL_ENABLED
 /* initialized to true if the process is running inside Valgrind */
@@ -98,10 +98,9 @@ libpmemfile_posix_init(void)
 
 	if (pmemfile_posix_block_size == 0) {
 		env = getenv("PMEMFILE_OVERALLOCATE_ON_APPEND");
-		if (env && env[0] == '0')
-			pmemfile_overallocate_on_append = false;
+		if (env && env[0] == '1')
+			pmemfile_overallocate_on_append = true;
 	} else {
-		pmemfile_overallocate_on_append = false;
 		set_block_size(pmemfile_posix_block_size);
 	}
 	LOG(LINF, "overallocate_on_append flag is %s",

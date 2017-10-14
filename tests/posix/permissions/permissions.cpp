@@ -451,6 +451,12 @@ TEST_F(permissions, fchmod)
 		errno = 0;
 		ASSERT_EQ(pmemfile_fchmod(pfp, f, PMEMFILE_ACCESSPERMS), -1);
 		EXPECT_EQ(errno, ENOMEM);
+
+		_pmemfile_inject_fault_at(PF_GET_CURRENT_TIME, 1,
+					  "tx_get_current_time");
+		errno = 0;
+		ASSERT_EQ(pmemfile_fchmod(pfp, f, PMEMFILE_ACCESSPERMS), -1);
+		EXPECT_EQ(errno, EINVAL);
 	}
 
 	ASSERT_EQ(pmemfile_fchmod(pfp, f, PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR |
@@ -1277,11 +1283,18 @@ TEST_F(permissions, fchown)
 	ASSERT_TRUE(test_fchown(pfp, f, 1000, 1001, 0));
 	ASSERT_TRUE(test_fchown(pfp, f, 1000, 1000, EPERM));
 
+	ASSERT_EQ(pmemfile_setcap(pfp, PMEMFILE_CAP_CHOWN), 0)
+		<< strerror(errno);
+
 	if (_pmemfile_fault_injection_enabled()) {
 		_pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
 		errno = 0;
-		ASSERT_TRUE(test_fchown(pfp, f, 0, 0, 12));
-		EXPECT_EQ(errno, ENOMEM);
+		ASSERT_TRUE(test_fchown(pfp, f, 0, 0, ENOMEM));
+
+		_pmemfile_inject_fault_at(PF_GET_CURRENT_TIME, 1,
+					  "tx_get_current_time");
+		errno = 0;
+		ASSERT_TRUE(test_fchown(pfp, f, 0, 0, EINVAL));
 	}
 
 	pmemfile_close(pfp, f);

@@ -350,6 +350,15 @@ TEST_F(dirs, mkdir_rmdir_unlink_errors)
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/file/"), -1);
 	EXPECT_EQ(errno, ENOTDIR);
 
+	if (_pmemfile_fault_injection_enabled()) {
+		_pmemfile_inject_fault_at(PF_GET_CURRENT_TIME, 1,
+					  "_pmemfile_unlinkat");
+
+		errno = 0;
+		ASSERT_EQ(pmemfile_unlink(pfp, "/file"), -1);
+		EXPECT_EQ(errno, EINVAL);
+	}
+
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file"), 0);
 
 	errno = 0;
@@ -359,6 +368,16 @@ TEST_F(dirs, mkdir_rmdir_unlink_errors)
 	errno = 0;
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir0007"), -1);
 	EXPECT_EQ(errno, ENOTEMPTY);
+
+	if (_pmemfile_fault_injection_enabled()) {
+		_pmemfile_inject_fault_at(PF_GET_CURRENT_TIME, 1,
+					  "pmemfile_rmdirat");
+
+		errno = 0;
+		ASSERT_EQ(pmemfile_rmdir(pfp, "/dir0007/another_directory"),
+			  -1);
+		EXPECT_EQ(errno, EINVAL);
+	}
 
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir0007/another_directory"), 0);
 
@@ -884,6 +903,15 @@ TEST_F(dirs, file_renames)
 	errno = 0;
 	ASSERT_EQ(pmemfile_rename(NULL, "/file3", "/file4"), -1);
 	EXPECT_EQ(errno, EFAULT);
+
+	if (_pmemfile_fault_injection_enabled()) {
+		_pmemfile_inject_fault_at(PF_GET_CURRENT_TIME, 1,
+					  "vinode_rename");
+
+		errno = 0;
+		ASSERT_EQ(pmemfile_rename(pfp, "/file3", "/file4"), -1);
+		EXPECT_EQ(errno, EINVAL);
+	}
 
 	ASSERT_EQ(pmemfile_rename(pfp, "/file3", "file4"), 0);
 	EXPECT_TRUE(

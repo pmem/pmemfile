@@ -126,6 +126,13 @@ TEST_F(basic, open_create_close)
 		errno = 0;
 		ASSERT_EQ(pmemfile_create(pfp, "/fileXXX", 0644), nullptr);
 		EXPECT_EQ(errno, ENOMEM);
+
+		_pmemfile_inject_fault_at(PF_GET_CURRENT_TIME, 1,
+					  "tx_get_current_time");
+
+		errno = 0;
+		ASSERT_EQ(pmemfile_create(pfp, "/fileXXX", 0644), nullptr);
+		EXPECT_EQ(errno, EINVAL);
 	}
 
 	EXPECT_TRUE(test_compare_dirs(pfp, "/", std::vector<pmemfile_ls>{
@@ -349,6 +356,16 @@ TEST_F(basic, link)
 			    "123456");
 	ASSERT_EQ(ret, -1);
 	EXPECT_EQ(errno, ENAMETOOLONG);
+
+	if (_pmemfile_fault_injection_enabled()) {
+		_pmemfile_inject_fault_at(PF_GET_CURRENT_TIME, 1,
+					  "tx_get_current_time");
+
+		errno = 0;
+		ret = pmemfile_link(pfp, "/aaa", "/XXXXXX");
+		ASSERT_EQ(ret, -1);
+		EXPECT_EQ(errno, EINVAL);
+	}
 
 	ret = pmemfile_rmdir(pfp, "/dir");
 	ASSERT_EQ(ret, 0) << strerror(errno);

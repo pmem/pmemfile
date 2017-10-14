@@ -352,6 +352,10 @@ TEST_F(rw, basic)
 	ASSERT_EQ(pmemfile_lseek(pfp, f, 4096, PMEMFILE_SEEK_SET), 4096);
 	ASSERT_EQ(test_pmemfile_file_size(pfp, f), 8192);
 
+	if (_pmemfile_fault_injection_enabled())
+		_pmemfile_inject_fault_at(PF_GET_CURRENT_TIME, 1,
+					  "handle_atime");
+
 	r = pmemfile_read(pfp, f, data2, 4096);
 	ASSERT_EQ(r, 4096) << COND_ERROR(r);
 	ASSERT_EQ(test_pmemfile_file_size(pfp, f), 8192);
@@ -368,6 +372,39 @@ TEST_F(rw, basic)
 	EXPECT_TRUE(test_pmemfile_stats_match(
 		pfp, 1, 1, 0, (env_block_size == 4096) ? 2 : 1));
 
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
+}
+
+TEST_F(rw, write_tm_fail)
+{
+	if (!_pmemfile_fault_injection_enabled())
+		return;
+
+	PMEMfile *f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT |
+					    PMEMFILE_O_EXCL | PMEMFILE_O_WRONLY,
+				    0644);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+
+	_pmemfile_inject_fault_at(PF_GET_CURRENT_TIME, 1,
+				  "pmemfile_pwritev_internal");
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_write(pfp, f, "aaa", 3), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	pmemfile_stat_t st;
+	ASSERT_EQ(pmemfile_fstat(pfp, f, &st), 0);
+	ASSERT_EQ(st.st_size, 0);
+
+	_pmemfile_inject_fault_at(PF_GET_CURRENT_TIME, 2,
+				  "pmemfile_pwritev_internal");
+
+	ASSERT_EQ(pmemfile_write(pfp, f, "aaa", 3), 3) << strerror(errno);
+
+	ASSERT_EQ(pmemfile_fstat(pfp, f, &st), 0);
+	ASSERT_EQ(st.st_size, 3);
+
+	pmemfile_close(pfp, f);
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
 }
 
@@ -716,6 +753,12 @@ TEST_F(rw, truncate)
 		errno = 0;
 		ASSERT_EQ(pmemfile_truncate(pfp, "/file1", large + 4), -1);
 		EXPECT_EQ(errno, ENOMEM);
+
+		_pmemfile_inject_fault_at(PF_GET_CURRENT_TIME, 1,
+					  "tx_get_current_time");
+		errno = 0;
+		ASSERT_EQ(pmemfile_truncate(pfp, "/file1", 0), -1);
+		EXPECT_EQ(errno, EINVAL);
 	}
 
 	r = pmemfile_truncate(pfp, "/file1", large + 4);

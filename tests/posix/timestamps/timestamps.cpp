@@ -84,6 +84,15 @@ TEST_F(timestamps, utime)
 
 	ASSERT_EQ(pmemfile_utime(pfp, "/file", NULL), 0);
 
+	if (_pmemfile_fault_injection_enabled()) {
+		_pmemfile_inject_fault_at(PF_GET_CURRENT_TIME, 1,
+					  "vinode_file_time_set");
+
+		errno = 0;
+		ASSERT_EQ(pmemfile_utime(pfp, "/file", NULL), -1);
+		EXPECT_EQ(errno, EINVAL);
+	}
+
 	memset(&st2, 0, sizeof(st2));
 	ASSERT_EQ(pmemfile_stat(pfp, "/file", &st2), 0);
 
@@ -626,6 +635,16 @@ TEST_F(timestamps, utimensat)
 
 	tm[0] = {7, PMEMFILE_UTIME_NOW};
 	tm[1] = {9, PMEMFILE_UTIME_OMIT};
+
+	if (_pmemfile_fault_injection_enabled()) {
+		_pmemfile_inject_fault_at(PF_GET_CURRENT_TIME, 1,
+					  "vinode_file_time_set");
+
+		errno = 0;
+		ASSERT_EQ(pmemfile_utimensat(pfp, d, "file", tm, 0), -1);
+		EXPECT_EQ(errno, EINVAL);
+	}
+
 	ASSERT_EQ(pmemfile_utimensat(pfp, d, "file", tm, 0), 0);
 
 	pmemfile_stat_t fst3;

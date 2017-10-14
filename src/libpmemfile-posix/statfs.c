@@ -45,7 +45,7 @@ int
 pmemfile_statfs(PMEMfilepool *pfp, pmemfile_statfs_t *buf)
 {
 	if (!pfp || !buf) {
-		errno = -EFAULT;
+		errno = EFAULT;
 		return -1;
 	}
 

@@ -279,10 +279,12 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 	ASSERT(ret > 0);
 
 	struct pmemfile_time starttm = tm;
-	if (get_current_time(&tm)) {
-		error = errno;
-		goto end;
-	}
+	if (get_current_time(&tm))
+		/*
+		 * We can't fail write at this point. Just assume time didn't
+		 * change.
+		 */
+		tm = starttm;
 
 	int64_t tm_diff = (tm.sec - starttm.sec) * 1000000000 +
 			tm.nsec - starttm.nsec;

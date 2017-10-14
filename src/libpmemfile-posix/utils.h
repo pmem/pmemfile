@@ -65,7 +65,14 @@ void *pmemfile_direct(PMEMfilepool *pfp, PMEMoid oid);
 #define PF_RO(pfp, o) \
 	((const __typeof__(*(o)._type) *)pmemfile_direct(pfp, (o).oid))
 
+#ifdef FAULT_INJECTION
+void inject_get_current_time_fault_at(int nth, const char *at);
+int _get_current_time(struct pmemfile_time *t, const char *);
+#define get_current_time(t) _get_current_time(t, __func__)
+#else
 int get_current_time(struct pmemfile_time *t);
+#endif
+
 void tx_get_current_time(struct pmemfile_time *t);
 
 bool is_zeroed(const void *addr, size_t len);

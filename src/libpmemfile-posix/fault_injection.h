@@ -37,7 +37,8 @@
 extern "C" {
 #endif
 
-enum pf_allocation_type { PF_MALLOC, PF_CALLOC, PF_REALLOC };
+enum pf_allocation_type { PF_MALLOC, PF_CALLOC, PF_REALLOC,
+	PF_GET_CURRENT_TIME };
 
 #ifdef FAULT_INJECTION
 void _pmemfile_inject_fault_at(enum pf_allocation_type type,

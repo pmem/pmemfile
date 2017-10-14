@@ -38,6 +38,7 @@
 #include "fault_injection.h"
 #include "libpmemfile-posix.h"
 #include "out.h"
+#include "utils.h"
 
 static __thread int malloc_num;
 static __thread int fail_malloc_num;
@@ -112,6 +113,9 @@ _pmemfile_inject_fault_at(enum pf_allocation_type type, int nth, const char *at)
 			realloc_num = 0;
 			fail_realloc_num = nth;
 			fail_realloc_from = at;
+			break;
+		case PF_GET_CURRENT_TIME:
+			inject_get_current_time_fault_at(nth, at);
 			break;
 		default:
 			FATAL("unknown allocation type");

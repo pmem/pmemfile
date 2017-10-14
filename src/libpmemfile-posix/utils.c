@@ -40,10 +40,10 @@
 #include "libpmemfile-posix.h"
 
 /*
- * get_current_time -- sets *t to current time
+ * real_get_current_time -- sets *t to current time
  */
-int
-get_current_time(struct pmemfile_time *t)
+static int
+real_get_current_time(struct pmemfile_time *t)
 {
 	pmemfile_timespec_t tm;
 	if (clock_gettime(CLOCK_REALTIME, &tm)) {
@@ -54,6 +54,44 @@ get_current_time(struct pmemfile_time *t)
 	t->nsec = tm.tv_nsec;
 	return 0;
 }
+
+
+#ifdef FAULT_INJECTION
+static __thread int get_current_time_num;
+static __thread int fail_get_current_time_num;
+static __thread const char *fail_get_current_time_from;
+
+void
+inject_get_current_time_fault_at(int nth, const char *at)
+{
+	get_current_time_num = 0;
+	fail_get_current_time_num = nth;
+	fail_get_current_time_from = at;
+}
+
+int
+_get_current_time(struct pmemfile_time *t, const char *func)
+{
+	if (fail_get_current_time_from &&
+			strcmp(func, fail_get_current_time_from) == 0) {
+		if (++get_current_time_num == fail_get_current_time_num) {
+			errno = EINVAL;
+			return -1;
+		}
+	}
+
+	return real_get_current_time(t);
+}
+#else
+/*
+ * get_current_time -- sets *t to current time
+ */
+int
+get_current_time(struct pmemfile_time *t)
+{
+	return real_get_current_time(t);
+}
+#endif
 
 /*
  * tx_get_current_time -- sets *t to current time and aborts transaction

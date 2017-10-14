@@ -43,7 +43,34 @@ public:
 	}
 };
 
-TEST_F(fcntl, fl)
+TEST_F(fcntl, errors)
+{
+	PMEMfile *f = pmemfile_open(pfp, "/file",
+				    PMEMFILE_O_CREAT | PMEMFILE_O_RDWR, 0755);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_fcntl(NULL, f, PMEMFILE_F_GETFL), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_fcntl(pfp, NULL, PMEMFILE_F_GETFL), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_fcntl(pfp, f, -1), -1);
+	EXPECT_EQ(errno, ENOTSUP);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_fcntl(pfp, f, PMEMFILE_F_SETFD, -1), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	pmemfile_close(pfp, f);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file"), 0);
+}
+
+TEST_F(fcntl, getfl)
 {
 	PMEMfile *f;
 	int ret;
@@ -83,6 +110,55 @@ TEST_F(fcntl, fl)
 	ASSERT_NE(f, nullptr) << strerror(errno);
 	ret = pmemfile_fcntl(pfp, f, PMEMFILE_F_GETFL);
 	EXPECT_EQ(ret, PMEMFILE_O_PATH);
+	pmemfile_close(pfp, f);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file"), 0);
+}
+
+TEST_F(fcntl, setfl)
+{
+	PMEMfile *f = pmemfile_open(pfp, "/file",
+				    PMEMFILE_O_CREAT | PMEMFILE_O_RDWR, 0755);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+
+	ASSERT_EQ(pmemfile_fcntl(pfp, f, PMEMFILE_F_SETFL, 0), 0)
+		<< strerror(errno);
+
+	ASSERT_EQ(pmemfile_fcntl(pfp, f, PMEMFILE_F_SETFL, PMEMFILE_O_APPEND |
+					 PMEMFILE_O_NOATIME |
+					 PMEMFILE_O_DIRECT |
+					 PMEMFILE_O_NONBLOCK),
+		  0)
+		<< strerror(errno);
+
+	if (!is_pmemfile_pop) {
+		errno = 0;
+		ASSERT_EQ(pmemfile_fcntl(pfp, f, PMEMFILE_F_SETFL,
+					 PMEMFILE_O_ASYNC),
+			  -1);
+		EXPECT_EQ(errno, EINVAL);
+
+		errno = 0;
+		ASSERT_EQ(pmemfile_fcntl(pfp, f, PMEMFILE_F_SETFL,
+					 PMEMFILE_O_CLOEXEC),
+			  -1);
+		EXPECT_EQ(errno, EINVAL);
+	}
+
+	pmemfile_close(pfp, f);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file"), 0);
+}
+
+TEST_F(fcntl, setfd)
+{
+	if (is_pmemfile_pop)
+		return;
+
+	PMEMfile *f = pmemfile_open(pfp, "/file",
+				    PMEMFILE_O_CREAT | PMEMFILE_O_RDWR, 0755);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+
 	pmemfile_close(pfp, f);
 
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file"), 0);

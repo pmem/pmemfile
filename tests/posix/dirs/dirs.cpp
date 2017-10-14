@@ -617,6 +617,10 @@ TEST_F(dirs, chdir_getcwd)
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1/dir2", 0755), 0);
 	ASSERT_EQ(pmemfile_mkdir(pfp, "/dir1/dir2/dir3", 0755), 0);
 
+	errno = 0;
+	ASSERT_EQ(pmemfile_getcwd(NULL, buf, sizeof(buf)), nullptr);
+	EXPECT_EQ(errno, EFAULT);
+
 	ASSERT_NE(pmemfile_getcwd(pfp, buf, sizeof(buf)), nullptr);
 	ASSERT_STREQ(buf, "/");
 
@@ -774,6 +778,31 @@ TEST_F(dirs, chdir_getcwd)
 	ASSERT_STREQ(buf, "/dir1");
 
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir1"), 0);
+}
+
+TEST_F(dirs, get_dir_path)
+{
+	char buf[100];
+
+	errno = 0;
+	ASSERT_EQ(
+		pmemfile_get_dir_path(NULL, PMEMFILE_AT_CWD, buf, sizeof(buf)),
+		nullptr);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_get_dir_path(pfp, NULL, buf, sizeof(buf)), nullptr);
+	EXPECT_EQ(errno, EFAULT);
+
+	if (_pmemfile_fault_injection_enabled()) {
+		_pmemfile_inject_fault_at(PF_MALLOC, 1,
+					  "_pmemfile_get_dir_path");
+
+		errno = 0;
+		ASSERT_EQ(pmemfile_get_dir_path(pfp, PMEMFILE_AT_CWD, NULL, 0),
+			  nullptr);
+		EXPECT_EQ(errno, ENOMEM);
+	}
 }
 
 TEST_F(dirs, relative_paths)
@@ -1608,6 +1637,14 @@ TEST_F(dirs, openat)
 
 	dir = pmemfile_open(pfp, "/dir", PMEMFILE_O_DIRECTORY);
 	ASSERT_NE(dir, nullptr) << strerror(errno);
+
+	f = pmemfile_openat(NULL, dir, "file1", PMEMFILE_O_RDONLY);
+	ASSERT_EQ(f, nullptr);
+	EXPECT_EQ(errno, EFAULT);
+
+	f = pmemfile_openat(pfp, NULL, "file1", PMEMFILE_O_RDONLY);
+	ASSERT_EQ(f, nullptr);
+	EXPECT_EQ(errno, EFAULT);
 
 	f = pmemfile_openat(pfp, dir, "file1", PMEMFILE_O_RDONLY);
 	ASSERT_NE(f, nullptr) << strerror(errno);

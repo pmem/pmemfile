@@ -263,6 +263,12 @@ TEST_F(symlinks, 0)
 		  -1);
 	EXPECT_EQ(errno, EFAULT);
 
+	errno = 0;
+	ASSERT_EQ(
+		pmemfile_readlinkat(pfp, NULL, "/dir/sym1-exists", nullptr, 2),
+		-1);
+	EXPECT_EQ(errno, EFAULT);
+
 	ASSERT_EQ(pmemfile_readlinkat(pfp, NULL, "/dir/sym1-exists", buf, 2),
 		  2);
 

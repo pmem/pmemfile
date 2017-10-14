@@ -315,6 +315,85 @@ TEST_F(permissions, reuid_regid_fsuid_fsgid_getgroups_setgroups)
 	ASSERT_EQ(pmemfile_unlink(pfp, "/aaa"), 0);
 }
 
+TEST_F(permissions, reuid_regid_fsuid_fsgid_getgroups_setgroups_errors)
+{
+	errno = 0;
+	ASSERT_EQ(pmemfile_setreuid(NULL, TEST_EUID, TEST_EUID), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_setreuid(pfp, (pmemfile_uid_t)-2, TEST_EUID), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_setreuid(pfp, TEST_EUID, (pmemfile_uid_t)-2), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_setregid(NULL, TEST_EGID, TEST_EGID), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_setregid(pfp, (pmemfile_gid_t)-2, TEST_EGID), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_setregid(pfp, TEST_EGID, (pmemfile_gid_t)-2), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_setfsuid(NULL, TEST_EUID), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_setfsuid(pfp, (pmemfile_uid_t)-2), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_setfsgid(NULL, TEST_EGID), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_setfsgid(pfp, (pmemfile_gid_t)-2), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	pmemfile_gid_t l0[1] = {TEST_SUPP_GID};
+	errno = 0;
+	ASSERT_EQ(pmemfile_getgroups(NULL, 1, l0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_getgroups(pfp, -1, l0), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_setgroups(NULL, 1, l0), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	if (_pmemfile_fault_injection_enabled()) {
+		_pmemfile_inject_fault_at(PF_REALLOC, 1, "pmemfile_setgroups");
+		errno = 0;
+		ASSERT_EQ(pmemfile_setgroups(pfp, 1, l0), -1);
+		EXPECT_EQ(errno, ENOMEM);
+	}
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_setcap(NULL, PMEMFILE_CAP_FOWNER), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_setcap(pfp, -1), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_clrcap(NULL, PMEMFILE_CAP_FOWNER), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_clrcap(pfp, -1), -1);
+	EXPECT_EQ(errno, EINVAL);
+}
+
 TEST_F(permissions, chmod_and_cap)
 {
 	ASSERT_TRUE(test_pmemfile_create(pfp, "/aaa", PMEMFILE_O_EXCL,
@@ -330,6 +409,8 @@ TEST_F(permissions, chmod_and_cap)
 
 	ASSERT_EQ(pmemfile_chmod(pfp, "/aaa", PMEMFILE_S_IRUSR), 0)
 		<< strerror(errno);
+
+	ASSERT_EQ(pmemfile_truncate(pfp, "/aaa", 0), 0) << strerror(errno);
 
 	ASSERT_EQ(pmemfile_clrcap(pfp, PMEMFILE_CAP_FOWNER), 0)
 		<< strerror(errno);
@@ -361,6 +442,16 @@ TEST_F(permissions, fchmod)
 	errno = 0;
 	ASSERT_EQ(pmemfile_fchmod(NULL, f, PMEMFILE_ACCESSPERMS), -1);
 	EXPECT_EQ(errno, EFAULT);
+
+	if (_pmemfile_fault_injection_enabled()) {
+		pmemfile_gid_t groups[1] = {1002};
+		ASSERT_EQ(pmemfile_setgroups(pfp, 1, groups), 0);
+
+		_pmemfile_inject_fault_at(PF_MALLOC, 1, "copy_cred");
+		errno = 0;
+		ASSERT_EQ(pmemfile_fchmod(pfp, f, PMEMFILE_ACCESSPERMS), -1);
+		EXPECT_EQ(errno, ENOMEM);
+	}
 
 	ASSERT_EQ(pmemfile_fchmod(pfp, f, PMEMFILE_S_IRUSR | PMEMFILE_S_IWUSR |
 					  PMEMFILE_S_IRGRP | PMEMFILE_S_IWGRP |

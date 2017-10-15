@@ -33,10 +33,13 @@
 #define _GNU_SOURCE
 
 #include "libpmemfile-posix.h"
+#include <assert.h>
 #include <err.h>
 #include <errno.h>
 #include <fuse.h>
+#include <getopt.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -563,17 +566,50 @@ static struct fuse_operations pmemfile_ops = {
 	.flag_nopath = 1,
 };
 
+static void
+print_usage(FILE *stream, const char *progname)
+{
+	fprintf(stream, "Usage: %s [-o|-b|-h] POOL DIR\n", progname);
+}
+
 int
 main(int argc, char *argv[])
 {
-	if (argc != 3)
-		errx(1, "invalid number of arguments");
-	char *poolpath = argv[1];
-	char *mountpoint = argv[2];
+	int opt;
+	bool allow_other = false;
+	bool foreground = true;
+
+	while ((opt = getopt(argc, argv, "obh")) >= 0) {
+		switch (opt) {
+		case 'o':
+		case 'O':
+			allow_other = true;
+			break;
+		case 'b':
+		case 'B':
+			foreground = false;
+			break;
+		case 'h':
+		case 'H':
+			print_usage(stdout, argv[0]);
+			return 0;
+		default:
+			print_usage(stderr, argv[0]);
+			return 2;
+		}
+	}
+
+	if (optind + 2 != argc) {
+		print_usage(stderr, argv[0]);
+		return 2;
+	}
+
+	char *poolpath = argv[optind++];
+	char *mountpoint = argv[optind++];
 
 	PMEMfilepool *pool = pmemfile_pool_open(poolpath);
 	if (!pool)
-		err(2, "can't open pool");
+		err(2, "can't open pool '%s'", poolpath);
 
 	char resolved_path[PATH_MAX];
 	if (realpath(poolpath, resolved_path) == NULL)
@@ -583,18 +619,26 @@ main(int argc, char *argv[])
 	if (asprintf(&fsname, "fsname=pmemfile:%s", resolved_path) < 0)
 		err(4, "asprintf");
 
-	char *fuse_args[] = {
-		argv[0],
-		"-o",
-		fsname,
-		"-o",
-		"subtype=pmemfile",
-		"-o",
-		"allow_other",
-		"-f",
-		mountpoint
-	};
+	char *fuse_args[9];
 
-	return fuse_main(sizeof(fuse_args) / sizeof(fuse_args[0]), fuse_args,
-			&pmemfile_ops, pool);
+	int idx = 0;
+	fuse_args[idx++] = argv[0];
+	fuse_args[idx++] = "-o";
+	fuse_args[idx++] = fsname;
+	fuse_args[idx++] = "-o";
+	fuse_args[idx++] = "subtype=pmemfile";
+
+	if (allow_other) {
+		fuse_args[idx++] = "-o";
+		fuse_args[idx++] = "allow_other";
+	}
+
+	if (foreground)
+		fuse_args[idx++] = "-f";
+
+	fuse_args[idx++] = mountpoint;
+
+	assert((unsigned)idx <= (sizeof(fuse_args) / sizeof(fuse_args[0])));
+
+	return fuse_main(idx, fuse_args, &pmemfile_ops, pool);
 }

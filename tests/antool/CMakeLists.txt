@@ -41,7 +41,7 @@ if("${ANTOOL_TESTS}" STREQUAL "SKIP")
 	message(STATUS "skipping antool tests")
 
 else()
-	find_package(PythonInterp 3 QUIET REQUIRED)
+	find_package(PythonInterp 3 REQUIRED)
 
 	# check if bzip2 is installed
 	execute_process(COMMAND bzip2 -h

@@ -42,29 +42,15 @@
 /*
  * get_current_time -- sets *t to current time
  */
-int
+void
 get_current_time(struct pmemfile_time *t)
 {
 	pmemfile_timespec_t tm;
-	if (clock_gettime(CLOCK_REALTIME, &tm)) {
-		ERR("!clock_gettime");
-		return -1;
-	}
+	if (clock_gettime(CLOCK_REALTIME, &tm))
+		FATAL("!clock_gettime");
+
 	t->sec = tm.tv_sec;
 	t->nsec = tm.tv_nsec;
-	return 0;
-}
-
-/*
- * tx_get_current_time -- sets *t to current time and aborts transaction
- * if it failed
- */
-void
-tx_get_current_time(struct pmemfile_time *t)
-{
-	ASSERT_IN_TX();
-	if (get_current_time(t))
-		pmemfile_tx_abort(errno);
 }
 
 /*

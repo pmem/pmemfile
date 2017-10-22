@@ -147,10 +147,7 @@ _pmemfile_unlinkat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	ASSERT_NOT_IN_TX();
 
 	struct pmemfile_time t;
-	if (get_current_time(&t)) {
-		error = errno;
-		goto end_vinode;
-	}
+	get_current_time(&t);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		vinode_unlink_file(pfp, info.parent, dirent_info.dirent,

@@ -209,8 +209,7 @@ vinode_rename(PMEMfilepool *pfp,
 	}
 
 	struct pmemfile_time t;
-	if (get_current_time(&t))
-		return errno;
+	get_current_time(&t);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		if (dst_info->dirent) {

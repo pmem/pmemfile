@@ -225,10 +225,7 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 		goto end;
 
 	struct pmemfile_time tm;
-	if (get_current_time(&tm)) {
-		error = errno;
-		goto end;
-	}
+	get_current_time(&tm);
 
 	/*
 	 * We have to update mtime before actually modifying file contents,
@@ -279,10 +276,7 @@ pmemfile_pwritev_internal(PMEMfilepool *pfp,
 	ASSERT(ret > 0);
 
 	struct pmemfile_time starttm = tm;
-	if (get_current_time(&tm)) {
-		error = errno;
-		goto end;
-	}
+	get_current_time(&tm);
 
 	int64_t tm_diff = (tm.sec - starttm.sec) * 1000000000 +
 			tm.nsec - starttm.nsec;

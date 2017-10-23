@@ -177,10 +177,7 @@ handle_atime(PMEMfilepool *pfp,
 	struct pmemfile_inode *inode = vinode->inode;
 	struct pmemfile_time tm;
 
-	if (get_current_time(&tm)) {
-		LOG(LINF, "can not get current time");
-		return;
-	}
+	get_current_time(&tm);
 
 	struct pmemfile_time tm1d = tm;
 	tm1d.sec -= 86400;

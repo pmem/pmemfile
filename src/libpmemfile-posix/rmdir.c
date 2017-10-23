@@ -199,10 +199,7 @@ pmemfile_rmdirat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 	ASSERT_NOT_IN_TX();
 
 	struct pmemfile_time t;
-	if (get_current_time(&t)) {
-		error = errno;
-		goto vdir_end;
-	}
+	get_current_time(&t);
 
 	TX_BEGIN_CB(pfp->pop, cb_queue, pfp) {
 		vinode_unlink_dir(pfp, info.parent, dirent_info.dirent,

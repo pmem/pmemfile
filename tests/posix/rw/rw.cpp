@@ -1069,6 +1069,68 @@ TEST_F(rw, fallocate)
 	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
 }
 
+TEST_F(rw, fallocate_errors)
+{
+	PMEMfile *f = pmemfile_open(pfp, "/file1", PMEMFILE_O_CREAT |
+					    PMEMFILE_O_EXCL | PMEMFILE_O_WRONLY,
+				    0644);
+	ASSERT_NE(f, nullptr) << strerror(errno);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_fallocate(NULL, f, 0, 0, 1), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_fallocate(pfp, NULL, 0, 0, 1), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_fallocate(pfp, f, 0, -1, 1), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_fallocate(pfp, f, 0, 0, 0), -1);
+	EXPECT_EQ(errno, EINVAL);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_fallocate(pfp, f, 0, INT64_MAX, 100), -1);
+	EXPECT_EQ(errno, EFBIG);
+
+	if (!is_pmemfile_pop) {
+		errno = 0;
+		ASSERT_EQ(pmemfile_fallocate(pfp, f,
+					     PMEMFILE_FALLOC_FL_INSERT_RANGE, 0,
+					     1),
+			  -1);
+		EXPECT_EQ(errno, EOPNOTSUPP);
+
+		errno = 0;
+		ASSERT_EQ(pmemfile_fallocate(pfp, f,
+					     PMEMFILE_FALLOC_FL_COLLAPSE_RANGE,
+					     0, 1),
+			  -1);
+		EXPECT_EQ(errno, EOPNOTSUPP);
+
+		errno = 0;
+		ASSERT_EQ(pmemfile_fallocate(
+				  pfp, f, PMEMFILE_FALLOC_FL_ZERO_RANGE, 0, 1),
+			  -1);
+		EXPECT_EQ(errno, EOPNOTSUPP);
+
+		errno = 0;
+		ASSERT_EQ(pmemfile_fallocate(pfp, f, 0x1000, 0, 1), -1);
+		EXPECT_EQ(errno, EINVAL);
+	}
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_fallocate(pfp, f, 0, 0, INT64_MAX), -1);
+	EXPECT_EQ(errno, ENOSPC);
+
+	pmemfile_close(pfp, f);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/file1"), 0);
+}
+
 TEST_F(rw, o_append)
 {
 	/* check that O_APPEND works */

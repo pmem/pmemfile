@@ -58,8 +58,7 @@ vinode_file_time_set(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 {
 	struct pmemfile_time tm_buf[2];
 	if (!tm) {
-		if (get_current_time(&tm_buf[0]))
-			return -1;
+		get_current_time(&tm_buf[0]);
 
 		tm_buf[1] = tm_buf[0];
 
@@ -69,8 +68,7 @@ vinode_file_time_set(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 
 		for (int i = 0; i < 2; ++i) {
 			if (tm_buf[i].nsec == PMEMFILE_UTIME_NOW) {
-				if (get_current_time(&tm_buf[i]))
-					return -1;
+				get_current_time(&tm_buf[i]);
 			} else if (tm_buf[i].nsec == PMEMFILE_UTIME_OMIT) {
 				/* nothing */
 			} else if (!is_tm_valid(&tm_buf[i])) {

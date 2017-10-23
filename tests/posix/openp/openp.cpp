@@ -181,6 +181,52 @@ TEST_F(openp, 0)
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir2"), 0);
 }
 
+TEST_F(openp, errors)
+{
+	char path[PMEMFILE_PATH_MAX] = "dir";
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_open_parent(NULL, PMEMFILE_AT_CWD, path,
+				       PMEMFILE_PATH_MAX, 0),
+		  nullptr);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_open_parent(pfp, PMEMFILE_AT_CWD, NULL,
+				       PMEMFILE_PATH_MAX, 0),
+		  nullptr);
+	EXPECT_EQ(errno, ENOENT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_open_parent(pfp, NULL, path, PMEMFILE_PATH_MAX, 0),
+		  nullptr);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_open_parent(pfp, PMEMFILE_AT_CWD, path,
+				       PMEMFILE_PATH_MAX,
+				       PMEMFILE_OPEN_PARENT_ACCESS_MASK),
+		  nullptr);
+	EXPECT_EQ(errno, EINVAL);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_open_parent(pfp, PMEMFILE_AT_CWD, path,
+				       PMEMFILE_PATH_MAX,
+				       -1 & ~PMEMFILE_OPEN_PARENT_ACCESS_MASK),
+		  nullptr);
+	EXPECT_EQ(errno, EINVAL);
+
+	if (_pmemfile_fault_injection_enabled()) {
+		_pmemfile_inject_fault_at(PF_CALLOC, 1, "pmemfile_open_parent");
+
+		errno = 0;
+		ASSERT_EQ(pmemfile_open_parent(pfp, PMEMFILE_AT_CWD, path,
+					       PMEMFILE_PATH_MAX, 0),
+			  nullptr);
+		EXPECT_EQ(errno, ENOMEM);
+	}
+}
+
 TEST_F(openp, copy_cred)
 {
 	if (!_pmemfile_fault_injection_enabled())

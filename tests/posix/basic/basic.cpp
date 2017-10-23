@@ -185,6 +185,19 @@ TEST_F(basic, open_create_close)
 	ASSERT_EQ(f1, nullptr);
 	EXPECT_EQ(errno, EINVAL);
 
+	ASSERT_EQ(pmemfile_mknodat(pfp, PMEMFILE_AT_CWD, "aaa",
+				   PMEMFILE_S_IFREG, 0644),
+		  0)
+		<< strerror(errno);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_mknodat(pfp, PMEMFILE_AT_CWD, "aaa",
+				   PMEMFILE_S_IFREG, 0644),
+		  -1);
+	EXPECT_EQ(errno, EEXIST);
+
+	ASSERT_EQ(pmemfile_unlink(pfp, "/aaa"), 0);
+
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
 }
 
@@ -503,6 +516,60 @@ TEST_F(basic, tmpfile_not_in_root)
 	EXPECT_TRUE(test_pmemfile_stats_match(pfp, 1, 1, 0, 0));
 
 	ASSERT_EQ(pmemfile_rmdir(pfp, "/dir"), 0);
+}
+
+TEST_F(basic, random_stuff)
+{
+	pmemfile_statfs_t st;
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_statfs(NULL, &st), -1);
+	EXPECT_EQ(errno, EFAULT);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_statfs(pfp, NULL), -1);
+	EXPECT_EQ(errno, EFAULT);
+}
+
+TEST_F(basic, unimplemented)
+{
+	if (is_pmemfile_pop)
+		return;
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_copy_file_range(NULL, NULL, NULL, NULL, NULL, 0, 0),
+		  -1);
+	EXPECT_EQ(errno, ENOTSUP);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_flock(NULL, NULL, 0), -1);
+	EXPECT_EQ(errno, ENOTSUP);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_mknodat(NULL, NULL, NULL, PMEMFILE_S_IFIFO, 0), -1);
+	EXPECT_EQ(errno, ENOTSUP);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_mmap(NULL, NULL, 0, 0, 0, NULL, 0),
+		  PMEMFILE_MAP_FAILED);
+	EXPECT_EQ(errno, ENOTSUP);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_munmap(NULL, NULL, 0), -1);
+	EXPECT_EQ(errno, ENOTSUP);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_mremap(NULL, NULL, 0, 0, 0, NULL),
+		  PMEMFILE_MAP_FAILED);
+	EXPECT_EQ(errno, ENOTSUP);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_msync(NULL, NULL, 0, 0), -1);
+	EXPECT_EQ(errno, ENOTSUP);
+
+	errno = 0;
+	ASSERT_EQ(pmemfile_mprotect(NULL, NULL, 0, 0), -1);
+	EXPECT_EQ(errno, ENOTSUP);
 }
 
 int

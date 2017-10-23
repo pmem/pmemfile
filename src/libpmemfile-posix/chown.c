@@ -95,7 +95,7 @@ vinode_chown(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 			inode->gid = group;
 
 		struct pmemfile_time tm;
-		tx_get_current_time(&tm);
+		get_current_time(&tm);
 
 		inode_tx_set_ctime(inode, tm);
 	} TX_ONABORT {

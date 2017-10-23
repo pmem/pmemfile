@@ -302,7 +302,7 @@ inode_alloc(PMEMfilepool *pfp, struct pmemfile_cred *cred, uint64_t flags)
 	struct pmemfile_inode *inode = PF_RW(pfp, tinode);
 
 	struct pmemfile_time t;
-	tx_get_current_time(&t);
+	get_current_time(&t);
 
 	inode->version = PMEMFILE_INODE_VERSION(2);
 	inode->flags[0] = flags;

@@ -121,6 +121,11 @@ set(EXPORTED_SYMBOLS
 	pmemfile_mkdir
 	pmemfile_mkdirat
 	pmemfile_mknodat
+	pmemfile_mmap
+	pmemfile_mprotect
+	pmemfile_mremap
+	pmemfile_msync
+	pmemfile_munmap
 	pmemfile_open_parent
 	pmemfile_open
 	pmemfile_open_root

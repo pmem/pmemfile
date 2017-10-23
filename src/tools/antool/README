@@ -1,0 +1,46 @@
+Analyzing Tool
+--------------
+
+Analyzing Tool - analyze binary logs of vltrace and check if all recorded
+syscalls are supported by pmemfile.
+
+1) Usage:
+
+usage: antool.py [-h] -b BINLOG [-c] [-p PMEM] [-m MAX_PACKETS] [-l]
+                 [-o OUTPUT] [-s] [-v] [-d] [-f] [-t]
+                 [--slink-file SLINK_FILE]
+
+Required arguments:
+  -b BINLOG, --binlog BINLOG
+                        path to a vltrace log in binary format
+Optional arguments:
+  -h, --help            show this help message and exit
+  -c, --convert         converter mode - only converts vltrace log from binary
+                        to text format
+  -p PMEM, --pmem PMEM  paths to colon-separated pmem filesystems
+  -m MAX_PACKETS, --max-packets MAX_PACKETS
+                        maximum number of packets to be read from the vltrace
+                        binary log
+  -l, --log             print converted log in analyze mode
+  -o OUTPUT, --output OUTPUT
+                        file to save analysis output
+  -s, --script          script mode - print only the most important
+                        information (eg. no info about progress)
+  -v, --verbose         verbose mode (-v: verbose, -vv: very verbose)
+  -d, --debug           debug mode
+  -f, --offline         offline analysis mode
+  -t, --print-all-syscalls
+                        print also syscalls without path or file descriptor
+                        among arguments to the analysis log
+  --slink-file SLINK_FILE
+                        resolve symlinks saved in the given file
+
+2) Examples:
+
+  antool -b vltrace-bin-log.dat -p /mnt/pmem1:/mnt/pmem2
+     Run antool in the default mode: check whether all syscalls recorded
+     in the log are supported by pmemfile (mounted at two mount points).
+
+  antool -b vltrace-bin-log.dat -c
+     Run antool in converter mode: only convert vltrace binary log
+     to the text format.

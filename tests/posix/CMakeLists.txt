@@ -109,6 +109,7 @@ compile_test_source(file_dirs_o dirs/dirs.cpp)
 compile_test_source(file_fcntl_o fcntl/fcntl.cpp)
 compile_test_source(file_getdents_o getdents/getdents.cpp)
 compile_test_source(file_mt_o mt/mt.cpp)
+compile_test_source(file_offset_mapping_o offset_mapping/offset_mapping.cpp)
 compile_test_source(file_openp_o openp/openp.cpp)
 compile_test_source(file_permissions_o permissions/permissions.cpp)
 compile_test_source(file_rw_o rw/rw.cpp)
@@ -118,7 +119,7 @@ compile_test_source(file_timestamps_o timestamps/timestamps.cpp)
 
 function(build_test name posix_lib obj_lib_name)
 	add_executable(${name} $<TARGET_OBJECTS:${obj_lib_name}>)
-	target_link_libraries(${name} ${posix_lib} pmemfile_test test_backtrace)
+	target_link_libraries(${name} pmemfile_test ${posix_lib} test_backtrace)
 	if(LIBUNWIND_FOUND)
 		target_link_libraries(${name} ${LIBUNWIND_LIBRARIES} ${CMAKE_DL_LIBS})
 	endif()
@@ -138,7 +139,6 @@ function(build_test_using_static name obj_lib_name)
 	build_test(${name} pmemfile-posix_static ${obj_lib_name})
 endfunction()
 
-
 build_test_using_shared(file_basic file_basic_o)
 build_test_using_static(file_basic_using_static file_basic_o)
 build_test_using_shared(file_pointer_caching file_pointer_caching_o)
@@ -147,12 +147,26 @@ build_test_using_shared(file_dirs file_dirs_o)
 build_test_using_shared(file_fcntl file_fcntl_o)
 build_test_using_shared(file_getdents file_getdents_o)
 build_test_using_shared(file_mt file_mt_o)
+build_test_using_shared(file_offset_mapping file_offset_mapping_o)
 build_test_using_shared(file_openp file_openp_o)
 build_test_using_shared(file_permissions file_permissions_o)
 build_test_using_shared(file_rw file_rw_o)
 build_test_using_shared(file_stat file_stat_o)
 build_test_using_shared(file_symlinks file_symlinks_o)
 build_test_using_shared(file_timestamps file_timestamps_o)
+
+target_include_directories(file_offset_mapping PUBLIC ${CMAKE_SOURCE_DIR}/src/libpmemfile-posix)
+target_include_directories(file_offset_mapping PUBLIC ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(file_offset_mapping ${PMEMOBJ_LIBRARIES})
+target_compile_definitions(file_offset_mapping PRIVATE -DOUT_ENABLED=0)
+target_sources(file_offset_mapping PRIVATE
+	offset_mapping/offset_mapping_wrapper.c
+	${CMAKE_SOURCE_DIR}/src/libpmemfile-posix/offset_mapping.c)
+
+if(FAULT_INJECTION)
+	target_sources(file_offset_mapping PRIVATE
+	${CMAKE_SOURCE_DIR}/src/libpmemfile-posix/alloc.c)
+endif()
 
 # Configures test ${name} using tracer ${tracer} and gtest filter ${filter}
 # Optional next argument is passed as is to test.
@@ -289,6 +303,9 @@ else()
 	add_mt_test(drd       20)
 	add_mt_test(pmemcheck 50)
 endif()
+
+add_test_generic(offset_mapping none)
+add_test_generic(offset_mapping memcheck)
 
 add_test_generic(openp none)
 add_test_generic(openp memcheck)

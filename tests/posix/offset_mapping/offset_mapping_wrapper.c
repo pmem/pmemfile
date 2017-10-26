@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2017, Intel Corporation
+ * Copyright 2017, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,36 +30,62 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*
- * ctree.h -- internal definitions for crit-bit tree
- */
+#include "layout.h"
+#include "pool.h"
+#include "utils.h"
+#include "offset_mapping.h"
+#include "offset_mapping_wrapper.h"
+#include <stdio.h>
 
-#ifndef LIBPMEMOBJ_CTREE_H
-#define LIBPMEMOBJ_CTREE_H 1
+void *
+pmemfile_direct(PMEMfilepool *pfp, PMEMoid oid)
+{
+	if (oid.off == 0)
+		return NULL;
 
-#include <stdint.h>
-#include "compiler_utils.h"
+	/* for tests - discard pfp->pop */
+	return (void *)(oid.off);
+}
 
-struct ctree;
+struct pmemfile_block_desc *
+create_block(uint64_t offset, uint32_t size,
+			 struct pmemfile_block_desc *prev)
+{
+	struct pmemfile_block_desc *desc = calloc(1, sizeof(*desc));
 
-struct ctree *ctree_new(void);
-void ctree_delete(struct ctree *t);
-typedef void (*ctree_destroy_cb)(uint64_t key, uint64_t value, void *ctx);
-void ctree_delete_cb(struct ctree *t, ctree_destroy_cb cb, void *ctx);
+	desc->offset = offset;
+	desc->size = size;
+	desc->prev.oid.off = (uintptr_t)prev;
 
-void ctree_clear(struct ctree *t);
+	return desc;
+}
 
-pf_warn_unused_result int ctree_insert(struct ctree *t, uint64_t key,
-		uint64_t value);
+struct offset_map *
+offset_map_new_wrapper(PMEMfilepool *pfp)
+{
+	return offset_map_new(pfp);
+}
 
-uint64_t ctree_find(struct ctree *t, uint64_t key);
+void
+offset_map_delete_wrapper(struct offset_map *m)
+{
+	return offset_map_delete(m);
+}
 
-uint64_t ctree_find_le(struct ctree *t, uint64_t *key);
+struct pmemfile_block_desc *
+block_find_closest_wrapper(struct offset_map *map, uint64_t offset)
+{
+	return block_find_closest(map, offset);
+}
 
-uint64_t ctree_remove(struct ctree *t, uint64_t key, int eq);
+int
+insert_block_wrapper(struct offset_map *map, struct pmemfile_block_desc *block)
+{
+	return insert_block(map, block);
+}
 
-int ctree_remove_max(struct ctree *t, uint64_t *key, uint64_t *value);
-
-int ctree_is_empty(struct ctree *t);
-
-#endif
+int
+remove_block_wrapper(struct offset_map *map, struct pmemfile_block_desc *block)
+{
+	return remove_block(map, block);
+}

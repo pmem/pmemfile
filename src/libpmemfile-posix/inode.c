@@ -40,7 +40,6 @@
 #include "alloc.h"
 #include "blocks.h"
 #include "callbacks.h"
-#include "ctree.h"
 #include "data.h"
 #include "dir.h"
 #include "hash_map.h"
@@ -252,7 +251,7 @@ vinode_unref(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 			FATAL("vinode not found");
 
 		if (vinode->blocks)
-			ctree_delete(vinode->blocks);
+			offset_map_delete(vinode->blocks);
 
 #ifdef DEBUG
 		/* "path" field is defined only in DEBUG builds */
@@ -669,7 +668,7 @@ vinode_restore_on_abort(struct pmemfile_vinode *vinode)
 	 * time the vinode is used.
 	 */
 	if (vinode->blocks) {
-		ctree_delete(vinode->blocks);
+		offset_map_delete(vinode->blocks);
 		vinode->blocks = NULL;
 	}
 }
@@ -734,7 +733,7 @@ vinode_suspend(PMEMfilepool *pfp, struct pmemfile_vinode *vinode)
 			INODE_ARRAY_NOLOCK);
 
 	if (vinode->blocks) {
-		ctree_delete(vinode->blocks);
+		offset_map_delete(vinode->blocks);
 		vinode->blocks = NULL;
 	}
 

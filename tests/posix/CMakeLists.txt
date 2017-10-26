@@ -155,6 +155,7 @@ build_test_using_shared(file_stat file_stat_o)
 build_test_using_shared(file_symlinks file_symlinks_o)
 build_test_using_shared(file_timestamps file_timestamps_o)
 
+target_include_directories(file_offset_mapping PUBLIC ${PMEMOBJ_INCLUDE_DIRS})
 target_include_directories(file_offset_mapping PUBLIC ${CMAKE_SOURCE_DIR}/src/libpmemfile-posix)
 target_include_directories(file_offset_mapping PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(file_offset_mapping ${PMEMOBJ_LIBRARIES})

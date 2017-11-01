@@ -255,6 +255,17 @@ pmemfile_fuse_chown(const char *path, uid_t uid, gid_t gid)
 	return 0;
 }
 
+static PMEMfile *
+pmemfile_open_wrapper(PMEMfilepool *pfp, const char *path, int flags,
+		pmemfile_mode_t mode)
+{
+	/*
+	 * &~0x8000, because fuse passes flag pmemfile doesn't understand
+	 * (O_LARGEFILE, which userspace on x86_64 defines as 0)
+	 */
+	return pmemfile_open(pfp, path, flags & ~0x8000, mode);
+}
+
 static int
 pmemfile_fuse_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 {
@@ -266,9 +277,9 @@ pmemfile_fuse_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 	if ((ret = update_ctx(pfp)) < 0)
 		return ret;
 
-	PMEMfile *f = pmemfile_create(pfp, path, mode);
+	PMEMfile *f = pmemfile_open_wrapper(pfp, path, fi->flags, mode);
 	if (!f) {
-		log("pmemfile_create %s failed: %d\n", path, errno);
+		log("pmemfile_open %s failed: %d\n", path, errno);
 		return -errno;
 	}
 	fi->fh = (uintptr_t)f;
@@ -306,11 +317,7 @@ pmemfile_fuse_open(const char *path, struct fuse_file_info *fi)
 	if ((ret = update_ctx(pfp)) < 0)
 		return ret;
 
-	/*
-	 * &~0x8000, because fuse passes flag pmemfile doesn't understand
-	 * (O_LARGEFILE, which userspace on x86_64 defines as 0)
-	 */
-	PMEMfile *f = pmemfile_open(pfp, path, fi->flags & ~0x8000);
+	PMEMfile *f = pmemfile_open_wrapper(pfp, path, fi->flags, 0);
 	if (f == NULL) {
 		log("pmemfile_open %s failed: %d\n", path, errno);
 		return -errno;

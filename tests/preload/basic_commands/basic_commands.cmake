@@ -31,19 +31,10 @@
 
 include(${SRC_DIR}/../preload-helpers.cmake)
 
-setup()
+setup(128m)
 
-mkfs(${DIR}/fs 128m)
-
-execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${DIR}/mount_point)
 execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${DIR}/some_dir)
 execute_process(COMMAND ln -s ../mount_point ${DIR}/some_dir/some_link)
-
-set(ENV{LD_PRELOAD} ${PRELOAD_LIB})
-set(ENV{PMEMFILE_POOLS} ${DIR}/mount_point:${DIR}/fs)
-set(ENV{PMEMFILE_PRELOAD_LOG} ${BIN_DIR}/pmemfile_preload.log)
-set(ENV{INTERCEPT_LOG} ${BIN_DIR}/intercept.log)
-#set(ENV{PMEMFILE_EXIT_ON_NOT_SUPPORTED} 1)
 
 execute(cp ${SRC_DIR}/repo_dummy_file_a ${DIR}/dummy_file_a)
 execute(chmod 644 ${DIR}/dummy_file_a)
@@ -84,18 +75,26 @@ list_files(ls_with_dir.log ${DIR}/mount_point)
 rmdir(${DIR}/mount_point/dummy_dir_a)
 list_files(ls_without_dir.log ${DIR}/mount_point)
 
-set(ENV{PMEMFILE_CD} ${DIR}/mount_point)
-mkdir(dir_inside)
-unset(ENV{PMEMFILE_CD})
+if (USE_FUSE)
+	mkdir(${DIR}/mount_point/dir_inside)
+else()
+	set(ENV{PMEMFILE_CD} ${DIR}/mount_point)
+	mkdir(dir_inside)
+	unset(ENV{PMEMFILE_CD})
+endif()
 execute(stat ${DIR}/mount_point/dir_inside)
 
 mkdir(${DIR}/mount_point/../test)
 execute(ls -lR ${DIR})
 execute(stat ${DIR}/test)
 
-set(ENV{PMEMFILE_CD} ${DIR}/mount_point/dir_inside)
-mkdir(../../dir_outside)
-unset(ENV{PMEMFILE_CD})
+if (USE_FUSE)
+	mkdir(${DIR}/mount_point/dir_inside/../../dir_outside)
+else()
+	set(ENV{PMEMFILE_CD} ${DIR}/mount_point/dir_inside)
+	mkdir(../../dir_outside)
+	unset(ENV{PMEMFILE_CD})
+endif()
 execute(ls -lR ${DIR})
 execute(stat ${DIR}/dir_outside)
 
@@ -126,9 +125,13 @@ execute_expect_failure(cp ${SRC_DIR}/repo_dummy_file_a ${DIR}/mount_point/file_b
 execute(ln -s symlink_to_itself ${DIR}/mount_point/symlink_to_itself)
 execute_expect_failure(cat ${DIR}/mount_point/symlink_to_itself)
 
-set(ENV{PMEMFILE_CD} ${DIR}/mount_point)
-execute(stat ../dummy_file_a)
-unset(ENV{PMEMFILE_CD})
+if (USE_FUSE)
+	execute(stat ${DIR}/mount_point/../dummy_file_a)
+else()
+	set(ENV{PMEMFILE_CD} ${DIR}/mount_point)
+	execute(stat ../dummy_file_a)
+	unset(ENV{PMEMFILE_CD})
+endif()
 
 # test syscalls for paths outside of pmemfile mount point
 execute(touch ${DIR}/out_file)

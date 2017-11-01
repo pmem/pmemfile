@@ -54,6 +54,13 @@ int main() {
 }
 " XATTR_AVAILABLE_IN_TEST_DIR)
 
+if(BUILD_PMEMFILE_FUSE)
+	find_program(FUSERMOUNT fusermount)
+	if (NOT FUSERMOUNT)
+		message(FATAL_ERROR "fusermount not available")
+	endif()
+endif()
+
 add_executable(preload_basic basic/basic.c)
 add_executable(preload_dup dup/dup.c)
 set_target_properties(preload_dup PROPERTIES INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR}/src)
@@ -93,8 +100,8 @@ if(USE_ASAN)
 endif()
 
 # Configures test ${name}${sub_name} using test dir ${name} and executable ${main_executable}
-function(add_test_generic name sub_name main_executable)
-	add_test(NAME preload_${name}${sub_name}
+function(add_test_generic prefix name sub_name main_executable)
+	add_test(NAME ${prefix}${name}${sub_name}
 		COMMAND ${CMAKE_COMMAND}
 			${GLOBAL_TEST_ARGS}
 			-DTEST_NAME=${name}${sub_name}
@@ -105,61 +112,84 @@ function(add_test_generic name sub_name main_executable)
 			${ARGN}
 			-P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/${name}.cmake)
 
-	set_tests_properties(preload_${name}${sub_name} PROPERTIES
+	set_tests_properties(${prefix}${name}${sub_name} PROPERTIES
 		ENVIRONMENT "LC_ALL=C")
 endfunction()
 
-function(add_test_generic_ps name sub_name main_executable)
-	add_test_generic(${name} "${sub_name}"                        ${main_executable}                            ${ARGN})
-	add_test_generic(${name} "${sub_name}_with_process_switching" ${main_executable} -DTEST_PROCESS_SWITCHING=1 ${ARGN})
+function(add_preload_test name sub_name main_executable)
+	add_test_generic("preload_" "${name}" "${sub_name}" "${main_executable}" ${ARGN})
+endfunction()
+
+function(add_preload_test_ps name sub_name main_executable)
+	add_preload_test(${name} "${sub_name}"                        ${main_executable}                            ${ARGN})
+	add_preload_test(${name} "${sub_name}_with_process_switching" ${main_executable} -DTEST_PROCESS_SWITCHING=1 ${ARGN})
 endfunction()
 
 find_program(SQLITE3 sqlite3)
 if (SQLITE3)
-	add_test_generic(sqlite "" none)
+	add_preload_test(sqlite "" none)
 else()
 	add_test(NAME sqlite_SKIPPED_BECAUSE_OF_MISSING_SQLITE3 COMMAND true)
 endif()
 
-add_test_generic_ps(basic "" $<TARGET_FILE:preload_basic>)
-add_test_generic_ps(dup "" $<TARGET_FILE:preload_dup>)
-add_test_generic_ps(basic_commands "" none)
-add_test_generic(nested_dirs "" none)
-add_test_generic(pool_locking "" $<TARGET_FILE:preload_pool_locking>)
+add_preload_test_ps(basic "" $<TARGET_FILE:preload_basic>)
+add_preload_test_ps(dup "" $<TARGET_FILE:preload_dup>)
+add_preload_test_ps(basic_commands "" none)
+add_preload_test(nested_dirs "" none)
+add_preload_test(pool_locking "" $<TARGET_FILE:preload_pool_locking>)
 
-add_test_generic(config "_valid_via_symlink" $<TARGET_FILE:preload_config> -DTEST_PATH=some_dir/some_link/a)
+add_preload_test(config "_valid_via_symlink" $<TARGET_FILE:preload_config> -DTEST_PATH=some_dir/some_link/a)
 set_tests_properties("preload_config_valid_via_symlink"
 	PROPERTIES PASS_REGULAR_EXPRESSION "no error")
 
-add_test_generic(config "_invalid" $<TARGET_FILE:preload_config> -DTEST_PATH=mount_point_wrong/a)
+add_preload_test(config "_invalid" $<TARGET_FILE:preload_config> -DTEST_PATH=mount_point_wrong/a)
 set_tests_properties("preload_config_invalid"
 	PROPERTIES PASS_REGULAR_EXPRESSION "EIO")
 
-add_test_generic(config "_invalid_plus_nested" $<TARGET_FILE:preload_config> -DTEST_PATH=mount_point_wrong/a/b/c)
+add_preload_test(config "_invalid_plus_nested" $<TARGET_FILE:preload_config> -DTEST_PATH=mount_point_wrong/a/b/c)
 set_tests_properties("preload_config_invalid_plus_nested"
 	PROPERTIES PASS_REGULAR_EXPRESSION "EIO")
 
-add_test_generic(config "_valid_plus_nested" $<TARGET_FILE:preload_config> -DTEST_PATH=mount_point/a/b)
+add_preload_test(config "_valid_plus_nested" $<TARGET_FILE:preload_config> -DTEST_PATH=mount_point/a/b)
 set_tests_properties("preload_config_valid_plus_nested"
 	PROPERTIES PASS_REGULAR_EXPRESSION "ENOENT")
 
-add_test_generic(config "_invalid_via_valid" $<TARGET_FILE:preload_config> -DTEST_PATH=mount_point/./../mount_point_wrong/a)
+add_preload_test(config "_invalid_via_valid" $<TARGET_FILE:preload_config> -DTEST_PATH=mount_point/./../mount_point_wrong/a)
 set_tests_properties("preload_config_invalid_via_valid"
 	PROPERTIES PASS_REGULAR_EXPRESSION "EIO")
 
-add_test_generic(config "_outer_via_valid" $<TARGET_FILE:preload_config> -DTEST_PATH=mount_point/../a)
+add_preload_test(config "_outer_via_valid" $<TARGET_FILE:preload_config> -DTEST_PATH=mount_point/../a)
 set_tests_properties("preload_config_outer_via_valid"
 	PROPERTIES PASS_REGULAR_EXPRESSION "no error")
 
-add_test_generic(config "_outer_via_invalid" $<TARGET_FILE:preload_config> -DTEST_PATH=mount_point_wrong/../a)
+add_preload_test(config "_outer_via_invalid" $<TARGET_FILE:preload_config> -DTEST_PATH=mount_point_wrong/../a)
 set_tests_properties("preload_config_outer_via_invalid"
 	PROPERTIES PASS_REGULAR_EXPRESSION "EIO")
 
-add_test_generic_ps(unix "" $<TARGET_FILE:preload_unix>)
+add_preload_test_ps(unix "" $<TARGET_FILE:preload_unix>)
 
 if(XATTR_AVAILABLE_IN_TEST_DIR)
 	add_executable(preload_xattr xattr/xattr.c)
 	add_cstyle(tests-preload-xattr ${CMAKE_CURRENT_SOURCE_DIR}/xattr/xattr.c)
 	add_check_whitespace(tests-preload-xattr ${CMAKE_CURRENT_SOURCE_DIR}/xattr/xattr.c)
-	add_test_generic_ps(xattr "" $<TARGET_FILE:preload_xattr>)
+	add_preload_test_ps(xattr "" $<TARGET_FILE:preload_xattr>)
+endif()
+
+function(add_fuse_test name main_executable)
+	add_test_generic(fuse_ ${name} "" ${main_executable} -DUSE_FUSE=1 -DFUSERMOUNT=${FUSERMOUNT} -DPMEMFILE_FUSE=$<TARGET_FILE:pmemfile-fuse> ${ARGN})
+endfunction()
+
+if(BUILD_PMEMFILE_FUSE)
+	add_fuse_test(basic $<TARGET_FILE:preload_basic>)
+	add_fuse_test(dup $<TARGET_FILE:preload_dup>)
+	add_fuse_test(basic_commands none)
+	add_fuse_test(nested_dirs none)
+	add_fuse_test(pool_locking $<TARGET_FILE:preload_pool_locking>)
+	if (SQLITE3)
+		add_fuse_test(sqlite none)
+	endif()
+	add_fuse_test(unix $<TARGET_FILE:preload_unix>)
+	if(XATTR_AVAILABLE_IN_TEST_DIR)
+		add_fuse_test(xattr $<TARGET_FILE:preload_xattr>)
+	endif()
 endif()

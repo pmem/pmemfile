@@ -31,23 +31,16 @@
 
 include(${SRC_DIR}/../preload-helpers.cmake)
 
-setup()
+setup(128m)
 
-mkfs(${DIR}/fs 128m)
+if (NOT USE_FUSE)
+	set(ENV{LIBC_HOOK_CMDLINE_FILTER} sqlite3)
+	set(ENV{PMEMFILE_EXIT_ON_NOT_SUPPORTED} 1)
+endif()
 
-execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${DIR}/mount_point)
-
-set(ENV{PMEMFILE_POOLS} ${DIR}/mount_point:${DIR}/fs)
-set(ENV{PMEMFILE_PRELOAD_LOG} ${BIN_DIR}/pmemfile_preload.log)
-set(ENV{LIBC_HOOK_CMDLINE_FILTER} sqlite3)
-set(ENV{INTERCEPT_LOG} ${BIN_DIR}/intercept.log)
-set(ENV{PMEMFILE_EXIT_ON_NOT_SUPPORTED} 1)
-
-set(ENV{LD_PRELOAD} ${PRELOAD_LIB})
 execute_process(COMMAND sqlite3 ${DIR}/mount_point/sqlitedb
                 INPUT_FILE ${SRC_DIR}/ins0.sql
                 RESULT_VARIABLE sql_ins_res)
-unset(ENV{LD_PRELOAD})
 
 if (sql_ins_res)
         if (sql_ins_res EQUAL 95)
@@ -57,13 +50,10 @@ if (sql_ins_res)
         endif()
 endif()
 
-set(ENV{LD_PRELOAD} ${PRELOAD_LIB})
 execute_process(COMMAND sqlite3 ${DIR}/mount_point/sqlitedb
                 INPUT_FILE ${SRC_DIR}/sel0.sql
                 OUTPUT_FILE ${BIN_DIR}/out0.log
                 RESULT_VARIABLE sql_sel_res)
-
-unset(ENV{LD_PRELOAD})
 
 if (sql_sel_res)
         if (sql_sel_res EQUAL 95)

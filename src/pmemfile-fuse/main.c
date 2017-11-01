@@ -324,7 +324,11 @@ pmemfile_fuse_write(const char *path, const char *buff, size_t size,
 	if (size > INT32_MAX)
 		size = INT32_MAX;
 
-	return (int)pmemfile_pwrite(PFP, f, buff, size, off);
+	int ret = (int)pmemfile_pwrite(PFP, f, buff, size, off);
+	if (ret < 0)
+		return -errno;
+
+	return ret;
 }
 
 static int
@@ -340,7 +344,11 @@ pmemfile_fuse_read(const char *path, char *buff, size_t size, off_t off,
 	if (size > INT32_MAX)
 		size = INT32_MAX;
 
-	return (int)pmemfile_pread(PFP, f, buff, size, off);
+	int ret = (int)pmemfile_pread(PFP, f, buff, size, off);
+	if (ret < 0)
+		return -errno;
+
+	return ret;
 }
 
 static int

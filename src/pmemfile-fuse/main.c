@@ -481,8 +481,10 @@ pmemfile_fuse_readlink(const char *path, char *buff, size_t size)
 	if ((ret = update_ctx(pfp)) < 0)
 		return ret;
 
-	if (pmemfile_readlink(pfp, path, buff, size) < 0)
+	ret = (int)pmemfile_readlink(pfp, path, buff, size - 1);
+	if (ret < 0)
 		return -errno;
+	buff[ret] = 0;
 
 	return 0;
 }

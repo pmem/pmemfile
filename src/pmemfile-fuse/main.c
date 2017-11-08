@@ -33,10 +33,13 @@
 #define _GNU_SOURCE
 
 #include "libpmemfile-posix.h"
+#include <assert.h>
 #include <err.h>
 #include <errno.h>
 #include <fuse.h>
+#include <getopt.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -54,10 +57,14 @@ update_ctx(PMEMfilepool *pfp)
 {
 	struct fuse_context *ctx = fuse_get_context();
 
-	if (pmemfile_setreuid(pfp, ctx->uid, ctx->uid) < 0)
+	if (pmemfile_setreuid(pfp, ctx->uid, ctx->uid) < 0) {
+		log("pmemfile_setreuid failed: %d\n", errno);
 		return -errno;
-	if (pmemfile_setregid(pfp, ctx->gid, ctx->gid) < 0)
+	}
+	if (pmemfile_setregid(pfp, ctx->gid, ctx->gid) < 0) {
+		log("pmemfile_setregid failed: %d\n", errno);
 		return -errno;
+	}
 	pmemfile_umask(pfp, ctx->umask);
 
 	return 0;
@@ -74,8 +81,10 @@ pmemfile_fuse_getattr(const char *path, struct stat *statbuf)
 	if ((ret = update_ctx(pfp)) < 0)
 		return ret;
 
-	if (pmemfile_lstat(pfp, path, statbuf) < 0)
+	if (pmemfile_lstat(pfp, path, statbuf) < 0) {
+		log("pmemfile_lstat %s failed: %d\n", path, errno);
 		return -errno;
+	}
 
 	return 0;
 }
@@ -92,8 +101,10 @@ pmemfile_fuse_opendir(const char *path, struct fuse_file_info *fi)
 		return ret;
 
 	PMEMfile *f = pmemfile_open(pfp, path, O_DIRECTORY);
-	if (f == NULL)
+	if (f == NULL) {
+		log("pmemfile_open %s failed: %d\n", path, errno);
 		return -errno;
+	}
 	fi->fh = (uintptr_t)f;
 
 	return 0;
@@ -126,8 +137,10 @@ pmemfile_fuse_readdir(const char *path, void *buff, fuse_fill_dir_t fill,
 	if (!dir)
 		return -EBADF;
 
-	if (pmemfile_lseek(pfp, dir, off, PMEMFILE_SEEK_SET) != off)
+	if (pmemfile_lseek(pfp, dir, off, PMEMFILE_SEEK_SET) != off) {
+		log("pmemfile_lseek failed: %d\n", errno);
 		return -errno;
+	}
 
 	char dirp[32758];
 	struct stat statbuf;
@@ -178,8 +191,10 @@ pmemfile_fuse_mkdir(const char *path, mode_t mode)
 	if ((ret = update_ctx(pfp)) < 0)
 		return ret;
 
-	if (pmemfile_mkdir(pfp, path, mode) < 0)
+	if (pmemfile_mkdir(pfp, path, mode) < 0) {
+		log("pmemfile_mkdir %s failed: %d\n", path, errno);
 		return -errno;
+	}
 
 	return 0;
 }
@@ -195,8 +210,10 @@ pmemfile_fuse_rmdir(const char *path)
 	if ((ret = update_ctx(pfp)) < 0)
 		return ret;
 
-	if (pmemfile_rmdir(pfp, path) < 0)
+	if (pmemfile_rmdir(pfp, path) < 0) {
+		log("pmemfile_rmdir %s failed: %d\n", path, errno);
 		return -errno;
+	}
 
 	return 0;
 }
@@ -211,8 +228,10 @@ pmemfile_fuse_chmod(const char *path, mode_t mode)
 	if ((ret = update_ctx(pfp)) < 0)
 		return ret;
 
-	if (pmemfile_chmod(pfp, path, mode) < 0)
+	if (pmemfile_chmod(pfp, path, mode) < 0) {
+		log("pmemfile_chmod %s failed: %d\n", path, errno);
 		return -errno;
+	}
 
 	return 0;
 }
@@ -228,10 +247,23 @@ pmemfile_fuse_chown(const char *path, uid_t uid, gid_t gid)
 	if ((ret = update_ctx(pfp)) < 0)
 		return ret;
 
-	if (pmemfile_chown(pfp, path, uid, gid) < 0)
+	if (pmemfile_chown(pfp, path, uid, gid) < 0) {
+		log("pmemfile_chown %s failed: %d\n", path, errno);
 		return -errno;
+	}
 
 	return 0;
+}
+
+static PMEMfile *
+pmemfile_open_wrapper(PMEMfilepool *pfp, const char *path, int flags,
+		pmemfile_mode_t mode)
+{
+	/*
+	 * &~0x8000, because fuse passes flag pmemfile doesn't understand
+	 * (O_LARGEFILE, which userspace on x86_64 defines as 0)
+	 */
+	return pmemfile_open(pfp, path, flags & ~0x8000, mode);
 }
 
 static int
@@ -245,13 +277,14 @@ pmemfile_fuse_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 	if ((ret = update_ctx(pfp)) < 0)
 		return ret;
 
-	PMEMfile *f = pmemfile_create(pfp, path, mode);
-	if (f)
-		fi->fh = (uintptr_t)f;
-	else
-		ret = -errno;
+	PMEMfile *f = pmemfile_open_wrapper(pfp, path, fi->flags, mode);
+	if (!f) {
+		log("pmemfile_open %s failed: %d\n", path, errno);
+		return -errno;
+	}
+	fi->fh = (uintptr_t)f;
 
-	return ret;
+	return 0;
 }
 
 static int
@@ -265,8 +298,10 @@ pmemfile_fuse_utimens(const char *path, const struct timespec tv[2])
 	if ((ret = update_ctx(pfp)) < 0)
 		return ret;
 
-	if (pmemfile_utimensat(pfp, NULL, path, tv, 0) < 0)
+	if (pmemfile_utimensat(pfp, NULL, path, tv, 0) < 0) {
+		log("pmemfile_utimens %s failed: %d\n", path, errno);
 		return -errno;
+	}
 
 	return 0;
 }
@@ -282,13 +317,11 @@ pmemfile_fuse_open(const char *path, struct fuse_file_info *fi)
 	if ((ret = update_ctx(pfp)) < 0)
 		return ret;
 
-	/*
-	 * &~0x8000, because fuse passes flag pmemfile doesn't understand
-	 * (O_LARGEFILE, which userspace on x86_64 defines as 0)
-	 */
-	PMEMfile *f = pmemfile_open(pfp, path, fi->flags & ~0x8000);
-	if (f == NULL)
+	PMEMfile *f = pmemfile_open_wrapper(pfp, path, fi->flags, 0);
+	if (f == NULL) {
+		log("pmemfile_open %s failed: %d\n", path, errno);
 		return -errno;
+	}
 	fi->fh = (uintptr_t)f;
 
 	return 0;
@@ -321,7 +354,13 @@ pmemfile_fuse_write(const char *path, const char *buff, size_t size,
 	if (size > INT32_MAX)
 		size = INT32_MAX;
 
-	return (int)pmemfile_pwrite(PFP, f, buff, size, off);
+	int ret = (int)pmemfile_pwrite(PFP, f, buff, size, off);
+	if (ret < 0) {
+		log("pmemfile_pwrite %zd failed: %d\n", size, errno);
+		return -errno;
+	}
+
+	return ret;
 }
 
 static int
@@ -337,7 +376,13 @@ pmemfile_fuse_read(const char *path, char *buff, size_t size, off_t off,
 	if (size > INT32_MAX)
 		size = INT32_MAX;
 
-	return (int)pmemfile_pread(PFP, f, buff, size, off);
+	int ret = (int)pmemfile_pread(PFP, f, buff, size, off);
+	if (ret < 0) {
+		log("pmemfile_pread %zd failed: %d\n", size, errno);
+		return -errno;
+	}
+
+	return ret;
 }
 
 static int
@@ -350,8 +395,10 @@ pmemfile_fuse_truncate(const char *path, off_t off)
 	if ((ret = update_ctx(pfp)) < 0)
 		return ret;
 
-	if (pmemfile_truncate(pfp, path, off) < 0)
+	if (pmemfile_truncate(pfp, path, off) < 0) {
+		log("pmemfile_truncate %s failed: %d\n", path, errno);
 		return -errno;
+	}
 
 	return 0;
 }
@@ -370,8 +417,10 @@ pmemfile_fuse_ftruncate(const char *path, off_t off, struct fuse_file_info *fi)
 	if ((ret = update_ctx(pfp)) < 0)
 		return ret;
 
-	if (pmemfile_ftruncate(pfp, (PMEMfile *)fi->fh, off) < 0)
+	if (pmemfile_ftruncate(pfp, (PMEMfile *)fi->fh, off) < 0) {
+		log("pmemfile_ftruncate %s failed: %d\n", path, errno);
 		return -errno;
+	}
 
 	return 0;
 }
@@ -387,8 +436,10 @@ pmemfile_fuse_unlink(const char *path)
 	if ((ret = update_ctx(pfp)) < 0)
 		return ret;
 
-	if (pmemfile_unlink(pfp, path) < 0)
+	if (pmemfile_unlink(pfp, path) < 0) {
+		log("pmemfile_unlink %s failed: %d\n", path, errno);
 		return -errno;
+	}
 
 	return 0;
 }
@@ -404,8 +455,10 @@ pmemfile_fuse_link(const char *path1, const char *path2)
 	if ((ret = update_ctx(pfp)) < 0)
 		return ret;
 
-	if (pmemfile_link(pfp, path1, path2) < 0)
+	if (pmemfile_link(pfp, path1, path2) < 0) {
+		log("pmemfile_link %s %s failed: %d\n", path1, path2, errno);
 		return -errno;
+	}
 
 	return 0;
 }
@@ -428,7 +481,7 @@ pmemfile_fuse_ioctl(const char *path, int cmd, void *arg,
 static int
 pmemfile_fuse_rename(const char *path, const char *dest)
 {
-	log("%s\n", path);
+	log("%s %s\n", path, dest);
 
 	int ret;
 	PMEMfilepool *pfp = PFP;
@@ -436,8 +489,10 @@ pmemfile_fuse_rename(const char *path, const char *dest)
 	if ((ret = update_ctx(pfp)) < 0)
 		return ret;
 
-	if (pmemfile_rename(pfp, path, dest) < 0)
+	if (pmemfile_rename(pfp, path, dest) < 0) {
+		log("pmemfile_rename %s %s failed: %d\n", path, dest, errno);
 		return -errno;
+	}
 
 	return 0;
 }
@@ -445,7 +500,7 @@ pmemfile_fuse_rename(const char *path, const char *dest)
 static int
 pmemfile_fuse_symlink(const char *path, const char *link)
 {
-	log("%s\n", path);
+	log("%s %s\n", path, link);
 
 	int ret;
 	PMEMfilepool *pfp = PFP;
@@ -453,8 +508,10 @@ pmemfile_fuse_symlink(const char *path, const char *link)
 	if ((ret = update_ctx(pfp)) < 0)
 		return ret;
 
-	if (pmemfile_symlink(pfp, path, link) < 0)
+	if (pmemfile_symlink(pfp, path, link) < 0) {
+		log("pmemfile_symlink %s %s failed: %d\n", path, link, errno);
 		return -errno;
+	}
 
 	return 0;
 }
@@ -470,8 +527,12 @@ pmemfile_fuse_readlink(const char *path, char *buff, size_t size)
 	if ((ret = update_ctx(pfp)) < 0)
 		return ret;
 
-	if (pmemfile_readlink(pfp, path, buff, size) < 0)
+	ret = (int)pmemfile_readlink(pfp, path, buff, size - 1);
+	if (ret < 0) {
+		log("pmemfile_readlink %s failed: %d\n", path, errno);
 		return -errno;
+	}
+	buff[ret] = 0;
 
 	return 0;
 }
@@ -486,8 +547,10 @@ pmemfile_fuse_mknod(const char *path, mode_t mode, dev_t dev)
 	if ((ret = update_ctx(pfp)) < 0)
 		return ret;
 
-	if (pmemfile_mknodat(pfp, NULL, path, mode, dev) < 0)
+	if (pmemfile_mknodat(pfp, NULL, path, mode, dev) < 0) {
+		log("pmemfile_mknod %s failed: %d\n", path, errno);
 		return -errno;
+	}
 
 	return 0;
 }
@@ -498,7 +561,8 @@ pmemfile_fuse_fallocate(const char *path, int mode, off_t offset, off_t size,
 {
 	log("%s\n", path);
 
-	if (!fi->fh)
+	PMEMfile *f = (PMEMfile *)fi->fh;
+	if (!f)
 		return -EBADF;
 
 	int ret;
@@ -507,8 +571,10 @@ pmemfile_fuse_fallocate(const char *path, int mode, off_t offset, off_t size,
 	if ((ret = update_ctx(pfp)) < 0)
 		return ret;
 
-	if (pmemfile_fallocate(pfp, (PMEMfile *)fi->fh, mode, offset, size) < 0)
+	if (pmemfile_fallocate(pfp, f, mode, offset, size) < 0) {
+		log("pmemfile_fallocate %s failed: %d\n", path, errno);
 		return -errno;
+	}
 
 	return 0;
 }
@@ -563,17 +629,50 @@ static struct fuse_operations pmemfile_ops = {
 	.flag_nopath = 1,
 };
 
+static void
+print_usage(FILE *stream, const char *progname)
+{
+	fprintf(stream, "Usage: %s [-o|-b|-h] POOL DIR\n", progname);
+}
+
 int
 main(int argc, char *argv[])
 {
-	if (argc != 3)
-		errx(1, "invalid number of arguments");
-	char *poolpath = argv[1];
-	char *mountpoint = argv[2];
+	int opt;
+	bool allow_other = false;
+	bool foreground = true;
+
+	while ((opt = getopt(argc, argv, "obh")) >= 0) {
+		switch (opt) {
+		case 'o':
+		case 'O':
+			allow_other = true;
+			break;
+		case 'b':
+		case 'B':
+			foreground = false;
+			break;
+		case 'h':
+		case 'H':
+			print_usage(stdout, argv[0]);
+			return 0;
+		default:
+			print_usage(stderr, argv[0]);
+			return 2;
+		}
+	}
+
+	if (optind + 2 != argc) {
+		print_usage(stderr, argv[0]);
+		return 2;
+	}
+
+	char *poolpath = argv[optind++];
+	char *mountpoint = argv[optind++];
 
 	PMEMfilepool *pool = pmemfile_pool_open(poolpath);
 	if (!pool)
-		err(2, "can't open pool");
+		err(2, "can't open pool '%s'", poolpath);
 
 	char resolved_path[PATH_MAX];
 	if (realpath(poolpath, resolved_path) == NULL)
@@ -583,18 +682,26 @@ main(int argc, char *argv[])
 	if (asprintf(&fsname, "fsname=pmemfile:%s", resolved_path) < 0)
 		err(4, "asprintf");
 
-	char *fuse_args[] = {
-		argv[0],
-		"-o",
-		fsname,
-		"-o",
-		"subtype=pmemfile",
-		"-o",
-		"allow_other",
-		"-f",
-		mountpoint
-	};
+	char *fuse_args[9];
 
-	return fuse_main(sizeof(fuse_args) / sizeof(fuse_args[0]), fuse_args,
-			&pmemfile_ops, pool);
+	int idx = 0;
+	fuse_args[idx++] = argv[0];
+	fuse_args[idx++] = "-o";
+	fuse_args[idx++] = fsname;
+	fuse_args[idx++] = "-o";
+	fuse_args[idx++] = "subtype=pmemfile";
+
+	if (allow_other) {
+		fuse_args[idx++] = "-o";
+		fuse_args[idx++] = "allow_other";
+	}
+
+	if (foreground)
+		fuse_args[idx++] = "-f";
+
+	fuse_args[idx++] = mountpoint;
+
+	assert((unsigned)idx <= (sizeof(fuse_args) / sizeof(fuse_args[0])));
+
+	return fuse_main(idx, fuse_args, &pmemfile_ops, pool);
 }

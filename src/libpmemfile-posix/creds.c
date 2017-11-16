@@ -495,7 +495,11 @@ can_access(const struct pmemfile_cred *cred, struct inode_perms perms, int acc)
 			req |=  PMEMFILE_S_IXOTH;
 	}
 
-	return ((perm & req) == req);
+	bool ret = ((perm & req) == req);
+	if (!ret)
+		LOG(LUSR, "mode: 0%o, requested: 0%o", perm, req);
+
+	return ret;
 }
 
 /*

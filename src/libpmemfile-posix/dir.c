@@ -483,6 +483,8 @@ resolve_pathat_nested(PMEMfilepool *pfp, const struct pmemfile_cred *cred,
 
 			if (!can_access(cred, child_perms, want)) {
 				vinode_unref(pfp, child);
+				LOG(LUSR,
+					"no execute permission for the directory");
 				path_info->error = EACCES;
 				break;
 			}

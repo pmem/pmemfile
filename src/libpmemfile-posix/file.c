@@ -332,6 +332,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 				acc2 = PFILE_WANT_WRITE;
 
 			if (!vinode_can_access(&cred, vinode, acc2)) {
+				LOG(LUSR, "no access to the file");
 				error = EACCES;
 				goto end;
 			}
@@ -393,6 +394,7 @@ _pmemfile_openat(PMEMfilepool *pfp, struct pmemfile_vinode *dir,
 
 		if (!_vinode_can_access(&cred, vparent, PFILE_WANT_WRITE)) {
 			os_rwlock_unlock(&vparent->rwlock);
+			LOG(LUSR, "non-writable parent directory");
 			error = EACCES;
 			goto end;
 		}

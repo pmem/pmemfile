@@ -74,7 +74,8 @@ inode_map_free(PMEMfilepool *pfp)
 	struct hash_map *map = pfp->inode_map;
 	int ref_leaks = hash_map_traverse(map, log_leak, NULL);
 	if (ref_leaks)
-		FATAL("%d inode reference leaks", ref_leaks);
+		FATAL("%d inode reference leaks (forgot to close some files?)",
+				ref_leaks);
 
 	hash_map_free(map);
 	pfp->inode_map = NULL;

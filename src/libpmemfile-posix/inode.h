@@ -354,6 +354,11 @@ static inline bool vinode_is_longsymlink(struct pmemfile_vinode *vinode)
 
 const char *get_symlink(PMEMfilepool *pfp, struct pmemfile_vinode *vinode);
 
+static inline bool inode_has_suspended_refs(const struct pmemfile_inode *inode)
+{
+	return (inode_get_flags(inode) & PMEMFILE_I_SUSPENDED_REF) != 0;
+}
+
 struct pmemfile_cred;
 TOID(struct pmemfile_inode) inode_alloc(PMEMfilepool *pfp,
 		struct pmemfile_cred *cred, uint64_t flags);
@@ -404,9 +409,10 @@ blockp_as_oid(struct pmemfile_block_desc *block)
 int vinode_rdlock_with_block_tree(PMEMfilepool *, struct pmemfile_vinode *);
 
 void vinode_suspend(PMEMfilepool *pfp, struct pmemfile_vinode *vinode);
-void inode_resume(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
-		PMEMobjpool *old_pop);
 void vinode_resume(PMEMfilepool *pfp, struct pmemfile_vinode *vinode,
 		PMEMobjpool *old_pop);
+
+/* 2 for "0x" 16 for pool_uuid 1 for ":" 2 for "0x" 16 for offset 1 for "\n" */
+#define SUSPENDED_INODE_LINE_LENGTH (2 + 16 + 1 + 2 + 16 + 1)
 
 #endif

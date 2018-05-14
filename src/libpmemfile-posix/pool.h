@@ -68,6 +68,8 @@ struct pmemfilepool {
 	/* current credentials */
 	struct pmemfile_cred cred;
 	os_rwlock_t cred_rwlock;
+
+	uintptr_t suspense; /* XXX perhaps a better name for this field? */
 };
 
 #endif

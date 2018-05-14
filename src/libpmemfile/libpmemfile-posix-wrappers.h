@@ -1942,36 +1942,54 @@ wrapper_pmemfile_errormsg(void)
 
 static inline int
 wrapper_pmemfile_pool_resume(PMEMfilepool *pfp,
-		const char *pathname)
+		const char *pool_path,
+		unsigned at_root,
+		const char *const *paths,
+		int flags)
 {
 	int ret;
 
 	ret = pmemfile_pool_resume(pfp,
-		pathname);
+		pool_path,
+		at_root,
+		paths,
+		flags);
 	if (ret < 0)
 		ret = -errno;
 
 	log_write(
-	    "pmemfile_pool_resume(%p, \"%s\") = %d",
+	    "pmemfile_pool_resume(%p, %p, %u, %p, %d) = %d",
 		pfp,
-		pathname,
+		pool_path,
+		at_root,
+		paths,
+		flags,
 		ret);
 
 	return ret;
 }
 
 static inline int
-wrapper_pmemfile_pool_suspend(PMEMfilepool *pfp)
+wrapper_pmemfile_pool_suspend(PMEMfilepool *pfp,
+		unsigned at_root,
+		const char *const *paths,
+		int flags)
 {
 	int ret;
 
-	ret = pmemfile_pool_suspend(pfp);
+	ret = pmemfile_pool_suspend(pfp,
+		at_root,
+		paths,
+		flags);
 	if (ret < 0)
 		ret = -errno;
 
 	log_write(
-	    "pmemfile_pool_suspend(%p) = %d",
+	    "pmemfile_pool_suspend(%p, %u, %p, %d) = %d",
 		pfp,
+		at_root,
+		paths,
+		flags,
 		ret);
 
 	return ret;

@@ -116,6 +116,7 @@ compile_test_source(file_rw_o rw/rw.cpp)
 compile_test_source(file_stat_o stat/stat.cpp)
 compile_test_source(file_symlinks_o symlinks/symlinks.cpp)
 compile_test_source(file_timestamps_o timestamps/timestamps.cpp)
+compile_test_source(file_suspend_resume_o suspend_resume/suspend_resume.cpp)
 
 function(build_test name posix_lib obj_lib_name)
 	add_executable(${name} $<TARGET_OBJECTS:${obj_lib_name}>)
@@ -154,6 +155,7 @@ build_test_using_shared(file_rw file_rw_o)
 build_test_using_shared(file_stat file_stat_o)
 build_test_using_shared(file_symlinks file_symlinks_o)
 build_test_using_shared(file_timestamps file_timestamps_o)
+build_test_using_shared(file_suspend_resume file_suspend_resume_o)
 
 target_include_directories(file_offset_mapping PUBLIC ${PMEMOBJ_INCLUDE_DIRS})
 target_include_directories(file_offset_mapping PUBLIC ${CMAKE_SOURCE_DIR}/src/libpmemfile-posix)
@@ -329,6 +331,10 @@ add_test_generic(symlinks memcheck)
 
 add_test_generic(timestamps none)
 add_test_generic(timestamps memcheck)
+
+add_test_generic(suspend_resume none)
+add_test_generic(suspend_resume memcheck)
+add_test_generic(suspend_resume pmemcheck)
 
 if(NOT LONG_TESTS)
 	add_test(NAME SOME_TESTS_WERE_SKIPPED_BECAUSE_LONG_TESTS_ARE_DISABLED

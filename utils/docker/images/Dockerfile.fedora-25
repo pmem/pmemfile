@@ -48,6 +48,7 @@ RUN dnf install -y \
 	clang \
 	cmake \
 	doxygen \
+	fuse \
 	fuse-devel \
 	gcc \
 	gdb \
@@ -124,7 +125,6 @@ RUN dnf remove -y \
 	automake \
 	doxygen \
 	passwd \
-	which \
 	whois
 
 RUN dnf autoremove -y

@@ -31,7 +31,14 @@
 
 include(${SRC_DIR}/../../helpers.cmake)
 
-function(setup)
+function(setup size)
+	if (USE_FUSE)
+		# Cleanup after previous failure. We have to do it before
+		# common_setup, because unlinking directory with a mount point
+		# fails with EBUSY.
+		execute_process(COMMAND ${FUSERMOUNT} -u ${DIR}/mount_point)
+	endif()
+
 	common_setup()
 
 	if (TEST_PROCESS_SWITCHING)
@@ -41,10 +48,27 @@ function(setup)
 	if(TESTS_USE_FORCED_PMEM)
 		set(ENV{PMEM_IS_PMEM_FORCE} 1)
 	endif()
+
+	mkfs(${DIR}/fs ${size})
+
+	execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${DIR}/mount_point)
+
+	if (USE_FUSE)
+		execute(${PMEMFILE_FUSE} -b ${DIR}/fs ${DIR}/mount_point)
+	else()
+		set(ENV{LD_PRELOAD} ${PRELOAD_LIB})
+		set(ENV{PMEMFILE_POOLS} ${DIR}/mount_point:${DIR}/fs)
+		set(ENV{PMEMFILE_PRELOAD_LOG} ${BIN_DIR}/pmemfile_preload.log)
+		set(ENV{INTERCEPT_LOG} ${BIN_DIR}/intercept.log)
+	endif()
 endfunction()
 
 function(cleanup)
-	unset(ENV{LD_PRELOAD})
+	if (USE_FUSE)
+		execute(${FUSERMOUNT} -z -u ${DIR}/mount_point)
+	else()
+		unset(ENV{LD_PRELOAD})
+	endif()
 
 	if(TESTS_USE_FORCED_PMEM)
 		unset(ENV{PMEM_IS_PMEM_FORCE})

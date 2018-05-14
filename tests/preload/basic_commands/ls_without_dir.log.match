@@ -1,5 +1,7 @@
 total $(N)
 drwxrwxrwx 2 $(N) .
-drwxrwxrwx 2 $(N) ..
+$(OPT)drwxrwxrwx 2 $(N) ..
+$(OPX)drwxr-xr-x 4 $(N) ..
+$(OPT) XXX there shouldn't be any difference between libpmemfile and pmemfile-fuse!
 -rw-r--r-- 1 391 file_a
 -rw-r--r-- 1 4401 file_b

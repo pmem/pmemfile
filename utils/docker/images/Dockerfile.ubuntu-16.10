@@ -52,6 +52,7 @@ RUN apt-get install -y \
 	debhelper \
 	devscripts \
 	doxygen \
+	fuse \
 	git \
 	libacl1-dev \
 	libaio-dev \

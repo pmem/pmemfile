@@ -69,18 +69,23 @@ bash <(curl -s https://codecov.io/bash) -c -F tests_antool
 
 cleanup
 
-ctest -E "_memcheck|_drd|_helgrind|_pmemcheck|antool|preload|mt" --output-on-failure
+ctest -E "_memcheck|_drd|_helgrind|_pmemcheck|antool|preload|mt|fuse" --output-on-failure
 bash <(curl -s https://codecov.io/bash) -c -F tests_posix_single_threaded
 
 cleanup
 
-ctest -E "_memcheck|_drd|_helgrind|_pmemcheck|antool" -R mt --output-on-failure
+ctest -E "_memcheck|_drd|_helgrind|_pmemcheck|antool|fuse" -R mt --output-on-failure
 bash <(curl -s https://codecov.io/bash) -c -F tests_posix_multi_threaded
 
 cleanup
 
-ctest -E "_memcheck|_drd|_helgrind|_pmemcheck|antool" -R preload --output-on-failure
+ctest -E "_memcheck|_drd|_helgrind|_pmemcheck|antool|fuse" -R preload --output-on-failure
 bash <(curl -s https://codecov.io/bash) -c -F tests_preload
+
+cleanup
+
+ctest -R fuse --output-on-failure
+bash <(curl -s https://codecov.io/bash) -c -F tests_fuse
 
 cd ..
 rm -r build

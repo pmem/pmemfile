@@ -31,30 +31,28 @@
 
 include(${SRC_DIR}/../preload-helpers.cmake)
 
-setup()
+setup(128m)
 
-mkfs(${DIR}/fs 128m)
-
-execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${DIR}/mount_point)
 execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${DIR}/some_dir)
 execute_process(COMMAND ln -s ../mount_point ${DIR}/some_dir/some_link)
 
-set(ENV{LD_PRELOAD} ${PRELOAD_LIB})
-set(ENV{PMEMFILE_POOLS} ${DIR}/mount_point:${DIR}/fs)
-set(ENV{PMEMFILE_PRELOAD_LOG} ${BIN_DIR}/pmemfile_preload.log)
-set(ENV{INTERCEPT_LOG} ${BIN_DIR}/intercept.log)
-set(ENV{PMEMFILE_EXIT_ON_NOT_SUPPORTED} 1)
+if (NOT USE_FUSE)
+	set(ENV{PMEMFILE_EXIT_ON_NOT_SUPPORTED} 1)
+endif()
 
 execute_process(COMMAND ${MAIN_EXECUTABLE} ${DIR}/some_dir/some_link/a ${DIR} mount_point/b mount_point b
                 OUTPUT_FILE ${DIR}/root_dir.log
                 RESULT_VARIABLE res)
 if(res)
-        message(FATAL_ERROR "Test1 command failed: ${res}")
+	message(FATAL_ERROR "Test1 command failed: ${res}")
 endif()
 
-unset(ENV{LD_PRELOAD})
-
-pf_cat(${DIR}/fs /a ${DIR}/a.dump)
+if(USE_FUSE)
+	execute_with_output(${DIR}/a.dump cat ${DIR}/mount_point/a)
+else()
+	unset(ENV{LD_PRELOAD})
+	pf_cat(${DIR}/fs /a ${DIR}/a.dump)
+endif()
 
 cmp(${DIR}/a.dump ${SRC_DIR}/a.expected_dump)
 

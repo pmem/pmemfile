@@ -31,18 +31,13 @@
 
 include(${SRC_DIR}/../preload-helpers.cmake)
 
-setup()
+setup(128m)
 
-mkfs(${DIR}/fs 16m)
-
-execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${DIR}/mount_point)
 execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${DIR}/some_dir)
 
-set(ENV{LD_PRELOAD} ${PRELOAD_LIB})
-set(ENV{PMEMFILE_POOLS} ${DIR}/mount_point:${DIR}/fs)
-set(ENV{PMEMFILE_PRELOAD_LOG} ${BIN_DIR}/pmemfile_preload.log)
-set(ENV{INTERCEPT_LOG} ${BIN_DIR}/intercept.log)
-set(ENV{PMEMFILE_EXIT_ON_NOT_SUPPORTED} 1)
+if (NOT USE_FUSE)
+	set(ENV{PMEMFILE_EXIT_ON_NOT_SUPPORTED} 1)
+endif()
 
 execute_process(COMMAND ${MAIN_EXECUTABLE} ${DIR}/some_dir/filename ${DIR}/mount_point/filename
                 OUTPUT_FILE ${DIR}/root_dir.log
@@ -50,7 +45,5 @@ execute_process(COMMAND ${MAIN_EXECUTABLE} ${DIR}/some_dir/filename ${DIR}/mount
 if(res)
         message(FATAL_ERROR "command failed: ${res}")
 endif()
-
-unset(ENV{LD_PRELOAD})
 
 cleanup()

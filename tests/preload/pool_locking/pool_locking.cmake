@@ -31,18 +31,11 @@
 
 include(${SRC_DIR}/../preload-helpers.cmake)
 
-setup()
+setup(128m)
 
-mkfs(${DIR}/fs 128m)
-
-execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${DIR}/mount_point)
-
-set(ENV{LD_PRELOAD} ${PRELOAD_LIB})
-set(ENV{PMEMFILE_POOLS} ${DIR}/mount_point:${DIR}/fs)
-
-if (NOT TEST_PROCESS_SWITCHING)
-	set(ENV{PMEMFILE_PRELOAD_LOG} ${BIN_DIR}/pmemfile_preload.log)
-	set(ENV{INTERCEPT_LOG} ${BIN_DIR}/intercept.log)
+if (TEST_PROCESS_SWITCHING)
+	unset(ENV{PMEMFILE_PRELOAD_LOG})
+	unset(ENV{INTERCEPT_LOG})
 endif()
 
 execute(${MAIN_EXECUTABLE} ${DIR}/mount_point/file)

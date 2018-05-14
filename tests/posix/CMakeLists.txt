@@ -218,7 +218,7 @@ function(add_test_with_filter name filter tracer executable)
 			-P ${CMAKE_CURRENT_SOURCE_DIR}/${name}/${name}.cmake)
 
 	set_tests_properties(${name}${filter_postfix}_${tracer} PROPERTIES
-		ENVIRONMENT "LC_ALL=C;PATH=$ENV{PATH};${ARGV4}"
+		ENVIRONMENT "LC_ALL=C;PATH=$ENV{PATH};${ARGV5}"
 		FAIL_REGULAR_EXPRESSION Sanitizer)
 
 	# pmemcheck is a special snowflake and it doesn't set exit code when it

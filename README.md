@@ -140,8 +140,8 @@ libpmemfile.so:
 * PMEMFILE_IGNORE_INODE_FREE_ERRORS - when set to 1, disables abort() when
   freeing inode's metadata fails (it defers freeing to the next application
   start) - can be used to get out of out-of-space situations (default: 0)
-* PMEMFILE_OVERALLOCATE_ON_APPEND - when set to 0, disables allocation of more
-  space than required (default: 1)
+* PMEMFILE_OVERALLOCATE_ON_APPEND - when set to 1, enables allocation of more
+  space than required (default: 0)
 * PMEMFILE_PRELOAD_PROCESS_SWITCHING - when set to 1, enables VERY slow
   emulation of multi-process support, used for testing pmemfile with file system
   test suites (default: 0)

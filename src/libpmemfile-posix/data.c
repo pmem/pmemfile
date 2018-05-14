@@ -227,10 +227,8 @@ overallocate_size(uint64_t size)
 		return 16 * 1024;
 	else if (size <= 64 * 1024)
 		return 256 * 1024;
-	else if (size <= 1024 * 1024)
-		return 4 * 1024 * 1024;
-	else if (size <= 64 * 1024 * 1024)
-		return 64 * 1024 * 1024;
+	else if (size <= 2 * 1024 * 1024)
+		return 2 * 1024 * 1024;
 	else
 		return size;
 }

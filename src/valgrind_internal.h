@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2017, Intel Corporation
+ * Copyright 2015-2018, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,8 +34,8 @@
  * valgrind_internal.h -- internal definitions for valgrind macros
  */
 
-#ifndef NVML_VALGRIND_INTERNAL_H
-#define NVML_VALGRIND_INTERNAL_H 1
+#ifndef PMEMFILE_VALGRIND_INTERNAL_H
+#define PMEMFILE_VALGRIND_INTERNAL_H 1
 
 #ifdef USE_VALGRIND
 #define USE_VG_PMEMCHECK

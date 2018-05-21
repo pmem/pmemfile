@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2017, Intel Corporation
+ * Copyright 2014-2018, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -52,7 +52,7 @@
 
 #define UTIL_MAX_ERR_MSG 128
 
-static char nvml_src_version[] = "SRCVERSION:" SRCVERSION;
+static char pmdk_src_version[] = "SRCVERSION:" SRCVERSION;
 
 static const char *Log_prefix;
 static int Log_level;
@@ -168,7 +168,7 @@ out_init(const char *log_prefix, const char *log_level_var,
 	}
 #endif	/* DEBUG */
 
-	char *log_alignment = getenv("NVML_LOG_ALIGN");
+	char *log_alignment = getenv("PMDK_LOG_ALIGN");
 	if (log_alignment) {
 		int align = atoi(log_alignment);
 		if (align > 0)
@@ -184,7 +184,7 @@ out_init(const char *log_prefix, const char *log_level_var,
 	LOG(LDBG, "pid %d: program: %s", os_getpid(), os_getexecname());
 #endif
 	LOG(LDBG, "%s version %d.%d", log_prefix, major_version, minor_version);
-	LOG(LDBG, "src version %s", nvml_src_version);
+	LOG(LDBG, "src version %s", pmdk_src_version);
 #ifdef USE_VG_PMEMCHECK
 	/*
 	 * Attribute "used" to prevent compiler from optimizing out the variable

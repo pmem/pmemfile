@@ -1,6 +1,6 @@
 #!/bin/bash -ex
 #
-# Copyright 2017, Intel Corporation
+# Copyright 2017-2018, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,27 +31,27 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #
-# install-nvml.sh - installs libpmem & libpmemobj
+# install-pmdk.sh - installs libpmem & libpmemobj
 #
 
-git clone https://github.com/pmem/nvml.git
-cd nvml
+git clone https://github.com/pmem/pmdk.git
+cd pmdk
 git checkout 3fdd3f91bf55d93779d05a680726f08c810511dd
 BUILD_PACKAGE_CHECK=n make $1 EXTRA_CFLAGS="-DUSE_VALGRIND"
 if [ "$1" = "dpkg" ]; then
 	sudo dpkg -i dpkg/libpmem_*.deb dpkg/libpmem-dev_*.deb
 	sudo dpkg -i dpkg/libpmemobj_*.deb dpkg/libpmemobj-dev_*.deb
-	# nvml-tools deps
+	# pmdk-tools deps
 	sudo dpkg -i dpkg/libpmemblk_*.deb dpkg/libpmemlog_*.deb dpkg/libpmempool_*.deb
 	sudo dpkg -i dpkg/nvml-tools_*.deb
 elif [ "$1" = "rpm" ]; then
 	sudo rpm -i rpm/*/libpmem-*.rpm
 	sudo rpm -i rpm/*/libpmemobj-*.rpm
-	# nvml-tools deps, version specified to avoid installing devel packages
+	# pmdk-tools deps, version specified to avoid installing devel packages
 	sudo rpm -i rpm/*/libpmemblk-1.3*.rpm
 	sudo rpm -i rpm/*/libpmemlog-1.3*.rpm
 	sudo rpm -i rpm/*/libpmempool-1.3*.rpm
 	sudo rpm -i rpm/*/nvml-tools-*.rpm
 fi
 cd ..
-rm -rf nvml
+rm -rf pmdk

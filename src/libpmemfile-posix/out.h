@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2017, Intel Corporation
+ * Copyright 2014-2018, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,8 +34,8 @@
  * out.h -- definitions for "out" module
  */
 
-#ifndef NVML_OUT_H
-#define NVML_OUT_H 1
+#ifndef PMEMFILE_OUT_H
+#define PMEMFILE_OUT_H 1
 
 #include <stdarg.h>
 #include <stddef.h>

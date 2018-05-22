@@ -1,5 +1,5 @@
 #
-# Copyright 2016-2017, Intel Corporation
+# Copyright 2016-2018, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -89,9 +89,9 @@ RUN pip install codecov
 COPY install-valgrind.sh install-valgrind.sh
 RUN ./install-valgrind.sh
 
-# Install nvml
-COPY install-nvml.sh install-nvml.sh
-RUN ./install-nvml.sh dpkg
+# Install PMDK
+COPY install-pmdk.sh install-pmdk.sh
+RUN ./install-pmdk.sh dpkg
 
 # Install syscall_intercept
 COPY install-syscall_intercept.sh install-syscall_intercept.sh

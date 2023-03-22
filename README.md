@@ -4,13 +4,25 @@
 [![Coverage Status](https://codecov.io/github/pmem/pmemfile/coverage.svg)](https://codecov.io/gh/pmem/pmemfile)
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/12874/badge.svg)](https://scan.coverity.com/projects/pmemfile)
 
+## ⚠️ Discontinuation of the project
+The **pmemfile** project will no longer be maintained by Intel.
+- Intel has ceased development and contributions including, but not limited to, maintenance, bug fixes, new releases,
+or updates, to this project.
+- Intel no longer accepts patches to this project.
+- If you have an ongoing need to use this project, are interested in independently developing it, or would like to
+maintain patches for the open source software community, please create your own fork of this project.
+- You will find more information [here](https://pmem.io/blog/2022/11/update-on-pmdk-and-our-long-term-support-strategy/).
+
+## Introduction
+
+
 Pmemfile project's goal is to provide low-overhead userspace implementation of
 file APIs using persistent memory.
 It consists of 2 major compoments:
 - libpmemfile-posix - provides syscall-like API which can be used by applications
 - libpmemfile - provides transparent access to libpmemfile-posix pools
 
-# How to build #
+## How to build
 
 Requirements:
 - cmake >= 3.3
